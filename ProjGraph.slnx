@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ProjGraph.Core/ProjGraph.Core.csproj" />
+    <Project Path="src/ProjGraph.Lib/ProjGraph.Lib.csproj" />
+    <Project Path="src/ProjGraph.Cli/ProjGraph.Cli.csproj" />
+    <Project Path="src/ProjGraph.Mcp/ProjGraph.Mcp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ProjGraph.Tests.Unit/ProjGraph.Tests.Unit.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Integration/ProjGraph.Tests.Integration.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Contract/ProjGraph.Tests.Contract.csproj" />
+  </Folder>
+</Solution>

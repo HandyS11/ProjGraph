@@ -1,50 +1,57 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: N/A -> 1.0.0
+- List of modified principles:
+  - Added: I. Modern .NET 10 Baseline
+  - Added: II. MCP Native Interoperability
+  - Added: III. Library-First Core
+  - Added: IV. Absolute Testing Requirement
+  - Added: V. Traceability & Semantic Stability
+- Added sections: Technical Constraints, Development Workflow
+- Removed sections: None
+- Templates requiring updates:
+  - .specify/templates/spec-template.md (⚠ pending - MCP Tool Definitions)
+  - .specify/templates/plan-template.md (⚠ pending - Library-First Alignment)
+  - .specify/templates/tasks-template.md (⚠ pending - Observability & MCP tasks)
+- Follow-up TODOs: None
+-->
+
+# ProjGraph Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Modern .NET 10 Baseline
+All project code MUST target .NET 10.0 or higher. We leverage the latest framework features, C# innovations, and high-performance APIs. Code quality is non-negotiable: zero warnings, strict style enforcement (EditorConfig), and optimal memory management for tool execution.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. MCP Native Interoperability
+The system is built with Model Context Protocol (MCP) as a first-class citizen. Every "Tool" functionality exposed by the system MUST be accessible via an MCP server interface. Protocol compliance and schema-perfect tool descriptions are required to ensure seamless LLM interaction.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Library-First Core
+Core business logic and domain models MUST reside in standalone, SDK-style libraries. The .NET CLI tool and MCP server are thin consumers of these libraries. This ensures logic is reusable, independently testable, and decoupled from the delivery mechanism.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Absolute Testing Requirement (NON-NEGOTIABLE)
+No code is merged without comprehensive test coverage. Unit tests for logic, integration tests for tool workflows, and contract tests for MCP endpoints are mandatory. We follow a "test-first" mentality where specifications drive test cases before implementation begins.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Traceability & Semantic Stability
+We adhere strictly to Semantic Versioning (SemVer) 2.0.0. Observability is baked in via OpenTelemetry; every tool execution and MCP request must be traceable with appropriate spans and attributes. Diagnostic logs must provide enough context to debug issues without access to the source.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Technical Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- **Runtime**: Windows, Linux, and macOS supported via .NET cross-platform capabilities.
+- **Tooling**: Built as a .NET Global Tool for easy installation.
+- **Protocol**: MCP version 1.0 specification compliance.
+- **Security**: No secrets in source code; use environment variables or secure secret stores for sensitive configuration.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- **Feature branching**: All development occurs on feature branches branched from `main`.
+- **Pull Requests**: MUST pass all CI build and test gates. Code reviews focus on principle compliance and architectural integrity.
+- **Documentation**: All public APIs and MCP tools MUST be documented using XML comments for automated documentation generation and LLM context.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- Amendments to this Constitution require a MAJOR version bump.
+- Periodic compliance reviews are conducted after every major milestone.
+- The Constitution supersedes all other documentation and development practices. Use `.specify/memory/constitution.md` as the source of truth.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-01-13 | **Last Amended**: 2026-01-13

@@ -48,28 +48,25 @@ description: "Task list template for feature implementation"
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project structure per implementation plan
-- [ ] T002 Initialize [language] project with [framework] dependencies
-- [ ] T003 [P] Configure linting and formatting tools
+- [ ] T001 Create project structure per implementation plan (Core, Lib, Cli, Mcp)
+- [ ] T002 Initialize .NET 10 projects with strict EditorConfig
+- [ ] T003 [P] Configure OpenTelemetry for traceability (Principle V)
+- [ ] T004 Define MCP 1.0 tool schemas in `specs/[###-feature]/contracts/`
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
+**Purpose**: Core infrastructure and Library logic (Principle III)
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+- [ ] T005 Implement core domain models in `src/ProjGraph.Core/`
+- [ ] T006 Implement base service logic in `src/ProjGraph.Lib/`
+- [ ] T007 [P] Setup xUnit and logic for Unit Tests
+- [ ] T008 Configure structured logging and spans in libraries
+- [ ] T009 Setup CLI entry point in `src/ProjGraph.Cli/`
+- [ ] T010 Setup MCP Server skeleton in `src/ProjGraph.Mcp/`
 
-Examples of foundational tasks (adjust based on your project):
-
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
-
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+**Checkpoint**: Foundation ready - libraries and interfaces established
 
 ---
 
@@ -79,12 +76,13 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 1 (OPTIONAL) ⚠️
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation (Principle IV)**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T011 [P] [US1] Unit test for library logic in `tests/unit/`
+- [ ] T012 [P] [US1] MCP Contract test for tool schema in `tests/contract/`
+- [ ] T013 [P] [US1] Integration test for CLI tool in `tests/integration/`
 
 ### Implementation for User Story 1
 
