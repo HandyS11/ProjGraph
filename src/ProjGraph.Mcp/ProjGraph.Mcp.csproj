@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>projgraph-mcp</ToolCommandName>
+    <Description>MCP server for ProjGraph to interact with LLMs and provide project graph context.</Description>
+    <PackageTags>dotnet-tool;mcp;llm;context;graph;dependencies</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
