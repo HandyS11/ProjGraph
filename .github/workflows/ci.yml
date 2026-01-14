@@ -11,6 +11,7 @@ on:
       - "develop"
       - "feature/*"
       - "fix/*"
+      - "hotfix/*"
       - "refacto/*"
       - "refactor/*"
 
@@ -28,10 +29,10 @@ jobs:
         cache-dependency-path: Directory.Packages.props
 
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore ProjGraph.slnx
 
     - name: Build
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build ProjGraph.slnx --no-restore --configuration Release
 
     - name: Test
-      run: dotnet test --no-build --configuration Release --verbosity normal
+      run: dotnet test ProjGraph.slnx --no-build --configuration Release --verbosity normal
