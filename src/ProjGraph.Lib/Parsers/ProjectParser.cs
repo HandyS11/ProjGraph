@@ -3,11 +3,12 @@ using ProjGraph.Core.Models;
 
 namespace ProjGraph.Lib.Parsers;
 
-public class ProjectParser
+public static class ProjectParser
 {
-    public (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath)
+    public static (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath)
     {
-        var root = ProjectRootElement.Open(projectPath);
+        var root = ProjectRootElement.Open(projectPath)
+                   ?? throw new InvalidOperationException($"Failed to parse project file: {projectPath}");
 
         var name = Path.GetFileNameWithoutExtension(projectPath);
         var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), projectPath);

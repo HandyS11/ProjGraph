@@ -4,62 +4,101 @@ using Spectre.Console;
 
 namespace ProjGraph.Cli.Rendering;
 
-public class TreeRenderer
+public static class TreeRenderer
 {
-    public void Render(SolutionGraph graph)
+    public static void Render(SolutionGraph graph)
     {
-        var graphName = Markup.Escape(graph.Name.Trim());
-        AnsiConsole.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });
+        RenderHeader(graph);
 
-        AnsiConsole.MarkupLine("[bold blue]Projects[/]");
-
-        var sccAlgorithm = new TarjanSccAlgorithm();
-        var cycles = sccAlgorithm.FindStronglyConnectedComponents(graph);
-        var cyclicProjectIds = cycles.Where(c => c.Count > 1).SelectMany(c => c).ToHashSet();
+        var cycles = TarjanSccAlgorithm.FindStronglyConnectedComponents(graph);
+        var cyclicProjectIds = cycles
+            .Where(c => c.Count > 1)
+            .SelectMany(c => c)
+            .ToHashSet();
 
         var sortedProjects = graph.Projects
             .OrderBy(p => p.Type)
             .ThenBy(p => p.Name)
             .ToList();
 
-        for (int i = 0; i < sortedProjects.Count; i++)
+        for (var i = 0; i < sortedProjects.Count; i++)
         {
             var project = sortedProjects[i];
-            bool isLastProject = i == sortedProjects.Count - 1;
-            string pPrefix = isLastProject ? "└── " : "├── ";
+            var isLastProject = i == sortedProjects.Count - 1;
 
-            var color = cyclicProjectIds.Contains(project.Id) ? "red" : "green";
-            var typeIcon = project.Type switch
-            {
-                ProjectType.Executable => "🚀",
-                ProjectType.Test => "🧪",
-                _ => "📦"
-            };
-
-            var projectName = Markup.Escape(project.Name.Trim());
-            AnsiConsole.MarkupLine($"{pPrefix}{typeIcon} [{color}]{projectName}[/]");
-
-            var dependencies = graph.Dependencies
-                .Where(d => d.SourceId == project.Id)
-                .Select(d => graph.Projects.FirstOrDefault(p => p.Id == d.TargetId))
-                .Where(p => p != null)
-                .OrderBy(p => p!.Name)
-                .ToList();
-
-            for (int j = 0; j < dependencies.Count; j++)
-            {
-                var dep = dependencies[j]!;
-                bool isLastDep = j == dependencies.Count - 1;
-                string dPrefix = isLastProject ? "    " : "│   ";
-                string dConnector = isLastDep ? "└── " : "├── ";
-                var depColor = cyclicProjectIds.Contains(dep.Id) ? "red" : "grey";
-                var depName = Markup.Escape(dep.Name.Trim());
-
-                AnsiConsole.MarkupLine($"{dPrefix}{dConnector}[italic {depColor}]→ {depName}[/]");
-            }
+            RenderProject(project, isLastProject, cyclicProjectIds);
+            RenderDependencies(graph, project, isLastProject, cyclicProjectIds);
         }
 
-        if (cyclicProjectIds.Any())
+        RenderCycleWarning(cyclicProjectIds);
+    }
+
+    private static void RenderHeader(SolutionGraph graph)
+    {
+        var graphName = Markup.Escape(graph.Name.Trim());
+        AnsiConsole.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });
+        AnsiConsole.MarkupLine("[bold blue]Projects[/]");
+    }
+
+    private static void RenderProject(Project project, bool isLastProject, HashSet<Guid> cyclicProjectIds)
+    {
+        var pPrefix = isLastProject ? "└── " : "├── ";
+        var color = cyclicProjectIds.Contains(project.Id) ? "red" : "green";
+        var typeIcon = GetProjectTypeIcon(project.Type);
+        var projectName = Markup.Escape(project.Name.Trim());
+
+        AnsiConsole.MarkupLine($"{pPrefix}{typeIcon} [{color}]{projectName}[/]");
+    }
+
+    private static void RenderDependencies(
+        SolutionGraph graph,
+        Project project,
+        bool isLastProject,
+        HashSet<Guid> cyclicProjectIds)
+    {
+        var dependencies = graph.Dependencies
+            .Where(d => d.SourceId == project.Id)
+            .Select(d => graph.Projects.FirstOrDefault(p => p.Id == d.TargetId))
+            .Where(p => p != null)
+            .OrderBy(p => p!.Name)
+            .ToList();
+
+        for (var j = 0; j < dependencies.Count; j++)
+        {
+            var dep = dependencies[j]!;
+            var isLastDep = j == dependencies.Count - 1;
+
+            RenderDependency(dep, isLastProject, isLastDep, cyclicProjectIds);
+        }
+    }
+
+    private static void RenderDependency(
+        Project dependency,
+        bool isLastProject,
+        bool isLastDep,
+        HashSet<Guid> cyclicProjectIds)
+    {
+        var dPrefix = isLastProject ? "    " : "│   ";
+        var dConnector = isLastDep ? "└── " : "├── ";
+        var depColor = cyclicProjectIds.Contains(dependency.Id) ? "red" : "grey";
+        var depName = Markup.Escape(dependency.Name.Trim());
+
+        AnsiConsole.MarkupLine($"{dPrefix}{dConnector}[italic {depColor}]→ {depName}[/]");
+    }
+
+    private static string GetProjectTypeIcon(ProjectType type)
+    {
+        return type switch
+        {
+            ProjectType.Executable => "🚀",
+            ProjectType.Test => "🧪",
+            _ => "📦"
+        };
+    }
+
+    private static void RenderCycleWarning(HashSet<Guid> cyclicProjectIds)
+    {
+        if (cyclicProjectIds.Count is not 0)
         {
             AnsiConsole.MarkupLine("\n[red]⚠ Cycles detected![/] The projects in [red]red[/] are part of a circular dependency.");
         }

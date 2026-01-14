@@ -10,31 +10,29 @@ public class TarjanSccAlgorithmTests
     public void FindStronglyConnectedComponents_ShouldDetectCycles()
     {
         // Arrange
-        var alg = new TarjanSccAlgorithm();
-
         var guidA = Guid.NewGuid();
         var guidB = Guid.NewGuid();
         var guidC = Guid.NewGuid();
 
         var projects = new List<Project>
         {
-            new Project(guidA, "A", "A.csproj", "A.csproj", "net10.0", ProjectType.Library),
-            new Project(guidB, "B", "B.csproj", "B.csproj", "net10.0", ProjectType.Library),
-            new Project(guidC, "C", "C.csproj", "C.csproj", "net10.0", ProjectType.Library)
+            new(guidA, "A", "A.csproj", "A.csproj", "net10.0", ProjectType.Library),
+            new(guidB, "B", "B.csproj", "B.csproj", "net10.0", ProjectType.Library),
+            new(guidC, "C", "C.csproj", "C.csproj", "net10.0", ProjectType.Library)
         };
 
         // A -> B -> C -> A (Cycle!)
         var dependencies = new List<Dependency>
         {
-            new Dependency(guidA, guidB, DependencyType.ProjectReference),
-            new Dependency(guidB, guidC, DependencyType.ProjectReference),
-            new Dependency(guidC, guidA, DependencyType.ProjectReference)
+            new(guidA, guidB, DependencyType.ProjectReference),
+            new(guidB, guidC, DependencyType.ProjectReference),
+            new(guidC, guidA, DependencyType.ProjectReference)
         };
 
         var graph = new SolutionGraph("Test", "Test.sln", projects, dependencies);
 
         // Act
-        var sccs = alg.FindStronglyConnectedComponents(graph);
+        var sccs = TarjanSccAlgorithm.FindStronglyConnectedComponents(graph);
 
         // Assert
         sccs.Should().HaveCount(1);
@@ -48,27 +46,25 @@ public class TarjanSccAlgorithmTests
     public void FindStronglyConnectedComponents_ShouldHandleAcyclicGraph()
     {
         // Arrange
-        var alg = new TarjanSccAlgorithm();
-
         var guidA = Guid.NewGuid();
         var guidB = Guid.NewGuid();
 
         var projects = new List<Project>
         {
-            new Project(guidA, "A", "A.csproj", "A.csproj", "net10.0", ProjectType.Library),
-            new Project(guidB, "B", "B.csproj", "B.csproj", "net10.0", ProjectType.Library)
+            new(guidA, "A", "A.csproj", "A.csproj", "net10.0", ProjectType.Library),
+            new(guidB, "B", "B.csproj", "B.csproj", "net10.0", ProjectType.Library)
         };
 
         // A -> B
         var dependencies = new List<Dependency>
         {
-            new Dependency(guidA, guidB, DependencyType.ProjectReference)
+            new(guidA, guidB, DependencyType.ProjectReference)
         };
 
         var graph = new SolutionGraph("Test", "Test.sln", projects, dependencies);
 
         // Act
-        var sccs = alg.FindStronglyConnectedComponents(graph);
+        var sccs = TarjanSccAlgorithm.FindStronglyConnectedComponents(graph);
 
         // Assert
         sccs.Should().HaveCount(2); // Each node is its own SCC

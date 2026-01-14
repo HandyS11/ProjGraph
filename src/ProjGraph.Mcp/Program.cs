@@ -1,14 +1,14 @@
-using System.ComponentModel;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using ProjGraph.Lib;
+using System.ComponentModel;
+using System.Text.Json;
 
 namespace ProjGraph.Mcp;
 
-public abstract class Program
+public static class Program
 {
     public static async Task Main(string[] args)
     {

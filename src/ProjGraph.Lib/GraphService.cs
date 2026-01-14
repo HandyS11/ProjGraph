@@ -1,28 +1,21 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Parsers;
-using Microsoft.Build.Construction;
 
 namespace ProjGraph.Lib;
 
 public class GraphService
 {
-    private readonly ProjectParser _projectParser = new();
-    private readonly SlnxParser _slnxParser = new();
-
     public SolutionGraph BuildGraph(string path)
     {
         IEnumerable<string> projectFilePaths;
 
         if (path.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
         {
-            projectFilePaths = _slnxParser.GetProjectPaths(path);
+            projectFilePaths = SlnxParser.GetProjectPaths(path);
         }
         else if (path.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
         {
-            var slnFile = SolutionFile.Parse(path);
-            projectFilePaths = slnFile.ProjectsInOrder
-                .Where(p => p.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
-                .Select(p => p.AbsolutePath);
+            projectFilePaths = SlnParser.GetProjectPaths(path);
         }
         else if (path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
         {
@@ -44,11 +37,13 @@ public class GraphService
 
             try
             {
-                var (project, refs) = _projectParser.Parse(projectPath);
+                var (project, refs) = ProjectParser.Parse(projectPath);
                 projects.Add(project);
                 pathToProject[project.FullPath] = project;
 
-                rawDependencies.AddRange(refs.Select(r => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(projectPath)!, r))).Select(absoluteRef => (project.FullPath, absoluteRef)));
+                rawDependencies.AddRange(refs
+                    .Select(r => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(projectPath)!, r)))
+                    .Select(absoluteRef => (project.FullPath, absoluteRef)));
             }
             catch
             {

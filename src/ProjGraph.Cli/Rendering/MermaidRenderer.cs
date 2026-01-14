@@ -1,13 +1,14 @@
-using System.Text;
 using ProjGraph.Core.Models;
+using System.Text;
 
 namespace ProjGraph.Cli.Rendering;
 
-public class MermaidRenderer
+public static class MermaidRenderer
 {
-    public string Render(SolutionGraph graph)
+    public static string Render(SolutionGraph graph)
     {
         var sb = new StringBuilder();
+        sb.AppendLine("```mermaid");
         sb.AppendLine("graph TD");
 
         foreach (var project in graph.Projects)
@@ -33,10 +34,11 @@ public class MermaidRenderer
             }
         }
 
+        sb.AppendLine("```");
         return sb.ToString();
     }
 
-    private string SanitizeId(string name)
+    private static string SanitizeId(string name)
     {
         return name.Replace(".", "_").Replace("-", "_").Replace(" ", "_");
     }

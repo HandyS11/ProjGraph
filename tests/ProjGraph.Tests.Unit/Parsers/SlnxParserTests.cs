@@ -9,22 +9,21 @@ public class SlnxParserTests
     public void GetProjectPaths_ShouldExtractPathsFromSlnx()
     {
         // Arrange
-        var parser = new SlnxParser();
         var tempSlnx = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
 
-        var content = """
-            <Solution>
-              <Project Path="src/ProjA/ProjA.csproj" />
-              <Project Path="tests/ProjA.Tests/ProjA.Tests.csproj" />
-            </Solution>
-            """;
+        const string content = """
+                               <Solution>
+                                 <Project Path="src/ProjA/ProjA.csproj" />
+                                 <Project Path="tests/ProjA.Tests/ProjA.Tests.csproj" />
+                               </Solution>
+                               """;
 
         File.WriteAllText(tempSlnx, content);
 
         try
         {
             // Act
-            var paths = parser.GetProjectPaths(tempSlnx).ToList();
+            var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
 
             // Assert
             paths.Should().HaveCount(2);

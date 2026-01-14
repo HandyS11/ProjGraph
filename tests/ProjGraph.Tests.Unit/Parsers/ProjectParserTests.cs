@@ -10,28 +10,27 @@ public class ProjectParserTests
     public void Parse_ShouldIdentifyProjectReferences()
     {
         // Arrange
-        var parser = new ProjectParser();
         var tempFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.csproj");
 
-        var content = """
-            <Project Sdk="Microsoft.NET.Sdk">
-              <PropertyGroup>
-                <TargetFramework>net10.0</TargetFramework>
-                <OutputType>Exe</OutputType>
-              </PropertyGroup>
-              <ItemGroup>
-                <ProjectReference Include="..\LibA\LibA.csproj" />
-                <ProjectReference Include="..\LibB\LibB.csproj" />
-              </ItemGroup>
-            </Project>
-            """;
+        const string content = """
+                               <Project Sdk="Microsoft.NET.Sdk">
+                                 <PropertyGroup>
+                                   <TargetFramework>net10.0</TargetFramework>
+                                   <OutputType>Exe</OutputType>
+                                 </PropertyGroup>
+                                 <ItemGroup>
+                                   <ProjectReference Include="..\LibA\LibA.csproj" />
+                                   <ProjectReference Include="..\LibB\LibB.csproj" />
+                                 </ItemGroup>
+                               </Project>
+                               """;
 
         File.WriteAllText(tempFile, content);
 
         try
         {
             // Act
-            var (project, references) = parser.Parse(tempFile);
+            var (project, references) = ProjectParser.Parse(tempFile);
 
             // Assert
             project.Name.Should().Be(Path.GetFileNameWithoutExtension(tempFile));
@@ -51,23 +50,22 @@ public class ProjectParserTests
     public void Parse_ShouldHandleLibraryType()
     {
         // Arrange
-        var parser = new ProjectParser();
         var tempFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.csproj");
 
-        var content = """
-            <Project Sdk="Microsoft.NET.Sdk">
-              <PropertyGroup>
-                <TargetFramework>net10.0</TargetFramework>
-              </PropertyGroup>
-            </Project>
-            """;
+        const string content = """
+                               <Project Sdk="Microsoft.NET.Sdk">
+                                 <PropertyGroup>
+                                   <TargetFramework>net10.0</TargetFramework>
+                                 </PropertyGroup>
+                               </Project>
+                               """;
 
         File.WriteAllText(tempFile, content);
 
         try
         {
             // Act
-            var (project, _) = parser.Parse(tempFile);
+            var (project, _) = ProjectParser.Parse(tempFile);
 
             // Assert
             project.Type.Should().Be(ProjectType.Library);

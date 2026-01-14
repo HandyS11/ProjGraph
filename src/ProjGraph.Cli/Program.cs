@@ -1,12 +1,11 @@
-using System.CommandLine;
-using System.CommandLine.Invocation;
-using ProjGraph.Lib;
 using ProjGraph.Cli.Rendering;
+using ProjGraph.Lib;
 using Spectre.Console;
+using System.CommandLine;
 
 namespace ProjGraph.Cli;
 
-public class Program
+public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
@@ -20,12 +19,16 @@ public class Program
 
         var visualizeCommand = new Command("visualize", "Visualize the dependency graph of a solution or project");
         var pathArgument = new Argument<string>("path", "The path to the .sln, .slnx, or .csproj file");
-        var formatOption = new Option<string>("--format", () => "tree", "The output format (tree, mermaid)");
+        var formatOption = new Option<string>(
+            ["--format", "-f"],
+            () => "tree",
+            "The output format (tree, mermaid)") { ArgumentHelpName = "format" };
+        formatOption.FromAmong("tree", "mermaid");
 
         visualizeCommand.AddArgument(pathArgument);
         visualizeCommand.AddOption(formatOption);
 
-        visualizeCommand.SetHandler(async (InvocationContext context) =>
+        visualizeCommand.SetHandler(async context =>
         {
             var path = context.ParseResult.GetValueForArgument(pathArgument);
             var format = context.ParseResult.GetValueForOption(formatOption) ?? "tree";
@@ -45,8 +48,7 @@ public class Program
                 {
                     var graphService = new GraphService();
                     var graph = await Task.Run(() => graphService.BuildGraph(path));
-                    var renderer = new MermaidRenderer();
-                    console.Out.Write(renderer.Render(graph) + "\n");
+                    console.Out.Write(MermaidRenderer.Render(graph) + "\n");
                 }
                 catch (Exception ex)
                 {
@@ -58,14 +60,13 @@ public class Program
                 // Spectre.Console still uses its own internal state, but we can't easily fix that here without more refactoring
                 await AnsiConsole.Status()
                     .Spinner(Spinner.Known.Dots)
-                    .StartAsync($"Analyzing [blue]{path}[/]...", async ctx =>
+                    .StartAsync($"Analyzing [blue]{path}[/]...", async _ =>
                     {
                         try
                         {
                             var graphService = new GraphService();
                             var graph = await Task.Run(() => graphService.BuildGraph(path));
-                            var renderer = new TreeRenderer();
-                            renderer.Render(graph);
+                            TreeRenderer.Render(graph);
                         }
                         catch (Exception ex)
                         {
