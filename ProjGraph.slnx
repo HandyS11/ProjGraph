@@ -15,6 +15,7 @@
   </Folder>
   <Folder Name="/Solution Items/.github/workflows/">
     <File Path=".github/workflows/ci.yml"/>
+    <File Path=".github/workflows/publish.yml"/>
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/ProjGraph.Core/ProjGraph.Core.csproj" />
