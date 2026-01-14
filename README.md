@@ -41,11 +41,11 @@ projgraph visualize ./MyProject.csproj --format mermaid
 
 ### AI Integration (MCP)
 
-Add ProjGraph to your AI assistant's `mcpConfig.json`:
+Add ProjGraph to your AI assistant's `mcp.json`:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "projgraph": {
       "command": "dotnet",
       "args": ["run", "--project", "path/to/src/ProjGraph.Mcp/ProjGraph.Mcp.csproj"]
