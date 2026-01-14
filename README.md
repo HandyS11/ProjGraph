@@ -1,79 +1,165 @@
 # ProjGraph
 
-**ProjGraph** is a .NET tool designed to help developers visualize project dependencies within solutions. It parses `.sln`, `.slnx`, and `.csproj` files to generate clear, manageable dependency graphs directly in your terminal or via the Model Context Protocol (MCP).
+<!-- mcp-name: io.github.handys11/projgraph -->
 
-## Key Features
+**ProjGraph** is a .NET tool ecosystem for visualizing and analyzing project dependencies within solutions. It provides
+both a CLI for manual analysis and an MCP server for AI-assisted exploration of your codebase architecture.
 
-- **CLI Visualization**: Render project dependencies as an ASCII tree or Mermaid.js format in the terminal.
-- **Modern .NET Support**: Full support for the modern `.slnx` solution format alongside traditional `.sln` and `.csproj` files.
-- **MCP Server**: Built-in MCP server to allow AI agents (like GitHub Copilot or Claude) to programmatically query and understand your solution's architecture.
-- **Clean Architecture**: Built with a modular core, ensuring high code quality and testability.
+## 🚀 Quick Start
 
-## Project Structure
+### CLI Tool
 
-- `src/ProjGraph.Core`: The engine of the project. Contains the domain models and logic for parsing and graph building.
-- `src/ProjGraph.Cli`: Command-line interface for manual visualization and exporting.
-- `src/ProjGraph.Mcp`: An implementation of the Model Context Protocol for automated tool access.
-
-## Quickstart
-
-### Installation
-
-Install the CLI tool globally using `dotnet`:
+Install and use the command-line tool for immediate visualization:
 
 ```bash
+# Install
 dotnet tool install -g ProjGraph.Cli
-```
 
-### CLI Usage
-
-Visualize a solution or project:
-
-```bash
+# Visualize
 projgraph visualize ./MySolution.slnx
 ```
 
-Export to Mermaid format:
+📖 [Full CLI Documentation](./src/ProjGraph.Cli/README.md)
+
+### MCP Server
+
+Enable AI assistants to understand your solution structure:
 
 ```bash
-projgraph visualize ./MyProject.csproj --format mermaid
-```
+# Install
+dotnet tool install -g ProjGraph.Mcp
 
-### AI Integration (MCP)
-
-Add ProjGraph to your AI assistant's `mcp.json`:
-
-```json
+# Configure in mcp.json
 {
   "servers": {
     "projgraph": {
-      "command": "dotnet",
-      "args": ["run", "--project", "path/to/src/ProjGraph.Mcp/ProjGraph.Mcp.csproj"]
+      "command": "projgraph-mcp",
+      "args": []
     }
   }
 }
 ```
 
-## Development
+📖 [Full MCP Documentation](./src/ProjGraph.Mcp/README.md)
+
+## ✨ Key Features
+
+- **📊 Multiple Output Formats**: ASCII tree and Mermaid.js diagrams
+- **🔄 Circular Dependency Detection**: Automatically identifies problematic cycles
+- **📁 Modern .NET Support**: Full support for `.slnx`, `.sln`, and `.csproj` files
+- **🤖 AI Integration**: MCP server for GitHub Copilot, Claude, and other AI assistants
+- **⚡ Fast & Reliable**: Efficient parsing and graph algorithms
+- **🏗️ Clean Architecture**: Modular design with high testability
+
+## 📦 Project Structure
+
+```x
+ProjGraph/
+├── src/
+│   ├── ProjGraph.Core/      # Domain models (Project, Dependency, SolutionGraph)
+│   ├── ProjGraph.Lib/       # Business logic (parsers, algorithms, graph service)
+│   ├── ProjGraph.Cli/       # Command-line interface tool
+│   └── ProjGraph.Mcp/       # Model Context Protocol server
+└── tests/
+    ├── ProjGraph.Tests.Unit/        # Unit tests
+    ├── ProjGraph.Tests.Integration/ # Integration tests
+    └── ProjGraph.Tests.Contract/    # Contract tests for MCP
+```
+
+### Layer Responsibilities
+
+- **Core**: Domain entities and value objects (no dependencies)
+- **Lib**: Parsing logic, graph algorithms, and service orchestration
+- **Cli**: User-facing command-line interface using Spectre.Console
+- **Mcp**: Model Context Protocol server for AI integration
+
+## 🛠️ Development
 
 ### Prerequisites
 
-- .NET 10.0 SDK or later.
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
 
-### Build & Test
-
-Build the entire solution:
+### Build
 
 ```bash
+# Restore dependencies and build all projects
 dotnet build
+
+# Build specific configuration
+dotnet build --configuration Release
 ```
 
-Run all tests:
+### Test
 
 ```bash
+# Run all tests
 dotnet test
+
+# Run with coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# Run specific test project
+dotnet test tests/ProjGraph.Tests.Unit
 ```
 
-## License
+### Run Locally
 
-Distributed under the MIT License. See `LICENSE` for more information.
+```bash
+# CLI
+dotnet run --project src/ProjGraph.Cli -- visualize ./ProjGraph.sln
+
+# MCP Server
+dotnet run --project src/ProjGraph.Mcp
+```
+
+## 📝 Usage Examples
+
+### Analyze a Solution
+
+```bash
+# Tree format (default)
+projgraph visualize ./MySolution.sln
+
+# Mermaid format for documentation
+projgraph visualize ./MySolution.slnx --format mermaid > docs/dependencies.mmd
+```
+
+### With AI Assistants
+
+Once the MCP server is configured:
+
+```x
+You: "Analyze the dependencies in my solution"
+AI: [Uses ProjGraph MCP to analyze and explain your architecture]
+
+You: "Are there any circular dependencies?"
+AI: [Detects and explains any circular references]
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+### Development Guidelines
+
+1. Follow the existing code style (see `.editorconfig`)
+2. Add tests for new features
+3. Update documentation as needed
+4. Ensure all tests pass before submitting
+
+## 📄 License
+
+Distributed under the MIT License. See [LICENSE](./LICENSE) for more information.
+
+## 🔗 Links
+
+- **CLI Package**: [ProjGraph.Cli on NuGet](https://www.nuget.org/packages/ProjGraph.Cli)
+- **MCP Package**: [ProjGraph.Mcp on NuGet](https://www.nuget.org/packages/ProjGraph.Mcp)
+- **Issues**: [GitHub Issues](https://github.com/HandyS11/ProjGraph/issues)
+- **MCP Specification**: [Model Context Protocol](https://modelcontextprotocol.io/)
+
+## 🙏 Acknowledgments
+
+- Built with [Spectre.Console](https://spectreconsole.net/) for beautiful CLI output
+- Uses [ModelContextProtocol](https://www.nuget.org/packages/ModelContextProtocol) for AI integration
+- Implements Tarjan's algorithm for circular dependency detection

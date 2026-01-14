@@ -1,0 +1,17 @@
+{
+  "name": "io.github.handys11/projgraph",
+  "version": "0.1.0",
+  "description": "MCP server for ProjGraph to interact with LLMs and provide project graph context.",
+  "title": "ProjGraph MCP Server",
+  "websiteUrl": "https://github.com/HandyS11/ProjGraph",
+  "packages": [
+    {
+      "type": "nuget",
+      "identifier": "ProjGraph.Mcp",
+      "version": "0.1.0"
+    }
+  ],
+  "repository": {
+    "url": "https://github.com/HandyS11/ProjGraph"
+  }
+}

@@ -9,7 +9,6 @@
     <File Path="global.json"/>
     <File Path="LICENSE"/>
     <File Path="Nuget.config"/>
-    <File Path="README.md"/>
   </Folder>
   <Folder Name="/Solution Items/.github/">
     <File Path=".github/dependabot.yml"/>
