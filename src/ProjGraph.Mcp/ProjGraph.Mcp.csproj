@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>projgraph-mcp</ToolCommandName>
     <Description>MCP server for ProjGraph to interact with LLMs and provide project graph context.</Description>
