@@ -1,49 +1,101 @@
 using FluentAssertions;
-using ProjGraph.Cli;
-using System.CommandLine;
-using System.CommandLine.IO;
+using ProjGraph.Cli.Commands;
+using Spectre.Console.Cli;
+using System.Text;
 
 namespace ProjGraph.Tests.Integration.Cli;
 
 public class CliIntegrationTests
 {
     [Fact]
-    public async Task VisualizeCommand_WithSlnx_ShouldProduceOutput()
+    public void VisualizeCommand_WithSlnx_ShouldProduceOutput()
     {
         // Arrange
-        var console = new TestConsole();
-        var rootCommand = Program.CreateRootCommand();
-        var slnxPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "ProjGraph.slnx");
+        var app = new CommandApp();
+        app.Configure(config =>
+        {
+            config.PropagateExceptions();
+            config.AddCommand<VisualizeCommand>("visualize");
+        });
+
+        var slnxPath = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "ProjGraph.slnx");
         slnxPath = Path.GetFullPath(slnxPath);
 
-        // Act
-        var result = await rootCommand.InvokeAsync($"visualize {slnxPath} --format mermaid", console);
+        var output = new StringBuilder();
+        var originalOut = Console.Out;
 
-        // Assert
-        result.Should().Be(0);
-        var output = console.Out.ToString();
-        output.Should().Contain("graph TD");
-        output.Should().Contain("ProjGraph_Cli");
-        output.Should().Contain("ProjGraph_Core");
+        try
+        {
+            // Capture console output
+            using var writer = new StringWriter(output);
+            Console.SetOut(writer);
+
+            // Act
+            var result = app.Run(["visualize", slnxPath, "--format", "mermaid"]);
+
+            // Assert
+            result.Should().Be(0);
+            var capturedOutput = output.ToString();
+            capturedOutput.Should().Contain("graph TD");
+            capturedOutput.Should().Contain("ProjGraph_Cli");
+            capturedOutput.Should().Contain("ProjGraph_Core");
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
     }
 
     [Fact]
-    public async Task VisualizeCommand_WithSln_ShouldProduceOutput()
+    public void VisualizeCommand_WithSln_ShouldProduceOutput()
     {
         // Arrange
-        var console = new TestConsole();
-        var rootCommand = Program.CreateRootCommand();
-        var slnPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "ProjGraph.sln");
+        var app = new CommandApp();
+        app.Configure(config =>
+        {
+            config.PropagateExceptions();
+            config.AddCommand<VisualizeCommand>("visualize");
+        });
+
+        var slnPath = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "ProjGraph.sln");
         slnPath = Path.GetFullPath(slnPath);
 
-        // Act
-        var result = await rootCommand.InvokeAsync($"visualize {slnPath} --format mermaid", console);
+        var output = new StringBuilder();
+        var originalOut = Console.Out;
 
-        // Assert
-        result.Should().Be(0);
-        var output = console.Out.ToString();
-        output.Should().Contain("graph TD");
-        output.Should().Contain("ProjGraph_Cli");
-        output.Should().Contain("ProjGraph_Core");
+        try
+        {
+            // Capture console output
+            using var writer = new StringWriter(output);
+            Console.SetOut(writer);
+
+            // Act
+            var result = app.Run(["visualize", slnPath, "--format", "mermaid"]);
+
+            // Assert
+            result.Should().Be(0);
+            var capturedOutput = output.ToString();
+            capturedOutput.Should().Contain("graph TD");
+            capturedOutput.Should().Contain("ProjGraph_Cli");
+            capturedOutput.Should().Contain("ProjGraph_Core");
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
     }
 }
