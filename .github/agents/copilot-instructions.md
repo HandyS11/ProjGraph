@@ -4,6 +4,9 @@ Auto-generated from all feature plans. Last updated: 2026-01-13
 
 ## Active Technologies
 
+- .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Microsoft.CodeAnalysis.Workspaces.MSBuild`,
+  `Microsoft.EntityFrameworkCore` (for symbol analysis) (002-dbcontext-erd)
+
 - .NET 10.0 (C# 14+) + Buildalyzer (Parsing), Spectre.Console (CLI), ModelContextProtocol (MCP) (001-cli-graph-rendering)
 
 ## Project Structure
@@ -22,6 +25,9 @@ tests/
 .NET 10.0 (C# 14+): Follow standard conventions
 
 ## Recent Changes
+
+- 002-dbcontext-erd: Added .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`,
+  `Microsoft.CodeAnalysis.Workspaces.MSBuild`, `Microsoft.EntityFrameworkCore` (for symbol analysis)
 
 - 001-cli-graph-rendering: Added .NET 10.0 (C# 14+) + Buildalyzer (Parsing), Spectre.Console (CLI), ModelContextProtocol (MCP)
 

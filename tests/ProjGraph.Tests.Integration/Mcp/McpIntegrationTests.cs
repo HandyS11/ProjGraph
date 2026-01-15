@@ -1,7 +1,8 @@
-using System.Text.Json;
 using FluentAssertions;
 using ProjGraph.Lib;
+using ProjGraph.Lib.Services;
 using ProjGraph.Mcp;
+using System.Text.Json;
 
 namespace ProjGraph.Tests.Integration.Mcp;
 
@@ -12,7 +13,8 @@ public class McpIntegrationTests
     {
         // Arrange
         var graphService = new GraphService();
-        var tools = new ProjGraphTools(graphService);
+        var efService = new EfAnalysisService();
+        var tools = new ProjGraphTools(graphService, efService);
         var slnxPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "ProjGraph.slnx");
         slnxPath = Path.GetFullPath(slnxPath);
 

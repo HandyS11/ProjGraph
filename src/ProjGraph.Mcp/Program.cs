@@ -3,6 +3,9 @@ using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using ProjGraph.Lib;
+using ProjGraph.Lib.Interfaces;
+using ProjGraph.Lib.Rendering;
+using ProjGraph.Lib.Services;
 using System.ComponentModel;
 using System.Text.Json;
 
@@ -26,6 +29,7 @@ public static class Program
         .WithTools<ProjGraphTools>();
 
         builder.Services.AddSingleton<GraphService>();
+        builder.Services.AddSingleton<IEfAnalysisService, EfAnalysisService>();
         builder.Services.AddSingleton<ProjGraphTools>();
 
         var host = builder.Build();
@@ -34,7 +38,7 @@ public static class Program
 }
 
 [McpServerToolType]
-public class ProjGraphTools(GraphService graphService)
+public class ProjGraphTools(GraphService graphService, IEfAnalysisService efService)
 {
     [McpServerTool]
     [Description("Analyzes a .NET solution or project file and returns the dependency graph.")]
@@ -66,6 +70,28 @@ public class ProjGraphTools(GraphService graphService)
         catch (Exception ex)
         {
             return $"Error analyzing project: {ex.Message}";
+        }
+    }
+
+    [McpServerTool]
+    [Description(
+        "Generates a Mermaid Entity Relationship Diagram (ERD) based on an Entity Framework Core DbContext found in the specified path.")]
+#pragma warning disable IDE1006
+    public async Task<string> GetErd(
+#pragma warning restore IDE1006
+        [Description("Absolute path to the solution (.sln), project (.csproj), or specific DbContext file (.cs).")]
+        string path,
+        [Description("Specific DbContext class name to use if multiple are present.")]
+        string? contextName = null)
+    {
+        try
+        {
+            var model = await efService.AnalyzeContextAsync(path, contextName);
+            return MermaidErdRenderer.Render(model);
+        }
+        catch (Exception ex)
+        {
+            return $"Error generating ERD: {ex.Message}";
         }
     }
 }
