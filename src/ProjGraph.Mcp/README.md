@@ -7,37 +7,6 @@ assistants like GitHub Copilot and Claude to programmatically analyze and unders
 
 - .NET 10.0 or later runtime (included in self-contained deployment)
 
-## Installation
-
-Install the MCP server as a .NET global tool:
-
-```bash
-dotnet tool install -g ProjGraph.Mcp
-```
-
-Update to the latest version:
-
-```bash
-dotnet tool update -g ProjGraph.Mcp
-```
-
-## Configuration
-
-### GitHub Copilot
-
-Add ProjGraph to your `mcp.json` configuration file:
-
-```json
-{
-  "servers": {
-    "projgraph": {
-      "command": "projgraph-mcp",
-      "args": []
-    }
-  }
-}
-```
-
 ## Available Tools
 
 ### `get_project_graph`

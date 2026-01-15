@@ -23,18 +23,17 @@ projgraph visualize ./MySolution.slnx
 
 ### MCP Server
 
-Enable AI assistants to understand your solution structure:
+Configure your MCP client (e.g., GitHub Copilot, Claude) with the following settings:
 
-```bash
-# Install
-dotnet tool install -g ProjGraph.Mcp
+> Find the latest version number on [NuGet](https://www.nuget.org/packages/ProjGraph.Mcp)
 
-# Configure in mcp.json
+```json
 {
   "servers": {
-    "projgraph": {
-      "command": "projgraph-mcp",
-      "args": []
+    "ProjGraph.Mcp": {
+      "type": "stdio",
+      "command": "dnx",
+      "args": ["ProjGraph.Mcp@x.x.x", "--yes"]
     }
   }
 }
@@ -79,29 +78,6 @@ ProjGraph/
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
 
-### Build
-
-```bash
-# Restore dependencies and build all projects
-dotnet build
-
-# Build specific configuration
-dotnet build --configuration Release
-```
-
-### Test
-
-```bash
-# Run all tests
-dotnet test
-
-# Run with coverage
-dotnet test --collect:"XPlat Code Coverage"
-
-# Run specific test project
-dotnet test tests/ProjGraph.Tests.Unit
-```
-
 ### Run Locally
 
 ```bash
@@ -136,30 +112,9 @@ You: "Are there any circular dependencies?"
 AI: [Detects and explains any circular references]
 ```
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-### Development Guidelines
-
-1. Follow the existing code style (see `.editorconfig`)
-2. Add tests for new features
-3. Update documentation as needed
-4. Ensure all tests pass before submitting
-
-## 📄 License
-
-Distributed under the MIT License. See [LICENSE](./LICENSE) for more information.
-
 ## 🔗 Links
 
 - **CLI Package**: [ProjGraph.Cli on NuGet](https://www.nuget.org/packages/ProjGraph.Cli)
 - **MCP Package**: [ProjGraph.Mcp on NuGet](https://www.nuget.org/packages/ProjGraph.Mcp)
 - **Issues**: [GitHub Issues](https://github.com/HandyS11/ProjGraph/issues)
 - **MCP Specification**: [Model Context Protocol](https://modelcontextprotocol.io/)
-
-## 🙏 Acknowledgments
-
-- Built with [Spectre.Console](https://spectreconsole.net/) for beautiful CLI output
-- Uses [ModelContextProtocol](https://www.nuget.org/packages/ModelContextProtocol) for AI integration
-- Implements Tarjan's algorithm for circular dependency detection
