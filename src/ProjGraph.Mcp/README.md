@@ -6,7 +6,6 @@ assistants like GitHub Copilot and Claude to programmatically analyze and unders
 ## Requirements
 
 - .NET 10.0 or later runtime (included in self-contained deployment)
-- Supported platforms: Windows (x64, ARM64), macOS (ARM64), Linux (x64, ARM64, musl-x64)
 
 ## Installation
 
