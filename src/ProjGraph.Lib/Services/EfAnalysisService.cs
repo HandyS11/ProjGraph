@@ -419,7 +419,68 @@ public class EfAnalysisService : IEfAnalysisService
             }
         }
 
+        // Post-process: Convert Many-to-Many relationships into join tables
+        ConvertManyToManyToJoinTables(model);
+
         return model;
+    }
+
+    private static void ConvertManyToManyToJoinTables(EfModel model)
+    {
+        var manyToManyRelationships = model.Relationships
+            .Where(r => r.Type == EfRelationshipType.ManyToMany)
+            .ToList();
+
+        foreach (var m2m in manyToManyRelationships)
+        {
+            // Remove the M:M relationship
+            model.Relationships.Remove(m2m);
+
+            // Create join table name (e.g., "BookAuthors" for Book-Author)
+            var entities_sorted = new[] { m2m.SourceEntity, m2m.TargetEntity }
+                .OrderBy(e => e)
+                .ToArray();
+            var joinTableName = $"{entities_sorted[0]}{entities_sorted[1]}";
+
+            // Create join table entity
+            var joinEntity = new EfEntity
+            {
+                Name = joinTableName,
+                IsJoinEntity = true,
+                Properties =
+                [
+                    new EfProperty
+                    {
+                        Name = $"{m2m.SourceEntity}Id", Type = "int", IsPrimaryKey = true, IsForeignKey = true
+                    },
+                    new EfProperty
+                    {
+                        Name = $"{m2m.TargetEntity}Id", Type = "int", IsPrimaryKey = true, IsForeignKey = true
+                    }
+                ]
+            };
+
+            model.Entities.Add(joinEntity);
+
+            // Create two 1:M relationships through the join table
+            model.Relationships.Add(new EfRelationship
+            {
+                SourceEntity = m2m.SourceEntity,
+                TargetEntity = joinTableName,
+                Type = EfRelationshipType.OneToMany,
+                IsRequired = true,
+                Label = ""
+            });
+
+            model.Relationships.Add(new EfRelationship
+            {
+                SourceEntity = m2m.TargetEntity,
+                TargetEntity = joinTableName,
+                Type = EfRelationshipType.OneToMany,
+                IsRequired = true,
+                Label = ""
+            });
+        }
     }
 
     private static EfEntity AnalyzeEntity(INamedTypeSymbol type)
@@ -468,16 +529,31 @@ public class EfAnalysisService : IEfAnalysisService
             return false;
         }
 
-        // Collection detection
-        if (namedType.AllInterfaces.Any(i => i.Name == "IEnumerable")
-            && namedType.TypeArguments.Length == 1)
+        // Check if it's a generic collection type with a single type argument
+        if (namedType.TypeArguments.Length == 1)
         {
-            targetType = namedType.TypeArguments[0] as INamedTypeSymbol;
-            isCollection = true;
-            return targetType != null && IsEntityCandidate(targetType);
+            var typeArg = namedType.TypeArguments[0];
+
+            // Check if the type or its name suggests it's a collection
+            var typeName = namedType.Name;
+            var isCollectionType = typeName == "ICollection" ||
+                                   typeName == "IList" ||
+                                   typeName == "List" ||
+                                   typeName == "HashSet" ||
+                                   typeName == "ISet" ||
+                                   namedType.AllInterfaces.Any(i =>
+                                       i.Name == "ICollection" ||
+                                       i.Name == "IEnumerable");
+
+            if (isCollectionType && typeArg is INamedTypeSymbol targetTypeSymbol)
+            {
+                targetType = targetTypeSymbol;
+                isCollection = true;
+                return IsEntityCandidate(targetType);
+            }
         }
 
-        // Reference detection
+        // Reference detection (non-collection)
         targetType = namedType;
         return IsEntityCandidate(targetType);
     }

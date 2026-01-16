@@ -17,9 +17,20 @@ public static class MermaidErdRenderer
             foreach (var prop in entity.Properties)
             {
                 var type = SanitizeTypeForMermaid(prop.Type);
-                var pk = prop.IsPrimaryKey ? " PK" : "";
-                var fk = prop.IsForeignKey ? " FK" : "";
-                sb.AppendLine($"        {type} {prop.Name}{pk}{fk}");
+                
+                // Build key markers (comma-separated for Mermaid syntax)
+                var keyMarkers = new List<string>();
+                if (prop.IsPrimaryKey)
+                {
+                    keyMarkers.Add("PK");
+                }
+                if (prop.IsForeignKey)
+                {
+                    keyMarkers.Add("FK");
+                }
+                var markers = keyMarkers.Count > 0 ? " " + string.Join(",", keyMarkers) : "";
+                
+                sb.AppendLine($"        {type} {prop.Name}{markers}");
             }
 
             sb.AppendLine("    }");
@@ -35,8 +46,12 @@ public static class MermaidErdRenderer
                 _ => "--"
             };
 
-            var label = string.IsNullOrEmpty(rel.Label) ? "" : $" : \"{rel.Label}\"";
-            sb.AppendLine($"    {rel.SourceEntity} {relSyntax} {rel.TargetEntity}{label}");
+            // Always include label for consistent Mermaid syntax
+            var sourceEntity = rel.SourceEntity.Trim();
+            var targetEntity = rel.TargetEntity.Trim();
+            var label = string.IsNullOrWhiteSpace(rel.Label) ? "" : rel.Label;
+            
+            sb.AppendLine($"    {sourceEntity} {relSyntax} {targetEntity} : \"{label}\"");
         }
 
         sb.AppendLine("```");
