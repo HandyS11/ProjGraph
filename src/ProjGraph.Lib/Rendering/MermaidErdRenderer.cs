@@ -32,10 +32,10 @@ public static class MermaidErdRenderer
 
                 var markers = keyMarkers.Count > 0 ? " " + string.Join(",", keyMarkers) : "";
 
-                // Add original type as comment if it differs from sanitized version
-                var typeComment = prop.Type != sanitizedType ? $" \"Original: {prop.Type}\"" : "";
+                // Build constraint comment
+                var constraints = BuildConstraintComment(prop);
 
-                sb.AppendLine($"        {sanitizedType} {prop.Name}{markers}{typeComment}");
+                sb.AppendLine($"        {sanitizedType} {prop.Name}{markers}{constraints}");
             }
 
             sb.AppendLine("    }");
@@ -61,6 +61,61 @@ public static class MermaidErdRenderer
 
         sb.AppendLine("```");
         return sb.ToString();
+    }
+
+    private static string BuildConstraintComment(EfProperty prop)
+    {
+        var commentParts = new List<string>();
+
+        // Add original type if different from sanitized
+        var sanitizedType = SanitizeTypeForMermaid(prop.Type);
+        if (prop.Type != sanitizedType)
+        {
+            commentParts.Add(prop.Type);
+        }
+
+        // Add constraints
+        var constraints = new List<string>();
+
+        if (prop.IsRequired && !prop.IsPrimaryKey)
+        {
+            constraints.Add("required");
+        }
+
+        if (prop.MaxLength.HasValue)
+        {
+            constraints.Add($"max:{prop.MaxLength}");
+        }
+
+        if (prop.Precision.HasValue)
+        {
+            if (prop.Scale.HasValue)
+            {
+                constraints.Add($"precision({prop.Precision},{prop.Scale})");
+            }
+            else
+            {
+                constraints.Add($"precision:{prop.Precision}");
+            }
+        }
+
+        if (!string.IsNullOrEmpty(prop.DefaultValue))
+        {
+            constraints.Add($"default:{prop.DefaultValue}");
+        }
+
+        if (constraints.Count > 0)
+        {
+            commentParts.Add(string.Join(", ", constraints));
+        }
+
+        // Return formatted comment if there's anything to show
+        if (commentParts.Count > 0)
+        {
+            return $" \"{string.Join(" | ", commentParts)}\"";
+        }
+
+        return "";
     }
 
     private static string SanitizeTypeForMermaid(string type)

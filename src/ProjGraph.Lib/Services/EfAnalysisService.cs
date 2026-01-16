@@ -6,6 +6,7 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib.Interfaces;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace ProjGraph.Lib.Services;
 
@@ -318,6 +319,9 @@ public class EfAnalysisService : IEfAnalysisService
 
         model.Entities.AddRange(entities.Values);
 
+        // Extract constraints from OnModelCreating configuration
+        ApplyFluentApiConstraints(contextType, entities, compilation);
+
         // Analyze Relationships
         var addedRelationships = new HashSet<string>();
 
@@ -483,6 +487,127 @@ public class EfAnalysisService : IEfAnalysisService
         }
     }
 
+    private static void ApplyFluentApiConstraints(
+        INamedTypeSymbol contextType,
+        Dictionary<string, EfEntity> entities,
+        Compilation compilation)
+    {
+        // Find OnModelCreating method
+        var onModelCreating = contextType.GetMembers("OnModelCreating")
+            .OfType<IMethodSymbol>()
+            .FirstOrDefault();
+
+        if (onModelCreating == null)
+        {
+            return;
+        }
+
+        // Get the syntax node for the method
+        var syntaxRef = onModelCreating.DeclaringSyntaxReferences.FirstOrDefault();
+        if (syntaxRef == null)
+        {
+            return;
+        }
+
+        var methodSyntax = syntaxRef.GetSyntax() as MethodDeclarationSyntax;
+        if (methodSyntax?.Body == null)
+        {
+            return;
+        }
+
+        // Parse the method body for Entity<T> configurations
+        var semanticModel = compilation.GetSemanticModel(methodSyntax.SyntaxTree);
+        var invocations = methodSyntax.Body.DescendantNodes()
+            .OfType<InvocationExpressionSyntax>();
+
+        foreach (var invocation in invocations)
+        {
+            var invocationText = invocation.ToString();
+
+            // Look for Entity<EntityName> calls
+            if (invocationText.Contains("Entity<"))
+            {
+                // Try to extract entity name and parse property configurations
+                ParseEntityConfiguration(invocation, entities, semanticModel);
+            }
+        }
+    }
+
+    private static void ParseEntityConfiguration(
+        InvocationExpressionSyntax invocation,
+        Dictionary<string, EfEntity> entities,
+        SemanticModel semanticModel)
+    {
+        var invocationText = invocation.ToString();
+
+        // Extract entity name from Entity<EntityName>
+        var entityMatch = Regex.Match(
+            invocationText,
+            @"Entity<(\w+)>");
+
+        if (!entityMatch.Success)
+        {
+            return;
+        }
+
+        var entityName = entityMatch.Groups[1].Value;
+        if (!entities.TryGetValue(entityName, out var entity))
+        {
+            return;
+        }
+
+        // Look for property configurations in the lambda
+        var propertyConfigs = Regex.Matches(
+            invocationText,
+            @"\.Property\((?:e|entity)\s*=>\s*(?:e|entity)\.(\w+)\)\s*\.(\w+)\(([^)]*)\)");
+
+        foreach (Match match in propertyConfigs)
+        {
+            var propName = match.Groups[1].Value;
+            var configMethod = match.Groups[2].Value;
+            var configArg = match.Groups[3].Value;
+
+            var property = entity.Properties.FirstOrDefault(p => p.Name == propName);
+            if (property == null)
+            {
+                continue;
+            }
+
+            // Apply configuration based on method name
+            switch (configMethod)
+            {
+                case "IsRequired":
+                    property.IsRequired = true;
+                    break;
+
+                case "HasMaxLength":
+                    if (int.TryParse(configArg, out var maxLen))
+                    {
+                        property.MaxLength = maxLen;
+                    }
+
+                    break;
+
+                case "HasPrecision":
+                    var precisionArgs = configArg.Split(',');
+                    if (precisionArgs.Length >= 1 && int.TryParse(precisionArgs[0].Trim(), out var precision))
+                    {
+                        property.Precision = precision;
+                        if (precisionArgs.Length >= 2 && int.TryParse(precisionArgs[1].Trim(), out var scale))
+                        {
+                            property.Scale = scale;
+                        }
+                    }
+
+                    break;
+
+                case "HasDefaultValue":
+                    property.DefaultValue = configArg.Trim('"', '\'');
+                    break;
+            }
+        }
+    }
+
     private static EfEntity AnalyzeEntity(INamedTypeSymbol type)
     {
         var entity = new EfEntity { Name = type.Name };
@@ -502,17 +627,72 @@ public class EfAnalysisService : IEfAnalysisService
                 continue;
             }
 
-            entity.Properties.Add(new EfProperty
+            var efProperty = new EfProperty
             {
                 Name = prop.Name,
                 Type = prop.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
                 IsPrimaryKey = prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) ||
                                prop.Name.Equals($"{type.Name}Id", StringComparison.OrdinalIgnoreCase),
-                IsForeignKey = prop.Name.EndsWith("Id") && !prop.Name.Equals("Id")
-            });
+                IsForeignKey = prop.Name.EndsWith("Id") && !prop.Name.Equals("Id"),
+                IsRequired = !prop.Type.IsNullable() && prop.Type.SpecialType != SpecialType.System_String
+            };
+
+            // Extract constraints from attributes
+            ExtractPropertyConstraints(prop, efProperty);
+
+            entity.Properties.Add(efProperty);
         }
 
         return entity;
+    }
+
+    private static void ExtractPropertyConstraints(IPropertySymbol prop, EfProperty efProperty)
+    {
+        foreach (var attribute in prop.GetAttributes())
+        {
+            var attrName = attribute.AttributeClass?.Name;
+
+            switch (attrName)
+            {
+                case "RequiredAttribute":
+                    efProperty.IsRequired = true;
+                    break;
+
+                case "MaxLengthAttribute":
+                case "StringLengthAttribute":
+                    if (attribute.ConstructorArguments.Length > 0 &&
+                        attribute.ConstructorArguments[0].Value is int maxLength)
+                    {
+                        efProperty.MaxLength = maxLength;
+                    }
+
+                    break;
+
+                case "RangeAttribute":
+                    // Could extract min/max range values if needed
+                    break;
+
+                case "ColumnAttribute":
+                    // Extract TypeName if specified (e.g., decimal(18,2))
+                    foreach (var namedArg in attribute.NamedArguments)
+                    {
+                        if (namedArg.Key == "TypeName" && namedArg.Value.Value is string typeName)
+                        {
+                            // Parse precision/scale from TypeName like "decimal(18,2)"
+                            var match = Regex.Match(
+                                typeName,
+                                @"decimal\((\d+),\s*(\d+)\)");
+                            if (match.Success)
+                            {
+                                efProperty.Precision = int.Parse(match.Groups[1].Value);
+                                efProperty.Scale = int.Parse(match.Groups[2].Value);
+                            }
+                        }
+                    }
+
+                    break;
+            }
+        }
     }
 
     private static bool IsNavigationProperty(

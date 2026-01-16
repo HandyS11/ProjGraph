@@ -20,6 +20,11 @@ public class EfProperty
     public string Type { get; set; } = string.Empty;
     public bool IsPrimaryKey { get; set; }
     public bool IsForeignKey { get; set; }
+    public bool IsRequired { get; set; }
+    public int? MaxLength { get; set; }
+    public int? Precision { get; set; }
+    public int? Scale { get; set; }
+    public string? DefaultValue { get; set; }
 }
 
 public class EfRelationship
