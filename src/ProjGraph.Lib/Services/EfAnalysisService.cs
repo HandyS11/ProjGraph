@@ -789,6 +789,13 @@ public class EfAnalysisService : IEfAnalysisService
         isCollection = false;
 
         var type = prop.Type;
+
+        // Unwrap nullable types (e.g., ICollection<T>? becomes ICollection<T>)
+        if (type is INamedTypeSymbol { Name: "Nullable", TypeArguments.Length: 1 } nullableType)
+        {
+            type = nullableType.TypeArguments[0];
+        }
+        
         if (type is not INamedTypeSymbol namedType)
         {
             return false;
@@ -814,7 +821,8 @@ public class EfAnalysisService : IEfAnalysisService
             {
                 targetType = targetTypeSymbol;
                 isCollection = true;
-                return IsEntityCandidate(targetType);
+                // Collections are always navigation properties in EF Core
+                return true;
             }
         }
 
