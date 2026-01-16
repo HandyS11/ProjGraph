@@ -361,8 +361,8 @@ public class EfAnalysisService : IEfAnalysisService
 
         model.Entities.AddRange(entities.Values);
 
-        // Extract constraints from OnModelCreating configuration
-        ApplyFluentApiConstraints(contextType, entities, compilation);
+        // Extract constraints and shadow relationships from OnModelCreating configuration
+        ApplyFluentApiConstraints(contextType, entities, compilation, model);
 
         // Analyze Relationships
         var addedRelationships = new HashSet<string>();
@@ -532,7 +532,8 @@ public class EfAnalysisService : IEfAnalysisService
     private static void ApplyFluentApiConstraints(
         INamedTypeSymbol contextType,
         Dictionary<string, EfEntity> entities,
-        Compilation compilation)
+        Compilation compilation,
+        EfModel model)
     {
         // Find OnModelCreating method
         var onModelCreating = contextType.GetMembers("OnModelCreating")
@@ -558,49 +559,107 @@ public class EfAnalysisService : IEfAnalysisService
         }
 
         // Parse the method body for Entity<T> configurations
-        var semanticModel = compilation.GetSemanticModel(methodSyntax.SyntaxTree);
-        var invocations = methodSyntax.Body.DescendantNodes()
-            .OfType<InvocationExpressionSyntax>();
+        // Get the entire OnModelCreating method text
+        var methodText = methodSyntax.ToString();
 
-        foreach (var invocation in invocations)
+        // Split by .Entity< to separate each entity configuration
+        var entityConfigSections = Regex.Split(methodText, @"\.Entity<");
+
+        for (var i = 1; i < entityConfigSections.Length; i++) // Skip first part (before any Entity)
         {
-            var invocationText = invocation.ToString();
+            var section = ".Entity<" + entityConfigSections[i];
 
-            // Look for Entity<EntityName> calls
-            if (invocationText.Contains("Entity<"))
+            // Extract just this entity's configuration (up to the next .Entity< or end of lambda)
+            var entityConfigEnd = section.IndexOf(".Entity<", 10); // Start after current .Entity<
+            if (entityConfigEnd > 0)
             {
-                // Try to extract entity name and parse property configurations
-                ParseEntityConfiguration(invocation, entities, semanticModel);
+                section = section[..entityConfigEnd];
+            }
+
+            // Now parse this specific entity's configuration
+            var shadowRelationships = ParseEntityConfigurationSection(section, entities);
+
+            // Add shadow relationships to model
+            foreach (var relationship in shadowRelationships)
+            {
+                // Check if not already added
+                if (!model.Relationships.Any(r =>
+                        r.SourceEntity == relationship.SourceEntity &&
+                        r.TargetEntity == relationship.TargetEntity &&
+                        r.Type == relationship.Type))
+                {
+                    model.Relationships.Add(relationship);
+                }
             }
         }
     }
 
-    private static void ParseEntityConfiguration(
-        InvocationExpressionSyntax invocation,
-        Dictionary<string, EfEntity> entities,
-        SemanticModel semanticModel)
+    private static List<EfRelationship> ParseEntityConfigurationSection(
+        string configSection,
+        Dictionary<string, EfEntity> entities)
     {
-        var invocationText = invocation.ToString();
-
+        var shadowRelationships = new List<EfRelationship>();
+        
         // Extract entity name from Entity<EntityName>
-        var entityMatch = Regex.Match(
-            invocationText,
-            @"Entity<(\w+)>");
-
+        var entityMatch = Regex.Match(configSection, @"Entity<(\w+)>");
         if (!entityMatch.Success)
         {
-            return;
+            return shadowRelationships;
         }
 
         var entityName = entityMatch.Groups[1].Value;
         if (!entities.TryGetValue(entityName, out var entity))
         {
-            return;
+            return shadowRelationships;
+        }
+
+        // Look for shadow relationships: HasOne<TargetEntity>().WithMany()
+        // But exclude those inside UsingEntity blocks
+        var shadowMatches = Regex.Matches(
+            configSection,
+            @"HasOne<(\w+)>\(\s*\)\s*\.WithMany\(\s*\)");
+
+        foreach (Match shadowMatch in shadowMatches)
+        {
+            var targetEntityName = shadowMatch.Groups[1].Value;
+
+            // Check if this match is inside a UsingEntity block
+            // by looking backwards from the match position for "UsingEntity"
+            var textBeforeMatch = configSection.Substring(0, shadowMatch.Index);
+            var lastUsingEntity = textBeforeMatch.LastIndexOf("UsingEntity", StringComparison.Ordinal);
+
+            // If we found "UsingEntity" before this match, check if we're still inside its block
+            if (lastUsingEntity >= 0)
+            {
+                // Count opening and closing parens between UsingEntity and our match
+                var textBetween = configSection.Substring(lastUsingEntity, shadowMatch.Index - lastUsingEntity);
+                var openParens = textBetween.Count(c => c == '(');
+                var closeParens = textBetween.Count(c => c == ')');
+
+                // If openParens > closeParens, we're still inside the UsingEntity block
+                if (openParens > closeParens)
+                {
+                    continue; // Skip this match - it's inside UsingEntity
+                }
+            }
+
+            if (entities.ContainsKey(targetEntityName))
+            {
+                // Create relationship from target to source (one-to-many)
+                shadowRelationships.Add(new EfRelationship
+                {
+                    SourceEntity = targetEntityName,
+                    TargetEntity = entityName,
+                    Type = EfRelationshipType.OneToMany,
+                    Label = "",
+                    IsRequired = false
+                });
+            }
         }
 
         // Look for property configurations in the lambda
         var propertyConfigs = Regex.Matches(
-            invocationText,
+            configSection,
             @"\.Property\((?:e|entity)\s*=>\s*(?:e|entity)\.(\w+)\)\s*\.(\w+)\(([^)]*)\)");
 
         foreach (Match match in propertyConfigs)
@@ -627,7 +686,6 @@ public class EfAnalysisService : IEfAnalysisService
                     {
                         property.MaxLength = maxLen;
                     }
-
                     break;
 
                 case "HasPrecision":
@@ -648,6 +706,8 @@ public class EfAnalysisService : IEfAnalysisService
                     break;
             }
         }
+
+        return shadowRelationships;
     }
 
     private static EfEntity AnalyzeEntity(INamedTypeSymbol type)
