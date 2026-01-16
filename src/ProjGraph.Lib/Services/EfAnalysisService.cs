@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis.MSBuild;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Interfaces;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace ProjGraph.Lib.Services;
 
@@ -177,8 +178,27 @@ public class EfAnalysisService : IEfAnalysisService
             syntaxTrees.Add(CSharpSyntaxTree.ParseText(entityCode));
         }
 
+        // Add necessary references for proper type resolution
+        var references = new List<MetadataReference>
+        {
+            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(IEnumerable<>).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(ICollection<>).Assembly.Location),
+            MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location)
+        };
+
+        // Try to add System.Collections reference if available
+        try
+        {
+            references.Add(MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location));
+        }
+        catch
+        {
+            // Not critical if not found
+        }
+
         var compilation = CSharpCompilation.Create("AdHoc")
-            .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
+            .AddReferences(references)
             .AddSyntaxTrees(syntaxTrees);
 
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
@@ -246,7 +266,9 @@ public class EfAnalysisService : IEfAnalysisService
             {
                 foreach (var csFile in Directory.GetFiles(searchDir, "*.cs", SearchOption.AllDirectories))
                 {
-                    if (csFile == contextFilePath)
+                    // Normalize paths for comparison to avoid duplicates
+                    if (Path.GetFullPath(csFile).Equals(Path.GetFullPath(contextFilePath),
+                            StringComparison.OrdinalIgnoreCase))
                     {
                         continue; // Skip the DbContext file itself
                     }
@@ -297,6 +319,8 @@ public class EfAnalysisService : IEfAnalysisService
         model.Entities.AddRange(entities.Values);
 
         // Analyze Relationships
+        var addedRelationships = new HashSet<string>();
+
         foreach (var entity in entities.Values)
         {
             var symbol = FindSymbolForEntity(entity, compilation);
@@ -321,22 +345,74 @@ public class EfAnalysisService : IEfAnalysisService
                 {
                     SourceEntity = entity.Name,
                     TargetEntity = targetEntity.Name,
-                    Type = isCollection ? EfRelationshipType.OneToMany : EfRelationshipType.OneToOne,
+                    Type = EfRelationshipType.OneToOne, // Default, will be updated below
                     Label = prop.Name,
                     IsRequired = !prop.Type.IsNullable()
                 };
 
-                // Check for Many-to-Many
-                if (isCollection && HasInverseCollection(prop, targetType))
+                // Determine relationship type
+                if (isCollection)
                 {
-                    relationship.Type = EfRelationshipType.ManyToMany;
+                    // Source has a collection navigation
+                    if (HasInverseCollection(prop, targetType))
+                    {
+                        // Both sides have collections: Many-to-Many
+                        relationship.Type = EfRelationshipType.ManyToMany;
+                    }
+                    else
+                    {
+                        // Only source has collection: One-to-Many
+                        relationship.Type = EfRelationshipType.OneToMany;
+                    }
+                }
+                else
+                {
+                    // Source has a single reference navigation
+                    if (HasInverseCollection(prop, targetType))
+                    {
+                        // Target has a collection back: this is the "many" side of One-to-Many
+                        // We'll let the other side create the relationship
+                        // But we should still record it with swapped direction
+                        relationship.Type = EfRelationshipType.OneToMany;
+                        relationship.SourceEntity = targetEntity.Name;
+                        relationship.TargetEntity = entity.Name;
+                        relationship.Label = FindInverseCollectionName(prop, targetType) ?? "";
+                    }
+                    else if (HasInverseReference(prop, targetType))
+                    {
+                        // Target has a single reference back: One-to-One
+                        relationship.Type = EfRelationshipType.OneToOne;
+                    }
+                    else
+                    {
+                        // No inverse navigation found: treat as optional One-to-Many
+                        relationship.Type = EfRelationshipType.OneToMany;
+                        relationship.SourceEntity = targetEntity.Name;
+                        relationship.TargetEntity = entity.Name;
+                    }
                 }
 
-                // Avoid duplicates for 1:1 or N:M already added from other side
-                if (!model.Relationships.Any(r =>
-                        r.SourceEntity == relationship.TargetEntity &&
-                        r.TargetEntity == relationship.SourceEntity &&
-                        r.Type == relationship.Type))
+                // Create a normalized key for deduplication
+                // For symmetric relationships (1:1, M:M), sort the entity names to avoid duplicates
+                string relationshipKey;
+                if (relationship.Type == EfRelationshipType.OneToOne ||
+                    relationship.Type == EfRelationshipType.ManyToMany)
+                {
+                    var entities_sorted = new[] { relationship.SourceEntity, relationship.TargetEntity }
+                        .OrderBy(e => e)
+                        .ToArray();
+                    relationshipKey =
+                        $"{entities_sorted[0]}-{entities_sorted[1]}-{relationship.Type}";
+                }
+                else
+                {
+                    // For OneToMany, direction matters
+                    relationshipKey =
+                        $"{relationship.SourceEntity}-{relationship.TargetEntity}-{relationship.Type}";
+                }
+
+                // Add relationship if not already present
+                if (addedRelationships.Add(relationshipKey))
                 {
                     model.Relationships.Add(relationship);
                 }
@@ -349,10 +425,18 @@ public class EfAnalysisService : IEfAnalysisService
     private static EfEntity AnalyzeEntity(INamedTypeSymbol type)
     {
         var entity = new EfEntity { Name = type.Name };
+        var addedProperties = new HashSet<string>();
+
         foreach (var prop in type.GetMembers().OfType<IPropertySymbol>())
         {
             // Skip navigation properties for now in property list
             if (IsNavigationProperty(prop, out _, out _))
+            {
+                continue;
+            }
+
+            // Skip if we've already added this property (prevents duplicates)
+            if (!addedProperties.Add(prop.Name))
             {
                 continue;
             }
@@ -410,6 +494,24 @@ public class EfAnalysisService : IEfAnalysisService
         return targetType.GetMembers().OfType<IPropertySymbol>().Any(p =>
             IsNavigationProperty(p, out var t, out var isColl) &&
             isColl &&
+            t?.Name == prop.ContainingType.Name);
+    }
+
+    private static string? FindInverseCollectionName(IPropertySymbol prop, INamedTypeSymbol targetType)
+    {
+        return targetType.GetMembers().OfType<IPropertySymbol>()
+            .FirstOrDefault(p =>
+                IsNavigationProperty(p, out var t, out var isColl) &&
+                isColl &&
+                t?.Name == prop.ContainingType.Name)
+            ?.Name;
+    }
+
+    private static bool HasInverseReference(IPropertySymbol prop, INamedTypeSymbol targetType)
+    {
+        return targetType.GetMembers().OfType<IPropertySymbol>().Any(p =>
+            IsNavigationProperty(p, out var t, out var isColl) &&
+            !isColl &&
             t?.Name == prop.ContainingType.Name);
     }
 
