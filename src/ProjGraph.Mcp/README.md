@@ -1,34 +1,59 @@
 # ProjGraph MCP Server
 
-**ProjGraph.Mcp** is a [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that enables AI
-assistants like GitHub Copilot and Claude to programmatically analyze and understand .NET solution architectures.
+[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that enables AI assistants to analyze .NET
+solution architectures and generate Entity Relationship Diagrams.
 
 ## Requirements
 
-- .NET 10.0 or later runtime (included in self-contained deployment)
+- .NET 10.0 or later runtime
 
 ## Available Tools
 
 ### `get_project_graph`
 
-Analyzes a solution or project file and returns the complete dependency graph.
+Analyzes a solution or project file and returns the dependency graph as a Mermaid diagram.
 
 **Parameters:**
 
-- `solutionPath` (string): Path to the `.sln`, `.slnx`, or `.csproj` file
+- `path` (string): Absolute path to `.sln`, `.slnx`, or `.csproj` file
+- `includePackages` (bool): Include NuGet packages (default: false)
 
-**Returns:**
+**Returns:** Mermaid graph diagram code
 
-- Project nodes with metadata (name, path, target framework)
-- Dependency edges between projects
-- Circular dependency detection results
+**Example prompts:**
 
-**Example Usage (via AI Assistant):**
-
-```x
+```
 "Analyze the dependencies in ./MySolution.slnx"
-"Show me the project structure of MyProject.csproj"
-"Are there any circular dependencies in this solution?"
+"Show me the project structure"
+"Are there any circular dependencies?"
+```
+
+### `get_erd`
+
+Generates a Mermaid Entity Relationship Diagram from an EF Core DbContext file.
+
+**Parameters:**
+
+- `path` (string): Absolute path to DbContext `.cs` file
+- `contextName` (string, optional): Specific DbContext class name if multiple exist
+
+**Returns:** Mermaid ERD diagram code
+
+**Features:**
+
+- Detects entities, properties, and relationships
+- Shows primary keys, foreign keys, and constraints
+- Supports inheritance and base classes
+- Extracts MaxLength, Required, and other data annotations
+- Detects Fluent API shadow relationships
+- Handles many-to-many with join tables
+
+**Example prompts:**
+
+```
+"Show me the database schema from ./Data/MyDbContext.cs"
+"Generate an ERD for my DbContext"
+"What are the entity relationships in my database?"
 ```
 
 ## License

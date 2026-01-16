@@ -15,8 +15,13 @@ public static class Program
 
             config.AddCommand<VisualizeCommand>("visualize")
                 .WithDescription("Visualize the dependency graph of a solution or project")
-                .WithExample(["visualize", "MySolution.sln"])
-                .WithExample(["visualize", "MySolution.sln", "--format", "mermaid"]);
+                .WithExample("visualize", "MySolution.sln")
+                .WithExample("visualize", "MySolution.sln", "--format", "mermaid");
+
+            config.AddCommand<ErdCommand>("erd")
+                .WithDescription("Generate a Mermaid ERD for an Entity Framework Core DbContext")
+                .WithExample("erd", "Data/AppDbContext.cs")
+                .WithExample("erd", "Data/AppDbContext.cs", "--context", "BlogContext");
         });
 
         return app.Run(args);

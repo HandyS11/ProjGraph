@@ -1,0 +1,24 @@
+{
+  "tools": [
+    {
+      "name": "get_erd",
+      "description": "Generates a Mermaid Entity Relationship Diagram (ERD) based on an Entity Framework Core DbContext found in the specified path.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute path to the solution (.sln), project (.csproj), or specific DbContext file (.cs)."
+          },
+          "contextName": {
+            "type": "string",
+            "description": "Specific DbContext class name to use if multiple are present in the solution."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Parsers;
+using System.Diagnostics;
 
-namespace ProjGraph.Lib;
+namespace ProjGraph.Lib.Services;
 
 public class GraphService
 {
@@ -19,7 +20,7 @@ public class GraphService
         }
         else if (path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
         {
-            projectFilePaths = [Path.GetFullPath(path)];
+            projectFilePaths = DiscoverProjectsRecursively(path);
         }
         else
         {
@@ -33,16 +34,21 @@ public class GraphService
 
         foreach (var projectPath in projectFilePaths)
         {
-            if (!File.Exists(projectPath)) continue;
+            var normalizedPath = Path.GetFullPath(projectPath);
+
+            if (!File.Exists(normalizedPath))
+            {
+                continue;
+            }
 
             try
             {
-                var (project, refs) = ProjectParser.Parse(projectPath);
+                var (project, refs) = ProjectParser.Parse(normalizedPath);
                 projects.Add(project);
                 pathToProject[project.FullPath] = project;
 
                 rawDependencies.AddRange(refs
-                    .Select(r => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(projectPath)!, r)))
+                    .Select(r => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(normalizedPath)!, r)))
                     .Select(absoluteRef => (project.FullPath, absoluteRef)));
             }
             catch
@@ -66,5 +72,48 @@ public class GraphService
             projects,
             dependencies
         );
+    }
+
+    private static IEnumerable<string> DiscoverProjectsRecursively(string rootProjectPath)
+    {
+        var discovered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var toProcess = new Queue<string>();
+
+        var rootFullPath = Path.GetFullPath(rootProjectPath);
+        toProcess.Enqueue(rootFullPath);
+        discovered.Add(rootFullPath);
+
+        while (toProcess.Count > 0)
+        {
+            var currentPath = toProcess.Dequeue();
+
+            if (!File.Exists(currentPath))
+            {
+                continue;
+            }
+
+            try
+            {
+                var (_, refs) = ProjectParser.Parse(currentPath);
+                var projectDir = Path.GetDirectoryName(currentPath)!;
+
+                foreach (var refPath in refs)
+                {
+                    var absoluteRefPath = Path.GetFullPath(Path.Combine(projectDir, refPath));
+
+                    if (discovered.Add(absoluteRefPath))
+                    {
+                        toProcess.Enqueue(absoluteRefPath);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log but continue - don't let one bad project stop the whole analysis
+                Debug.WriteLine($"Failed to parse project {currentPath}: {ex.Message}");
+            }
+        }
+
+        return discovered;
     }
 }

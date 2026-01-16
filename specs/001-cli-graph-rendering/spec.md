@@ -1,8 +1,8 @@
 # Feature Specification: CLI Graph Rendering & MCP Hub
 
-**Feature Branch**: `001-cli-graph-rendering`  
-**Created**: 2026-01-13  
-**Status**: Draft  
+**Feature Branch**: `001-cli-graph-rendering`
+**Created**: 2026-01-13
+**Status**: Draft
 **Input**: User description: "I am building a .net tool nammed projgraph. It is able to draw some graph in the CLI based on the dependencies of some .net project. Based on a .sln, .slnx or even a .csproj. There is also a mcp tool that do the same thing to be more compliant with other tools. This tool is code using a clean archi pattern and ensure code quality."
 
 ## User Scenarios & Testing *(mandatory)*
@@ -76,9 +76,9 @@ As a modern .NET developer, I want the tool to support the new XML-based `.slnx`
 
 - **Tool Name**: `get_project_graph`
 - **Description**: Analyzes a .NET solution or project file and returns the dependency graph as a set of nodes and edges.
-- **Parameters**: 
+- **Parameters**:
   - `path`: (string) The absolute path to the .sln, .slnx, or .csproj file.
-  - `includePackages`: (boolean) (Out of scope for initial version) Whether to include NuGet package dependencies in the graph. 
+  - `includePackages`: (boolean) (Out of scope for initial version) Whether to include NuGet package dependencies in the graph.
 
 ## Success Criteria *(mandatory)*
 
