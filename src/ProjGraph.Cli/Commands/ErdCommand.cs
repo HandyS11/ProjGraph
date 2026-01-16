@@ -12,13 +12,10 @@ public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
 {
     public sealed class Settings : CommandSettings
     {
-        [CommandOption("-p|--path")]
-        [Description("The path to the .sln, .slnx, or .csproj file")]
+        [CommandArgument(0, "[path]")]
+        [Description(
+            "Path to a .cs file containing a DbContext (optional, searches current directory if not specified)")]
         public string? Path { get; init; }
-
-        [CommandOption("-f|--file")]
-        [Description("The path to a specific .cs file containing a DbContext")]
-        public string? File { get; init; }
 
         [CommandOption("-c|--context")]
         [Description("The name of the DbContext to analyze (optional)")]
@@ -26,14 +23,19 @@ public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
 
         public override ValidationResult Validate()
         {
-            if (!string.IsNullOrWhiteSpace(Path) && !System.IO.File.Exists(Path) && !Directory.Exists(Path))
+            if (string.IsNullOrWhiteSpace(Path))
             {
-                return ValidationResult.Error($"Path not found: {Path}");
+                return ValidationResult.Success();
             }
 
-            if (!string.IsNullOrWhiteSpace(File) && !System.IO.File.Exists(File))
+            if (!File.Exists(Path))
             {
-                return ValidationResult.Error($"File not found: {File}");
+                return ValidationResult.Error($"File not found: {Path}");
+            }
+
+            if (!Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            {
+                return ValidationResult.Error($"Only .cs files are supported. Got: {Path}");
             }
 
             return ValidationResult.Success();
@@ -47,21 +49,21 @@ public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
     {
         try
         {
-            var targetPath = settings.File ?? settings.Path;
+            var targetPath = settings.Path;
             var efService = new EfAnalysisService();
 
             if (string.IsNullOrEmpty(targetPath))
             {
-                var files = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.sln")
-                    .Concat(Directory.GetFiles(Directory.GetCurrentDirectory(), "*.slnx"))
-                    .Concat(Directory.GetFiles(Directory.GetCurrentDirectory(), "*.csproj"))
+                // Search for DbContext .cs files in current directory
+                var files = Directory.GetFiles(Directory.GetCurrentDirectory(), "*DbContext.cs")
                     .ToList();
 
                 switch (files.Count)
                 {
                     case 0:
                         AnsiConsole.MarkupLine(
-                            "[red]Error:[/] No solution or project file found in current directory. Please specify --path or --file.");
+                            "[red]Error:[/] No DbContext .cs file found in current directory.");
+                        AnsiConsole.MarkupLine("[grey]Usage: projgraph erd path/to/YourDbContext.cs[/]");
                         return 1;
                     case 1:
                         targetPath = files[0];
@@ -71,7 +73,7 @@ public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
                     default:
                         targetPath = await AnsiConsole.PromptAsync(
                             new SelectionPrompt<string>()
-                                .Title("Multiple project files found. Please select one:")
+                                .Title("Multiple DbContext files found. Please select one:")
                                 .AddChoices(files.Select(f => Path.GetFileName(f))),
                             cancellationToken);
                         targetPath = files.First(f => Path.GetFileName(f) == targetPath);
@@ -108,11 +110,6 @@ public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
             Console.WriteLine(mermaid);
 
             return 0;
-        }
-        catch (NotSupportedException ex)
-        {
-            await Console.Error.WriteLineAsync($"Error: {ex.Message}");
-            return 1;
         }
         catch (Exception ex)
         {

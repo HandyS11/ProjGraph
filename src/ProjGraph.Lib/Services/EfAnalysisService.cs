@@ -1,7 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.MSBuild;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Interfaces;
 using System.Diagnostics;
@@ -20,55 +19,20 @@ public class EfAnalysisService : IEfAnalysisService
         activity?.SetTag("path", path);
         var contexts = new List<string>();
 
-        if (path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
         {
-            var syntaxTree = CSharpSyntaxTree.ParseText(await File.ReadAllTextAsync(path));
-            var root = await syntaxTree.GetRootAsync();
-            var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
-
-            foreach (var @class in classDeclarations)
-            {
-                if (IsDbContext(@class))
-                {
-                    contexts.Add(@class.Identifier.Text);
-                }
-            }
+            throw new ArgumentException("Only .cs files are supported", nameof(path));
         }
-        else
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(await File.ReadAllTextAsync(path));
+        var root = await syntaxTree.GetRootAsync();
+        var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
+
+        foreach (var @class in classDeclarations)
         {
-            using var workspace = MSBuildWorkspace.Create();
-            Solution solution;
-            if (path.EndsWith(".sln") || path.EndsWith(".slnx"))
+            if (IsDbContext(@class))
             {
-                solution = await workspace.OpenSolutionAsync(path);
-            }
-            else if (path.EndsWith(".csproj"))
-            {
-                var project = await workspace.OpenProjectAsync(path);
-                solution = project.Solution;
-            }
-            else
-            {
-                throw new ArgumentException("Unsupported path type", nameof(path));
-            }
-
-            foreach (var project in solution.Projects)
-            {
-                var compilation = await project.GetCompilationAsync();
-                if (compilation == null)
-                {
-                    continue;
-                }
-
-                var dbContextSymbol = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.DbContext");
-
-                foreach (var type in GetNamedTypes(compilation.GlobalNamespace))
-                {
-                    if (InheritsFrom(type, dbContextSymbol))
-                    {
-                        contexts.Add(type.Name);
-                    }
-                }
+                contexts.Add(@class.Identifier.Text);
             }
         }
 
@@ -81,49 +45,14 @@ public class EfAnalysisService : IEfAnalysisService
         activity?.SetTag("path", path);
         activity?.SetTag("contextName", contextName);
 
-        if (path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
         {
-            return await AnalyzeFileAsync(path, contextName);
+            throw new ArgumentException("Only .cs files are supported", nameof(path));
         }
 
-        using var workspace = MSBuildWorkspace.Create();
-        Solution solution;
-        if (path.EndsWith(".sln") || path.EndsWith(".slnx"))
-        {
-            solution = await workspace.OpenSolutionAsync(path);
-        }
-        else
-        {
-            var project = await workspace.OpenProjectAsync(path);
-            solution = project.Solution;
-        }
-
-        foreach (var project in solution.Projects)
-        {
-            var compilation = await project.GetCompilationAsync();
-            if (compilation == null)
-            {
-                continue;
-            }
-
-            var dbContextSymbol = compilation.GetTypeByMetadataName("Microsoft.EntityFrameworkCore.DbContext");
-
-            foreach (var type in GetNamedTypes(compilation.GlobalNamespace))
-            {
-                if (!InheritsFrom(type, dbContextSymbol))
-                {
-                    continue;
-                }
-
-                if (contextName == null || type.Name == contextName)
-                {
-                    return AnalyzeType(type, compilation);
-                }
-            }
-        }
-
-        throw new Exception($"DbContext {(contextName != null ? $"'{contextName}' " : "")}not found in {path}");
+        return await AnalyzeFileAsync(path, contextName);
     }
+
 
     /// <summary>
     /// Analyzes a single DbContext file by discovering and including entity class files
@@ -139,12 +68,8 @@ public class EfAnalysisService : IEfAnalysisService
         var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
 
         var contextClass = classDeclarations.FirstOrDefault(c =>
-            (contextName == null && IsDbContext(c)) || c.Identifier.Text == contextName);
-
-        if (contextClass == null)
-        {
-            throw new Exception("DbContext not found in file");
-        }
+                               (contextName == null && IsDbContext(c)) || c.Identifier.Text == contextName)
+                           ?? throw new Exception("DbContext not found in file");
 
         // Extract using directives to find entity namespaces
         var entityNamespaces = root.DescendantNodes()
@@ -782,26 +707,6 @@ public class EfAnalysisService : IEfAnalysisService
         return @class.BaseList?.Types.Any(t => t.ToString().Contains("DbContext")) ?? false;
     }
 
-    private static bool InheritsFrom(INamedTypeSymbol? type, INamedTypeSymbol? baseType)
-    {
-        if (type == null || baseType == null)
-        {
-            return false;
-        }
-
-        var current = type.BaseType;
-        while (current != null)
-        {
-            if (SymbolEqualityComparer.Default.Equals(current, baseType) || current.Name == "DbContext")
-            {
-                return true;
-            }
-
-            current = current.BaseType;
-        }
-
-        return false;
-    }
 
     private IEnumerable<INamedTypeSymbol> GetNamedTypes(INamespaceSymbol ns)
     {

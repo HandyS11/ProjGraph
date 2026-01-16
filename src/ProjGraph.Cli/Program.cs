@@ -20,9 +20,8 @@ public static class Program
 
             config.AddCommand<ErdCommand>("erd")
                 .WithDescription("Generate a Mermaid ERD for an Entity Framework Core DbContext")
-                .WithExample("erd", "--path", "MySolution.sln")
-                .WithExample("erd", "--file", "Data/AppDbContext.cs")
-                .WithExample("erd", "--path", "MySolution.sln", "--context", "BlogContext");
+                .WithExample("erd", "Data/AppDbContext.cs")
+                .WithExample("erd", "Data/AppDbContext.cs", "--context", "BlogContext");
         });
 
         return app.Run(args);

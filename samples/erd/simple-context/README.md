@@ -13,23 +13,18 @@ This example includes:
 
 ## Usage
 
-### From DbContext File
+### Direct DbContext File
 
 ```bash
-projgraph erd --file EntityFramework/MyDbContext.cs
-```
+# Specify the DbContext .cs file directly
+projgraph erd EntityFramework/MyDbContext.cs
 
-### From Project or Solution
+# Or let it auto-detect in current directory
+cd EntityFramework
+projgraph erd
 
-```bash
-# From a project file
-projgraph erd --file EntityFramework/EntityFramework.csproj
-
-# From a solution file
-projgraph erd --file simple-context.slnx
-
-# Specify a particular DbContext if multiple exist
-projgraph erd --file EntityFramework/MyDbContext.cs --context MyDbContext
+# Specify a particular DbContext if multiple exist in the file
+projgraph erd EntityFramework/MyDbContext.cs --context MyDbContext
 ```
 
 ## Output
@@ -107,11 +102,11 @@ The Mermaid diagram renders as a visual ERD showing:
 
 ## Key Features
 
-### ✅ Multiple Input Sources
+### ✅ Direct DbContext File Analysis
 
 - **DbContext files** (`.cs`) - Direct analysis of DbContext classes
-- **Project files** (`.csproj`) - Discovers DbContext in project
-- **Solution files** (`.sln`, `.slnx`) - Finds all DbContexts in solution
+- **Auto-detection** - Finds `*DbContext.cs` files in current directory
+- **No build required** - Works with source code directly
 
 ### ✅ Comprehensive Type Information
 
@@ -147,21 +142,14 @@ The Mermaid diagram renders as a visual ERD showing:
 
 ## Advanced Usage
 
-### List Available DbContexts
-
-```bash
-# Discover all DbContext classes in a solution
-projgraph erd --file simple-context.slnx --list
-```
-
 ### Save to File
 
 ```bash
 # Save the ERD diagram to a file
-projgraph erd --file EntityFramework/MyDbContext.cs > erd-diagram.mmd
+projgraph erd EntityFramework/MyDbContext.cs > erd-diagram.mmd
 
 # Or save to markdown for documentation
-projgraph erd --file EntityFramework/MyDbContext.cs > docs/database-schema.md
+projgraph erd EntityFramework/MyDbContext.cs > docs/database-schema.md
 ```
 
 ### Integration with Documentation
@@ -176,7 +164,7 @@ The output is **GitHub/GitLab compatible** Mermaid syntax, so you can:
 
 ```bash
 # 1. Generate ERD from your DbContext
-projgraph erd --file MyProject/Data/ApplicationDbContext.cs > docs/database-erd.md
+projgraph erd MyProject/Data/ApplicationDbContext.cs > docs/database-erd.md
 
 # 2. Commit to repository
 git add docs/database-erd.md
