@@ -1,5 +1,6 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Parsers;
+using System.Diagnostics;
 
 namespace ProjGraph.Lib.Services;
 
@@ -100,17 +101,16 @@ public class GraphService
                 {
                     var absoluteRefPath = Path.GetFullPath(Path.Combine(projectDir, refPath));
 
-                    if (!discovered.Add(absoluteRefPath))
+                    if (discovered.Add(absoluteRefPath))
                     {
-                        continue;
+                        toProcess.Enqueue(absoluteRefPath);
                     }
-
-                    toProcess.Enqueue(absoluteRefPath);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Skip projects that fail to parse
+                // Log but continue - don't let one bad project stop the whole analysis
+                Debug.WriteLine($"Failed to parse project {currentPath}: {ex.Message}");
             }
         }
 

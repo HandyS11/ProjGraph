@@ -7,6 +7,7 @@
   </Folder>
   <Folder Name="/samples/visualize/"/>
   <Folder Name="/samples/visualize/simple-dependencies/">
+    <File Path="samples/visualize/simple-dependencies/Directory.Build.props"/>
     <File Path="samples/visualize/simple-dependencies/README.md"/>
     <Project Path="samples/visualize/simple-dependencies/A/A.csproj"/>
     <Project Path="samples/visualize/simple-dependencies/B/B.csproj"/>
