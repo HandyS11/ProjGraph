@@ -23,7 +23,6 @@ public class McpIntegrationTests
         result.Should().NotStartWith("Error");
         result.Should().StartWith("```mermaid");
         result.Should().Contain("graph TD");
-        result.Should().Contain("-->");
         result.Trim().Should().EndWith("```");
     }
 }

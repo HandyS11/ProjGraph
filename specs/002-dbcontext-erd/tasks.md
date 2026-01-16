@@ -38,10 +38,10 @@
 
 ### Implementation for User Story 1
 
-- [x] T007 [US1] Implement \DbContext\ discovery logic for MSBuild solutions in \src/ProjGraph.Lib/Services/EfAnalysisService.cs\
-- [x] T008 [US1] Implement \DbSet\ and entity type identification via Roslyn symbols in \src/ProjGraph.Lib/Services/EfAnalysisService.cs\
-- [x] T009 [US1] Implement Relationship extraction logic (1:1, 1:N, N:M) using Roslyn symbols in \src/ProjGraph.Lib/Services/EfAnalysisService.cs\
-- [x] T010 [US1] Implement shadow join table detection for N:M relationships in \src/ProjGraph.Lib/Services/EfAnalysisService.cs\
+- [x] T007 [US1] Implement interactive `DbContext` discovery and selection logic in `src/ProjGraph.Cli/Commands/ErdCommand.cs`
+- [x] T008 [US1] Implement `DbSet` and entity identification via heuristic source scanning in `src/ProjGraph.Lib/Services/EfAnalysisService.cs`
+- [x] T009 [US1] Implement relationship extraction logic (1:1, 1:N, N:M) using convention-based discovery in `src/ProjGraph.Lib/Services/EfAnalysisService.cs`
+- [x] T010 [US1] Implement shadow join table detection for N:M relationships in `src/ProjGraph.Lib/Services/EfAnalysisService.cs`
 - [x] T011 [P] [US1] Create unit tests for solution-wide EF model extraction in \tests/ProjGraph.Tests.Unit/Services/EfAnalysisServiceTests.cs\
 - [x] T012 [US1] Register \EfAnalysisService\ and implement \erd\ command with \--path\ support in \src/ProjGraph.Cli/Commands/ErdCommand.cs\
 
@@ -57,8 +57,8 @@
 
 ### Implementation for User Story 2
 
-- [x] T013 [US2] Extend \EfAnalysisService\` to support parsing standalone syntax trees in \src/ProjGraph.Lib/Services/EfAnalysisService.cs\
-- [x] T014 [US2] Update \erd\ command to support the \--file\ argument in \src/ProjGraph.Cli/Commands/ErdCommand.cs\
+- [x] T013 [US2] Implement heuristic entity and base class discovery by scanning the file system in `src/ProjGraph.Lib/Services/EfAnalysisService.cs`
+- [x] T014 [US2] Update `erd` command to support the optional `path` argument in `src/ProjGraph.Cli/Commands/ErdCommand.cs`
 - [x] T015 [P] [US2] Add unit tests for single-file EF model extraction in \tests/ProjGraph.Tests.Unit/Services/EfAnalysisServiceTests.cs\
 
 **Checkpoint**: User Story 2 (File analysis) is fully functional

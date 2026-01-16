@@ -1,33 +1,29 @@
 # Research: DbContext ERD Extraction
 
-## Decision: Hybrid Roslyn-based Analysis
+## Decision: Heuristic Roslyn-based Analysis
 
-We will use **Roslyn (Source Code Analysis)** as the primary driver to ensure the tool works without requiring a successful build of the entire solution, which is critical for development-time tools and AI agents.
-
-### Rationale
-
-- **Speed**: Static analysis is significantly faster than compiling and loading assemblies.
-- **Resilience**: Can work on single files or solutions with missing dependencies.
-- **Portability**: Avoids issues with loading different .NET versions of EF Core into the tool's process.
+We use **Roslyn (Source Code Analysis)** as the primary driver. Instead of requiring a full build or loading assemblies, the tool parses `DbContext` files and heuristically discovers entity definitions by searching adjacent directories and following using directives.
 
 ### Implementation Strategy
 
 1. **Discovery**:
-   - Use `Compilation.GetSymbolsWithName` or recursive namespace traversal to find types inheriting from `DbContext`.
-   - Identify `DbSet<T>` properties.
+   - Parse the target `.cs` file for classes inheriting from `DbContext` (identified by name or base class).
+   - Extract `DbSet<T>` properties to identify root entities.
 
-2. **Entity Analysis**:
-   - Extract properties and types from the entity classes.
-   - Map navigation properties (scalar and collection) to relationships.
+2. **Heuristic Entity Discovery**:
+   - For each entity type, search for a corresponding `.cs` file in the same directory, parent directory, and common subdirectories (e.g., `Entities`, `Models`).
+   - Follow `using` directives to narrow down potential locations.
+   - Recursively parse base classes to include inherited properties.
 
 3. **Relationship Mapping**:
-   - **One-to-Many**: One side has a collection, the other has a reference or nothing.
-   - **Many-to-Many**: Both sides have collections. Detect "Shadow" join tables by identifying N:M relationships that don't have an explicit join entity in the `DbSets`.
-   - **One-to-One**: Both sides have references.
+   - **One-to-Many**: Extracted by identifying collection properties on one side and matching reference/FK properties on the other.
+   - **Many-to-Many**: Detected when two entities have collections of each other. The tool automatically creates a "shadow" join entity in the Mermaid diagram if one isn't explicitly defined.
+   - **One-to-One**: Both sides have reference properties.
 
-4. **Handling Fluent API (Limitations)**:
-   - We will support basic `OnModelCreating` parsing of `HasOne/HasMany` chains using a syntax walker.
-   - For complex configurations (loops, external config classes), we will provide a warning that the diagram might be based on conventions.
+4. **Mermaid Rendering**:
+   - Map EF properties to Mermaid ERD attributes.
+   - Include PK/FK markers.
+   - Add constraints (Required, MaxLength, Precision) as Mermaid comments.
 
 ### Alternatives Considered
 

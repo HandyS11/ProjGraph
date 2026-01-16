@@ -10,14 +10,14 @@ This feature enables generating Mermaid Entity Relationship Diagrams (ERD) from 
 ## Technical Context
 
 **Language/Version**: .NET 10.0 (C# 14+)
-**Primary Dependencies**: `Microsoft.CodeAnalysis.CSharp`, `Microsoft.CodeAnalysis.Workspaces.MSBuild`, `Microsoft.EntityFrameworkCore` (for symbol analysis)
+**Primary Dependencies**: `Microsoft.CodeAnalysis.CSharp`, `Spectre.Console`
 **Storage**: N/A
 **Testing**: xUnit, FluentAssertions
 **Target Platform**: .NET Core (Windows, Linux, macOS)
 **Project Type**: Library, CLI, MCP Server
-**Performance Goals**: < 2 seconds for solutions with < 50 entities
-**Constraints**: MCP 1.0 Compliance, Zero Warnings, Strict SemVer
-**Scale/Scope**: Solution-wide analysis of EF Core models
+**Performance Goals**: < 1 second for typical DbContext analysis via heuristic scanning.
+**Constraints**: MCP 1.0 Compliance, Zero Warnings
+**Scale/Scope**: Analysis of EF Core models via source code heuristics.
 
 ## Constitution Check
 

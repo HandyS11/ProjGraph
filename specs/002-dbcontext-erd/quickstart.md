@@ -4,28 +4,28 @@ Generate a Mermaid diagram for your Entity Framework Core model.
 
 ## CLI Usage
 
-### Generate ERD for a solution
+### Generate ERD for the current directory
 
-Automatically scans all projects and lists found `DbContexts`.
+Automatically searches for `*DbContext.cs` files in the current folder.
 
 ```bash
-projgraph erd --path ./MySolution.sln
+projgraph erd
 ```
 
 ### Generate ERD for a specific file
 
-Analyzes a single `DbContext` file using static analysis.
+Analyzes a specific `DbContext` file Using static analysis.
 
 ```bash
-projgraph erd --file ./Data/MyDbContext.cs
+projgraph erd ./Data/MyDbContext.cs
 ```
 
 ### Specify a context name
 
-If multiple contexts exist, specify the one you want.
+If multiple contexts exist in a file, specify the one you want.
 
 ```bash
-projgraph erd --path ./MySolution.sln --context "AppDbContext"
+projgraph erd ./Data/MyDbContext.cs --context MySpecificContext
 ```
 
 ## MCP Usage
@@ -33,7 +33,7 @@ projgraph erd --path ./MySolution.sln --context "AppDbContext"
 ### Tool: `get_erd`
 
 Ask your AI assistant:
-"Show me the ERD for the project in /path/to/project"
+"Show me the ERD for the DbContext in /path/to/MyDbContext.cs"
 
 The tool returns the Mermaid text which can be rendered in views that support Mermaid.
 

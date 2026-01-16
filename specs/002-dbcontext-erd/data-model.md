@@ -26,6 +26,11 @@ Represents a column/property.
 - `Type`: String
 - `IsPrimaryKey`: Boolean
 - `IsForeignKey`: Boolean
+- `IsRequired`: Boolean
+- `MaxLength`: Integer (optional)
+- `Precision`: Integer (optional)
+- `Scale`: Integer (optional)
+- `DefaultValue`: String (optional)
 
 ### `EfRelationship`
 
