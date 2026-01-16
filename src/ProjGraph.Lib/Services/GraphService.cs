@@ -33,16 +33,21 @@ public class GraphService
 
         foreach (var projectPath in projectFilePaths)
         {
-            if (!File.Exists(projectPath)) continue;
+            var normalizedPath = Path.GetFullPath(projectPath);
+
+            if (!File.Exists(normalizedPath))
+            {
+                continue;
+            }
 
             try
             {
-                var (project, refs) = ProjectParser.Parse(projectPath);
+                var (project, refs) = ProjectParser.Parse(normalizedPath);
                 projects.Add(project);
                 pathToProject[project.FullPath] = project;
 
                 rawDependencies.AddRange(refs
-                    .Select(r => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(projectPath)!, r)))
+                    .Select(r => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(normalizedPath)!, r)))
                     .Select(absoluteRef => (project.FullPath, absoluteRef)));
             }
             catch
