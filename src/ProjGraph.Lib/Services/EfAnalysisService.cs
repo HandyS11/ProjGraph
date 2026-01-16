@@ -197,30 +197,32 @@ public class EfAnalysisService : IEfAnalysisService
 
         // Add parent and sibling directories
         var parentDir = Directory.GetParent(contextDirectory);
-        if (parentDir != null)
+        if (parentDir == null)
         {
-            searchDirs.Add(parentDir.FullName);
+            return searchDirs;
+        }
 
-            // Search sibling directories that might contain entities
-            try
+        searchDirs.Add(parentDir.FullName);
+
+        // Search sibling directories that might contain entities
+        try
+        {
+            foreach (var siblingDir in Directory.GetDirectories(parentDir.FullName))
             {
-                foreach (var siblingDir in Directory.GetDirectories(parentDir.FullName))
+                var dirName = Path.GetFileName(siblingDir);
+                // Look for common entity project patterns
+                if (dirName.Contains("Entities", StringComparison.OrdinalIgnoreCase) ||
+                    dirName.Contains("Models", StringComparison.OrdinalIgnoreCase) ||
+                    dirName.Contains("Domain", StringComparison.OrdinalIgnoreCase) ||
+                    entityNamespaces.Any(ns => ns.Contains(dirName, StringComparison.OrdinalIgnoreCase)))
                 {
-                    var dirName = Path.GetFileName(siblingDir);
-                    // Look for common entity project patterns
-                    if (dirName.Contains("Entities", StringComparison.OrdinalIgnoreCase) ||
-                        dirName.Contains("Models", StringComparison.OrdinalIgnoreCase) ||
-                        dirName.Contains("Domain", StringComparison.OrdinalIgnoreCase) ||
-                        entityNamespaces.Any(ns => ns.Contains(dirName, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        searchDirs.Add(siblingDir);
-                    }
+                    searchDirs.Add(siblingDir);
                 }
             }
-            catch
-            {
-                // Ignore access errors
-            }
+        }
+        catch
+        {
+            // Ignore access errors
         }
 
         return searchDirs;

@@ -137,39 +137,6 @@ graph TD
 - **`.slnx`**: Modern XML-based solution files (Visual Studio 2022+)
 - **`.csproj`**: C# project files (analyzes project references)
 
-## Troubleshooting
-
-### Command Not Found
-
-If `projgraph` is not recognized, ensure your `PATH` includes the .NET tools directory:
-
-- **Windows**: `%USERPROFILE%\.dotnet\tools`
-- **macOS/Linux**: `~/.dotnet/tools`
-
-You may need to restart your terminal or run:
-
-```bash
-# Windows (PowerShell)
-$env:PATH += ";$env:USERPROFILE\.dotnet\tools"
-
-# macOS/Linux
-export PATH="$PATH:$HOME/.dotnet/tools"
-```
-
-### File Not Found Errors
-
-- Verify the path to your solution/project file is correct
-- Use absolute paths if relative paths don't work
-- Ensure you have read permissions for the file
-
-### Circular Dependency Warnings
-
-If circular dependencies are detected, they will be highlighted in the output. To resolve:
-
-1. Review the dependency cycle shown in the output
-2. Refactor your projects to break the circular reference
-3. Consider extracting shared code to a new project
-
 ## Integration with MCP
 
 For programmatic access via AI assistants, check out the [ProjGraph.Mcp](https://www.nuget.org/packages/ProjGraph.Mcp)

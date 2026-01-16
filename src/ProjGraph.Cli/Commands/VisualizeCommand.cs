@@ -1,8 +1,10 @@
 using ProjGraph.Cli.Rendering;
-using ProjGraph.Lib;
+using ProjGraph.Lib.Services;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
+
+// ReSharper disable ClassNeverInstantiated.Global
 
 namespace ProjGraph.Cli.Commands;
 

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="A/A.csproj" />
+  <Project Path="B/B.csproj" />
+  <Project Path="C/C.csproj" />
+  <Project Path="D/D.csproj" />
+</Solution>
