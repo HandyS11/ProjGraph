@@ -1,4 +1,5 @@
 using ProjGraph.Cli.Rendering;
+using ProjGraph.Lib.Rendering;
 using ProjGraph.Lib.Services;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -56,7 +57,7 @@ public sealed class VisualizeCommand : AsyncCommand<VisualizeCommand.Settings>
 
                 var graphService = new GraphService();
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                Console.WriteLine(MermaidRenderer.Render(graph));
+                Console.WriteLine(MermaidGraphRenderer.Render(graph));
             }
             else
             {

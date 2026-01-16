@@ -2,12 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using ProjGraph.Lib;
 using ProjGraph.Lib.Interfaces;
 using ProjGraph.Lib.Rendering;
 using ProjGraph.Lib.Services;
 using System.ComponentModel;
-using System.Text.Json;
 
 namespace ProjGraph.Mcp;
 
@@ -41,7 +39,7 @@ public static class Program
 public class ProjGraphTools(GraphService graphService, IEfAnalysisService efService)
 {
     [McpServerTool]
-    [Description("Analyzes a .NET solution or project file and returns the dependency graph.")]
+    [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
     public string GetProjectGraph(
         [Description("Absolute path to the project or solution file.")] string path,
         [Description("Include NuGet packages?")] bool includePackages = false)
@@ -49,23 +47,7 @@ public class ProjGraphTools(GraphService graphService, IEfAnalysisService efServ
         try
         {
             var graph = graphService.BuildGraph(path);
-
-            var nodes = graph.Projects.Select(p => new
-            {
-                id = p.Id.ToString("N"),
-                name = p.Name,
-                type = p.Type.ToString(),
-                framework = p.Framework
-            }).ToList();
-
-            var edges = graph.Dependencies.Select(d => new
-            {
-                sourceId = d.SourceId.ToString("N"),
-                targetId = d.TargetId.ToString("N"),
-                type = d.Type.ToString()
-            }).ToList();
-
-            return JsonSerializer.Serialize(new { nodes, edges }, new JsonSerializerOptions { WriteIndented = true });
+            return MermaidGraphRenderer.Render(graph);
         }
         catch (Exception ex)
         {
@@ -75,11 +57,11 @@ public class ProjGraphTools(GraphService graphService, IEfAnalysisService efServ
 
     [McpServerTool]
     [Description(
-        "Generates a Mermaid Entity Relationship Diagram (ERD) based on an Entity Framework Core DbContext found in the specified path.")]
+        "Generates a Mermaid Entity Relationship Diagram (ERD) from an Entity Framework Core DbContext file, including entities, properties, relationships, constraints, and inherited properties from base classes.")]
 #pragma warning disable IDE1006
     public async Task<string> GetErd(
 #pragma warning restore IDE1006
-        [Description("Absolute path to the solution (.sln), project (.csproj), or specific DbContext file (.cs).")]
+        [Description("Absolute path to the DbContext .cs file.")]
         string path,
         [Description("Specific DbContext class name to use if multiple are present.")]
         string? contextName = null)

@@ -1,9 +1,9 @@
 using ProjGraph.Core.Models;
 using System.Text;
 
-namespace ProjGraph.Cli.Rendering;
+namespace ProjGraph.Lib.Rendering;
 
-public static class MermaidRenderer
+public static class MermaidGraphRenderer
 {
     public static string Render(SolutionGraph graph)
     {

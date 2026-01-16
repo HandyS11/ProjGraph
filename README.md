@@ -15,8 +15,11 @@ Install and use the command-line tool for immediate visualization:
 # Install
 dotnet tool install -g ProjGraph.Cli
 
-# Visualize
+# Visualize project dependencies
 projgraph visualize ./MySolution.slnx
+
+# Generate Entity Relationship Diagram
+projgraph erd ./Data/MyDbContext.cs
 ```
 
 📖 [Full CLI Documentation](./src/ProjGraph.Cli/README.md)
@@ -44,11 +47,11 @@ Configure your MCP client (e.g., GitHub Copilot, Claude) with the following sett
 ## ✨ Key Features
 
 - **📊 Multiple Output Formats**: ASCII tree and Mermaid.js diagrams
+- **🗄️ Entity Relationship Diagrams**: Generate ERDs from EF Core DbContext files
 - **🔄 Circular Dependency Detection**: Automatically identifies problematic cycles
 - **📁 Modern .NET Support**: Full support for `.slnx`, `.sln`, and `.csproj` files
 - **🤖 AI Integration**: MCP server for GitHub Copilot, Claude, and other AI assistants
 - **⚡ Fast & Reliable**: Efficient parsing and graph algorithms
-- **🏗️ Clean Architecture**: Modular design with high testability
 
 ## 📦 Project Structure
 
@@ -90,7 +93,7 @@ dotnet run --project src/ProjGraph.Mcp
 
 ## 📝 Usage Examples
 
-### Analyze a Solution
+### Analyze Project Dependencies
 
 ```bash
 # Tree format (default)
@@ -98,6 +101,16 @@ projgraph visualize ./MySolution.sln
 
 # Mermaid format for documentation
 projgraph visualize ./MySolution.slnx --format mermaid > docs/dependencies.mmd
+```
+
+### Generate Database Diagrams
+
+```bash
+# Generate ERD from DbContext
+projgraph erd ./Data/MyDbContext.cs
+
+# Save to documentation
+projgraph erd ./Data/MyDbContext.cs > docs/database-schema.md
 ```
 
 ### With AI Assistants
@@ -108,8 +121,8 @@ Once the MCP server is configured:
 You: "Analyze the dependencies in my solution"
 AI: [Uses ProjGraph MCP to analyze and explain your architecture]
 
-You: "Are there any circular dependencies?"
-AI: [Detects and explains any circular references]
+You: "Show me the entity relationships in my DbContext"
+AI: [Generates and explains the database schema]
 ```
 
 ## 🔗 Links

@@ -1,15 +1,13 @@
 using FluentAssertions;
-using ProjGraph.Lib;
 using ProjGraph.Lib.Services;
 using ProjGraph.Mcp;
-using System.Text.Json;
 
 namespace ProjGraph.Tests.Integration.Mcp;
 
 public class McpIntegrationTests
 {
     [Fact]
-    public void GetProjectGraph_ShouldReturnValidJson()
+    public void GetProjectGraph_ShouldReturnValidMermaidDiagram()
     {
         // Arrange
         var graphService = new GraphService();
@@ -19,15 +17,13 @@ public class McpIntegrationTests
         slnxPath = Path.GetFullPath(slnxPath);
 
         // Act
-        var resultJson = tools.GetProjectGraph(slnxPath);
+        var result = tools.GetProjectGraph(slnxPath);
 
         // Assert
-        resultJson.Should().NotStartWith("Error");
-        var doc = JsonDocument.Parse(resultJson);
-        doc.RootElement.TryGetProperty("nodes", out _).Should().BeTrue();
-        doc.RootElement.TryGetProperty("edges", out _).Should().BeTrue();
-
-        var nodes = doc.RootElement.GetProperty("nodes");
-        nodes.GetArrayLength().Should().BeGreaterThan(0);
+        result.Should().NotStartWith("Error");
+        result.Should().StartWith("```mermaid");
+        result.Should().Contain("graph TD");
+        result.Should().Contain("-->");
+        result.Trim().Should().EndWith("```");
     }
 }
