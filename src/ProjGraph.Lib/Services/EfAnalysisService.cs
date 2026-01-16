@@ -91,12 +91,128 @@ public class EfAnalysisService : IEfAnalysisService
             }
         }
 
-        // Search for entity files in multiple locations
+        // Search for entity files in nearby locations (fast approach)
         var contextDirectory = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
-        var searchDirectories = GetEntitySearchDirectories(contextDirectory, entityNamespaces);
+
+        // Build simple search directories: context dir, parent, and common subdirectories
+        var searchDirectories = new List<string> { contextDirectory };
+        var parentDir = Directory.GetParent(contextDirectory);
+        if (parentDir != null)
+        {
+            searchDirectories.Add(parentDir.FullName);
+
+            // Add sibling directories that commonly contain entities
+            try
+            {
+                foreach (var siblingDir in Directory.GetDirectories(parentDir.FullName, "*",
+                             SearchOption.TopDirectoryOnly))
+                {
+                    var dirName = Path.GetFileName(siblingDir);
+                    if (dirName.Contains("Entities", StringComparison.OrdinalIgnoreCase) ||
+                        dirName.Contains("Models", StringComparison.OrdinalIgnoreCase) ||
+                        entityNamespaces.Any(ns => ns.Contains(dirName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        searchDirectories.Add(siblingDir);
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore access errors
+            }
+        }
+        
         var entityFiles = await DiscoverEntityFilesAsync(searchDirectories, entityTypeNames, path);
 
-        // Create compilation with all discovered entity files
+        // Fast approach: Use using directives to directly locate base class files
+        var baseClassFiles = new Dictionary<string, string>();
+        var baseClassNames = new HashSet<string>();
+
+        foreach (var entityFile in entityFiles.Values.Distinct())
+        {
+            var entityCode = await File.ReadAllTextAsync(entityFile);
+            var entityTree = CSharpSyntaxTree.ParseText(entityCode);
+            var entityRoot = await entityTree.GetRootAsync();
+
+            foreach (var classDecl in entityRoot.DescendantNodes().OfType<ClassDeclarationSyntax>())
+            {
+                if (classDecl.BaseList == null)
+                {
+                    continue;
+                }
+
+                foreach (var baseType in classDecl.BaseList.Types)
+                {
+                    var baseTypeName = baseType.Type.ToString();
+                    // Extract just the class name
+                    if (baseTypeName.Contains('<'))
+                    {
+                        baseTypeName = baseTypeName[..baseTypeName.IndexOf('<')];
+                    }
+
+                    // Skip interfaces (start with 'I' followed by uppercase)
+                    var isInterface = baseTypeName.StartsWith('I') &&
+                                      baseTypeName.Length >= 2 &&
+                                      char.IsUpper(baseTypeName[1]);
+
+                    if (!isInterface && !baseTypeName.Equals("DbContext", StringComparison.Ordinal))
+                    {
+                        baseClassNames.Add(baseTypeName);
+                    }
+                }
+            }
+        }
+
+        // Use using directives to find base class files quickly
+        if (baseClassNames.Count > 0)
+        {
+            // Find solution root (go up max 4 levels)
+            var solutionRoot = new DirectoryInfo(contextDirectory);
+            for (var i = 0; i < 4 && solutionRoot.Parent != null; i++)
+            {
+                solutionRoot = solutionRoot.Parent;
+            }
+
+            // Simple and reliable: Search for each base class file by name
+            foreach (var baseClassName in baseClassNames)
+            {
+                try
+                {
+                    // Search recursively for the base class file
+                    // Use EnumerateFiles for early exit on first match
+                    var foundFile = Directory.EnumerateFiles(
+                            solutionRoot.FullName,
+                            $"{baseClassName}.cs",
+                            new EnumerationOptions
+                            {
+                                IgnoreInaccessible = true,
+                                RecurseSubdirectories = true,
+                                MaxRecursionDepth = 10 // Limit depth for performance
+                            })
+                        .FirstOrDefault();
+
+                    if (foundFile != null)
+                    {
+                        baseClassFiles[baseClassName] = foundFile;
+                    }
+                }
+                catch
+                {
+                    // Ignore errors and continue
+                }
+            }
+        }
+
+        // Merge entity and base class files
+        foreach (var kvp in baseClassFiles)
+        {
+            if (!entityFiles.ContainsKey(kvp.Key))
+            {
+                entityFiles[kvp.Key] = kvp.Value;
+            }
+        }
+
+        // Create compilation with all discovered entity files (including base classes)
         var syntaxTrees = new List<SyntaxTree> { syntaxTree };
         foreach (var entityFile in entityFiles.Values.Distinct())
         {
@@ -113,10 +229,47 @@ public class EfAnalysisService : IEfAnalysisService
             MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location)
         };
 
-        // Try to add System.Collections reference if available
+        // Add System.Collections reference
         try
         {
             references.Add(MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location));
+        }
+        catch
+        {
+            // Not critical if not found
+        }
+
+        // Add System.ComponentModel.DataAnnotations for [MaxLength], [Required], etc.
+        try
+        {
+            references.Add(
+                MetadataReference.CreateFromFile(
+                    Assembly.Load("System.ComponentModel.Annotations").Location));
+        }
+        catch
+        {
+            // Try alternate assembly name
+            try
+            {
+                references.Add(
+                    MetadataReference.CreateFromFile(
+                        Assembly.Load("System.ComponentModel.DataAnnotations").Location));
+            }
+            catch
+            {
+                // Not critical if not found
+            }
+        }
+
+        // Add Microsoft.EntityFrameworkCore for EF-specific attributes
+        try
+        {
+            var efCoreAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "Microsoft.EntityFrameworkCore");
+            if (efCoreAssembly != null)
+            {
+                references.Add(MetadataReference.CreateFromFile(efCoreAssembly.Location));
+            }
         }
         catch
         {
@@ -128,7 +281,7 @@ public class EfAnalysisService : IEfAnalysisService
             .AddSyntaxTrees(syntaxTrees);
 
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
-        var contextType = semanticModel.GetDeclaredSymbol(contextClass) as INamedTypeSymbol;
+        var contextType = semanticModel.GetDeclaredSymbol(contextClass);
         if (contextType == null)
         {
             throw new Exception("Could not get semantic symbol for context");
@@ -137,42 +290,6 @@ public class EfAnalysisService : IEfAnalysisService
         return AnalyzeType(contextType, compilation);
     }
 
-    private static List<string> GetEntitySearchDirectories(string contextDirectory, List<string> entityNamespaces)
-    {
-        var searchDirs = new List<string> { contextDirectory };
-
-        // Add parent and sibling directories
-        var parentDir = Directory.GetParent(contextDirectory);
-        if (parentDir == null)
-        {
-            return searchDirs;
-        }
-
-        searchDirs.Add(parentDir.FullName);
-
-        // Search sibling directories that might contain entities
-        try
-        {
-            foreach (var siblingDir in Directory.GetDirectories(parentDir.FullName))
-            {
-                var dirName = Path.GetFileName(siblingDir);
-                // Look for common entity project patterns
-                if (dirName.Contains("Entities", StringComparison.OrdinalIgnoreCase) ||
-                    dirName.Contains("Models", StringComparison.OrdinalIgnoreCase) ||
-                    dirName.Contains("Domain", StringComparison.OrdinalIgnoreCase) ||
-                    entityNamespaces.Any(ns => ns.Contains(dirName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    searchDirs.Add(siblingDir);
-                }
-            }
-        }
-        catch
-        {
-            // Ignore access errors
-        }
-
-        return searchDirs;
-    }
 
     private static async Task<Dictionary<string, string>> DiscoverEntityFilesAsync(
         List<string> searchDirectories,
@@ -538,34 +655,77 @@ public class EfAnalysisService : IEfAnalysisService
         var entity = new EfEntity { Name = type.Name };
         var addedProperties = new HashSet<string>();
 
-        foreach (var prop in type.GetMembers().OfType<IPropertySymbol>())
+        // Check for [PrimaryKey] attribute on the class level
+        var primaryKeyNames = new HashSet<string>();
+        var currentType = type;
+        while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
         {
-            // Skip navigation properties for now in property list
-            if (IsNavigationProperty(prop, out _, out _))
+            foreach (var attribute in currentType.GetAttributes())
             {
-                continue;
+                if (attribute.AttributeClass?.Name != "PrimaryKeyAttribute")
+                {
+                    continue;
+                }
+
+                // Extract property names from [PrimaryKey(nameof(Id))] or [PrimaryKey("Id", "OtherId")]
+                foreach (var arg in attribute.ConstructorArguments)
+                {
+                    if (arg.Value is string pkName)
+                    {
+                        primaryKeyNames.Add(pkName);
+                    }
+                }
             }
 
-            // Skip if we've already added this property (prevents duplicates)
-            if (!addedProperties.Add(prop.Name))
+            currentType = currentType.BaseType;
+        }
+
+        // Collect properties from the entire type hierarchy (including base classes)
+        currentType = type;
+        while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
+        {
+            foreach (var prop in currentType.GetMembers().OfType<IPropertySymbol>())
             {
-                continue;
+                // Skip navigation properties for now in property list
+                if (IsNavigationProperty(prop, out _, out _))
+                {
+                    continue;
+                }
+
+                // Skip if we've already added this property (prevents duplicates)
+                if (!addedProperties.Add(prop.Name))
+                {
+                    continue;
+                }
+
+                var efProperty = new EfProperty
+                {
+                    Name = prop.Name,
+                    Type = prop.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                    // Primary Key Detection (multiple strategies):
+                    // 1. Explicitly specified in [PrimaryKey] attribute
+                    // 2. Property named "Id" (EF Core convention)
+                    // 3. Property named "{EntityName}Id" pattern
+                    IsPrimaryKey = primaryKeyNames.Contains(prop.Name) ||
+                                   prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) ||
+                                   (prop.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase) &&
+                                    (prop.Name.Equals($"{type.Name}Id", StringComparison.OrdinalIgnoreCase) ||
+                                     prop.Name.Equals($"{currentType.Name}Id", StringComparison.OrdinalIgnoreCase))),
+                    // Foreign Key Detection: Ends with "Id" but is NOT the primary key "Id"
+                    IsForeignKey = prop.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase) &&
+                                   !prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) &&
+                                   !primaryKeyNames.Contains(prop.Name),
+                    IsRequired = !prop.Type.IsNullable()
+                };
+
+                // Extract constraints from attributes
+                ExtractPropertyConstraints(prop, efProperty);
+
+                entity.Properties.Add(efProperty);
             }
 
-            var efProperty = new EfProperty
-            {
-                Name = prop.Name,
-                Type = prop.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
-                IsPrimaryKey = prop.Name.Equals("Id", StringComparison.OrdinalIgnoreCase) ||
-                               prop.Name.Equals($"{type.Name}Id", StringComparison.OrdinalIgnoreCase),
-                IsForeignKey = prop.Name.EndsWith("Id") && !prop.Name.Equals("Id"),
-                IsRequired = !prop.Type.IsNullable() && prop.Type.SpecialType != SpecialType.System_String
-            };
-
-            // Extract constraints from attributes
-            ExtractPropertyConstraints(prop, efProperty);
-
-            entity.Properties.Add(efProperty);
+            // Move to base type
+            currentType = currentType.BaseType;
         }
 
         return entity;
@@ -665,9 +825,33 @@ public class EfAnalysisService : IEfAnalysisService
 
     private static bool IsEntityCandidate(INamedTypeSymbol type)
     {
-        // Simple heuristic: not a primitive, not a string, not in System namespace
-        return type.SpecialType == SpecialType.None &&
-               type.ContainingNamespace?.Name != "System";
+        // Check if it's a primitive or well-known value type
+        if (type.SpecialType != SpecialType.None)
+        {
+            return false; // Primitives are not entities
+        }
+
+        // Check if it's in System namespace (including nested namespaces like System.*)
+        var ns = type.ContainingNamespace;
+        while (ns != null && !ns.IsGlobalNamespace)
+        {
+            if (ns.Name == "System")
+            {
+                return false; // System types are not entities
+            }
+
+            ns = ns.ContainingNamespace;
+        }
+
+        // Check for common value types that are not entities
+        var typeName = type.Name;
+        if (typeName == "String" || typeName == "Guid" || typeName == "DateTime" ||
+            typeName == "DateTimeOffset" || typeName == "TimeSpan" || typeName == "Decimal")
+        {
+            return false;
+        }
+
+        return true; // Likely an entity
     }
 
     private static bool HasInverseCollection(IPropertySymbol prop, INamedTypeSymbol targetType)

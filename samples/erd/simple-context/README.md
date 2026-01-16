@@ -107,6 +107,7 @@ The Mermaid diagram renders as a visual ERD showing:
 - **DbContext files** (`.cs`) - Direct analysis of DbContext classes
 - **Auto-detection** - Finds `*DbContext.cs` files in current directory
 - **No build required** - Works with source code directly
+- **Inheritance support** - Includes properties from base classes (e.g., `AuditEntity`, `BaseEntity`)
 
 ### ✅ Comprehensive Type Information
 
@@ -179,6 +180,10 @@ git push
 💡 **Nullable Types**: Original C# types (including `?` for nullable) are preserved in comments
 
 💡 **Join Tables**: Many-to-many relationships create explicit join table entities for clarity
+
+💡 **Inheritance**: Base class properties are automatically included (e.g., `Id`, `CreatedAt` from `AuditEntity`)
+
+💡 **MaxLength Constraints**: `[MaxLength(N)]` attributes are extracted and displayed as `max:N`
 
 💡 **Complex Schemas**: Works with large DbContexts containing dozens of entities
 
