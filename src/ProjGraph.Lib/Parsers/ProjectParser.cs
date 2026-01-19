@@ -3,8 +3,27 @@ using ProjGraph.Core.Models;
 
 namespace ProjGraph.Lib.Parsers;
 
+/// <summary>
+/// Provides functionality to parse project files and extract project details and references.
+/// </summary>
 public static class ProjectParser
 {
+    /// <summary>
+    /// Parses the specified project file and extracts project details and its references.
+    /// </summary>
+    /// <param name="projectPath">The file path to the project file to be parsed.</param>
+    /// <returns>
+    /// A tuple containing:
+    /// <list type="bullet">
+    /// <item>
+    /// <description>The parsed <see cref="Project"/> object with details such as ID, name, path, framework, and type.</description>
+    /// </item>
+    /// <item>
+    /// <description>A collection of project references as strings.</description>
+    /// </item>
+    /// </list>
+    /// </returns>
+    /// <exception cref="InvalidOperationException">Thrown when the project file cannot be parsed.</exception>
     public static (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath)
     {
         var root = ProjectRootElement.Open(projectPath)

@@ -9,19 +9,48 @@ using System.ComponentModel;
 
 namespace ProjGraph.Cli.Commands;
 
+/// <summary>
+/// Represents the command for visualizing the structure of a solution or project file.
+/// </summary>
+/// <remarks>
+/// The <see cref="VisualizeCommand"/> class is an asynchronous command that uses the <see cref="Settings"/> class
+/// to configure the path to the solution or project file and the desired output format. It processes the input
+/// and renders the structure in the specified format (tree or mermaid).
+/// </remarks>
 public sealed class VisualizeCommand : AsyncCommand<VisualizeCommand.Settings>
 {
+    /// <summary>
+    /// Represents the settings for the `VisualizeCommand`.
+    /// </summary>
+    /// <remarks>
+    /// This class contains the configuration options for the `VisualizeCommand`, including the path to the solution or project file
+    /// and the desired output format. It also provides validation for the input settings.
+    /// </remarks>
     public sealed class Settings : CommandSettings
     {
+        /// <summary>
+        /// Gets or sets the path to the .sln, .slnx, or .csproj file to be analyzed.
+        /// </summary>
         [CommandArgument(0, "<PATH>")]
         [Description("The path to the .sln, .slnx, or .csproj file")]
         public string Path { get; init; } = string.Empty;
 
+        /// <summary>
+        /// Gets or sets the output format for the visualization.
+        /// Supported formats are "tree" and "mermaid".
+        /// </summary>
         [CommandOption("-f|--format")]
         [Description("The output format (tree, mermaid)")]
         [DefaultValue("tree")]
         public string Format { get; init; } = "tree";
 
+        /// <summary>
+        /// Validates the settings provided for the command.
+        /// Ensures that the specified path exists, is valid, and that the format is either "tree" or "mermaid".
+        /// </summary>
+        /// <returns>
+        /// A <see cref="ValidationResult"/> indicating whether the settings are valid.
+        /// </returns>
         public override ValidationResult Validate()
         {
             if (string.IsNullOrWhiteSpace(Path))
@@ -43,6 +72,22 @@ public sealed class VisualizeCommand : AsyncCommand<VisualizeCommand.Settings>
         }
     }
 
+    /// <summary>
+    /// Executes the command asynchronously, analyzing the specified solution or project file and rendering its structure
+    /// in the specified format (tree or mermaid).
+    /// </summary>
+    /// <param name="context">
+    /// The command context containing information about the execution environment.
+    /// </param>
+    /// <param name="settings">
+    /// The settings for the command, including the path to the solution or project file and the desired output format.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token to monitor for cancellation requests.
+    /// </param>
+    /// <returns>
+    /// An integer representing the exit code of the command. Returns 0 if successful, 1 otherwise.
+    /// </returns>
     public override async Task<int> ExecuteAsync(
         CommandContext context,
         Settings settings,
