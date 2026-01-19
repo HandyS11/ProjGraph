@@ -45,6 +45,7 @@ jobs:
       - name: Build and analyze
         shell: powershell
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"HandyS11_ProjGraph_e194b77c-4ce9-44cc-b6ad-4e5960271a22" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}"
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"HandyS11_ProjGraph_e194b77c-4ce9-44cc-b6ad-4e5960271a22" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
           dotnet build ProjGraph.slnx
+          dotnet test ProjGraph.slnx --no-build --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
           ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
