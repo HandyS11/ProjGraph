@@ -77,7 +77,7 @@ public static class MermaidErdRenderer
         // Add constraints
         var constraints = new List<string>();
 
-        if (prop.IsRequired && !prop.IsPrimaryKey)
+        if (prop is { IsRequired: true, IsPrimaryKey: false })
         {
             constraints.Add("required");
         }
@@ -89,14 +89,9 @@ public static class MermaidErdRenderer
 
         if (prop.Precision.HasValue)
         {
-            if (prop.Scale.HasValue)
-            {
-                constraints.Add($"precision({prop.Precision},{prop.Scale})");
-            }
-            else
-            {
-                constraints.Add($"precision:{prop.Precision}");
-            }
+            constraints.Add(prop.Scale.HasValue
+                ? $"precision({prop.Precision},{prop.Scale})"
+                : $"precision:{prop.Precision}");
         }
 
         if (!string.IsNullOrEmpty(prop.DefaultValue))

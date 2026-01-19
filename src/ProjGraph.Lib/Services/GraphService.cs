@@ -1,10 +1,11 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Interfaces;
 using ProjGraph.Lib.Parsers;
 using System.Diagnostics;
 
 namespace ProjGraph.Lib.Services;
 
-public class GraphService
+public class GraphService : IGraphService
 {
     public SolutionGraph BuildGraph(string path)
     {
@@ -74,7 +75,7 @@ public class GraphService
         );
     }
 
-    private static IEnumerable<string> DiscoverProjectsRecursively(string rootProjectPath)
+    private static HashSet<string> DiscoverProjectsRecursively(string rootProjectPath)
     {
         var discovered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var toProcess = new Queue<string>();

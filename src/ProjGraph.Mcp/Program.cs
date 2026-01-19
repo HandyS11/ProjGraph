@@ -26,7 +26,7 @@ public static class Program
         .WithStdioServerTransport()
         .WithTools<ProjGraphTools>();
 
-        builder.Services.AddSingleton<GraphService>();
+        builder.Services.AddSingleton<IGraphService, GraphService>();
         builder.Services.AddSingleton<IEfAnalysisService, EfAnalysisService>();
         builder.Services.AddSingleton<ProjGraphTools>();
 
@@ -41,8 +41,8 @@ public class ProjGraphTools(GraphService graphService, IEfAnalysisService efServ
     [McpServerTool]
     [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
     public string GetProjectGraph(
-        [Description("Absolute path to the project or solution file.")] string path,
-        [Description("Include NuGet packages?")] bool includePackages = false)
+        [Description("Absolute path to the project or solution file.")]
+        string path)
     {
         try
         {
