@@ -1,5 +1,5 @@
 using ProjGraph.Lib.Rendering;
-using ProjGraph.Lib.Services;
+using ProjGraph.Lib.Services.EfAnalysis;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;

@@ -5,6 +5,7 @@ using ModelContextProtocol.Server;
 using ProjGraph.Lib.Interfaces;
 using ProjGraph.Lib.Rendering;
 using ProjGraph.Lib.Services;
+using ProjGraph.Lib.Services.EfAnalysis;
 using System.ComponentModel;
 
 namespace ProjGraph.Mcp;
@@ -16,15 +17,11 @@ public static class Program
         var builder = Host.CreateApplicationBuilder(args);
 
         builder.Services.AddMcpServer(options =>
-        {
-            options.ServerInfo = new Implementation
             {
-                Name = "ProjGraph",
-                Version = "1.0.0"
-            };
-        })
-        .WithStdioServerTransport()
-        .WithTools<ProjGraphTools>();
+                options.ServerInfo = new Implementation { Name = "ProjGraph", Version = "1.0.0" };
+            })
+            .WithStdioServerTransport()
+            .WithTools<ProjGraphTools>();
 
         builder.Services.AddSingleton<IGraphService, GraphService>();
         builder.Services.AddSingleton<IEfAnalysisService, EfAnalysisService>();
