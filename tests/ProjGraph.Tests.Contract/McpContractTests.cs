@@ -1,8 +1,8 @@
-using System.Reflection;
-using System.ComponentModel;
 using FluentAssertions;
-using ProjGraph.Mcp;
 using ModelContextProtocol.Server;
+using ProjGraph.Mcp;
+using System.ComponentModel;
+using System.Reflection;
 
 namespace ProjGraph.Tests.Contract;
 
@@ -26,6 +26,5 @@ public class McpContractTests
         // Assert parameters match spec
         var parameters = method.GetParameters();
         parameters.Should().Contain(p => p.Name == "path" && p.ParameterType == typeof(string));
-        parameters.Should().Contain(p => p.Name == "includePackages" && p.ParameterType == typeof(bool));
     }
 }

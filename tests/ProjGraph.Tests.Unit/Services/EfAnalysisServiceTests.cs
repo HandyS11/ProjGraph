@@ -1,5 +1,5 @@
 using FluentAssertions;
-using ProjGraph.Lib.Services;
+using ProjGraph.Lib.Services.EfAnalysis;
 
 namespace ProjGraph.Tests.Unit.Services;
 

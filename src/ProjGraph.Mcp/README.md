@@ -16,7 +16,6 @@ Analyzes a solution or project file and returns the dependency graph as a Mermai
 **Parameters:**
 
 - `path` (string): Absolute path to `.sln`, `.slnx`, or `.csproj` file
-- `includePackages` (bool): Include NuGet packages (default: false)
 
 **Returns:** Mermaid graph diagram code
 

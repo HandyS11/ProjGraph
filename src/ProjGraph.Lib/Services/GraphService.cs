@@ -1,11 +1,22 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Interfaces;
 using ProjGraph.Lib.Parsers;
 using System.Diagnostics;
 
 namespace ProjGraph.Lib.Services;
 
-public class GraphService
+/// <summary>
+/// Service responsible for building a solution graph from a given file path.
+/// </summary>
+public class GraphService : IGraphService
 {
+    /// <summary>
+    /// Builds a solution graph by analyzing the specified file path.
+    /// The file can be a solution file (.sln or .slnx) or a project file (.csproj).
+    /// </summary>
+    /// <param name="path">The path to the solution or project file.</param>
+    /// <returns>A <see cref="SolutionGraph"/> object representing the projects and their dependencies.</returns>
+    /// <exception cref="ArgumentException">Thrown when the file type is not supported.</exception>
     public SolutionGraph BuildGraph(string path)
     {
         IEnumerable<string> projectFilePaths;
@@ -74,7 +85,17 @@ public class GraphService
         );
     }
 
-    private static IEnumerable<string> DiscoverProjectsRecursively(string rootProjectPath)
+    /// <summary>
+    /// Discovers all project file paths recursively starting from the specified root project path.
+    /// </summary>
+    /// <param name="rootProjectPath">The full path to the root project file to start the discovery from.</param>
+    /// <returns>A <see cref="HashSet{T}"/> containing the full paths of all discovered project files.</returns>
+    /// <remarks>
+    /// This method parses the root project file to find its references and recursively discovers all referenced projects.
+    /// It ensures that each project is only processed once by maintaining a set of discovered project paths.
+    /// If a project fails to parse, it is skipped, and the error is logged for debugging purposes.
+    /// </remarks>
+    private static HashSet<string> DiscoverProjectsRecursively(string rootProjectPath)
     {
         var discovered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var toProcess = new Queue<string>();
