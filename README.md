@@ -1,6 +1,12 @@
 # ProjGraph
 
-<!-- mcp-name: io.github.handys11/projgraph -->
+![CI](https://github.com/HandyS11/ProjGraph/actions/workflows/ci.yml/badge.svg)
+![CD](https://github.com/HandyS11/ProjGraph/actions/workflows/publish.yml/badge.svg)
+
+[![ProjGraph.Cli NuGet](https://img.shields.io/nuget/v/ProjGraph.Cli?label=CLI&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Cli)
+[![ProjGraph.Cli Downloads](https://img.shields.io/nuget/dt/ProjGraph.Cli?label=CLI%20downloads&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Cli)
+[![ProjGraph.Mcp NuGet](https://img.shields.io/nuget/v/ProjGraph.Mcp?label=MCP&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Mcp)
+[![ProjGraph.Mcp Downloads](https://img.shields.io/nuget/dt/ProjGraph.Mcp?label=MCP%20downloads&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Mcp)
 
 **ProjGraph** is a .NET tool ecosystem for visualizing and analyzing project dependencies within solutions. It provides
 both a CLI for manual analysis and an MCP server for AI-assisted exploration of your codebase architecture.
@@ -129,5 +135,3 @@ AI: [Generates and explains the database schema]
 
 - **CLI Package**: [ProjGraph.Cli on NuGet](https://www.nuget.org/packages/ProjGraph.Cli)
 - **MCP Package**: [ProjGraph.Mcp on NuGet](https://www.nuget.org/packages/ProjGraph.Mcp)
-- **Issues**: [GitHub Issues](https://github.com/HandyS11/ProjGraph/issues)
-- **MCP Specification**: [Model Context Protocol](https://modelcontextprotocol.io/)
