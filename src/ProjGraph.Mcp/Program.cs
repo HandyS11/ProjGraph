@@ -36,7 +36,7 @@ public static class Program
 }
 
 [McpServerToolType]
-public class ProjGraphTools(GraphService graphService, IEfAnalysisService efService)
+public class ProjGraphTools(IGraphService graphService, IEfAnalysisService efService)
 {
     [McpServerTool]
     [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
