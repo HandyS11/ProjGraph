@@ -10,17 +10,17 @@ namespace ProjGraph.Lib.Services.EfAnalysis;
 public static class CompilationFactory
 {
     /// <summary>
-    /// Creates a new Roslyn <see cref="Compilation"/> object using the provided syntax trees and necessary metadata references.
+    /// Creates a new Roslyn <see cref="CSharpCompilation"/> object using the provided syntax trees and necessary metadata references.
     /// </summary>
     /// <param name="syntaxTrees">A collection of <see cref="SyntaxTree"/> objects to include in the compilation.</param>
     /// <returns>
-    /// A <see cref="Compilation"/> object that represents the compiled code from the provided syntax trees.
+    /// A <see cref="CSharpCompilation"/> object that represents the compiled code from the provided syntax trees.
     /// </returns>
     /// <remarks>
     /// This method generates a new C# compilation named "AdHoc" by adding the provided syntax trees and
     /// a set of metadata references built using the <see cref="BuildMetadataReferences"/> method.
     /// </remarks>
-    public static Compilation CreateCompilation(IEnumerable<SyntaxTree> syntaxTrees)
+    public static CSharpCompilation CreateCompilation(IEnumerable<SyntaxTree> syntaxTrees)
     {
         var references = BuildMetadataReferences();
         return CSharpCompilation.Create("AdHoc")

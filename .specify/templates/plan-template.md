@@ -35,7 +35,6 @@
 - [ ] **II. MCP Native Interoperability**: Tool functionality exposed via MCP?
 - [ ] **III. Library-First Core**: Logic in libraries, not just CLI/MCP?
 - [ ] **IV. Absolute Testing Requirement**: Tests planned for unit, integration, and MCP contract?
-- [ ] **V. Traceability & Semantic Stability**: OpenTelemetry and SemVer considered?
 
 ## Project Structure
 

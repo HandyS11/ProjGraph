@@ -1,0 +1,153 @@
+using System.Text;
+using ProjGraph.Core.Models;
+
+namespace ProjGraph.Lib.Rendering;
+
+/// <summary>
+/// Provides functionality to render a ClassModel as a Mermaid class diagram.
+/// </summary>
+public static class MermaidClassDiagramRenderer
+{
+    /// <summary>
+    /// Renders a ClassModel as a Mermaid class diagram.
+    /// </summary>
+    /// <param name="model">The ClassModel containing the types, relationships, and an optional title to be rendered.</param>
+    /// <returns>A string representation of the Mermaid class diagram.</returns>
+    public static string Render(ClassModel model)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("```mermaid");
+        sb.AppendLine("classDiagram");
+
+        if (!string.IsNullOrEmpty(model.Title))
+        {
+            sb.AppendLine($"    title: {model.Title}");
+        }
+
+        foreach (var type in model.Types)
+        {
+            RenderType(sb, type);
+        }
+
+        foreach (var relationship in model.Relationships)
+        {
+            RenderRelationship(sb, relationship);
+        }
+
+        sb.AppendLine("```");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Renders a type definition as a class in a Mermaid class diagram.
+    /// </summary>
+    /// <param name="sb">The <see cref="StringBuilder"/> used to construct the Mermaid diagram.</param>
+    /// <param name="type">The type definition containing details such as the full name, display name, kind, and members of the type.</param>
+    private static void RenderType(StringBuilder sb, TypeDefinition type)
+    {
+        var sanitizedName = Sanitize(type.FullName);
+        var displayName = type.Name;
+
+        // Use generics syntax supported by Mermaid (~T~)
+        if (displayName.Contains('<'))
+        {
+            displayName = displayName.Replace('<', '~').Replace('>', '~');
+        }
+
+        sb.AppendLine($"    class {sanitizedName} [\"{displayName}\"]");
+
+        if (type.Kind != TypeKind.Class)
+        {
+            sb.AppendLine($"    <<{type.Kind.ToString().ToLower()}>> {sanitizedName}");
+        }
+
+        if (type.Members.Count <= 0)
+        {
+            return;
+        }
+
+        sb.AppendLine($"    class {sanitizedName} {{");
+        foreach (var member in type.Members)
+        {
+            RenderMember(sb, member);
+        }
+
+        sb.AppendLine("    }");
+    }
+
+    /// <summary>
+    /// Renders a member of a class in a Mermaid class diagram.
+    /// </summary>
+    /// <param name="sb">The <see cref="StringBuilder"/> used to construct the Mermaid diagram.</param>
+    /// <param name="member">The member definition containing details such as name, type, visibility, and kind.</param>
+    private static void RenderMember(StringBuilder sb, MemberDefinition member)
+    {
+        var visibility = GetVisibilityChar(member.Visibility);
+        var type = member.Type.Replace('<', '~').Replace('>', '~');
+
+        if (member.Kind == MemberKind.Method)
+        {
+            var parameters = member.Parameters != null
+                ? string.Join(", ",
+                    member.Parameters.Select(p => $"{p.Type.Replace('<', '~').Replace('>', '~')} {p.Name}"))
+                : "";
+            sb.AppendLine($"        {visibility}{member.Name}({parameters}) {type}");
+        }
+        else
+        {
+            sb.AppendLine($"        {visibility}{type} {member.Name}");
+        }
+    }
+
+    /// <summary>
+    /// Renders a relationship between two types in a Mermaid class diagram.
+    /// </summary>
+    /// <param name="sb">The <see cref="StringBuilder"/> used to construct the Mermaid diagram.</param>
+    /// <param name="relationship">The relationship to be rendered, containing the source, target, and kind of relationship.</param>
+    private static void RenderRelationship(StringBuilder sb, Relationship relationship)
+    {
+        var from = Sanitize(relationship.From);
+        var to = Sanitize(relationship.To);
+        var op = relationship.Kind switch
+        {
+            RelationshipKind.Inheritance => "<|--",
+            RelationshipKind.Realization => "<|..",
+            RelationshipKind.Association => "-->",
+            RelationshipKind.Dependency => "..>",
+            _ => "-->"
+        };
+
+        sb.AppendLine($"    {to} {op} {from}");
+    }
+
+    /// <summary>
+    /// Gets the visibility character corresponding to the specified visibility level.
+    /// </summary>
+    /// <param name="visibility">The visibility level of a member (e.g., Public, Protected, Internal, Private).</param>
+    /// <returns>
+    /// A character representing the visibility:
+    /// '+' for public, '#' for protected, '~' for internal, '-' for private.
+    /// Defaults to '+' for unknown visibility levels.
+    /// </returns>
+    private static char GetVisibilityChar(Visibility visibility)
+    {
+        return visibility switch
+        {
+            Visibility.Public => '+',
+            Visibility.Protected => '#',
+            Visibility.Internal => '~',
+            Visibility.Private => '-',
+            _ => '+'
+        };
+    }
+
+    /// <summary>
+    /// Sanitizes a given string by replacing certain characters with underscores.
+    /// </summary>
+    /// <param name="name">The input string to be sanitized.</param>
+    /// <returns>A sanitized string where '.', '`', '&lt;', and '&gt;' are replaced with '_'.</returns>
+    private static string Sanitize(string name)
+    {
+        return name.Replace('.', '_').Replace('`', '_').Replace('<', '_').Replace('>', '_');
+    }
+}

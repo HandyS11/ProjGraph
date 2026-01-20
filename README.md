@@ -26,6 +26,9 @@ projgraph visualize ./MySolution.slnx
 
 # Generate Entity Relationship Diagram
 projgraph erd ./Data/MyDbContext.cs
+
+# Generate Class Diagram for a class and its hierarchy
+projgraph classdiagram ./Models/User.cs
 ```
 
 📖 [Full CLI Documentation](./src/ProjGraph.Cli/README.md)
@@ -54,32 +57,11 @@ Configure your MCP client (e.g., GitHub Copilot, Claude) with the following sett
 
 - **📊 Multiple Output Formats**: ASCII tree and Mermaid.js diagrams
 - **🗄️ Entity Relationship Diagrams**: Generate ERDs from EF Core DbContext files
+- **🏗️ Class Hierarchies**: Visualize class diagrams with inheritance and dependencies
 - **🔄 Circular Dependency Detection**: Automatically identifies problematic cycles
 - **📁 Modern .NET Support**: Full support for `.slnx`, `.sln`, and `.csproj` files
 - **🤖 AI Integration**: MCP server for GitHub Copilot, Claude, and other AI assistants
 - **⚡ Fast & Reliable**: Efficient parsing and graph algorithms
-
-## 📦 Project Structure
-
-```x
-ProjGraph/
-├── src/
-│   ├── ProjGraph.Core/      # Domain models (Project, Dependency, SolutionGraph)
-│   ├── ProjGraph.Lib/       # Business logic (parsers, algorithms, graph service)
-│   ├── ProjGraph.Cli/       # Command-line interface tool
-│   └── ProjGraph.Mcp/       # Model Context Protocol server
-└── tests/
-    ├── ProjGraph.Tests.Unit/        # Unit tests
-    ├── ProjGraph.Tests.Integration/ # Integration tests
-    └── ProjGraph.Tests.Contract/    # Contract tests for MCP
-```
-
-### Layer Responsibilities
-
-- **Core**: Domain entities and value objects (no dependencies)
-- **Lib**: Parsing logic, graph algorithms, and service orchestration
-- **Cli**: User-facing command-line interface using Spectre.Console
-- **Mcp**: Model Context Protocol server for AI integration
 
 ## 🛠️ Development
 
@@ -117,6 +99,16 @@ projgraph erd ./Data/MyDbContext.cs
 
 # Save to documentation
 projgraph erd ./Data/MyDbContext.cs > docs/database-schema.md
+```
+
+### Visualize Class Hierarchies
+
+```bash
+# Generate diagram for a class and its dependencies
+projgraph classdiagram ./Models/Admin.cs
+
+# Control discovery depth (default: 3)
+projgraph classdiagram ./Models/Admin.cs --depth 5
 ```
 
 ### With AI Assistants

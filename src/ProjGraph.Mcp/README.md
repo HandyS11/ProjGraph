@@ -1,7 +1,7 @@
 # ProjGraph MCP Server
 
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that enables AI assistants to analyze .NET
-solution architectures and generate Entity Relationship Diagrams.
+solution architectures, generate Entity Relationship Diagrams, and visualize class hierarchies.
 
 ## Requirements
 
@@ -21,7 +21,7 @@ Analyzes a solution or project file and returns the dependency graph as a Mermai
 
 **Example prompts:**
 
-```
+```x
 "Analyze the dependencies in ./MySolution.slnx"
 "Show me the project structure"
 "Are there any circular dependencies?"
@@ -49,10 +49,29 @@ Generates a Mermaid Entity Relationship Diagram from an EF Core DbContext file.
 
 **Example prompts:**
 
-```
+```x
 "Show me the database schema from ./Data/MyDbContext.cs"
 "Generate an ERD for my DbContext"
 "What are the entity relationships in my database?"
+```
+
+### `get_class_diagram`
+
+Generates a Mermaid Class Diagram for a specific class, discovering its inheritance hierarchy and dependencies.
+
+**Parameters:**
+
+- `path` (string): Absolute path to the C# file containing the target class
+- `depth` (number, optional): Recursion depth for discovery (default: 3)
+
+**Returns:** Mermaid class diagram code
+
+**Example prompts:**
+
+```x
+"Show me the class hierarchy for ./Models/Admin.cs"
+"Visualize the dependencies of the GuestUser class in Guest.cs"
+"Draw a class diagram for my domain model starting at ./Domain/Entity.cs"
 ```
 
 ## License

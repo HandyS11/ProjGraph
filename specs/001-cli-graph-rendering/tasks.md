@@ -25,7 +25,6 @@
 
 - [x] T005 Implement Project, Dependency, and Solution entities in `src/ProjGraph.Core/Models/`
 - [x] T006 Implement IDependencyGraph interface and Tarjan's SCC algorithm logic in `src/ProjGraph.Lib/Algorithms/`
-- [x] T007 [P] Implement structured logging and OpenTelemetry activity sources in `src/ProjGraph.Core/Diagnostics/`
 - [x] T008 [P] Initialize xUnit test projects for Unit, Integration, and Contract tests in `tests/`
 
 **Checkpoint**: Core models and graph algorithms are established and testable.

@@ -1,17 +1,21 @@
 <Solution>
-  <Folder Name="/samples/"/>
-  <Folder Name="/samples/erd/"/>
-  <Folder Name="/samples/erd/simple-context/">
-    <File Path="samples/erd/simple-context/README.md"/>
-    <Project Path="samples/erd/simple-context/EntityFramework/EntityFramework.csproj"/>
+  <Folder Name="/samples/" />
+  <Folder Name="/samples/classdiagram/" />
+  <Folder Name="/samples/classdiagram/simple-hierarchy/">
+    <Project Path="samples/classdiagram/simple-hierarchy/SimpleHierarchy.csproj" />
   </Folder>
-  <Folder Name="/samples/visualize/"/>
+  <Folder Name="/samples/erd/" />
+  <Folder Name="/samples/erd/simple-context/">
+    <File Path="samples/erd/simple-context/README.md" />
+    <Project Path="samples/erd/simple-context/EntityFramework/EntityFramework.csproj" />
+  </Folder>
+  <Folder Name="/samples/visualize/" />
   <Folder Name="/samples/visualize/simple-dependencies/">
-    <File Path="samples/visualize/simple-dependencies/README.md"/>
-    <Project Path="samples/visualize/simple-dependencies/A/A.csproj"/>
-    <Project Path="samples/visualize/simple-dependencies/B/B.csproj"/>
-    <Project Path="samples/visualize/simple-dependencies/C/C.csproj"/>
-    <Project Path="samples/visualize/simple-dependencies/D/D.csproj"/>
+    <File Path="samples/visualize/simple-dependencies/README.md" />
+    <Project Path="samples/visualize/simple-dependencies/A/A.csproj" />
+    <Project Path="samples/visualize/simple-dependencies/B/B.csproj" />
+    <Project Path="samples/visualize/simple-dependencies/C/C.csproj" />
+    <Project Path="samples/visualize/simple-dependencies/D/D.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
@@ -31,7 +35,7 @@
   <Folder Name="/Solution Items/.github/workflows/">
     <File Path=".github/workflows/ci.yml" />
     <File Path=".github/workflows/publish.yml" />
-    <File Path=".github/workflows/sonarqube.yml"/>
+    <File Path=".github/workflows/sonarqube.yml" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/ProjGraph.Core/ProjGraph.Core.csproj" />

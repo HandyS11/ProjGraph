@@ -86,7 +86,6 @@
 **Purpose**: Improvements that affect multiple user stories
 
 - [x] T019 Add interactive selection prompt and path fallback in \src/ProjGraph.Cli/Commands/ErdCommand.cs\
-- [x] T020 [P] Add OpenTelemetry tracing and spans to EF extraction logic in \src/ProjGraph.Lib/Services/EfAnalysisService.cs\
 - [x] T021 Final verification of \quickstart.md\ scenarios and documentation updates
 
 ---

@@ -22,6 +22,11 @@ public static class Program
                 .WithDescription("Generate a Mermaid ERD for an Entity Framework Core DbContext")
                 .WithExample("erd", "Data/AppDbContext.cs")
                 .WithExample("erd", "Data/AppDbContext.cs", "--context", "BlogContext");
+
+            config.AddCommand<ClassDiagramCommand>("classdiagram")
+                .WithDescription("Generate a Mermaid Class Diagram for a C# file")
+                .WithExample("classdiagram", "Services/UserService.cs")
+                .WithExample("classdiagram", "Models/User.cs", "--inheritance", "--dependencies");
         });
 
         return app.Run(args);

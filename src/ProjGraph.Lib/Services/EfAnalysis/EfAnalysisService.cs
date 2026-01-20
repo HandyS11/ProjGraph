@@ -3,7 +3,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Interfaces;
-using System.Diagnostics;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
 
@@ -12,8 +11,6 @@ namespace ProjGraph.Lib.Services.EfAnalysis;
 /// </summary>
 public class EfAnalysisService : IEfAnalysisService
 {
-    private static readonly ActivitySource ActivitySource = new("ProjGraph.Lib.EfAnalysis");
-
     /// <summary>
     /// Discovers all DbContext classes within a specified C# file and returns their names as a list of strings.
     /// </summary>
@@ -24,19 +21,15 @@ public class EfAnalysisService : IEfAnalysisService
     /// </returns>
     /// <remarks>
     /// This method performs the following steps:
-    /// 1. Starts an activity for tracing the discovery process and sets relevant tags.
-    /// 2. Validates that the provided file path corresponds to a C# source file.
-    /// 3. Reads the content of the specified C# file asynchronously and parses it into a syntax tree.
-    /// 4. Retrieves the root node of the syntax tree.
-    /// 5. Identifies all class declarations in the syntax tree that are DbContext classes using the
+    /// 1. Validates that the provided file path corresponds to a C# source file.
+    /// 2. Reads the content of the specified C# file asynchronously and parses it into a syntax tree.
+    /// 3. Retrieves the root node of the syntax tree.
+    /// 4. Identifies all class declarations in the syntax tree that are DbContext classes using the
     ///    <see cref="DbContextIdentifier.IsDbContext"/> method.
-    /// 6. Extracts and returns the distinct names of the discovered DbContext classes.
+    /// 5. Extracts and returns the distinct names of the discovered DbContext classes.
     /// </remarks>
     public async Task<List<string>> DiscoverContextsAsync(string path)
     {
-        using var activity = ActivitySource.StartActivity();
-        activity?.SetTag("path", path);
-
         ValidateCsFilePath(path);
 
         var syntaxTree = CSharpSyntaxTree.ParseText(await File.ReadAllTextAsync(path));
@@ -65,17 +58,12 @@ public class EfAnalysisService : IEfAnalysisService
     /// </returns>
     /// <remarks>
     /// This method performs the following steps:
-    /// 1. Starts an activity for tracing the analysis process and sets relevant tags.
-    /// 2. Validates that the provided file path corresponds to a C# source file.
-    /// 3. Calls the <see cref="AnalyzeFileAsync"/> method to perform the actual analysis of the DbContext class
+    /// 1. Validates that the provided file path corresponds to a C# source file.
+    /// 2. Calls the <see cref="AnalyzeFileAsync"/> method to perform the actual analysis of the DbContext class
     ///    and its associated entities.
     /// </remarks>
     public async Task<EfModel> AnalyzeContextAsync(string path, string? contextName = null)
     {
-        using var activity = ActivitySource.StartActivity();
-        activity?.SetTag("path", path);
-        activity?.SetTag("contextName", contextName);
-
         ValidateCsFilePath(path);
 
         return await AnalyzeFileAsync(path, contextName);
