@@ -1,6 +1,7 @@
 # ProjGraph CLI
 
-Command-line tool for visualizing .NET project dependencies, generating Entity Relationship Diagrams, and visualizing class hierarchies.
+Command-line tool for visualizing .NET project dependencies, generating Entity Relationship Diagrams, and visualizing
+class hierarchies.
 
 ## Installation
 

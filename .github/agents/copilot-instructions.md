@@ -3,6 +3,7 @@
 Auto-generated from all feature plans. Last updated: 2026-01-13
 
 ## Active Technologies
+
 - .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Spectre.Console` (003-mermaid-class-diagram)
 
 - .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Microsoft.CodeAnalysis.Workspaces.MSBuild`,
@@ -26,6 +27,7 @@ tests/
 .NET 10.0 (C# 14+): Follow standard conventions
 
 ## Recent Changes
+
 - 003-mermaid-class-diagram: Added .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Spectre.Console`
 
 - 002-dbcontext-erd: Added .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`,

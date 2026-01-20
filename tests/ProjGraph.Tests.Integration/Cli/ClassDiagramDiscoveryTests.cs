@@ -39,7 +39,7 @@ public class ClassDiagramDiscoveryTests : IDisposable
 
         await File.WriteAllTextAsync(serviceFile, """
                                                   namespace TestNamespace;
-                                                  
+
                                                   public class UserService 
                                                   {
                                                       public User GetUser() => new User();
@@ -47,7 +47,7 @@ public class ClassDiagramDiscoveryTests : IDisposable
                                                   """);
         await File.WriteAllTextAsync(userFile, """
                                                namespace TestNamespace;
-                                               
+
                                                public class User 
                                                {
                                                    public string Name { get; set; }
@@ -71,7 +71,8 @@ public class ClassDiagramDiscoveryTests : IDisposable
         resultCode.Should().Be(0, $"Command should succeed. Service file: {serviceFile}, Output: {capturedOutput}");
         capturedOutput.Should().NotBeNullOrEmpty("Output should contain diagram content");
         capturedOutput.Should().Contain("classDiagram", "Output should contain Mermaid class diagram header");
-        capturedOutput.Should().Contain("UserService", $"Output should contain UserService class. Full output: {capturedOutput}");
+        capturedOutput.Should().Contain("UserService",
+            $"Output should contain UserService class. Full output: {capturedOutput}");
         capturedOutput.Should().Contain("User", $"Output should contain User class. Full output: {capturedOutput}");
         capturedOutput.Should().Contain("-->", "Output should contain relationship arrow");
     }

@@ -19,7 +19,7 @@ public class McpClassDiagramTests : IDisposable
         // Create a dedicated test directory with a marker file to act as workspace root
         _tempDir = Path.Combine(Path.GetTempPath(), $"McpClassDiagramTest_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
-        
+
         // Create a dummy .csproj file to mark this as a workspace root
         var csprojPath = Path.Combine(_tempDir, "Test.csproj");
         File.WriteAllText(csprojPath, "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
@@ -110,9 +110,14 @@ public class McpClassDiagramTests : IDisposable
         try
         {
             if (Directory.Exists(_tempDir))
-                Directory.Delete(_tempDir, recursive: true);
+            {
+                Directory.Delete(_tempDir, true);
+            }
         }
-        catch { /* Ignore cleanup errors */ }
+        catch
+        {
+            /* Ignore cleanup errors */
+        }
     }
 
     private static ProjGraphTools CreateTools()
@@ -184,7 +189,7 @@ public class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithInheritance, includeInheritance: true);
+        var result = await tools.GetClassDiagram(_tempFileWithInheritance, true);
 
         // Assert
         result.Should().Contain("class TestNamespace_Entity");
@@ -201,7 +206,7 @@ public class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithInheritance, includeInheritance: true);
+        var result = await tools.GetClassDiagram(_tempFileWithInheritance, true);
 
         // Assert
         result.Should().Contain("class TestNamespace_INameable");
@@ -216,7 +221,7 @@ public class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithInheritance, includeInheritance: false);
+        var result = await tools.GetClassDiagram(_tempFileWithInheritance, false);
 
         // Assert
         result.Should().Contain("class TestNamespace_User");
@@ -318,7 +323,7 @@ public class McpClassDiagramTests : IDisposable
         }
 
         // Act
-        var result = await tools.GetClassDiagram(modelsPath, includeInheritance: true);
+        var result = await tools.GetClassDiagram(modelsPath, true);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -338,9 +343,9 @@ public class McpClassDiagramTests : IDisposable
         // Act
         var result = await tools.GetClassDiagram(
             _tempFileWithInheritance,
-            includeInheritance: true,
-            includeDependencies: true,
-            depth: 3);
+            true,
+            true,
+            3);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -357,9 +362,9 @@ public class McpClassDiagramTests : IDisposable
         // Act
         var result = await tools.GetClassDiagram(
             _tempFileWithInheritance,
-            includeInheritance: false,
-            includeDependencies: false,
-            depth: 0);
+            false,
+            false,
+            0);
 
         // Assert
         result.Should().NotStartWith("Error");

@@ -29,7 +29,8 @@ projgraph classdiagram Models/Admin.cs
 When you run `classdiagram` on a file, the tool will:
 
 1. Parse the specified file for class definitions.
-2. If base classes or typed properties (dependencies) are found but not defined in the same file, it searches the workspace root (detecting `.sln`, `.csproj`, or `.git` folders) to find the missing definitions.
+2. If base classes or typed properties (dependencies) are found but not defined in the same file, it searches the
+   workspace root (detecting `.sln`, `.csproj`, or `.git` folders) to find the missing definitions.
 3. It recursively builds the diagram up to a default depth (or as specified).
 
 ## Output

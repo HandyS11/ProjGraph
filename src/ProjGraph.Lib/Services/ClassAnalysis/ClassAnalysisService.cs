@@ -5,6 +5,7 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib.Interfaces;
 using ProjGraph.Lib.Services.EfAnalysis;
 using ModelTypeKind = ProjGraph.Core.Models.TypeKind;
+using TypeKind = Microsoft.CodeAnalysis.TypeKind;
 
 namespace ProjGraph.Lib.Services.ClassAnalysis;
 
@@ -438,9 +439,9 @@ public class ClassAnalysisService : IClassAnalysisService
     {
         return symbol.TypeKind switch
         {
-            Microsoft.CodeAnalysis.TypeKind.Interface => ModelTypeKind.Interface,
-            Microsoft.CodeAnalysis.TypeKind.Struct => ModelTypeKind.Struct,
-            Microsoft.CodeAnalysis.TypeKind.Enum => ModelTypeKind.Enum,
+            TypeKind.Interface => ModelTypeKind.Interface,
+            TypeKind.Struct => ModelTypeKind.Struct,
+            TypeKind.Enum => ModelTypeKind.Enum,
             _ => ModelTypeKind.Class
         };
     }

@@ -3,7 +3,6 @@ using ModelContextProtocol.Server;
 using ProjGraph.Mcp;
 using System.ComponentModel;
 using System.Reflection;
-using Xunit;
 
 namespace ProjGraph.Tests.Contract;
 
