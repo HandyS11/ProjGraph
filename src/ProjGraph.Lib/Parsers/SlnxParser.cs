@@ -28,6 +28,11 @@ public static class SlnxParser
         return doc.Descendants("Project")
             .Select(x => x.Attribute("Path")?.Value)
             .Where(path => path != null)
-            .Select(path => Path.GetFullPath(Path.Combine(solutionDir, path!)));
+            .Select(path =>
+            {
+                // Normalize path separators to be platform-appropriate before combining
+                var normalizedPath = path!.Replace('\\', Path.DirectorySeparatorChar);
+                return Path.GetFullPath(Path.Combine(solutionDir, normalizedPath));
+            });
     }
 }

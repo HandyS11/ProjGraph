@@ -32,7 +32,7 @@ public class SlnParserTests
         File.WriteAllText(projTestPath, "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
 
         // Create a valid .sln file
-        var csharpProjectTypeGuid = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}";
+        const string csharpProjectTypeGuid = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}";
         var projAGuid = Guid.NewGuid().ToString("B").ToUpperInvariant();
         var projBGuid = Guid.NewGuid().ToString("B").ToUpperInvariant();
         var projTestGuid = Guid.NewGuid().ToString("B").ToUpperInvariant();

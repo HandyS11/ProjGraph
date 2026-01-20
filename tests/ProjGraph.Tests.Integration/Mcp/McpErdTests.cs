@@ -42,13 +42,31 @@ public class McpErdTests : IDisposable
         File.WriteAllText(_tempFile, content);
     }
 
-    [Fact]
-    public async Task GetErd_ShouldReturnValidMermaid()
+    private static string GetSamplePath(string relativePath)
     {
-        // Arrange
+        // Split path by both forward and backward slashes to support cross-platform
+        var parts = relativePath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        var pathParts = new[] { Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "samples" }
+            .Concat(parts)
+            .ToArray();
+        var path = Path.Combine(pathParts);
+        return Path.GetFullPath(path);
+    }
+
+    private static ProjGraphTools CreateTools()
+    {
         var graphService = new GraphService();
         var efService = new EfAnalysisService();
-        var tools = new ProjGraphTools(graphService, efService);
+        return new ProjGraphTools(graphService, efService);
+    }
+
+    #region Simple In-Memory DbContext Tests
+
+    [Fact]
+    public async Task GetErd_SimpleDbContext_ShouldReturnValidMermaid()
+    {
+        // Arrange
+        var tools = CreateTools();
 
         // Act
         var result = await tools.GetErd(_tempFile);
@@ -60,6 +78,196 @@ public class McpErdTests : IDisposable
         result.Should().Contain("Post");
         result.Should().Contain("||--o{"); // Relationship
     }
+
+    [Fact]
+    public async Task GetErd_SimpleDbContext_ShouldShowProperties()
+    {
+        // Arrange
+        var tools = CreateTools();
+
+        // Act
+        var result = await tools.GetErd(_tempFile);
+
+        // Assert
+        result.Should().Contain("int Id");
+        result.Should().Contain("string Title");
+        result.Should().Contain("string Content");
+        result.Should().Contain("int BlogId");
+    }
+
+    [Fact]
+    public async Task GetErd_SimpleDbContext_ShouldShowRelationship()
+    {
+        // Arrange
+        var tools = CreateTools();
+
+        // Act
+        var result = await tools.GetErd(_tempFile);
+
+        // Assert
+        result.Should().Contain("Blog ||--o{ Post");
+    }
+
+    #endregion
+
+    #region Sample Project Tests
+
+    [Fact]
+    public async Task GetErd_SimpleContext_ShouldGenerateCompleteErDiagram()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
+
+        // Act
+        var result = await tools.GetErd(contextPath);
+
+        // Assert
+        result.Should().NotStartWith("Error");
+        result.Should().Contain("erDiagram");
+        result.Should().Contain("Author {");
+        result.Should().Contain("Book {");
+        result.Should().Contain("Category {");
+        result.Should().Contain("Publisher {");
+        result.Should().Contain("Review {");
+    }
+
+    [Fact]
+    public async Task GetErd_SimpleContext_ShouldShowAllProperties()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
+
+        // Act
+        var result = await tools.GetErd(contextPath);
+
+        // Assert
+        result.Should().Contain("int Id PK");
+        result.Should().Contain("string Name");
+        result.Should().Contain("string Title");
+        result.Should().Contain("int Rating");
+        result.Should().Contain("DateTime PublishedDate");
+    }
+
+    [Fact]
+    public async Task GetErd_SimpleContext_ShouldShowOneToManyRelationships()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
+
+        // Act
+        var result = await tools.GetErd(contextPath);
+
+        // Assert
+        result.Should().Contain("||--o{"); // One-to-Many notation
+        result.Should().Contain("Publisher ||--o{ Book");
+        result.Should().Contain("Book ||--o{ Review");
+    }
+
+    [Fact]
+    public async Task GetErd_SimpleContext_WithContextName_ShouldSucceed()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
+
+        // Act
+        var result = await tools.GetErd(contextPath, "MyDbContext");
+
+        // Assert
+        result.Should().NotStartWith("Error");
+        result.Should().Contain("erDiagram");
+        result.Should().Contain("Author");
+        result.Should().Contain("Book");
+    }
+
+    [Fact]
+    public async Task GetErd_SimpleContext_ShouldShowForeignKeys()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var contextPath = GetSamplePath("erd/simple-context/EntityFramework/MyDbContext.cs");
+
+        // Act
+        var result = await tools.GetErd(contextPath);
+
+        // Assert
+        result.Should().Contain("FK");
+        result.Should().Contain("int PublisherId FK");
+        result.Should().Contain("int BookId FK");
+    }
+
+    #endregion
+
+    #region Error Handling
+
+    [Fact]
+    public async Task GetErd_NonExistentFile_ShouldReturnError()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".cs");
+
+        // Act
+        var result = await tools.GetErd(nonExistentPath);
+
+        // Assert
+        result.Should().StartWith("Error");
+    }
+
+    [Fact]
+    public async Task GetErd_InvalidCsFile_ShouldReturnError()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var invalidFile = Path.GetTempFileName() + ".cs";
+        await File.WriteAllTextAsync(invalidFile, "public class NotADbContext { }");
+
+        try
+        {
+            // Act
+            var result = await tools.GetErd(invalidFile);
+
+            // Assert
+            result.Should().StartWith("Error");
+        }
+        finally
+        {
+            if (File.Exists(invalidFile))
+            {
+                File.Delete(invalidFile);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task GetErd_NonCsFile_ShouldReturnError()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var nonCsFile = Path.GetTempFileName() + ".txt";
+        await File.WriteAllTextAsync(nonCsFile, "Not a C# file");
+
+        try
+        {
+            // Act
+            var result = await tools.GetErd(nonCsFile);
+
+            // Assert
+            result.Should().StartWith("Error");
+        }
+        finally
+        {
+            if (File.Exists(nonCsFile))
+            {
+                File.Delete(nonCsFile);
+            }
+        }
+    }
+
+    #endregion
 
     public void Dispose()
     {
