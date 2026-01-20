@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
   "name": "io.github.handys11/projgraph",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "MCP server for ProjGraph to interact with LLMs and provide project graph context.",
   "title": "ProjGraph MCP Server",
   "websiteUrl": "https://github.com/HandyS11/ProjGraph",
@@ -10,7 +10,7 @@
       "registryType": "nuget",
       "registryBaseUrl": "https://api.nuget.org",
       "identifier": "ProjGraph.Mcp",
-      "version": "0.2.0",
+      "version": "0.2.2",
       "transport": {
         "type": "stdio"
       },
