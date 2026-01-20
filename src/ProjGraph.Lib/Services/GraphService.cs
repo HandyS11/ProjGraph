@@ -46,12 +46,12 @@ public class GraphService : IGraphService
 
         var projects = new List<Project>();
         var dependencies = new List<Dependency>();
-        var pathToProject = new Dictionary<string, Project>(StringComparer.OrdinalIgnoreCase);
+        var pathToProject = new Dictionary<string, Project>(new PathEqualityComparer());
         var rawDependencies = new List<(string sourcePath, string targetPath)>();
 
         foreach (var projectPath in projectFilePaths)
         {
-            var normalizedPath = Path.GetFullPath(projectPath);
+            var normalizedPath = NormalizePath(Path.GetFullPath(projectPath));
 
             if (!File.Exists(normalizedPath))
             {
@@ -62,11 +62,10 @@ public class GraphService : IGraphService
             {
                 var (project, refs) = ProjectParser.Parse(normalizedPath);
                 projects.Add(project);
-                pathToProject[project.FullPath] = project;
+                pathToProject[normalizedPath] = project; // Store by normalized path for lookup
 
-                rawDependencies.AddRange(refs
-                    .Select(r => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(normalizedPath)!, r)))
-                    .Select(absoluteRef => (project.FullPath, absoluteRef)));
+                rawDependencies.AddRange(refs.Select(refPath => ResolveProjectReferencePath(normalizedPath, refPath))
+                    .Select(absoluteRefPath => (normalizedPath, absoluteRefPath)));
             }
             catch
             {
@@ -103,10 +102,10 @@ public class GraphService : IGraphService
     /// </remarks>
     private static HashSet<string> DiscoverProjectsRecursively(string rootProjectPath)
     {
-        var discovered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var discovered = new HashSet<string>(new PathEqualityComparer());
         var toProcess = new Queue<string>();
 
-        var rootFullPath = Path.GetFullPath(rootProjectPath);
+        var rootFullPath = NormalizePath(Path.GetFullPath(rootProjectPath));
         toProcess.Enqueue(rootFullPath);
         discovered.Add(rootFullPath);
 
@@ -122,11 +121,10 @@ public class GraphService : IGraphService
             try
             {
                 var (_, refs) = ProjectParser.Parse(currentPath);
-                var projectDir = Path.GetDirectoryName(currentPath)!;
 
                 foreach (var refPath in refs)
                 {
-                    var absoluteRefPath = Path.GetFullPath(Path.Combine(projectDir, refPath));
+                    var absoluteRefPath = ResolveProjectReferencePath(currentPath, refPath);
 
                     if (discovered.Add(absoluteRefPath))
                     {
@@ -142,5 +140,83 @@ public class GraphService : IGraphService
         }
 
         return discovered;
+    }
+
+    /// <summary>
+    /// Normalizes a path to ensure consistent comparison across platforms.
+    /// Replaces backslashes with forward slashes for consistency.
+    /// </summary>
+    /// <param name="path">The path to normalize.</param>
+    /// <returns>The normalized path.</returns>
+    private static string NormalizePath(string path)
+    {
+        // Replace backslashes with forward slashes for consistency across platforms
+        return path.Replace('\\', '/');
+    }
+
+    /// <summary>
+    /// Resolves a project reference path relative to a project file path.
+    /// </summary>
+    /// <param name="projectPath">The full path to the project file.</param>
+    /// <param name="referencePath">The relative path to the referenced project.</param>
+    /// <returns>The normalized absolute path to the referenced project.</returns>
+    private static string ResolveProjectReferencePath(string projectPath, string referencePath)
+    {
+        var projectDir = Path.GetDirectoryName(projectPath) ?? string.Empty;
+        var combinedPath = Path.Combine(projectDir, referencePath);
+        var fullPath = Path.GetFullPath(combinedPath);
+        return NormalizePath(fullPath);
+    }
+
+    /// <summary>
+    /// Equality comparer for file paths that handles cross-platform path comparison.
+    /// Normalizes paths to use forward slashes and applies case-insensitive comparison on Windows.
+    /// </summary>
+    private sealed class PathEqualityComparer : IEqualityComparer<string>
+    {
+        /// <summary>
+        /// Determines whether two file paths are equal, taking into account platform-specific
+        /// case sensitivity and ensuring paths are normalized for comparison.
+        /// </summary>
+        /// <param name="x">The first file path to compare.</param>
+        /// <param name="y">The second file path to compare.</param>
+        /// <returns>
+        /// True if the specified file paths are considered equal; otherwise, false.
+        /// </returns>
+        public bool Equals(string? x, string? y)
+        {
+            if (x == null && y == null)
+            {
+                return true;
+            }
+
+            if (x == null || y == null)
+            {
+                return false;
+            }
+
+            var normalizedX = NormalizePath(x);
+            var normalizedY = NormalizePath(y);
+
+            return string.Equals(normalizedX, normalizedY,
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Computes the hash code for a given file path, ensuring that the path is normalized
+        /// and taking into account platform-specific case sensitivity.
+        /// </summary>
+        /// <param name="obj">The file path for which to compute the hash code.</param>
+        /// <returns>
+        /// An integer hash code for the specified file path. On Windows, the hash code is
+        /// computed in a case-insensitive manner, while on other platforms it is case-sensitive.
+        /// </returns>
+        public int GetHashCode(string obj)
+        {
+            var normalized = NormalizePath(obj);
+            return OperatingSystem.IsWindows()
+                ? StringComparer.OrdinalIgnoreCase.GetHashCode(normalized)
+                : StringComparer.Ordinal.GetHashCode(normalized);
+        }
     }
 }

@@ -1,31 +1,41 @@
 name: CI
 
 permissions:
-    contents: read
+  contents: read
 
 on:
   push:
-    branches: [ develop ]
+    branches:
+      - develop
   pull_request:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+      fail-fast: false
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        cache: true
-        cache-dependency-path: Directory.Packages.props
+      - name: Display OS Information
+        run: |
+          echo "Running on: ${{ matrix.os }}"
+          echo "Runner OS: ${{ runner.os }}"
 
-    - name: Restore dependencies
-      run: dotnet restore ProjGraph.slnx
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          cache: true
+          cache-dependency-path: Directory.Packages.props
 
-    - name: Build
-      run: dotnet build ProjGraph.slnx --no-restore --configuration Release
+      - name: Restore dependencies
+        run: dotnet restore ProjGraph.slnx
 
-    - name: Test
-      run: dotnet test ProjGraph.slnx --no-build --configuration Release --verbosity normal
+      - name: Build
+        run: dotnet build ProjGraph.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test ProjGraph.slnx --no-build --configuration Release --verbosity normal

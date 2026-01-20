@@ -41,8 +41,8 @@ public static class CliTestHelpers
         var output = new StringBuilder();
         var originalOut = Console.Out;
         var originalError = Console.Error;
-        var writer = new StringWriter(output);
 
+        using var writer = new StringWriter(output);
         try
         {
             Console.SetOut(writer);
@@ -71,7 +71,6 @@ public static class CliTestHelpers
         }
         finally
         {
-            writer.Dispose();
             Console.SetOut(originalOut);
             Console.SetError(originalError);
             AnsiConsole.Console = AnsiConsole.Create(new AnsiConsoleSettings());

@@ -208,7 +208,7 @@ public class McpErdTests : IDisposable
     {
         // Arrange
         var tools = CreateTools();
-        const string nonExistentPath = @"C:\this\path\does\not\exist.cs";
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".cs");
 
         // Act
         var result = await tools.GetErd(nonExistentPath);
