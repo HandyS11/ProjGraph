@@ -51,21 +51,26 @@ public class GraphService : IGraphService
 
         foreach (var projectPath in projectFilePaths)
         {
-            var normalizedPath = NormalizePath(Path.GetFullPath(projectPath));
+            var fullPath = Path.GetFullPath(projectPath);
+            var normalizedPath = NormalizePath(fullPath);
 
-            if (!File.Exists(normalizedPath))
+            if (!File.Exists(fullPath))
             {
                 continue;
             }
 
             try
             {
-                var (project, refs) = ProjectParser.Parse(normalizedPath);
+                var (project, refs) = ProjectParser.Parse(fullPath);
                 projects.Add(project);
                 pathToProject[normalizedPath] = project; // Store by normalized path for lookup
 
-                rawDependencies.AddRange(refs.Select(refPath => ResolveProjectReferencePath(normalizedPath, refPath))
-                    .Select(absoluteRefPath => (normalizedPath, absoluteRefPath)));
+                rawDependencies.AddRange(from refPath in refs
+                    select ResolveProjectReferencePath(fullPath, refPath)
+                    into absoluteRefPath
+                    select NormalizePath(absoluteRefPath)
+                    into normalizedRefPath
+                    select (normalizedPath, normalizedRefPath));
             }
             catch
             {
@@ -102,44 +107,51 @@ public class GraphService : IGraphService
     /// </remarks>
     private static HashSet<string> DiscoverProjectsRecursively(string rootProjectPath)
     {
-        var discovered = new HashSet<string>(new PathEqualityComparer());
+        var discoveredNormalized = new HashSet<string>(new PathEqualityComparer());
+        var discoveredFullPaths = new HashSet<string>();
         var toProcess = new Queue<string>();
 
-        var rootFullPath = NormalizePath(Path.GetFullPath(rootProjectPath));
+        var rootFullPath = Path.GetFullPath(rootProjectPath);
+        var rootNormalizedPath = NormalizePath(rootFullPath);
         toProcess.Enqueue(rootFullPath);
-        discovered.Add(rootFullPath);
+        discoveredNormalized.Add(rootNormalizedPath);
+        discoveredFullPaths.Add(rootFullPath);
 
         while (toProcess.Count > 0)
         {
-            var currentPath = toProcess.Dequeue();
+            var currentFullPath = toProcess.Dequeue();
 
-            if (!File.Exists(currentPath))
+            if (!File.Exists(currentFullPath))
             {
                 continue;
             }
 
             try
             {
-                var (_, refs) = ProjectParser.Parse(currentPath);
+                var (_, refs) = ProjectParser.Parse(currentFullPath);
 
                 foreach (var refPath in refs)
                 {
-                    var absoluteRefPath = ResolveProjectReferencePath(currentPath, refPath);
+                    var absoluteRefPath = ResolveProjectReferencePath(currentFullPath, refPath);
+                    var normalizedRefPath = NormalizePath(absoluteRefPath);
 
-                    if (discovered.Add(absoluteRefPath))
+                    if (!discoveredNormalized.Add(normalizedRefPath))
                     {
-                        toProcess.Enqueue(absoluteRefPath);
+                        continue;
                     }
+
+                    discoveredFullPaths.Add(absoluteRefPath);
+                    toProcess.Enqueue(absoluteRefPath);
                 }
             }
             catch (Exception ex)
             {
                 // Log but continue - don't let one bad project stop the whole analysis
-                Debug.WriteLine($"Failed to parse project {currentPath}: {ex.Message}");
+                Debug.WriteLine($"Failed to parse project {currentFullPath}: {ex.Message}");
             }
         }
 
-        return discovered;
+        return discoveredFullPaths;
     }
 
     /// <summary>
@@ -159,13 +171,14 @@ public class GraphService : IGraphService
     /// </summary>
     /// <param name="projectPath">The full path to the project file.</param>
     /// <param name="referencePath">The relative path to the referenced project.</param>
-    /// <returns>The normalized absolute path to the referenced project.</returns>
+    /// <returns>The absolute path to the referenced project.</returns>
     private static string ResolveProjectReferencePath(string projectPath, string referencePath)
     {
         var projectDir = Path.GetDirectoryName(projectPath) ?? string.Empty;
-        var combinedPath = Path.Combine(projectDir, referencePath);
-        var fullPath = Path.GetFullPath(combinedPath);
-        return NormalizePath(fullPath);
+        // Normalize path separators to be platform-appropriate before combining
+        var normalizedReferencePath = referencePath.Replace('\\', Path.DirectorySeparatorChar);
+        var combinedPath = Path.Combine(projectDir, normalizedReferencePath);
+        return Path.GetFullPath(combinedPath);
     }
 
     /// <summary>
