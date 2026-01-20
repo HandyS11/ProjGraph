@@ -61,7 +61,7 @@ public class ErdCommandTests
     {
         // Arrange
         var app = CliTestHelpers.CreateApp();
-        var slnxPath = CliTestHelpers.GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
+        var slnxPath = CliTestHelpers.GetSamplePath("visualize/simple-dependencies/simple-dependencies.slnx");
 
         // Act & Assert
         var exception = Assert.Throws<CommandRuntimeException>(() =>

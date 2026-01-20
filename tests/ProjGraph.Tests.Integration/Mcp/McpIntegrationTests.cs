@@ -7,8 +7,6 @@ namespace ProjGraph.Tests.Integration.Mcp;
 
 public class McpIntegrationTests
 {
-    private const string SamplesPath = @"..\..\..\..\..\samples";
-
     [Fact]
     public void GetProjectGraph_SimpleDependencies_Slnx_ShouldReturnValidMermaid()
     {
@@ -77,7 +75,7 @@ public class McpIntegrationTests
     {
         // Arrange
         var tools = CreateTools();
-        var slnxPath = GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
+        var slnxPath = GetSamplePath("visualize/simple-dependencies/simple-dependencies.slnx");
 
         // Act
         var result = tools.GetProjectGraph(slnxPath);
@@ -93,7 +91,7 @@ public class McpIntegrationTests
     {
         // Arrange
         var tools = CreateTools();
-        const string nonExistentPath = @"C:\this\path\does\not\exist.slnx";
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), "this", "path", "does", "not", "exist.slnx");
 
         // Act
         var result = tools.GetProjectGraph(nonExistentPath);
@@ -118,7 +116,12 @@ public class McpIntegrationTests
 
     private static string GetSamplePath(string relativePath)
     {
-        var path = Path.Combine(Directory.GetCurrentDirectory(), SamplesPath, relativePath);
+        // Split path by both forward and backward slashes to support cross-platform
+        var parts = relativePath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
+        var pathParts = new[] { Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "samples" }
+            .Concat(parts)
+            .ToArray();
+        var path = Path.Combine(pathParts);
         return Path.GetFullPath(path);
     }
 

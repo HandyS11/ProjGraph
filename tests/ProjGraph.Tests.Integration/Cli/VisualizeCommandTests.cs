@@ -125,7 +125,7 @@ public class VisualizeCommandTests
     {
         // Arrange
         var app = CliTestHelpers.CreateApp();
-        const string nonExistentPath = @"C:\this\path\does\not\exist.slnx";
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), "this", "path", "does", "not", "exist.slnx");
 
         // Act & Assert
         var exception = Assert.Throws<CommandRuntimeException>(() =>
@@ -139,7 +139,7 @@ public class VisualizeCommandTests
     {
         // Arrange
         var app = CliTestHelpers.CreateApp();
-        var slnxPath = CliTestHelpers.GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
+        var slnxPath = CliTestHelpers.GetSamplePath("visualize/simple-dependencies/simple-dependencies.slnx");
 
         // Act & Assert
         var exception = Assert.Throws<CommandRuntimeException>(() =>

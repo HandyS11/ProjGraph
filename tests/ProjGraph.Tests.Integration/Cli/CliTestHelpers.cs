@@ -7,11 +7,14 @@ namespace ProjGraph.Tests.Integration.Cli;
 
 public static class CliTestHelpers
 {
-    private const string SamplesPath = @"..\..\..\..\..\samples";
-
     public static string GetSamplePath(string relativePath)
     {
-        var path = Path.Combine(Directory.GetCurrentDirectory(), SamplesPath, relativePath);
+        // Split path by both forward and backward slashes to support cross-platform
+        var parts = relativePath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
+        var pathParts = new[] { Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "samples" }
+            .Concat(parts)
+            .ToArray();
+        var path = Path.Combine(pathParts);
         return Path.GetFullPath(path);
     }
 

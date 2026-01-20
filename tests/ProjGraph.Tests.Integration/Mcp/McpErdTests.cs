@@ -7,7 +7,6 @@ namespace ProjGraph.Tests.Integration.Mcp;
 
 public class McpErdTests : IDisposable
 {
-    private const string SamplesPath = @"..\..\..\..\..\samples";
     private readonly string _tempFile;
 
     public McpErdTests()
@@ -45,7 +44,12 @@ public class McpErdTests : IDisposable
 
     private static string GetSamplePath(string relativePath)
     {
-        var path = Path.Combine(Directory.GetCurrentDirectory(), SamplesPath, relativePath);
+        // Split path by both forward and backward slashes to support cross-platform
+        var parts = relativePath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        var pathParts = new[] { Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "samples" }
+            .Concat(parts)
+            .ToArray();
+        var path = Path.Combine(pathParts);
         return Path.GetFullPath(path);
     }
 
@@ -184,7 +188,7 @@ public class McpErdTests : IDisposable
     {
         // Arrange
         var tools = CreateTools();
-        var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
+        var contextPath = GetSamplePath("erd/simple-context/EntityFramework/MyDbContext.cs");
 
         // Act
         var result = await tools.GetErd(contextPath);
