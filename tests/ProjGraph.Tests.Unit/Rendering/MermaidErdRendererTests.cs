@@ -249,7 +249,7 @@ public class MermaidErdRendererTests
             ]
         };
 
-        var model = new EfModel { ContextName = "TestDbContext", Entities = new List<EfEntity> { entity } };
+        var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
         var result = MermaidErdRenderer.Render(model);

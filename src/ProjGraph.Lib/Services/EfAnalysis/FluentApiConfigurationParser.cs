@@ -25,7 +25,6 @@ public static partial class FluentApiConfigurationParser
     /// <param name="entities">
     /// A dictionary of all entities, where the key is the entity name and the value is the <see cref="EfEntity"/> object.
     /// </param>
-    /// <param name="compilation">The <see cref="Compilation"/> object representing the current compilation context.</param>
     /// <param name="model">The <see cref="EfModel"/> object to which the parsed Fluent API constraints will be applied.</param>
     /// <remarks>
     /// This method retrieves the "OnModelCreating" method from the specified context type using the <see cref="FindOnModelCreatingMethod"/> method.
@@ -35,7 +34,6 @@ public static partial class FluentApiConfigurationParser
     public static void ApplyFluentApiConstraints(
         INamedTypeSymbol contextType,
         Dictionary<string, EfEntity> entities,
-        Compilation compilation,
         EfModel model)
     {
         var methodSyntax = FindOnModelCreatingMethod(contextType);
@@ -233,7 +231,7 @@ public static partial class FluentApiConfigurationParser
             return false;
         }
 
-        var textBetween = configSection.Substring(lastUsingEntity, matchIndex - lastUsingEntity);
+        var textBetween = configSection[lastUsingEntity..matchIndex];
         var openParens = textBetween.Count(c => c == '(');
         var closeParens = textBetween.Count(c => c == ')');
 

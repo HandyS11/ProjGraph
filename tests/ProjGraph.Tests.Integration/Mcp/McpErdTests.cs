@@ -45,7 +45,7 @@ public class McpErdTests : IDisposable
     private static string GetSamplePath(string relativePath)
     {
         // Split path by both forward and backward slashes to support cross-platform
-        var parts = relativePath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        var parts = relativePath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
         var pathParts = new[] { Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "samples" }
             .Concat(parts)
             .ToArray();
@@ -275,5 +275,7 @@ public class McpErdTests : IDisposable
         {
             File.Delete(_tempFile);
         }
+
+        GC.SuppressFinalize(this);
     }
 }

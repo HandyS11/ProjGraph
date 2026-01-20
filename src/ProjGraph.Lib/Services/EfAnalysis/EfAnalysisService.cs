@@ -264,7 +264,7 @@ public class EfAnalysisService : IEfAnalysisService
         var entities = DiscoverEntitiesFromDbSets(contextType);
 
         model.Entities.AddRange(entities.Values);
-        FluentApiConfigurationParser.ApplyFluentApiConstraints(contextType, entities, compilation, model);
+        FluentApiConfigurationParser.ApplyFluentApiConstraints(contextType, entities, model);
         RelationshipAnalyzer.AnalyzeRelationships(model, entities, compilation);
 
         return model;
