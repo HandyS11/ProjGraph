@@ -9,20 +9,93 @@ namespace ProjGraph.Tests.Contract;
 public class McpErdContractTests
 {
     [Fact]
-    public void ProjGraphTools_ShouldProvide_GetErd_Tool()
+    public void ProjGraphTools_ShouldHave_McpServerToolTypeAttribute()
     {
         // Arrange
         var type = typeof(ProjGraphTools);
 
-        // Assert method exists and has correct attributes
-        var method = type.GetMethod("GetErd");
-        method.Should().NotBeNull();
-        method.GetCustomAttribute<McpServerToolAttribute>().Should().NotBeNull();
-        method.GetCustomAttribute<DescriptionAttribute>().Should().NotBeNull();
+        // Assert class attribute exists
+        var classAttr = type.GetCustomAttribute<McpServerToolTypeAttribute>();
+        classAttr.Should().NotBeNull("ProjGraphTools class should be marked with McpServerToolType attribute");
+    }
 
-        // Assert parameters match spec
-        var parameters = method.GetParameters();
-        parameters.Should().Contain(p => p.Name == "path" && p.ParameterType == typeof(string));
-        parameters.Should().Contain(p => p.Name == "contextName" && p.ParameterType == typeof(string));
+    [Fact]
+    public void GetErd_ShouldHave_CorrectSignature()
+    {
+        // Arrange
+        var type = typeof(ProjGraphTools);
+        var method = type.GetMethod("GetErd");
+
+        // Assert method exists
+        method.Should().NotBeNull("GetErd method should exist");
+
+        // Assert return type is Task<string> (async method)
+        method.ReturnType.Should().Be<Task<string>>("GetErd should return Task<string> (async)");
+
+        // Assert method has McpServerTool attribute
+        var toolAttr = method.GetCustomAttribute<McpServerToolAttribute>();
+        toolAttr.Should().NotBeNull("GetErd should have McpServerTool attribute");
+
+        // Assert method has Description attribute with meaningful content
+        var descAttr = method.GetCustomAttribute<DescriptionAttribute>();
+        descAttr.Should().NotBeNull("GetErd should have Description attribute");
+        descAttr.Description.Should().NotBeNullOrWhiteSpace()
+            .And.Contain("ERD", "description should mention ERD")
+            .And.Contain("Entity Framework", "description should mention Entity Framework");
+    }
+
+    [Fact]
+    public void GetErd_ShouldHave_PathParameter()
+    {
+        // Arrange
+        var type = typeof(ProjGraphTools);
+        var method = type.GetMethod("GetErd");
+        var parameters = method!.GetParameters();
+
+        // Assert 'path' parameter exists with correct type
+        var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Subject;
+        pathParam.ParameterType.Should().Be<string>("path parameter should be a string");
+
+        // Assert 'path' parameter has Description attribute
+        var paramDescAttr = pathParam.GetCustomAttribute<DescriptionAttribute>();
+        paramDescAttr.Should().NotBeNull("path parameter should have Description attribute");
+        paramDescAttr.Description.Should().NotBeNullOrWhiteSpace()
+            .And.Contain("path", "parameter description should mention path");
+    }
+
+    [Fact]
+    public void GetErd_ShouldHave_OptionalContextNameParameter()
+    {
+        // Arrange
+        var type = typeof(ProjGraphTools);
+        var method = type.GetMethod("GetErd");
+        var parameters = method!.GetParameters();
+
+        // Assert 'contextName' parameter exists and is optional (nullable string)
+        var contextParam = parameters.Should().ContainSingle(p => p.Name == "contextName").Subject;
+        contextParam.ParameterType.Should().Be<string>("contextName parameter should be a string");
+        contextParam.IsOptional.Should().BeTrue("contextName parameter should be optional");
+        contextParam.HasDefaultValue.Should().BeTrue("contextName should have a default value");
+        contextParam.DefaultValue.Should().BeNull("contextName default value should be null");
+
+        // Assert 'contextName' parameter has Description attribute
+        var paramDescAttr = contextParam.GetCustomAttribute<DescriptionAttribute>();
+        paramDescAttr.Should().NotBeNull("contextName parameter should have Description attribute");
+        paramDescAttr.Description.Should().NotBeNullOrWhiteSpace()
+            .And.Contain("DbContext", "parameter description should mention DbContext");
+    }
+
+    [Fact]
+    public void GetErd_ShouldHave_ExactlyTwoParameters()
+    {
+        // Arrange
+        var type = typeof(ProjGraphTools);
+        var method = type.GetMethod("GetErd");
+        var parameters = method!.GetParameters();
+
+        // Assert exactly two parameters exist (path required, contextName optional)
+        parameters.Should().HaveCount(2, "GetErd should have exactly 2 parameters: path and contextName");
+        parameters[0].Name.Should().Be("path");
+        parameters[1].Name.Should().Be("contextName");
     }
 }

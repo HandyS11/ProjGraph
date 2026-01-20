@@ -17,8 +17,14 @@ public class GraphService : IGraphService
     /// <param name="path">The path to the solution or project file.</param>
     /// <returns>A <see cref="SolutionGraph"/> object representing the projects and their dependencies.</returns>
     /// <exception cref="ArgumentException">Thrown when the file type is not supported.</exception>
+    /// <exception cref="FileNotFoundException">Thrown when the specified file does not exist.</exception>
     public SolutionGraph BuildGraph(string path)
     {
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException($"The specified file does not exist: {path}", path);
+        }
+
         IEnumerable<string> projectFilePaths;
 
         if (path.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
