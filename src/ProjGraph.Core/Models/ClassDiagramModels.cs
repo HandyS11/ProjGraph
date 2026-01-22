@@ -39,8 +39,6 @@ public enum RelationshipKind
 {
     Inheritance,
     Realization,
-    Composition,
-    Aggregation,
     Association,
     Dependency
 }
@@ -82,7 +80,9 @@ public record ParameterDefinition(
 public record Relationship(
     string From,
     string To,
-    RelationshipKind Kind
+    RelationshipKind Kind,
+    string? Label = null,
+    string? Cardinality = null
 );
 
 /// <summary>

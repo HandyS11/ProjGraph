@@ -88,4 +88,23 @@ public class MermaidClassDiagramRendererTests
         // Should NOT contain the short name at the beginning of the relationship (with proper word boundary)
         result.Should().NotContain("    BaseEntity <|--", "should use fully qualified name, not short name");
     }
+
+    [Fact]
+    public void Render_WithRelationshipLabels_RendersLabelsCorrectly()
+    {
+        var model = new ClassModel(null, [
+                new TypeDefinition("User", "Models", "Models.User", TypeKind.Class, []),
+                new TypeDefinition("Address", "Models", "Models.Address", TypeKind.Class, [])
+            ],
+            [
+                new Relationship("Models.User", "Models.Address", RelationshipKind.Association, "PrimaryAddress", "1"),
+                new Relationship("Models.User", "Models.Address", RelationshipKind.Association, "ShippingAddresses",
+                    "*")
+            ]);
+
+        var result = MermaidClassDiagramRenderer.Render(model);
+
+        result.Should().Contain("Models_User \"1\" --> Models_Address : PrimaryAddress");
+        result.Should().Contain("Models_User \"*\" --> Models_Address : ShippingAddresses");
+    }
 }

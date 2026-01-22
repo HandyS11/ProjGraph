@@ -15,7 +15,7 @@ Mermaid's `classDiagram` supports the following key features we need:
 - **Inheritance**: `BaseClass <|-- DerivedClass`
 - **Realization (Interface)**: `Interface <|.. Implementation`
 - **Association**: `ClassA --> ClassB` (Usage in properties/fields).
-- **Composition/Aggregation**: `ClassA *-- ClassB` / `ClassA o-- ClassB` (Might be overkill for a simple diagram, but good to know).
+- **Dependency**: `ClassA ..> ClassB` (Usage in methods).
 
 ### 2. Type Discovery & Workspace Search
 

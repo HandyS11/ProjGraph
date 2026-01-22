@@ -115,14 +115,42 @@ public static class MermaidClassDiagramRenderer
         {
             RelationshipKind.Inheritance => "<|--",
             RelationshipKind.Realization => "<|..",
-            RelationshipKind.Composition => "*--",
-            RelationshipKind.Aggregation => "o--",
             RelationshipKind.Association => "-->",
             RelationshipKind.Dependency => "..>",
             _ => "-->"
         };
 
-        sb.AppendLine($"    {to} {op} {from}");
+        // Build the relationship string
+        // For Inheritance and Realization: To <|-- From (base <|-- derived)
+        // For Association and Dependency: From --> To (owner --> owned)
+        string relationshipStr;
+
+        if (relationship.Kind is RelationshipKind.Inheritance or RelationshipKind.Realization)
+        {
+            // Inheritance/Realization: base class on left, derived class on right
+            relationshipStr = $"{to} {op} {from}";
+        }
+        else
+        {
+            // Association/Dependency: owner on left, referenced type on right
+            relationshipStr = $"{from}";
+
+            // Add cardinality on target (To) side if present
+            if (!string.IsNullOrEmpty(relationship.Cardinality))
+            {
+                relationshipStr += $" \"{relationship.Cardinality}\"";
+            }
+
+            relationshipStr += $" {op} {to}";
+
+            // Add label if present
+            if (!string.IsNullOrEmpty(relationship.Label))
+            {
+                relationshipStr += $" : {relationship.Label}";
+            }
+        }
+
+        sb.AppendLine($"    {relationshipStr}");
     }
 
     /// <summary>

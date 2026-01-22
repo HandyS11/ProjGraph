@@ -162,12 +162,14 @@ public class ClassAnalysisService : IClassAnalysisService
     /// <returns>
     /// A list of tuples where each tuple contains a related symbol and its corresponding relationship kind.
     /// </returns>
-    private static List<(INamedTypeSymbol Symbol, RelationshipKind Kind)> DiscoverRelatedTypes(
-        INamedTypeSymbol symbol,
-        bool includeInheritance,
-        bool includeDependencies)
+    private static List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>
+        DiscoverRelatedTypes(
+            INamedTypeSymbol symbol,
+            bool includeInheritance,
+            bool includeDependencies)
     {
-        var relatedSymbols = new List<(INamedTypeSymbol Symbol, RelationshipKind Kind)>();
+        var relatedSymbols =
+            new List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>();
 
         if (includeInheritance)
         {
@@ -193,14 +195,15 @@ public class ClassAnalysisService : IClassAnalysisService
     /// </param>
     private static void AddInheritanceRelationships(
         INamedTypeSymbol symbol,
-        List<(INamedTypeSymbol Symbol, RelationshipKind Kind)> relatedSymbols)
+        List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)> relatedSymbols)
     {
         if (symbol.BaseType != null && symbol.BaseType.SpecialType != SpecialType.System_Object)
         {
-            relatedSymbols.Add((symbol.BaseType, RelationshipKind.Inheritance));
+            relatedSymbols.Add((symbol.BaseType, RelationshipKind.Inheritance, null, null));
         }
 
-        relatedSymbols.AddRange(symbol.Interfaces.Select(iface => (iface, RelationshipKind.Realization)));
+        relatedSymbols.AddRange(symbol.Interfaces.Select(iface =>
+            (iface, RelationshipKind.Realization, (string?)null, (string?)null)));
     }
 
     /// <summary>
@@ -214,22 +217,28 @@ public class ClassAnalysisService : IClassAnalysisService
     /// </param>
     private static void AddDependencyRelationships(
         INamedTypeSymbol symbol,
-        List<(INamedTypeSymbol Symbol, RelationshipKind Kind)> relatedSymbols)
+        List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)> relatedSymbols)
     {
-        var seenTypes = new HashSet<string>();
+        // Track unique type+label combinations to avoid exact duplicates
+        var seenCombinations = new HashSet<(string TypeName, string? Label)>();
 
-        // Process properties and fields for composition relationships
+        // Also track types separately for method dependencies (which don't have labels)
+        var seenMethodTypes = new HashSet<string>();
+
+        // Process properties and fields for association relationships (has-a relationships)
         var propertySymbols = symbol.GetMembers().OfType<IPropertySymbol>().ToList();
-        var fieldSymbols = symbol.GetMembers().OfType<IFieldSymbol>().ToList();
+        var fieldSymbols = symbol.GetMembers().OfType<IFieldSymbol>()
+            .Where(f => !f.IsImplicitlyDeclared) // Filter out compiler-generated backing fields
+            .ToList();
 
         foreach (var prop in propertySymbols)
         {
-            ProcessMemberType(prop.Type, relatedSymbols, seenTypes);
+            ProcessMemberType(prop.Type, prop.Name, relatedSymbols, seenCombinations);
         }
 
         foreach (var field in fieldSymbols)
         {
-            ProcessMemberType(field.Type, relatedSymbols, seenTypes);
+            ProcessMemberType(field.Type, field.Name, relatedSymbols, seenCombinations);
         }
 
         // Process method return types and parameters as dependencies
@@ -243,14 +252,17 @@ public class ClassAnalysisService : IClassAnalysisService
 
         foreach (var type in methodReturnTypes.Concat(methodParamTypes))
         {
-            if (type is INamedTypeSymbol namedType && namedType.SpecialType == SpecialType.None)
+            if (type is not INamedTypeSymbol { SpecialType: SpecialType.None } namedType)
             {
-                var extractedTypes = ExtractTypesFromGeneric(namedType);
-                relatedSymbols.AddRange(from extracted in extractedTypes
-                    let fullName = GetFullyQualifiedName(extracted)
-                    where seenTypes.Add(fullName) && !IsSystemType(extracted)
-                    select (extracted, RelationshipKind.Dependency));
+                continue;
             }
+
+            var extractedTypes = ExtractTypesFromGeneric(namedType);
+            relatedSymbols.AddRange(from extracted in extractedTypes
+                let typeName = extracted.Name
+                where seenMethodTypes.Add(typeName) && !IsSystemType(extracted)
+                select ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(extracted,
+                    RelationshipKind.Dependency, null, null));
         }
     }
 
@@ -258,24 +270,46 @@ public class ClassAnalysisService : IClassAnalysisService
     /// Processes a member type (property or field) to determine the appropriate relationship kind.
     /// </summary>
     /// <param name="type">The type of the member.</param>
+    /// <param name="memberName">The name of the property or field.</param>
     /// <param name="relatedSymbols">List to add discovered relationships to.</param>
-    /// <param name="seenTypes">Set to track already processed types.</param>
+    /// <param name="seenCombinations">Set to track already processed type+label combinations.</param>
     private static void ProcessMemberType(
         ITypeSymbol type,
-        List<(INamedTypeSymbol Symbol, RelationshipKind Kind)> relatedSymbols,
-        HashSet<string> seenTypes)
+        string memberName,
+        List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)> relatedSymbols,
+        HashSet<(string TypeName, string? Label)> seenCombinations)
     {
         if (type is not INamedTypeSymbol { SpecialType: SpecialType.None } namedType)
         {
             return;
         }
 
+        // Detect if this is a collection type
+        var isCollection = namedType.IsGenericType &&
+                           (namedType.Name.Contains("List") ||
+                            namedType.Name.Contains("Collection") ||
+                            namedType.Name.Contains("IEnumerable") ||
+                            namedType.Name.Contains("Array") ||
+                            namedType.Name.Contains("Set"));
+
+        var cardinality = isCollection ? "*" : "1";
+
         var extractedTypes = ExtractTypesFromGeneric(namedType);
 
-        relatedSymbols.AddRange(from extracted in extractedTypes
-            let fullName = GetFullyQualifiedName(extracted)
-            where seenTypes.Add(fullName) && !IsSystemType(extracted)
-            select (extracted, RelationshipKind.Composition));
+        foreach (var extracted in extractedTypes)
+        {
+            // Use simple type name for deduplication since full name might not be available
+            // for generic type arguments until they're resolved
+            var typeName = extracted.Name;
+
+            // Skip if already seen this type+label combination or if it's a system type
+            if (!seenCombinations.Add((typeName, memberName)) || IsSystemType(extracted))
+            {
+                continue;
+            }
+
+            relatedSymbols.Add((extracted, RelationshipKind.Association, memberName, cardinality));
+        }
     }
 
     /// <summary>
@@ -347,32 +381,45 @@ public class ClassAnalysisService : IClassAnalysisService
     /// </param>
     /// <param name="context">The <see cref="AnalysisContext"/> containing the current state of the analysis.</param>
     private static async Task ProcessRelatedTypesAsync(
-        List<(INamedTypeSymbol Symbol, RelationshipKind Kind)> relatedSymbols,
+        List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)> relatedSymbols,
         string fullName,
         int depth,
         Queue<(INamedTypeSymbol Symbol, int Depth)> typesToAnalyze,
         AnalysisContext context)
     {
-        foreach (var (relatedSymbol, kind) in relatedSymbols)
-        {
-            // First, try to resolve the symbol to get the most accurate type information
-            var resolvedSymbol = await ResolveRelatedSymbolAsync(relatedSymbol, context);
+        // First, resolve all unique symbols to ensure consistency
+        var resolvedSymbolsCache = new Dictionary<string, INamedTypeSymbol?>();
 
-            // Use the resolved symbol if available, otherwise fall back to the original
+        foreach (var (relatedSymbol, kind, label, cardinality) in relatedSymbols)
+        {
+            var symbolKey = relatedSymbol.Name; // Use simple name as key
+
+            // Resolve symbol only once per unique type
+            if (!resolvedSymbolsCache.TryGetValue(symbolKey, out var resolvedSymbol))
+            {
+                resolvedSymbol = await ResolveRelatedSymbolAsync(relatedSymbol, context);
+                resolvedSymbolsCache[symbolKey] = resolvedSymbol;
+            }
+
             var symbolToUse = resolvedSymbol ?? relatedSymbol;
             var relatedFullName = GetFullyQualifiedName(symbolToUse);
 
-            context.Relationships.Add(new Relationship(fullName, relatedFullName, kind));
+            context.Relationships.Add(new Relationship(fullName, relatedFullName, kind, label, cardinality));
 
+            // Only enqueue if we haven't analyzed this type yet
             if (context.AnalyzedTypeFullNames.Contains(relatedFullName))
             {
                 continue;
             }
 
-            if (resolvedSymbol != null)
+            if (resolvedSymbol is null)
             {
-                typesToAnalyze.Enqueue((resolvedSymbol, depth + 1));
+                continue;
             }
+
+            // Only enqueue once per unique type (check if already in queue would be complex, 
+            // but the AnalyzedTypeFullNames check in ProcessTypeQueueAsync handles duplicates)
+            typesToAnalyze.Enqueue((resolvedSymbol, depth + 1));
         }
     }
 

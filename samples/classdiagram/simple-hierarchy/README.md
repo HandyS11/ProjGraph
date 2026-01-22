@@ -39,8 +39,11 @@ The tool generates a **Mermaid Class Diagram** showing:
 
 - Class names and their members (properties/fields).
 - Inheritance relationships (`<|--`).
-- Composition/Dependency relationships (`*--` or `--`).
+- Association relationships (`-->`).
+- Dependency relationships (`..>`).
 - Support for generics (e.g., `List~Address~`).
+- Cardinality labels (e.g., `"1"`, `"*"`).
+- Property names on relationships.
 
 ### Example Output for Admin
 
