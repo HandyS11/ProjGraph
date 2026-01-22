@@ -52,7 +52,7 @@ public record TypeDefinition(
     string FullName,
     TypeKind Kind,
     List<MemberDefinition> Members,
-    bool IsExternal = false
+    bool IsAbstract = false
 );
 
 /// <summary>

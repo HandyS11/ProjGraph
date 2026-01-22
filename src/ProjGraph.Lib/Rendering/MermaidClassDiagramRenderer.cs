@@ -59,6 +59,12 @@ public static class MermaidClassDiagramRenderer
 
         sb.AppendLine($"    class {sanitizedName} [\"{displayName}\"]");
 
+        // Render stereotypes
+        if (type.IsAbstract)
+        {
+            sb.AppendLine($"    <<abstract>> {sanitizedName}");
+        }
+
         if (type.Kind != TypeKind.Class)
         {
             sb.AppendLine($"    <<{type.Kind.ToString().ToLower()}>> {sanitizedName}");

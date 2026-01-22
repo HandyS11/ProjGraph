@@ -49,30 +49,34 @@ The tool generates a **Mermaid Class Diagram** showing:
 
 ```mermaid
 classDiagram
-    class BaseEntity {
-        <<abstract>>
-        +Guid Id
-        +DateTime CreatedAt
-        +DateTime? UpdatedAt
-    }
-    class User {
-        +string Username
-        +string Email
-        +Address PrimaryAddress
-        +List~Address~ ShippingAddresses
-    }
-    class Admin {
-        +string Permissions
-        +DateTime? LastLogin
-    }
-    class Address {
-        +string Street
-        +string City
-        +string ZipCode
-        +string Country
-    }
-
-    BaseEntity <|-- User
-    User <|-- Admin
-    User *-- Address
+  class SimpleHierarchy_Models_Admin ["Admin"]
+  class SimpleHierarchy_Models_Admin {
+    +string Permissions
+    +DateTime? LastLogin
+  }
+  class SimpleHierarchy_Models_User ["User"]
+  class SimpleHierarchy_Models_User {
+    +string Username
+    +string Email
+    +Address PrimaryAddress
+    +List~Address~ ShippingAddresses
+  }
+  class SimpleHierarchy_Base_BaseEntity ["BaseEntity"]
+  <<abstract>> SimpleHierarchy_Base_BaseEntity
+  class SimpleHierarchy_Base_BaseEntity {
+    +Guid Id
+    +DateTime CreatedAt
+    +DateTime? UpdatedAt
+  }
+  class SimpleHierarchy_Models_Address ["Address"]
+  class SimpleHierarchy_Models_Address {
+    +string Street
+    +string City
+    +string ZipCode
+    +string Country
+  }
+  SimpleHierarchy_Models_User <|-- SimpleHierarchy_Models_Admin
+  SimpleHierarchy_Base_BaseEntity <|-- SimpleHierarchy_Models_User
+  SimpleHierarchy_Models_User "1" --> SimpleHierarchy_Models_Address : PrimaryAddress
+  SimpleHierarchy_Models_User "*" --> SimpleHierarchy_Models_Address : ShippingAddresses
 ```

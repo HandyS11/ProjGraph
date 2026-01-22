@@ -192,13 +192,12 @@ public class McpClassDiagramTests : IDisposable
         var result = await tools.GetClassDiagram(_tempFileWithInheritance, true);
 
         // Assert
-        result.Should().Contain("class TestNamespace_Customer");
-        result.Should().Contain("class TestNamespace_Address");
-        result.Should().Contain("class TestNamespace_Order");
-        result.Should().Contain("TestNamespace_Address", "Address should be in the diagram");
-        result.Should().Contain("TestNamespace_Customer", "Customer should be in the diagram");
-        result.Should().Contain("TestNamespace_Order", "Order should be in the diagram");
-        result.Should().Contain("-->", "Should contain association relationships");
+        result.Should().Contain("class TestNamespace_Entity");
+        result.Should().Contain("class TestNamespace_User");
+        result.Should().Contain("class TestNamespace_Admin");
+        result.Should().Contain("<<abstract>> TestNamespace_Entity", "Entity should be marked as abstract");
+        result.Should().Contain("TestNamespace_Entity <|-- TestNamespace_User", "User should inherit from Entity");
+        result.Should().Contain("TestNamespace_User <|-- TestNamespace_Admin", "Admin should inherit from User");
     }
 
     [Fact]

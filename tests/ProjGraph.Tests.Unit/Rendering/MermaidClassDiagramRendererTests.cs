@@ -107,4 +107,31 @@ public class MermaidClassDiagramRendererTests
         result.Should().Contain("Models_User \"1\" --> Models_Address : PrimaryAddress");
         result.Should().Contain("Models_User \"*\" --> Models_Address : ShippingAddresses");
     }
+
+    [Fact]
+    public void Render_WithAbstractClass_RendersAbstractStereotype()
+    {
+        var abstractType = new TypeDefinition(
+            "BaseEntity",
+            "Models",
+            "Models.BaseEntity",
+            TypeKind.Class,
+            [],
+            true);
+
+        var concreteType = new TypeDefinition(
+            "User",
+            "Models",
+            "Models.User",
+            TypeKind.Class,
+            []);
+
+        var model = new ClassModel(null, [abstractType, concreteType],
+            [new Relationship("Models.User", "Models.BaseEntity", RelationshipKind.Inheritance)]);
+
+        var result = MermaidClassDiagramRenderer.Render(model);
+
+        result.Should().Contain("<<abstract>> Models_BaseEntity");
+        result.Should().NotContain("<<abstract>> Models_User");
+    }
 }

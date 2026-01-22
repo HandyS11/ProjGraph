@@ -128,6 +128,12 @@ public class ClassAnalysisService : IClassAnalysisService
                 continue;
             }
 
+            // Skip system types - they shouldn't be added as nodes in the diagram
+            if (IsSystemType(symbol))
+            {
+                continue;
+            }
+
             var typeDef = AnalyzeType(symbol);
             context.Types.Add(typeDef);
 
@@ -296,20 +302,10 @@ public class ClassAnalysisService : IClassAnalysisService
 
         var extractedTypes = ExtractTypesFromGeneric(namedType);
 
-        foreach (var extracted in extractedTypes)
-        {
-            // Use simple type name for deduplication since full name might not be available
-            // for generic type arguments until they're resolved
-            var typeName = extracted.Name;
-
-            // Skip if already seen this type+label combination or if it's a system type
-            if (!seenCombinations.Add((typeName, memberName)) || IsSystemType(extracted))
-            {
-                continue;
-            }
-
-            relatedSymbols.Add((extracted, RelationshipKind.Association, memberName, cardinality));
-        }
+        relatedSymbols.AddRange(from extracted in extractedTypes
+            let typeName = extracted.Name
+            where seenCombinations.Add((typeName, memberName)) && !IsSystemType(extracted)
+            select (extracted, RelationshipKind.Association, memberName, cardinality));
     }
 
     /// <summary>
@@ -360,11 +356,51 @@ public class ClassAnalysisService : IClassAnalysisService
     /// <returns>True if the type is from System namespace or common framework namespaces.</returns>
     private static bool IsSystemType(INamedTypeSymbol type)
     {
+        // Check special types first (int, string, bool, etc.)
+        if (type.SpecialType is not SpecialType.None)
+        {
+            return true;
+        }
+
+        // Check the full metadata name (e.g., "System.DateTime")
+        var metadataName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if (metadataName.StartsWith("global::System", StringComparison.Ordinal) ||
+            metadataName.StartsWith("global::Microsoft", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
         var ns = type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
 
-        return ns.StartsWith("System", StringComparison.Ordinal) ||
-               ns.StartsWith("Microsoft", StringComparison.Ordinal) ||
-               type.SpecialType != SpecialType.None;
+        // Check for System and Microsoft namespaces
+        if (ns.StartsWith("System", StringComparison.Ordinal) ||
+            ns.StartsWith("Microsoft", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        // Check for common system type names that might not have namespace info yet
+        // (e.g., when extracted from generic type arguments)
+        var typeName = type.Name;
+        if (IsWellKnownSystemType(typeName))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if a type name is a well-known system type.
+    /// </summary>
+    /// <param name="typeName">The simple name of the type.</param>
+    /// <returns>True if the type name matches a common system type.</returns>
+    private static bool IsWellKnownSystemType(string typeName)
+    {
+        return typeName is "DateTime" or "DateTimeOffset" or "TimeSpan" or "Guid" or "Uri"
+            or "String" or "Int32" or "Int64" or "Double" or "Decimal" or "Boolean"
+            or "Byte" or "Char" or "Object" or "Exception" or "Task" or "ValueTask"
+            or "Nullable" or "Array" or "Delegate" or "Enum";
     }
 
     /// <summary>
@@ -402,6 +438,13 @@ public class ClassAnalysisService : IClassAnalysisService
             }
 
             var symbolToUse = resolvedSymbol ?? relatedSymbol;
+
+            // Skip system types - don't create relationships to them
+            if (IsSystemType(symbolToUse))
+            {
+                continue;
+            }
+
             var relatedFullName = GetFullyQualifiedName(symbolToUse);
 
             context.Relationships.Add(new Relationship(fullName, relatedFullName, kind, label, cardinality));
@@ -444,7 +487,7 @@ public class ClassAnalysisService : IClassAnalysisService
         var foundFile =
             await WorkspaceTypeDiscovery.FindTypeDefinitionFileAsync(relatedSymbol.Name, context.StartDirectory);
 
-        if (foundFile == null)
+        if (foundFile is null)
         {
             AddExternalType(relatedSymbol, context);
             return null;
@@ -469,6 +512,12 @@ public class ClassAnalysisService : IClassAnalysisService
         INamedTypeSymbol relatedSymbol,
         AnalysisContext context)
     {
+        // Don't add system types as external type nodes
+        if (IsSystemType(relatedSymbol))
+        {
+            return;
+        }
+
         var fullName = GetFullyQualifiedName(relatedSymbol);
         context.Types.Add(new TypeDefinition(
             relatedSymbol.Name,
@@ -476,7 +525,7 @@ public class ClassAnalysisService : IClassAnalysisService
             fullName,
             MapKind(relatedSymbol),
             [],
-            true));
+            relatedSymbol.IsAbstract));
         context.AnalyzedTypeFullNames.Add(fullName);
     }
 
@@ -558,7 +607,8 @@ public class ClassAnalysisService : IClassAnalysisService
             symbol.ContainingNamespace.ToDisplayString(),
             GetFullyQualifiedName(symbol),
             MapKind(symbol),
-            members);
+            members,
+            symbol.IsAbstract);
     }
 
     /// <summary>
