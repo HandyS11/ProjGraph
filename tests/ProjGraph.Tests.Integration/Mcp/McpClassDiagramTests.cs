@@ -221,7 +221,7 @@ public class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithInheritance, false);
+        var result = await tools.GetClassDiagram(_tempFileWithInheritance);
 
         // Assert
         result.Should().Contain("class TestNamespace_User");
@@ -247,8 +247,10 @@ public class McpClassDiagramTests : IDisposable
         result.Should().Contain("class TestNamespace_Customer");
         result.Should().Contain("class TestNamespace_Address");
         result.Should().Contain("class TestNamespace_Order");
-        result.Should().Contain("TestNamespace_Address --> TestNamespace_Customer");
-        result.Should().Contain("TestNamespace_Customer --> TestNamespace_Order");
+        result.Should().Contain("TestNamespace_Address *-- TestNamespace_Customer",
+            "Address property should show composition");
+        result.Should().Contain("TestNamespace_Order *-- TestNamespace_Customer",
+            "Order property should show composition");
     }
 
     [Fact]
@@ -264,8 +266,9 @@ public class McpClassDiagramTests : IDisposable
         result.Should().Contain("class TestNamespace_Customer");
         result.Should().Contain("class TestNamespace_Address");
         result.Should().Contain("class TestNamespace_Order");
-        // Should not show dependency relationships when disabled
+        // Should not show dependency/composition relationships when disabled
         result.Should().NotContain("-->");
+        result.Should().NotContain("*--");
     }
 
     #endregion

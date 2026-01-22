@@ -39,6 +39,8 @@ public enum RelationshipKind
 {
     Inheritance,
     Realization,
+    Composition,
+    Aggregation,
     Association,
     Dependency
 }

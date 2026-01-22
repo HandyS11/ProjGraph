@@ -115,6 +115,8 @@ public static class MermaidClassDiagramRenderer
         {
             RelationshipKind.Inheritance => "<|--",
             RelationshipKind.Realization => "<|..",
+            RelationshipKind.Composition => "*--",
+            RelationshipKind.Aggregation => "o--",
             RelationshipKind.Association => "-->",
             RelationshipKind.Dependency => "..>",
             _ => "-->"

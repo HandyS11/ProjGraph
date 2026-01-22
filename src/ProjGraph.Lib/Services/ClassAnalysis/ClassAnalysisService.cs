@@ -216,20 +216,121 @@ public class ClassAnalysisService : IClassAnalysisService
         INamedTypeSymbol symbol,
         List<(INamedTypeSymbol Symbol, RelationshipKind Kind)> relatedSymbols)
     {
-        var propertyDeps = symbol.GetMembers().OfType<IPropertySymbol>().Select(p => p.Type);
-        var fieldDeps = symbol.GetMembers().OfType<IFieldSymbol>().Select(f => f.Type);
-        var methodReturnDeps = symbol.GetMembers().OfType<IMethodSymbol>().Select(m => m.ReturnType);
-        var methodParamDeps = symbol.GetMembers().OfType<IMethodSymbol>()
+        var seenTypes = new HashSet<string>();
+
+        // Process properties and fields for composition relationships
+        var propertySymbols = symbol.GetMembers().OfType<IPropertySymbol>().ToList();
+        var fieldSymbols = symbol.GetMembers().OfType<IFieldSymbol>().ToList();
+
+        foreach (var prop in propertySymbols)
+        {
+            ProcessMemberType(prop.Type, relatedSymbols, seenTypes);
+        }
+
+        foreach (var field in fieldSymbols)
+        {
+            ProcessMemberType(field.Type, relatedSymbols, seenTypes);
+        }
+
+        // Process method return types and parameters as dependencies
+        var methodReturnTypes = symbol.GetMembers().OfType<IMethodSymbol>()
+            .Where(m => m.MethodKind == MethodKind.Ordinary)
+            .Select(m => m.ReturnType);
+
+        var methodParamTypes = symbol.GetMembers().OfType<IMethodSymbol>()
+            .Where(m => m.MethodKind == MethodKind.Ordinary)
             .SelectMany(m => m.Parameters.Select(p => p.Type));
 
-        var allDeps = propertyDeps
-            .Concat(fieldDeps)
-            .Concat(methodReturnDeps)
-            .Concat(methodParamDeps)
-            .OfType<INamedTypeSymbol>()
-            .Where(t => t.SpecialType == SpecialType.None);
+        foreach (var type in methodReturnTypes.Concat(methodParamTypes))
+        {
+            if (type is INamedTypeSymbol namedType && namedType.SpecialType == SpecialType.None)
+            {
+                var extractedTypes = ExtractTypesFromGeneric(namedType);
+                relatedSymbols.AddRange(from extracted in extractedTypes
+                    let fullName = GetFullyQualifiedName(extracted)
+                    where seenTypes.Add(fullName) && !IsSystemType(extracted)
+                    select (extracted, RelationshipKind.Dependency));
+            }
+        }
+    }
 
-        relatedSymbols.AddRange(allDeps.Select(dep => (dep, RelationshipKind.Association)));
+    /// <summary>
+    /// Processes a member type (property or field) to determine the appropriate relationship kind.
+    /// </summary>
+    /// <param name="type">The type of the member.</param>
+    /// <param name="relatedSymbols">List to add discovered relationships to.</param>
+    /// <param name="seenTypes">Set to track already processed types.</param>
+    private static void ProcessMemberType(
+        ITypeSymbol type,
+        List<(INamedTypeSymbol Symbol, RelationshipKind Kind)> relatedSymbols,
+        HashSet<string> seenTypes)
+    {
+        if (type is not INamedTypeSymbol { SpecialType: SpecialType.None } namedType)
+        {
+            return;
+        }
+
+        var extractedTypes = ExtractTypesFromGeneric(namedType);
+
+        relatedSymbols.AddRange(from extracted in extractedTypes
+            let fullName = GetFullyQualifiedName(extracted)
+            where seenTypes.Add(fullName) && !IsSystemType(extracted)
+            select (extracted, RelationshipKind.Composition));
+    }
+
+    /// <summary>
+    /// Extracts concrete types from a potentially generic type.
+    /// For example, List&lt;Address&gt; would return [Address], and Dictionary&lt;string, User&gt; would return [User].
+    /// This avoids creating nodes for generic container types.
+    /// </summary>
+    /// <param name="type">The type to extract from.</param>
+    /// <returns>A list of concrete named type symbols.</returns>
+    private static List<INamedTypeSymbol> ExtractTypesFromGeneric(INamedTypeSymbol type)
+    {
+        var result = new List<INamedTypeSymbol>();
+
+        // If it's a generic type (like List<T>, Dictionary<K,V>), extract the type arguments
+        if (type is { IsGenericType: true, TypeArguments.Length: > 0 })
+        {
+            foreach (var typeArg in type.TypeArguments)
+            {
+                if (typeArg is not INamedTypeSymbol { SpecialType: SpecialType.None } namedTypeArg)
+                {
+                    continue;
+                }
+
+                // Recursively handle nested generics
+                if (namedTypeArg.IsGenericType)
+                {
+                    result.AddRange(ExtractTypesFromGeneric(namedTypeArg));
+                }
+                else if (!IsSystemType(namedTypeArg))
+                {
+                    result.Add(namedTypeArg);
+                }
+            }
+        }
+        else if (!IsSystemType(type))
+        {
+            // Not a generic type, return the type itself if it's not a system type
+            result.Add(type);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Determines if a type is a system/framework type that should be excluded from diagrams.
+    /// </summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True if the type is from System namespace or common framework namespaces.</returns>
+    private static bool IsSystemType(INamedTypeSymbol type)
+    {
+        var ns = type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+
+        return ns.StartsWith("System", StringComparison.Ordinal) ||
+               ns.StartsWith("Microsoft", StringComparison.Ordinal) ||
+               type.SpecialType != SpecialType.None;
     }
 
     /// <summary>
@@ -260,7 +361,7 @@ public class ClassAnalysisService : IClassAnalysisService
             // Use the resolved symbol if available, otherwise fall back to the original
             var symbolToUse = resolvedSymbol ?? relatedSymbol;
             var relatedFullName = GetFullyQualifiedName(symbolToUse);
-            
+
             context.Relationships.Add(new Relationship(fullName, relatedFullName, kind));
 
             if (context.AnalyzedTypeFullNames.Contains(relatedFullName))

@@ -74,6 +74,7 @@ public class ClassDiagramDiscoveryTests : IDisposable
         capturedOutput.Should().Contain("UserService",
             $"Output should contain UserService class. Full output: {capturedOutput}");
         capturedOutput.Should().Contain("User", $"Output should contain User class. Full output: {capturedOutput}");
-        capturedOutput.Should().Contain("-->", "Output should contain relationship arrow");
+        capturedOutput.Should().MatchRegex(@"(-->|\.\.>)",
+            "Output should contain relationship arrow (association or dependency)");
     }
 }
