@@ -17,12 +17,15 @@ public static class MermaidClassDiagramRenderer
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
-        sb.AppendLine("classDiagram");
 
         if (!string.IsNullOrEmpty(model.Title))
         {
-            sb.AppendLine($"    title: {model.Title}");
+            sb.AppendLine("---");
+            sb.AppendLine($"title: {model.Title}");
+            sb.AppendLine("---");
         }
+
+        sb.AppendLine("classDiagram");
 
         foreach (var type in model.Types)
         {

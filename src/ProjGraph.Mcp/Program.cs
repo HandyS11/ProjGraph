@@ -49,7 +49,7 @@ public class ProjGraphTools(
         [Description("Absolute path to the .cs file to analyze.")]
         string filePath,
         [Description("Whether to search the workspace for base classes and interfaces.")]
-        bool includeInheritance = true,
+        bool includeInheritance = false,
         [Description("Whether to search for and include other classes used as properties or fields.")]
         bool includeDependencies = false,
         [Description("How many levels of relationships to follow (default: 1).")]

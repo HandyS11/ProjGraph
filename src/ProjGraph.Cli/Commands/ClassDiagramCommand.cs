@@ -33,7 +33,7 @@ public sealed class ClassDiagramCommand : AsyncCommand<ClassDiagramCommand.Setti
         /// <value>True to include inheritance; otherwise, false.</value>
         [CommandOption("-i|--inheritance")]
         [Description("Discover base classes and interfaces in the workspace (optional)")]
-        [DefaultValue(true)]
+        [DefaultValue(false)]
         public bool IncludeInheritance { get; init; }
 
         /// <summary>
@@ -53,14 +53,6 @@ public sealed class ClassDiagramCommand : AsyncCommand<ClassDiagramCommand.Setti
         [Description("Max depth for relationship discovery (default 1)")]
         [DefaultValue(1)]
         public int Depth { get; init; }
-
-        /// <summary>
-        /// Gets or sets the path to the output file where the diagram will be saved.
-        /// </summary>
-        /// <value>The output file path as a string, or null if not specified.</value>
-        [CommandOption("-o|--output")]
-        [Description("Path to output file")]
-        public string? OutputPath { get; init; }
 
         /// <summary>
         /// Validates the settings provided by the user.
@@ -114,16 +106,7 @@ public sealed class ClassDiagramCommand : AsyncCommand<ClassDiagramCommand.Setti
                 settings.Depth);
 
             var mermaid = MermaidClassDiagramRenderer.Render(model);
-
-            if (!string.IsNullOrEmpty(settings.OutputPath))
-            {
-                await File.WriteAllTextAsync(settings.OutputPath, mermaid, cancellationToken);
-                AnsiConsole.MarkupLine($"[green]Success:[/] Diagram saved to [white]{settings.OutputPath}[/]");
-            }
-            else
-            {
-                Console.WriteLine(mermaid);
-            }
+            Console.WriteLine(mermaid);
 
             return 0;
         }

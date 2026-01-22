@@ -121,7 +121,7 @@ public class ClassAnalysisService : IClassAnalysisService
         while (typesToAnalyze.Count > 0)
         {
             var (symbol, depth) = typesToAnalyze.Dequeue();
-            var fullName = symbol.ToDisplayString();
+            var fullName = GetFullyQualifiedName(symbol);
 
             if (!context.AnalyzedTypeFullNames.Add(fullName))
             {
@@ -254,7 +254,13 @@ public class ClassAnalysisService : IClassAnalysisService
     {
         foreach (var (relatedSymbol, kind) in relatedSymbols)
         {
-            var relatedFullName = relatedSymbol.ToDisplayString();
+            // First, try to resolve the symbol to get the most accurate type information
+            var resolvedSymbol = await ResolveRelatedSymbolAsync(relatedSymbol, context);
+
+            // Use the resolved symbol if available, otherwise fall back to the original
+            var symbolToUse = resolvedSymbol ?? relatedSymbol;
+            var relatedFullName = GetFullyQualifiedName(symbolToUse);
+            
             context.Relationships.Add(new Relationship(fullName, relatedFullName, kind));
 
             if (context.AnalyzedTypeFullNames.Contains(relatedFullName))
@@ -262,13 +268,9 @@ public class ClassAnalysisService : IClassAnalysisService
                 continue;
             }
 
-            var nextSymbol = await ResolveRelatedSymbolAsync(
-                relatedSymbol,
-                context);
-
-            if (nextSymbol != null)
+            if (resolvedSymbol != null)
             {
-                typesToAnalyze.Enqueue((nextSymbol, depth + 1));
+                typesToAnalyze.Enqueue((resolvedSymbol, depth + 1));
             }
         }
     }
@@ -319,14 +321,15 @@ public class ClassAnalysisService : IClassAnalysisService
         INamedTypeSymbol relatedSymbol,
         AnalysisContext context)
     {
+        var fullName = GetFullyQualifiedName(relatedSymbol);
         context.Types.Add(new TypeDefinition(
             relatedSymbol.Name,
             relatedSymbol.ContainingNamespace.ToDisplayString(),
-            relatedSymbol.ToDisplayString(),
+            fullName,
             MapKind(relatedSymbol),
             [],
             true));
-        context.AnalyzedTypeFullNames.Add(relatedSymbol.ToDisplayString());
+        context.AnalyzedTypeFullNames.Add(fullName);
     }
 
     /// <summary>
@@ -405,9 +408,30 @@ public class ClassAnalysisService : IClassAnalysisService
         return new TypeDefinition(
             symbol.Name,
             symbol.ContainingNamespace.ToDisplayString(),
-            symbol.ToDisplayString(),
+            GetFullyQualifiedName(symbol),
             MapKind(symbol),
             members);
+    }
+
+    /// <summary>
+    /// Gets the fully qualified name of a type symbol, including its namespace.
+    /// </summary>
+    /// <param name="symbol">The <see cref="INamedTypeSymbol"/> to get the fully qualified name for.</param>
+    /// <returns>The fully qualified name in the format Namespace.TypeName.</returns>
+    private static string GetFullyQualifiedName(INamedTypeSymbol symbol)
+    {
+        // Use ToDisplayString with FullyQualifiedFormat to get the complete name
+        // This ensures we get the full namespace even for symbols not yet in compilation
+        var fullyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        // Remove the leading "global::" prefix if present
+        if (fullyQualifiedName.StartsWith("global::"))
+        {
+            fullyQualifiedName = fullyQualifiedName[8..];
+        }
+
+
+        return fullyQualifiedName;
     }
 
     /// <summary>

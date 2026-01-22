@@ -57,12 +57,17 @@ Generates a Mermaid Entity Relationship Diagram from an EF Core DbContext file.
 
 ### `get_class_diagram`
 
-Generates a Mermaid Class Diagram for a specific class, discovering its inheritance hierarchy and dependencies.
+Generates a Mermaid class diagram for the types defined in a specific C# file, with options to discover inheritance and
+related types in the workspace.
 
 **Parameters:**
 
-- `path` (string): Absolute path to the C# file containing the target class
-- `depth` (number, optional): Recursion depth for discovery (default: 3)
+- `filePath` (string): Absolute path to the C# file to analyze
+- `includeInheritance` (boolean, optional): Whether to search the workspace for base classes and interfaces (default:
+  false)
+- `includeDependencies` (boolean, optional): Whether to search for and include other classes used as properties or
+  fields (default: false)
+- `depth` (number, optional): How many levels of relationships to follow (default: 1)
 
 **Returns:** Mermaid class diagram code
 
@@ -71,7 +76,8 @@ Generates a Mermaid Class Diagram for a specific class, discovering its inherita
 ```x
 "Show me the class hierarchy for ./Models/Admin.cs"
 "Visualize the dependencies of the GuestUser class in Guest.cs"
-"Draw a class diagram for my domain model starting at ./Domain/Entity.cs"
+"Draw a class diagram for my domain model starting at ./Domain/Entity.cs with inheritance"
+"Generate a class diagram with all dependencies at depth 2"
 ```
 
 ## License

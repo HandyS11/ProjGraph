@@ -85,4 +85,59 @@ public class ClassAnalysisServiceTests : IDisposable
             Directory.Delete(root, true);
         }
     }
+
+    [Fact]
+    public async Task AnalyzeFileAsync_WithNamespacedInheritance_UsesFullyQualifiedNames()
+    {
+        const string code = """
+
+                            namespace MyApp.Models;
+
+                            public class Base {}
+                            public class Derived : Base {}
+                            """;
+        await File.WriteAllTextAsync(_tempFile, code);
+
+        var result = await _service.AnalyzeFileAsync(_tempFile);
+
+        result.Types.Should().HaveCount(2);
+        result.Relationships.Should().HaveCount(1);
+        var rel = result.Relationships[0];
+        rel.From.Should().Be("MyApp.Models.Derived");
+        rel.To.Should().Be("MyApp.Models.Base");
+    }
+
+    [Fact]
+    public async Task AnalyzeFileAsync_WithCrossNamespaceInheritance_UsesFullyQualifiedNames()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(root);
+        try
+        {
+            var baseFile = Path.Combine(root, "BaseEntity.cs");
+            var userFile = Path.Combine(root, "User.cs");
+            await File.WriteAllTextAsync(baseFile, """
+                                                   namespace SimpleHierarchy.Base;
+                                                   public abstract class BaseEntity { public int Id { get; set; } }
+                                                   """);
+            await File.WriteAllTextAsync(userFile, """
+                                                   using SimpleHierarchy.Base;
+                                                   namespace SimpleHierarchy.Models;
+                                                   public class User : BaseEntity { public string Name { get; set; } }
+                                                   """);
+            await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
+
+            var result = await _service.AnalyzeFileAsync(userFile, true);
+
+            result.Types.Count.Should().BeGreaterThanOrEqualTo(2);
+            result.Relationships.Should().HaveCount(1);
+            var rel = result.Relationships[0];
+            rel.From.Should().Be("SimpleHierarchy.Models.User");
+            rel.To.Should().Be("SimpleHierarchy.Base.BaseEntity");
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
 }

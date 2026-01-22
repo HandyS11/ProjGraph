@@ -66,4 +66,26 @@ public class MermaidClassDiagramRendererTests
 
         result.Should().Contain("class System_Collections_Generic_List_T_ [\"List~T~\"]");
     }
+
+    [Fact]
+    public void Render_WithCrossNamespaceInheritance_UsesSanitizedFullyQualifiedNames()
+    {
+        var model = new ClassModel(null, [
+                new TypeDefinition("BaseEntity", "SimpleHierarchy.Base", "SimpleHierarchy.Base.BaseEntity",
+                    TypeKind.Class,
+                    []),
+                new TypeDefinition("User", "SimpleHierarchy.Models", "SimpleHierarchy.Models.User", TypeKind.Class, [])
+            ],
+            [
+                new Relationship("SimpleHierarchy.Models.User", "SimpleHierarchy.Base.BaseEntity",
+                    RelationshipKind.Inheritance)
+            ]);
+
+        var result = MermaidClassDiagramRenderer.Render(model);
+
+        // Should use sanitized fully qualified names in the relationship
+        result.Should().Contain("SimpleHierarchy_Base_BaseEntity <|-- SimpleHierarchy_Models_User");
+        // Should NOT contain the short name at the beginning of the relationship (with proper word boundary)
+        result.Should().NotContain("    BaseEntity <|--", "should use fully qualified name, not short name");
+    }
 }
