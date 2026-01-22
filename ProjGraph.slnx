@@ -1,6 +1,9 @@
 <Solution>
   <Folder Name="/samples/"/>
   <Folder Name="/samples/classdiagram/"/>
+  <Folder Name="/samples/classdiagram/design-patterns/">
+    <Project Path="samples/classdiagram/design-patterns/DesignPatterns.csproj"/>
+  </Folder>
   <Folder Name="/samples/classdiagram/simple-hierarchy/">
     <Project Path="samples/classdiagram/simple-hierarchy/SimpleHierarchy.csproj"/>
   </Folder>
