@@ -117,10 +117,13 @@ Once the MCP server is configured:
 
 ```x
 You: "Analyze the dependencies in my solution"
-AI: [Uses ProjGraph MCP to analyze and explain your architecture]
+AI: [Generate the architecture diagram]
+
+You: "Generate a class diagram for the User class"
+AI: [Generates the class hierarchy]
 
 You: "Show me the entity relationships in my DbContext"
-AI: [Generates and explains the database schema]
+AI: [Generates the database schema]
 ```
 
 ## 🔗 Links
