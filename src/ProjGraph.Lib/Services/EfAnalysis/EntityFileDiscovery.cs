@@ -106,16 +106,6 @@ public static class EntityFileDiscovery
             return searchDirectories;
         }
 
-        // Don't search the system temp directory to avoid race conditions with parallel tests
-        var tempPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var parentPath = parentDir.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-        if (parentPath.Equals(tempPath, StringComparison.OrdinalIgnoreCase))
-        {
-            // Context directory is directly in the system temp folder, don't search parent
-            return searchDirectories;
-        }
-
         searchDirectories.Add(parentDir.FullName);
         AddSiblingEntityDirectories(parentDir.FullName, entityNamespaces, searchDirectories);
 
