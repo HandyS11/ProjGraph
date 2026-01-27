@@ -205,4 +205,34 @@ public class MermaidClassDiagramRendererTests
         result.Should().Contain("+GetAll() IEnumerable~T~");
         result.Should().Contain("+Save(T entity) void");
     }
+
+    [Fact]
+    public void Render_WithRecord_ShowsRecordStereotype()
+    {
+        var recordType = new TypeDefinition(
+            "Localisation",
+            "SimpleHierarchy.Models",
+            "SimpleHierarchy.Models.Localisation",
+            TypeKind.Record,
+            []);
+
+        recordType.Members.Add(new MemberDefinition("X", "int", Visibility.Public, MemberKind.Property));
+        recordType.Members.Add(new MemberDefinition("Y", "int", Visibility.Public, MemberKind.Property));
+        recordType.Members.Add(new MemberDefinition("Z", "int", Visibility.Public, MemberKind.Property));
+
+        var model = new ClassModel("Localisation.cs", [recordType], []);
+
+        var result = MermaidClassDiagramRenderer.Render(model);
+
+        // Should contain record stereotype
+        result.Should().Contain("<<record>> SimpleHierarchy_Models_Localisation");
+
+        // Should contain the properties
+        result.Should().Contain("+int X");
+        result.Should().Contain("+int Y");
+        result.Should().Contain("+int Z");
+
+        // Should not contain self-referential relationships
+        result.Should().NotContain("SimpleHierarchy_Models_Localisation ..> SimpleHierarchy_Models_Localisation");
+    }
 }

@@ -113,6 +113,12 @@ internal static class TypeAnalyzer
     /// </returns>
     public static ModelTypeKind MapKind(INamedTypeSymbol symbol)
     {
+        // Check if it's a record (records are a special kind of class or struct)
+        if (symbol.IsRecord)
+        {
+            return ModelTypeKind.Record;
+        }
+
         return symbol.TypeKind switch
         {
             TypeKind.Interface => ModelTypeKind.Interface,

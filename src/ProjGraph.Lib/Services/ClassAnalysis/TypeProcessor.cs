@@ -134,6 +134,12 @@ internal static class TypeProcessor
 
             var relatedFullName = TypeAnalyzer.GetFullyQualifiedName(symbolToUse);
 
+            // Skip self-referencing relationships - they are not meaningful
+            if (fullName == relatedFullName)
+            {
+                continue;
+            }
+
             context.Relationships.Add(new Relationship(fullName, relatedFullName, kind, label, cardinality));
 
             // Only enqueue if we haven't analyzed this type yet
