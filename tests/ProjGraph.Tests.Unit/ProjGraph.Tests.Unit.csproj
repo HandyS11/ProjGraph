@@ -3,6 +3,9 @@
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
+
+    <ParallelizeTestCollections>false</ParallelizeTestCollections>
+    <ParallelizeTestCases>false</ParallelizeTestCases>
   </PropertyGroup>
 
   <ItemGroup>
