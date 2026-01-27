@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using ProjGraph.Core.Models;
+using TypeKind = Microsoft.CodeAnalysis.TypeKind;
 
 namespace ProjGraph.Lib.Services.ClassAnalysis;
 
@@ -42,6 +43,12 @@ internal static class RelationshipAnalyzer
         INamedTypeSymbol symbol,
         List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)> relatedSymbols)
     {
+        // Skip dependency analysis for enums - they don't have meaningful relationships
+        if (symbol.TypeKind == TypeKind.Enum)
+        {
+            return;
+        }
+
         // Track unique type+label combinations to avoid exact duplicates
         var seenCombinations = new HashSet<(string TypeName, string? Label)>();
 

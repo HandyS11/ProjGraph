@@ -134,4 +134,75 @@ public class MermaidClassDiagramRendererTests
         result.Should().Contain("<<abstract>> Models_BaseEntity");
         result.Should().NotContain("<<abstract>> Models_User");
     }
+
+    [Fact]
+    public void Render_WithEnum_NoTypeInMembersAndNoSelfReferences()
+    {
+        var enumType = new TypeDefinition(
+            "Types",
+            "SimpleHierarchy.Enums",
+            "SimpleHierarchy.Enums.Types",
+            TypeKind.Enum,
+            []);
+
+        // Enum members have empty type strings
+        enumType.Members.Add(new MemberDefinition("None", string.Empty, Visibility.Public, MemberKind.Field));
+        enumType.Members.Add(new MemberDefinition("TypeA", string.Empty, Visibility.Public, MemberKind.Field));
+        enumType.Members.Add(new MemberDefinition("TypeB", string.Empty, Visibility.Public, MemberKind.Field));
+        enumType.Members.Add(new MemberDefinition("TypeC", string.Empty, Visibility.Public, MemberKind.Field));
+
+        var model = new ClassModel("Types.cs", [enumType], []);
+
+        var result = MermaidClassDiagramRenderer.Render(model);
+
+        // Should contain enum stereotype
+        result.Should().Contain("<<enum>> SimpleHierarchy_Enums_Types");
+
+        // Enum members should only show names without types
+        result.Should().Contain("+None");
+        result.Should().Contain("+TypeA");
+        result.Should().Contain("+TypeB");
+        result.Should().Contain("+TypeC");
+
+        // Should NOT contain the full type name in members
+        result.Should().NotContain("SimpleHierarchy.Enums.Types None");
+        result.Should().NotContain("SimpleHierarchy.Enums.Types TypeA");
+
+        // Should not contain self-referential relationships
+        result.Should().NotContain("SimpleHierarchy_Enums_Types --> SimpleHierarchy_Enums_Types");
+    }
+
+    [Fact]
+    public void Render_WithInterface_OnlyShowsInterfaceStereotype()
+    {
+        var interfaceType = new TypeDefinition(
+            "IRepository<T>",
+            "SimpleHierarchy.Interfaces",
+            "SimpleHierarchy.Interfaces.IRepository<T>",
+            TypeKind.Interface,
+            [],
+            true); // Interfaces are marked as abstract by Roslyn
+
+        interfaceType.Members.Add(new MemberDefinition("GetById", "T?", Visibility.Public, MemberKind.Method,
+            [new ParameterDefinition("id", "Guid")]));
+        interfaceType.Members.Add(new MemberDefinition("GetAll", "IEnumerable<T>", Visibility.Public, MemberKind.Method,
+            []));
+        interfaceType.Members.Add(new MemberDefinition("Save", "void", Visibility.Public, MemberKind.Method,
+            [new ParameterDefinition("entity", "T")]));
+
+        var model = new ClassModel("IRepository.cs", [interfaceType], []);
+
+        var result = MermaidClassDiagramRenderer.Render(model);
+
+        // Should contain interface stereotype
+        result.Should().Contain("<<interface>> SimpleHierarchy_Interfaces_IRepository_T_");
+
+        // Should NOT contain abstract stereotype (interfaces are inherently abstract)
+        result.Should().NotContain("<<abstract>> SimpleHierarchy_Interfaces_IRepository_T_");
+
+        // Should contain the methods
+        result.Should().Contain("+GetById(Guid id) T?");
+        result.Should().Contain("+GetAll() IEnumerable~T~");
+        result.Should().Contain("+Save(T entity) void");
+    }
 }

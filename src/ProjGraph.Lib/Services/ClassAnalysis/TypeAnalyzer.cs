@@ -20,6 +20,7 @@ internal static class TypeAnalyzer
     public static TypeDefinition AnalyzeType(INamedTypeSymbol symbol)
     {
         var members = new List<MemberDefinition>();
+        var isEnum = symbol.TypeKind == TypeKind.Enum;
 
         foreach (var member in symbol.GetMembers().Where(member => !member.IsImplicitlyDeclared))
         {
@@ -33,9 +34,11 @@ internal static class TypeAnalyzer
                         MemberKind.Property));
                     break;
                 case IFieldSymbol { IsImplicitlyDeclared: false } field:
+                    // For enums, only show the field name without the type
+                    var fieldType = isEnum ? string.Empty : field.Type.ToDisplayString();
                     members.Add(new MemberDefinition(
                         field.Name,
-                        field.Type.ToDisplayString(),
+                        fieldType,
                         MapAccessibility(field.DeclaredAccessibility),
                         MemberKind.Field));
                     break;

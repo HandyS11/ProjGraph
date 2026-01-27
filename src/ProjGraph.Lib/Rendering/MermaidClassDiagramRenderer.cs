@@ -60,7 +60,9 @@ public static class MermaidClassDiagramRenderer
         sb.AppendLine($"    class {sanitizedName} [\"{displayName}\"]");
 
         // Render stereotypes
-        if (type.IsAbstract)
+        // For interfaces, only render the interface stereotype (they are inherently abstract)
+        // Mermaid can only display one stereotype, so prioritize the type kind over abstract
+        if (type is { IsAbstract: true, Kind: TypeKind.Class })
         {
             sb.AppendLine($"    <<abstract>> {sanitizedName}");
         }
@@ -101,6 +103,11 @@ public static class MermaidClassDiagramRenderer
                     member.Parameters.Select(p => $"{p.Type.Replace('<', '~').Replace('>', '~')} {p.Name}"))
                 : "";
             sb.AppendLine($"        {visibility}{member.Name}({parameters}) {type}");
+        }
+        else if (string.IsNullOrEmpty(type))
+        {
+            // For enum fields, only show the name without type
+            sb.AppendLine($"        {visibility}{member.Name}");
         }
         else
         {

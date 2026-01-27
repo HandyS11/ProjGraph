@@ -127,7 +127,7 @@ public class ClassAnalysisServiceTests : IDisposable
                                                    """);
             await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
 
-            var result = await _service.AnalyzeFileAsync(userFile, true);
+            var result = await _service.AnalyzeFileAsync(userFile);
 
             result.Types.Count.Should().BeGreaterThanOrEqualTo(2);
             result.Relationships.Should().HaveCount(1);
@@ -139,5 +139,40 @@ public class ClassAnalysisServiceTests : IDisposable
         {
             Directory.Delete(root, true);
         }
+    }
+
+    [Fact]
+    public async Task AnalyzeFileAsync_Enum_NoSelfReferencesAndNoTypeInMembers()
+    {
+        const string code = """
+                            namespace SimpleHierarchy.Enums;
+
+                            public enum Types
+                            {
+                                None = 0,
+                                TypeA = 1,
+                                TypeB = 2,
+                                TypeC = 3
+                            }
+                            """;
+        await File.WriteAllTextAsync(_tempFile, code);
+
+        var result = await _service.AnalyzeFileAsync(_tempFile, false, true);
+
+        result.Types.Should().HaveCount(1);
+        var type = result.Types[0];
+        type.Name.Should().Be("Types");
+        type.Kind.Should().Be(TypeKind.Enum);
+        type.Members.Should().HaveCount(4);
+
+        // Enum members should have empty type strings
+        type.Members.Should().OnlyContain(m => string.IsNullOrEmpty(m.Type));
+        type.Members.Should().Contain(m => m.Name == "None");
+        type.Members.Should().Contain(m => m.Name == "TypeA");
+        type.Members.Should().Contain(m => m.Name == "TypeB");
+        type.Members.Should().Contain(m => m.Name == "TypeC");
+
+        // Enum should not have any relationships to itself
+        result.Relationships.Should().BeEmpty();
     }
 }
