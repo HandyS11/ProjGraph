@@ -7,11 +7,22 @@ public class EfAnalysisServiceTests
 {
     private readonly EfAnalysisService _service = new();
 
+    /// <summary>
+    /// Creates a temporary file path for testing. Deletes the .tmp file created by Path.GetTempFileName()
+    /// to prevent race conditions with file discovery in the temp directory.
+    /// </summary>
+    private static string CreateTempFilePath(string extension = ".cs")
+    {
+        var tempFile = Path.GetTempFileName();
+        File.Delete(tempFile); // Delete the .tmp file immediately to prevent discovery issues
+        return tempFile + extension;
+    }
+
     [Fact]
     public async Task DiscoverContextsAsync_ShouldFindDbContextInFile()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         const string content = """
 
                                using Microsoft.EntityFrameworkCore;
@@ -43,7 +54,7 @@ public class EfAnalysisServiceTests
     public async Task AnalyzeContextAsync_ShouldExtractEntitiesFromDbSets()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         const string content = """
 
                                using Microsoft.EntityFrameworkCore;
@@ -81,7 +92,7 @@ public class EfAnalysisServiceTests
     public async Task DiscoverContextsAsync_ShouldThrowForNonCsFile()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".txt";
+        var filePath = CreateTempFilePath(".txt");
         await File.WriteAllTextAsync(filePath, "test content");
 
         try
@@ -101,7 +112,7 @@ public class EfAnalysisServiceTests
     public async Task AnalyzeContextAsync_ShouldThrowForNonCsFile()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".txt";
+        var filePath = CreateTempFilePath(".txt");
         await File.WriteAllTextAsync(filePath, "test content");
 
         try
@@ -121,7 +132,7 @@ public class EfAnalysisServiceTests
     public async Task DiscoverContextsAsync_ShouldReturnEmptyListWhenNoContextsFound()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         const string content = """
 
                                namespace Test;
@@ -151,7 +162,7 @@ public class EfAnalysisServiceTests
     public async Task DiscoverContextsAsync_ShouldFindMultipleContexts()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         const string content = """
 
                                using Microsoft.EntityFrameworkCore;
@@ -182,7 +193,7 @@ public class EfAnalysisServiceTests
     public async Task AnalyzeContextAsync_ShouldHandleMultipleDbSets()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         const string content = """
 
                                using Microsoft.EntityFrameworkCore;
@@ -221,7 +232,7 @@ public class EfAnalysisServiceTests
     public async Task AnalyzeContextAsync_ShouldAnalyzeFirstContextWhenNameNotSpecified()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         const string content = """
 
                                using Microsoft.EntityFrameworkCore;
@@ -259,7 +270,7 @@ public class EfAnalysisServiceTests
     public async Task AnalyzeContextAsync_ShouldHandlePropertiesWithDifferentTypes()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         const string content = """
 
                                using Microsoft.EntityFrameworkCore;
@@ -304,7 +315,7 @@ public class EfAnalysisServiceTests
     public async Task AnalyzeContextAsync_ShouldIdentifyPrimaryKeysByConvention()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         const string content = """
 
                                using Microsoft.EntityFrameworkCore;
@@ -341,7 +352,7 @@ public class EfAnalysisServiceTests
     public async Task DiscoverContextsAsync_ShouldHandleEmptyFile()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         await File.WriteAllTextAsync(filePath, string.Empty);
 
         try
@@ -362,7 +373,7 @@ public class EfAnalysisServiceTests
     public async Task AnalyzeContextAsync_ShouldHandleContextWithNoDbSets()
     {
         // Arrange
-        var filePath = Path.GetTempFileName() + ".cs";
+        var filePath = CreateTempFilePath();
         const string content = """
 
                                using Microsoft.EntityFrameworkCore;

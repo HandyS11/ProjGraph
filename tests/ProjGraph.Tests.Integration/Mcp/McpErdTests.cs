@@ -12,7 +12,10 @@ public class McpErdTests : IDisposable
 
     public McpErdTests()
     {
-        _tempFile = Path.GetTempFileName() + ".cs";
+        // Create temp file path and delete the .tmp file immediately to prevent discovery issues
+        var tempFilePath = Path.GetTempFileName();
+        File.Delete(tempFilePath);
+        _tempFile = tempFilePath + ".cs";
         const string content = """
                                using Microsoft.EntityFrameworkCore;
                                using System.Collections.Generic;
@@ -224,7 +227,9 @@ public class McpErdTests : IDisposable
     {
         // Arrange
         var tools = CreateTools();
-        var invalidFile = Path.GetTempFileName() + ".cs";
+        var tempFilePath = Path.GetTempFileName();
+        File.Delete(tempFilePath); // Delete the .tmp file immediately to prevent discovery issues
+        var invalidFile = tempFilePath + ".cs";
         await File.WriteAllTextAsync(invalidFile, "public class NotADbContext { }");
 
         try

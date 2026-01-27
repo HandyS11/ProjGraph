@@ -6,8 +6,16 @@ namespace ProjGraph.Tests.Unit.Services.ClassAnalysis;
 
 public class ClassAnalysisServiceTests : IDisposable
 {
-    private readonly string _tempFile = Path.GetTempFileName() + ".cs";
+    private readonly string _tempFile;
     private readonly ClassAnalysisService _service = new();
+
+    public ClassAnalysisServiceTests()
+    {
+        // Create temp file path and delete the .tmp file immediately to prevent discovery issues
+        var tempFilePath = Path.GetTempFileName();
+        File.Delete(tempFilePath);
+        _tempFile = tempFilePath + ".cs";
+    }
 
     public void Dispose()
     {
