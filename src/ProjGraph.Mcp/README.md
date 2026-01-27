@@ -21,7 +21,7 @@ Analyzes a solution or project file and returns the dependency graph as a Mermai
 
 **Example prompts:**
 
-```x
+```text
 "Analyze the dependencies in ./MySolution.slnx"
 "Show me the project structure"
 "Are there any circular dependencies?"
@@ -49,7 +49,7 @@ Generates a Mermaid Entity Relationship Diagram from an EF Core DbContext file.
 
 **Example prompts:**
 
-```x
+```text
 "Show me the database schema from ./Data/MyDbContext.cs"
 "Generate an ERD for my DbContext"
 "What are the entity relationships in my database?"
@@ -73,7 +73,7 @@ related types in the workspace.
 
 **Example prompts:**
 
-```x
+```text
 "Show me the class hierarchy for ./Models/Admin.cs"
 "Visualize the dependencies of the GuestUser class in Guest.cs"
 "Draw a class diagram for my domain model starting at ./Domain/Entity.cs with inheritance"

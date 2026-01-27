@@ -11,7 +11,8 @@ public class MermaidClassDiagramRendererTests
     {
         var model = new ClassModel(null, [], []);
         var result = MermaidClassDiagramRenderer.Render(model);
-        result.Should().Be("```mermaid\r\nclassDiagram\r\n```\r\n");
+        var expected = $"```mermaid{Environment.NewLine}classDiagram{Environment.NewLine}```{Environment.NewLine}";
+        result.Should().Be(expected);
     }
 
     [Fact]

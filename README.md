@@ -115,7 +115,7 @@ projgraph classdiagram ./Models/Admin.cs --depth 5
 
 Once the MCP server is configured:
 
-```x
+```text
 You: "Analyze the dependencies in my solution"
 AI: [Generate the architecture diagram]
 

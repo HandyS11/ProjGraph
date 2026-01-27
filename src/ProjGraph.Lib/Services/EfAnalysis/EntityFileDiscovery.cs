@@ -91,6 +91,8 @@ public static class EntityFileDiscovery
     /// This method starts with the context directory and its parent directory (if it exists),
     /// then adds sibling directories that are likely to contain entity files based on their names
     /// or their match with the provided entity namespaces.
+    /// If the context directory is within the system temp directory, the parent temp directory is excluded
+    /// from the search to avoid finding files from other processes or parallel tests.
     /// </remarks>
     public static List<string> BuildSearchDirectories(
         string contextDirectory,
@@ -101,6 +103,16 @@ public static class EntityFileDiscovery
 
         if (parentDir is null)
         {
+            return searchDirectories;
+        }
+
+        // Don't search the system temp directory to avoid race conditions with parallel tests
+        var tempPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var parentPath = parentDir.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        if (parentPath.Equals(tempPath, StringComparison.OrdinalIgnoreCase))
+        {
+            // Context directory is directly in the system temp folder, don't search parent
             return searchDirectories;
         }
 
