@@ -178,39 +178,6 @@ The tool will generate a comprehensive Mermaid diagram showing:
 - ✅ Interface markers with `<<interface>>`
 - ✅ Enum types with `<<enumeration>>`
 
-### Sample Output Structure
-
-```mermaid
-classDiagram
-  class Order {
-    +decimal TotalAmount
-    +OrderStatus Status
-    +List~OrderItem~ Items
-    +Payment PaymentInfo
-  }
-
-  class OrderItem {
-    +Product Product
-    +int Quantity
-    +decimal UnitPrice
-  }
-
-  class IPaymentStrategy {
-    <<interface>>
-    +ProcessPayment(amount)
-  }
-
-  class CreditCardPayment {
-    +string CardNumber
-    +ProcessPayment(amount)
-  }
-
-  AuditableEntity <|-- Order
-  Order "1" *-- "*" OrderItem : Items
-  IPaymentStrategy <|.. CreditCardPayment
-  OrderService ..> IRepository : depends on
-```
-
 ## Running the Sample
 
 1. Navigate to the sample directory:
