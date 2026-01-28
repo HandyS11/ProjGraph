@@ -3,29 +3,30 @@ using ProjGraph.Lib.Services;
 using ProjGraph.Lib.Services.ClassAnalysis;
 using ProjGraph.Lib.Services.EfAnalysis;
 using ProjGraph.Mcp;
+using ProjGraph.Tests.Integration.Helpers;
 
 namespace ProjGraph.Tests.Integration.Mcp;
 
 [Collection("McpClassDiagram")]
 public class McpClassDiagramTests : IDisposable
 {
-    private readonly string _tempDir;
+    private readonly TestDirectory _temp = new();
     private readonly string _tempFile;
     private readonly string _tempFileWithInheritance;
     private readonly string _tempFileWithDependencies;
 
     public McpClassDiagramTests()
     {
-        // Create a dedicated test directory with a marker file to act as workspace root
-        _tempDir = Path.Combine(Path.GetTempPath(), $"McpClassDiagramTest_{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_tempDir);
+        var tempDir =
+            // Create a dedicated test directory with a marker file to act as workspace root
+            _temp.DirectoryPath;
 
         // Create a dummy .csproj file to mark this as a workspace root
-        var csprojPath = Path.Combine(_tempDir, "Test.csproj");
+        var csprojPath = Path.Combine(tempDir, "Test.csproj");
         File.WriteAllText(csprojPath, "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
 
         // Simple class without dependencies
-        _tempFile = Path.Combine(_tempDir, "Person.cs");
+        _tempFile = Path.Combine(tempDir, "Person.cs");
         const string simpleContent = """
                                      namespace TestNamespace;
 
@@ -46,7 +47,7 @@ public class McpClassDiagramTests : IDisposable
         File.WriteAllText(_tempFile, simpleContent);
 
         // Class with inheritance
-        _tempFileWithInheritance = Path.Combine(_tempDir, "Inheritance.cs");
+        _tempFileWithInheritance = Path.Combine(tempDir, "Inheritance.cs");
         const string inheritanceContent = """
                                           namespace TestNamespace;
 
@@ -75,7 +76,7 @@ public class McpClassDiagramTests : IDisposable
         File.WriteAllText(_tempFileWithInheritance, inheritanceContent);
 
         // Class with property dependencies
-        _tempFileWithDependencies = Path.Combine(_tempDir, "Dependencies.cs");
+        _tempFileWithDependencies = Path.Combine(tempDir, "Dependencies.cs");
         const string dependenciesContent = """
                                            using System.Collections.Generic;
 
@@ -107,17 +108,8 @@ public class McpClassDiagramTests : IDisposable
 
     public void Dispose()
     {
-        try
-        {
-            if (Directory.Exists(_tempDir))
-            {
-                Directory.Delete(_tempDir, true);
-            }
-        }
-        catch
-        {
-            /* Ignore cleanup errors */
-        }
+        _temp.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private static ProjGraphTools CreateTools()

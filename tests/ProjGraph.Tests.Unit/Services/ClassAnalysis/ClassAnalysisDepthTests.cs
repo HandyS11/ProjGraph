@@ -1,26 +1,23 @@
 using FluentAssertions;
 using ProjGraph.Lib.Services.ClassAnalysis;
+using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services.ClassAnalysis;
 
 public class ClassAnalysisDepthTests : IDisposable
 {
+    private readonly TestDirectory _temp = new();
     private readonly string _tempRoot;
     private readonly ClassAnalysisService _service = new();
 
     public ClassAnalysisDepthTests()
     {
-        _tempRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(_tempRoot);
+        _tempRoot = _temp.DirectoryPath;
     }
 
     public void Dispose()
     {
-        if (Directory.Exists(_tempRoot))
-        {
-            Directory.Delete(_tempRoot, true);
-        }
-
+        _temp.Dispose();
         GC.SuppressFinalize(this);
     }
 

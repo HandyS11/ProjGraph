@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Lib.Services.EfAnalysis;
+using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services;
 
@@ -7,24 +8,12 @@ public class EfAnalysisServiceTests
 {
     private readonly EfAnalysisService _service = new();
 
-    /// <summary>
-    /// Creates a temporary file path for testing. Deletes the .tmp file created by Path.GetTempFileName()
-    /// to prevent race conditions with file discovery in the temp directory.
-    /// </summary>
-    private static string CreateTempFilePath(string extension = ".cs")
-    {
-        var tempFile = Path.GetTempFileName();
-        File.Delete(tempFile); // Delete the .tmp file immediately to prevent discovery issues
-        return tempFile + extension;
-    }
-
     [Fact]
     public async Task DiscoverContextsAsync_ShouldFindDbContextInFile()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
+        using var temp = new TestDirectory();
         const string content = """
-
                                using Microsoft.EntityFrameworkCore;
                                namespace Test;
                                public class AppDbContext : DbContext 
@@ -32,31 +21,22 @@ public class EfAnalysisServiceTests
                                    public DbSet<Blog> Blogs { get; set; }
                                }
                                public class Blog { public int Id { get; set; } }
-
                                """;
-        await File.WriteAllTextAsync(filePath, content);
+        var filePath = temp.CreateFile("Context.cs", content);
 
-        try
-        {
-            // Act
-            var contexts = await _service.DiscoverContextsAsync(filePath);
+        // Act
+        var contexts = await _service.DiscoverContextsAsync(filePath);
 
-            // Assert
-            contexts.Should().Contain("AppDbContext");
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        contexts.Should().Contain("AppDbContext");
     }
 
     [Fact]
     public async Task AnalyzeContextAsync_ShouldExtractEntitiesFromDbSets()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
+        using var temp = new TestDirectory();
         const string content = """
-
                                using Microsoft.EntityFrameworkCore;
                                namespace Test;
                                public class AppDbContext : DbContext 
@@ -67,135 +47,94 @@ public class EfAnalysisServiceTests
                                    public int Id { get; set; } 
                                    public string Title { get; set; }
                                }
-
                                """;
-        await File.WriteAllTextAsync(filePath, content);
+        var filePath = temp.CreateFile("Context.cs", content);
 
-        try
-        {
-            // Act
-            var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
 
-            // Assert
-            model.Entities.Should().ContainSingle(e => e.Name == "Post");
-            var post = model.Entities.First(e => e.Name == "Post");
-            post.Properties.Should().Contain(p => p.Name == "Id" && p.IsPrimaryKey);
-            post.Properties.Should().Contain(p => p.Name == "Title");
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        model.Entities.Should().ContainSingle(e => e.Name == "Post");
+        var post = model.Entities.First(e => e.Name == "Post");
+        post.Properties.Should().Contain(p => p.Name == "Id" && p.IsPrimaryKey);
+        post.Properties.Should().Contain(p => p.Name == "Title");
     }
 
     [Fact]
     public async Task DiscoverContextsAsync_ShouldThrowForNonCsFile()
     {
         // Arrange
-        var filePath = CreateTempFilePath(".txt");
-        await File.WriteAllTextAsync(filePath, "test content");
+        using var temp = new TestDirectory();
+        var filePath = temp.CreateFile("test.txt", "test content");
 
-        try
-        {
-            // Act & Assert
-            var act = async () => await _service.DiscoverContextsAsync(filePath);
-            await act.Should().ThrowAsync<ArgumentException>()
-                .WithMessage("*Only .cs files are supported*");
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Act & Assert
+        var act = async () => await _service.DiscoverContextsAsync(filePath);
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Only .cs files are supported*");
     }
 
     [Fact]
     public async Task AnalyzeContextAsync_ShouldThrowForNonCsFile()
     {
         // Arrange
-        var filePath = CreateTempFilePath(".txt");
-        await File.WriteAllTextAsync(filePath, "test content");
+        using var temp = new TestDirectory();
+        var filePath = temp.CreateFile("test.txt", "test content");
 
-        try
-        {
-            // Act & Assert
-            var act = async () => await _service.AnalyzeContextAsync(filePath);
-            await act.Should().ThrowAsync<ArgumentException>()
-                .WithMessage("*Only .cs files are supported*");
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Act & Assert
+        var act = async () => await _service.AnalyzeContextAsync(filePath);
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Only .cs files are supported*");
     }
 
     [Fact]
     public async Task DiscoverContextsAsync_ShouldReturnEmptyListWhenNoContextsFound()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
+        using var temp = new TestDirectory();
         const string content = """
-
                                namespace Test;
                                public class RegularClass 
                                { 
                                    public int Id { get; set; }
                                }
-
                                """;
-        await File.WriteAllTextAsync(filePath, content);
+        var filePath = temp.CreateFile("Regular.cs", content);
 
-        try
-        {
-            // Act
-            var contexts = await _service.DiscoverContextsAsync(filePath);
+        // Act
+        var contexts = await _service.DiscoverContextsAsync(filePath);
 
-            // Assert
-            contexts.Should().BeEmpty();
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        contexts.Should().BeEmpty();
     }
 
     [Fact]
     public async Task DiscoverContextsAsync_ShouldFindMultipleContexts()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
+        using var temp = new TestDirectory();
         const string content = """
-
                                using Microsoft.EntityFrameworkCore;
                                namespace Test;
                                public class AppDbContext : DbContext { }
                                public class SecondDbContext : DbContext { }
-
                                """;
-        await File.WriteAllTextAsync(filePath, content);
+        var filePath = temp.CreateFile("Contexts.cs", content);
 
-        try
-        {
-            // Act
-            var contexts = await _service.DiscoverContextsAsync(filePath);
+        // Act
+        var contexts = await _service.DiscoverContextsAsync(filePath);
 
-            // Assert
-            contexts.Should().HaveCount(2);
-            contexts.Should().Contain("AppDbContext");
-            contexts.Should().Contain("SecondDbContext");
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        contexts.Should().HaveCount(2);
+        contexts.Should().Contain("AppDbContext");
+        contexts.Should().Contain("SecondDbContext");
     }
 
     [Fact]
     public async Task AnalyzeContextAsync_ShouldHandleMultipleDbSets()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
+        using var temp = new TestDirectory();
         const string content = """
-
                                using Microsoft.EntityFrameworkCore;
                                namespace Test;
                                public class AppDbContext : DbContext 
@@ -207,34 +146,25 @@ public class EfAnalysisServiceTests
                                public class User { public int Id { get; set; } }
                                public class Post { public int Id { get; set; } }
                                public class Comment { public int Id { get; set; } }
-
                                """;
-        await File.WriteAllTextAsync(filePath, content);
+        var filePath = temp.CreateFile("Context.cs", content);
 
-        try
-        {
-            // Act
-            var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
 
-            // Assert
-            model.Entities.Should().HaveCount(3);
-            model.Entities.Should().Contain(e => e.Name == "User");
-            model.Entities.Should().Contain(e => e.Name == "Post");
-            model.Entities.Should().Contain(e => e.Name == "Comment");
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        model.Entities.Should().HaveCount(3);
+        model.Entities.Should().Contain(e => e.Name == "User");
+        model.Entities.Should().Contain(e => e.Name == "Post");
+        model.Entities.Should().Contain(e => e.Name == "Comment");
     }
 
     [Fact]
     public async Task AnalyzeContextAsync_ShouldAnalyzeFirstContextWhenNameNotSpecified()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
+        using var temp = new TestDirectory();
         const string content = """
-
                                using Microsoft.EntityFrameworkCore;
                                namespace Test;
                                public class FirstDbContext : DbContext 
@@ -247,32 +177,23 @@ public class EfAnalysisServiceTests
                                }
                                public class User { public int Id { get; set; } }
                                public class Post { public int Id { get; set; } }
-
                                """;
-        await File.WriteAllTextAsync(filePath, content);
+        var filePath = temp.CreateFile("Context.cs", content);
 
-        try
-        {
-            // Act
-            var model = await _service.AnalyzeContextAsync(filePath);
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath);
 
-            // Assert
-            model.ContextName.Should().Be("FirstDbContext");
-            model.Entities.Should().ContainSingle(e => e.Name == "User");
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        model.ContextName.Should().Be("FirstDbContext");
+        model.Entities.Should().ContainSingle(e => e.Name == "User");
     }
 
     [Fact]
     public async Task AnalyzeContextAsync_ShouldHandlePropertiesWithDifferentTypes()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
+        using var temp = new TestDirectory();
         const string content = """
-
                                using Microsoft.EntityFrameworkCore;
                                using System;
                                namespace Test;
@@ -288,36 +209,27 @@ public class EfAnalysisServiceTests
                                    public DateTime CreatedAt { get; set; }
                                    public bool IsActive { get; set; }
                                }
-
                                """;
-        await File.WriteAllTextAsync(filePath, content);
+        var filePath = temp.CreateFile("Context.cs", content);
 
-        try
-        {
-            // Act
-            var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
 
-            // Assert
-            var product = model.Entities.First(e => e.Name == "Product");
-            product.Properties.Count.Should().BeGreaterThanOrEqualTo(5);
-            product.Properties.Should().Contain(p => p.Name == "Name");
-            product.Properties.Should().Contain(p => p.Name == "Price");
-            product.Properties.Should().Contain(p => p.Name == "CreatedAt");
-            product.Properties.Should().Contain(p => p.Name == "IsActive");
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        var product = model.Entities.First(e => e.Name == "Product");
+        product.Properties.Count.Should().BeGreaterThanOrEqualTo(5);
+        product.Properties.Should().Contain(p => p.Name == "Name");
+        product.Properties.Should().Contain(p => p.Name == "Price");
+        product.Properties.Should().Contain(p => p.Name == "CreatedAt");
+        product.Properties.Should().Contain(p => p.Name == "IsActive");
     }
 
     [Fact]
     public async Task AnalyzeContextAsync_ShouldIdentifyPrimaryKeysByConvention()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
+        using var temp = new TestDirectory();
         const string content = """
-
                                using Microsoft.EntityFrameworkCore;
                                namespace Test;
                                public class AppDbContext : DbContext 
@@ -329,75 +241,51 @@ public class EfAnalysisServiceTests
                                    public int Id { get; set; }
                                    public string Name { get; set; }
                                }
-
                                """;
-        await File.WriteAllTextAsync(filePath, content);
+        var filePath = temp.CreateFile("Context.cs", content);
 
-        try
-        {
-            // Act
-            var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
 
-            // Assert
-            var customer = model.Entities.First(e => e.Name == "Customer");
-            customer.Properties.Should().Contain(p => p.Name == "Id" && p.IsPrimaryKey);
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        var customer = model.Entities.First(e => e.Name == "Customer");
+        customer.Properties.Should().Contain(p => p.Name == "Id" && p.IsPrimaryKey);
     }
 
     [Fact]
     public async Task DiscoverContextsAsync_ShouldHandleEmptyFile()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
-        await File.WriteAllTextAsync(filePath, string.Empty);
+        using var temp = new TestDirectory();
+        var filePath = temp.CreateFile("Empty.cs", string.Empty);
 
-        try
-        {
-            // Act
-            var contexts = await _service.DiscoverContextsAsync(filePath);
+        // Act
+        var contexts = await _service.DiscoverContextsAsync(filePath);
 
-            // Assert
-            contexts.Should().BeEmpty();
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        contexts.Should().BeEmpty();
     }
 
     [Fact]
     public async Task AnalyzeContextAsync_ShouldHandleContextWithNoDbSets()
     {
         // Arrange
-        var filePath = CreateTempFilePath();
+        using var temp = new TestDirectory();
         const string content = """
-
                                using Microsoft.EntityFrameworkCore;
                                namespace Test;
                                public class AppDbContext : DbContext 
                                { 
                                    // No DbSets
                                }
-
                                """;
-        await File.WriteAllTextAsync(filePath, content);
+        var filePath = temp.CreateFile("Context.cs", content);
 
-        try
-        {
-            // Act
-            var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
 
-            // Assert
-            model.ContextName.Should().Be("AppDbContext");
-            model.Entities.Should().BeEmpty();
-        }
-        finally
-        {
-            File.Delete(filePath);
-        }
+        // Assert
+        model.ContextName.Should().Be("AppDbContext");
+        model.Entities.Should().BeEmpty();
     }
 }

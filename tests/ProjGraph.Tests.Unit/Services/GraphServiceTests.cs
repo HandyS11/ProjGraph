@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Lib.Services;
+using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services;
 
@@ -52,7 +53,8 @@ public class GraphServiceTests
     {
         // Arrange
         var graphService = new GraphService();
-        var nonExistentPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.sln");
+        using var temp = new TestDirectory();
+        var nonExistentPath = temp.GetTempFilePath(".sln");
 
         // Act & Assert
         var act = () => graphService.BuildGraph(nonExistentPath);
@@ -64,23 +66,13 @@ public class GraphServiceTests
     {
         // Arrange
         var graphService = new GraphService();
-        var tempFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");
-        File.WriteAllText(tempFile, "test content");
+        using var temp = new TestDirectory();
+        var tempFile = temp.CreateFile("test.txt", "test content");
 
-        try
-        {
-            // Act & Assert
-            var act = () => graphService.BuildGraph(tempFile);
-            act.Should().Throw<ArgumentException>()
-                .WithMessage("*Unsupported file type*");
-        }
-        finally
-        {
-            if (File.Exists(tempFile))
-            {
-                File.Delete(tempFile);
-            }
-        }
+        // Act & Assert
+        var act = () => graphService.BuildGraph(tempFile);
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Unsupported file type*");
     }
 
     [Fact]
@@ -88,32 +80,21 @@ public class GraphServiceTests
     {
         // Arrange
         var graphService = new GraphService();
-        var tempSlnx = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                </Solution>
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("empty.slnx", content);
 
-        try
-        {
-            // Act
-            var graph = graphService.BuildGraph(tempSlnx);
+        // Act
+        var graph = graphService.BuildGraph(tempSlnx);
 
-            // Assert
-            graph.Should().NotBeNull();
-            graph.Projects.Should().BeEmpty();
-            graph.Dependencies.Should().BeEmpty();
-        }
-        finally
-        {
-            if (File.Exists(tempSlnx))
-            {
-                File.Delete(tempSlnx);
-            }
-        }
+        // Assert
+        graph.Should().NotBeNull();
+        graph.Projects.Should().BeEmpty();
+        graph.Dependencies.Should().BeEmpty();
     }
 
     [Fact]
@@ -121,32 +102,21 @@ public class GraphServiceTests
     {
         // Arrange
         var graphService = new GraphService();
-        var tempSlnx = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                  <Project Path="NonExistent/Project.csproj" />
                                </Solution>
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("missing_projects.slnx", content);
 
-        try
-        {
-            // Act
-            var graph = graphService.BuildGraph(tempSlnx);
+        // Act
+        var graph = graphService.BuildGraph(tempSlnx);
 
-            // Assert
-            graph.Should().NotBeNull();
-            graph.Projects.Should().BeEmpty();
-        }
-        finally
-        {
-            if (File.Exists(tempSlnx))
-            {
-                File.Delete(tempSlnx);
-            }
-        }
+        // Assert
+        graph.Should().NotBeNull();
+        graph.Projects.Should().BeEmpty();
     }
 
     [Fact]
@@ -154,31 +124,20 @@ public class GraphServiceTests
     {
         // Arrange
         var graphService = new GraphService();
-        var tempSlnx = Path.Combine(Path.GetTempPath(), $"MySolution.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                </Solution>
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("MySolution.slnx", content);
 
-        try
-        {
-            // Act
-            var graph = graphService.BuildGraph(tempSlnx);
+        // Act
+        var graph = graphService.BuildGraph(tempSlnx);
 
-            // Assert
-            graph.Name.Should().Be("MySolution.slnx");
-            graph.Path.Should().Be(tempSlnx);
-        }
-        finally
-        {
-            if (File.Exists(tempSlnx))
-            {
-                File.Delete(tempSlnx);
-            }
-        }
+        // Assert
+        graph.Name.Should().Be("MySolution.slnx");
+        graph.Path.Should().Be(tempSlnx);
     }
 
     [Fact]
@@ -186,11 +145,7 @@ public class GraphServiceTests
     {
         // Arrange
         var graphService = new GraphService();
-        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(tempDir);
-
-        var projectPath = Path.Combine(tempDir, "Project.csproj");
-        var slnxPath = Path.Combine(tempDir, "Solution.slnx");
+        using var temp = new TestDirectory();
 
         const string projectContent = """
                                       <Project Sdk="Microsoft.NET.Sdk">
@@ -200,30 +155,20 @@ public class GraphServiceTests
                                       </Project>
                                       """;
 
-        const string slnxContent = $"""
-                                    <Solution>
-                                      <Project Path="Project.csproj" />
-                                    </Solution>
-                                    """;
+        const string slnxContent = """
+                                   <Solution>
+                                     <Project Path="Project.csproj" />
+                                   </Solution>
+                                   """;
 
-        File.WriteAllText(projectPath, projectContent);
-        File.WriteAllText(slnxPath, slnxContent);
+        var projectPath = temp.CreateFile("Project.csproj", projectContent);
+        var slnxPath = temp.CreateFile("Solution.slnx", slnxContent);
 
-        try
-        {
-            // Act
-            var graph = graphService.BuildGraph(slnxPath);
+        // Act
+        var graph = graphService.BuildGraph(slnxPath);
 
-            // Assert
-            graph.Projects.Should().HaveCount(1);
-            graph.Dependencies.Should().BeEmpty();
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, true);
-            }
-        }
+        // Assert
+        graph.Projects.Should().HaveCount(1);
+        graph.Dependencies.Should().BeEmpty();
     }
 }

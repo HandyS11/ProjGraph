@@ -1,29 +1,24 @@
 using FluentAssertions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Services.ClassAnalysis;
+using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services.ClassAnalysis;
 
 public class ClassAnalysisServiceTests : IDisposable
 {
+    private readonly TestDirectory _temp = new();
     private readonly string _tempFile;
     private readonly ClassAnalysisService _service = new();
 
     public ClassAnalysisServiceTests()
     {
-        // Create temp file path and delete the .tmp file immediately to prevent discovery issues
-        var tempFilePath = Path.GetTempFileName();
-        File.Delete(tempFilePath);
-        _tempFile = tempFilePath + ".cs";
+        _tempFile = Path.Combine(_temp.DirectoryPath, "temp.cs");
     }
 
     public void Dispose()
     {
-        if (File.Exists(_tempFile))
-        {
-            File.Delete(_tempFile);
-        }
-
+        _temp.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -73,25 +68,19 @@ public class ClassAnalysisServiceTests : IDisposable
     [Fact]
     public async Task AnalyzeFileAsync_WithWorkspaceDiscovery_FindsRelatedType()
     {
-        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var root = Path.Combine(_temp.DirectoryPath, "workspace");
         Directory.CreateDirectory(root);
-        try
-        {
-            var serviceFile = Path.Combine(root, "Service.cs");
-            var modelFile = Path.Combine(root, "Model.cs");
-            await File.WriteAllTextAsync(serviceFile, "public class Service { public Model M { get; } }");
-            await File.WriteAllTextAsync(modelFile, "public class Model {}");
-            await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
 
-            var result = await _service.AnalyzeFileAsync(serviceFile, false, true);
+        var serviceFile = Path.Combine(root, "Service.cs");
+        var modelFile = Path.Combine(root, "Model.cs");
+        await File.WriteAllTextAsync(serviceFile, "public class Service { public Model M { get; } }");
+        await File.WriteAllTextAsync(modelFile, "public class Model {}");
+        await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
 
-            result.Types.Should().Contain(t => t.Name == "Service");
-            result.Types.Should().Contain(t => t.Name == "Model");
-        }
-        finally
-        {
-            Directory.Delete(root, true);
-        }
+        var result = await _service.AnalyzeFileAsync(serviceFile, false, true);
+
+        result.Types.Should().Contain(t => t.Name == "Service");
+        result.Types.Should().Contain(t => t.Name == "Model");
     }
 
     [Fact]
@@ -118,35 +107,29 @@ public class ClassAnalysisServiceTests : IDisposable
     [Fact]
     public async Task AnalyzeFileAsync_WithCrossNamespaceInheritance_UsesFullyQualifiedNames()
     {
-        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var root = Path.Combine(_temp.DirectoryPath, "namespace-test");
         Directory.CreateDirectory(root);
-        try
-        {
-            var baseFile = Path.Combine(root, "BaseEntity.cs");
-            var userFile = Path.Combine(root, "User.cs");
-            await File.WriteAllTextAsync(baseFile, """
-                                                   namespace SimpleHierarchy.Base;
-                                                   public abstract class BaseEntity { public int Id { get; set; } }
-                                                   """);
-            await File.WriteAllTextAsync(userFile, """
-                                                   using SimpleHierarchy.Base;
-                                                   namespace SimpleHierarchy.Models;
-                                                   public class User : BaseEntity { public string Name { get; set; } }
-                                                   """);
-            await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
 
-            var result = await _service.AnalyzeFileAsync(userFile);
+        var baseFile = Path.Combine(root, "BaseEntity.cs");
+        var userFile = Path.Combine(root, "User.cs");
+        await File.WriteAllTextAsync(baseFile, """
+                                               namespace SimpleHierarchy.Base;
+                                               public abstract class BaseEntity { public int Id { get; set; } }
+                                               """);
+        await File.WriteAllTextAsync(userFile, """
+                                               using SimpleHierarchy.Base;
+                                               namespace SimpleHierarchy.Models;
+                                               public class User : BaseEntity { public string Name { get; set; } }
+                                               """);
+        await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
 
-            result.Types.Count.Should().BeGreaterThanOrEqualTo(2);
-            result.Relationships.Should().HaveCount(1);
-            var rel = result.Relationships[0];
-            rel.From.Should().Be("SimpleHierarchy.Models.User");
-            rel.To.Should().Be("SimpleHierarchy.Base.BaseEntity");
-        }
-        finally
-        {
-            Directory.Delete(root, true);
-        }
+        var result = await _service.AnalyzeFileAsync(userFile);
+
+        result.Types.Count.Should().BeGreaterThanOrEqualTo(2);
+        result.Relationships.Should().HaveCount(1);
+        var rel = result.Relationships[0];
+        rel.From.Should().Be("SimpleHierarchy.Models.User");
+        rel.To.Should().Be("SimpleHierarchy.Base.BaseEntity");
     }
 
     [Fact]
