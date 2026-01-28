@@ -1,7 +1,7 @@
 # ProjGraph CLI
 
-Command-line tool for visualizing .NET project dependencies and generating Entity Relationship Diagrams from EF Core
-DbContext files.
+Command-line tool for visualizing .NET project dependencies, generating Entity Relationship Diagrams, and visualizing
+class hierarchies.
 
 ## Installation
 
@@ -70,6 +70,40 @@ erDiagram
     }
 
     Publisher ||--o{ Book : "Books"
+```
+
+### `classdiagram` - Class Hierarchies
+
+Generate Mermaid Class Diagram for a specific class and its hierarchy.
+
+```bash
+# Analyze a specific class and discover its base types and dependencies
+projgraph classdiagram ./Models/Admin.cs
+
+# Specify depth of discovery (default: 3)
+projgraph classdiagram ./Models/Admin.cs --depth 5
+```
+
+**Features**:
+
+- Detects properties, fields, and inheritance (`<|--`)
+- Discovers dependencies via property types (`*--` or `--`)
+- Simple heuristic workspace-wide discovery of missing types (scans for `.sln`, `.slnx`, or `.csproj`)
+- Support for generic types (sanitized for Mermaid as `~T~`)
+
+**Example output**:
+
+```mermaid
+classDiagram
+    class User {
+        +string Name
+        +Address PrimaryAddress
+    }
+    class Admin {
+        +Permissions Rights
+    }
+    User <|-- Admin
+    User *-- Address
 ```
 
 ## Requirements

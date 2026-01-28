@@ -5,6 +5,7 @@ using ModelContextProtocol.Server;
 using ProjGraph.Lib.Interfaces;
 using ProjGraph.Lib.Rendering;
 using ProjGraph.Lib.Services;
+using ProjGraph.Lib.Services.ClassAnalysis;
 using ProjGraph.Lib.Services.EfAnalysis;
 using System.ComponentModel;
 
@@ -25,6 +26,7 @@ public static class Program
 
         builder.Services.AddSingleton<IGraphService, GraphService>();
         builder.Services.AddSingleton<IEfAnalysisService, EfAnalysisService>();
+        builder.Services.AddSingleton<IClassAnalysisService, ClassAnalysisService>();
         builder.Services.AddSingleton<ProjGraphTools>();
 
         var host = builder.Build();
@@ -33,8 +35,37 @@ public static class Program
 }
 
 [McpServerToolType]
-public class ProjGraphTools(IGraphService graphService, IEfAnalysisService efService)
+public class ProjGraphTools(
+    IGraphService graphService,
+    IEfAnalysisService efService,
+    IClassAnalysisService classService)
 {
+    [McpServerTool]
+    [Description(
+        "Generates a Mermaid class diagram for the types defined in a specific C# file, with options to discover inheritance and related types in the workspace.")]
+#pragma warning disable IDE1006
+    public async Task<string> GetClassDiagram(
+#pragma warning restore IDE1006
+        [Description("Absolute path to the .cs file to analyze.")]
+        string filePath,
+        [Description("Whether to search the workspace for base classes and interfaces.")]
+        bool includeInheritance = false,
+        [Description("Whether to search for and include other classes used as properties or fields.")]
+        bool includeDependencies = false,
+        [Description("How many levels of relationships to follow (default: 1).")]
+        int depth = 1)
+    {
+        try
+        {
+            var model = await classService.AnalyzeFileAsync(filePath, includeInheritance, includeDependencies, depth);
+            return MermaidClassDiagramRenderer.Render(model);
+        }
+        catch (Exception ex)
+        {
+            return $"Error generating class diagram: {ex.Message}";
+        }
+    }
+
     [McpServerTool]
     [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
     public string GetProjectGraph(

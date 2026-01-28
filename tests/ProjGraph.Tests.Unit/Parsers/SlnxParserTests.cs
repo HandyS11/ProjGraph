@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Lib.Parsers;
+using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Parsers;
 
@@ -9,8 +10,7 @@ public class SlnxParserTests
     public void GetProjectPaths_ShouldExtractPathsFromSlnx()
     {
         // Arrange
-        var tempSlnx = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                  <Project Path="src/ProjA/ProjA.csproj" />
@@ -18,32 +18,23 @@ public class SlnxParserTests
                                </Solution>
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("test.slnx", content);
 
-        try
-        {
-            // Act
-            var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        // Act
+        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
 
-            // Assert
-            paths.Should().HaveCount(2);
-            paths.Any(p => p.EndsWith("ProjA.csproj")).Should().BeTrue();
-            paths.Any(p => p.EndsWith("ProjA.Tests.csproj")).Should().BeTrue();
-        }
-        finally
-        {
-            if (File.Exists(tempSlnx))
-            {
-                File.Delete(tempSlnx);
-            }
-        }
+        // Assert
+        paths.Should().HaveCount(2);
+        paths.Any(p => p.EndsWith("ProjA.csproj")).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjA.Tests.csproj")).Should().BeTrue();
     }
 
     [Fact]
     public void GetProjectPaths_ShouldReturnEmptyWhenFileDoesNotExist()
     {
         // Arrange
-        var nonExistentPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
+        using var temp = new TestDirectory();
+        var nonExistentPath = temp.GetTempFilePath(".slnx");
 
         // Act
         var paths = SlnxParser.GetProjectPaths(nonExistentPath).ToList();
@@ -56,38 +47,26 @@ public class SlnxParserTests
     public void GetProjectPaths_ShouldHandleEmptySlnx()
     {
         // Arrange
-        var tempSlnx = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                </Solution>
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("empty.slnx", content);
 
-        try
-        {
-            // Act
-            var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        // Act
+        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
 
-            // Assert
-            paths.Should().BeEmpty();
-        }
-        finally
-        {
-            if (File.Exists(tempSlnx))
-            {
-                File.Delete(tempSlnx);
-            }
-        }
+        // Assert
+        paths.Should().BeEmpty();
     }
 
     [Fact]
     public void GetProjectPaths_ShouldIgnoreProjectsWithoutPathAttribute()
     {
         // Arrange
-        var tempSlnx = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                  <Project Path="src/ProjA/ProjA.csproj" />
@@ -96,97 +75,62 @@ public class SlnxParserTests
                                </Solution>
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("ignore_invalid.slnx", content);
 
-        try
-        {
-            // Act
-            var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        // Act
+        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
 
-            // Assert
-            paths.Should().HaveCount(2);
-            paths.Any(p => p.EndsWith("ProjA.csproj")).Should().BeTrue();
-            paths.Any(p => p.EndsWith("ProjB.csproj")).Should().BeTrue();
-        }
-        finally
-        {
-            if (File.Exists(tempSlnx))
-            {
-                File.Delete(tempSlnx);
-            }
-        }
+        // Assert
+        paths.Should().HaveCount(2);
+        paths.Any(p => p.EndsWith("ProjA.csproj")).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjB.csproj")).Should().BeTrue();
     }
 
     [Fact]
     public void GetProjectPaths_ShouldResolveRelativePaths()
     {
         // Arrange
-        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(tempDir);
-        var tempSlnx = Path.Combine(tempDir, "test.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                  <Project Path="../OtherDir/ProjA.csproj" />
                                </Solution>
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("resolve.slnx", content);
 
-        try
-        {
-            // Act
-            var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        // Act
+        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
 
-            // Assert
-            paths.Should().HaveCount(1);
-            paths[0].Should().EndWith("ProjA.csproj");
-            Path.IsPathRooted(paths[0]).Should().BeTrue();
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, true);
-            }
-        }
+        // Assert
+        paths.Should().HaveCount(1);
+        paths[0].Should().EndWith("ProjA.csproj");
+        Path.IsPathRooted(paths[0]).Should().BeTrue();
     }
 
     [Fact]
     public void GetProjectPaths_ShouldHandleInvalidXml()
     {
         // Arrange
-        var tempSlnx = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                  <Project Path="src/ProjA/ProjA.csproj"
                                <!-- Missing closing tags
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("invalid.slnx", content);
 
-        try
-        {
-            // Act & Assert
-            var act = () => SlnxParser.GetProjectPaths(tempSlnx).ToList();
-            act.Should().Throw<Exception>();
-        }
-        finally
-        {
-            if (File.Exists(tempSlnx))
-            {
-                File.Delete(tempSlnx);
-            }
-        }
+        // Act & Assert
+        var act = () => SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        act.Should().Throw<Exception>();
     }
 
     [Fact]
     public void GetProjectPaths_ShouldHandleWindowsAndUnixPaths()
     {
         // Arrange
-        var tempSlnx = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                  <Project Path="src\ProjA\ProjA.csproj" />
@@ -194,32 +138,21 @@ public class SlnxParserTests
                                </Solution>
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("paths.slnx", content);
 
-        try
-        {
-            // Act
-            var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        // Act
+        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
 
-            // Assert
-            paths.Should().HaveCount(2);
-            paths.All(p => Path.IsPathRooted(p)).Should().BeTrue();
-        }
-        finally
-        {
-            if (File.Exists(tempSlnx))
-            {
-                File.Delete(tempSlnx);
-            }
-        }
+        // Assert
+        paths.Should().HaveCount(2);
+        paths.All(p => Path.IsPathRooted(p)).Should().BeTrue();
     }
 
     [Fact]
     public void GetProjectPaths_ShouldHandleMultipleDifferentProjects()
     {
         // Arrange
-        var tempSlnx = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.slnx");
-
+        using var temp = new TestDirectory();
         const string content = """
                                <Solution>
                                  <Project Path="A/A.csproj" />
@@ -230,23 +163,13 @@ public class SlnxParserTests
                                </Solution>
                                """;
 
-        File.WriteAllText(tempSlnx, content);
+        var tempSlnx = temp.CreateFile("multiple.slnx", content);
 
-        try
-        {
-            // Act
-            var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        // Act
+        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
 
-            // Assert
-            paths.Should().HaveCount(5);
-            paths.Should().OnlyHaveUniqueItems();
-        }
-        finally
-        {
-            if (File.Exists(tempSlnx))
-            {
-                File.Delete(tempSlnx);
-            }
-        }
+        // Assert
+        paths.Should().HaveCount(5);
+        paths.Should().OnlyHaveUniqueItems();
     }
 }

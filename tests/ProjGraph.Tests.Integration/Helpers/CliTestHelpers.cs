@@ -3,7 +3,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using System.Text;
 
-namespace ProjGraph.Tests.Integration.Cli;
+namespace ProjGraph.Tests.Integration.Helpers;
 
 public static class CliTestHelpers
 {
@@ -32,8 +32,29 @@ public static class CliTestHelpers
             config.PropagateExceptions();
             config.AddCommand<VisualizeCommand>("visualize");
             config.AddCommand<ErdCommand>("erd");
+            config.AddCommand<ClassDiagramCommand>("classdiagram");
         });
         return app;
+    }
+
+    public static async Task<(int ExitCode, string Output)> RunCommandAsync(params string[] args)
+    {
+        var app = CreateApp();
+        var output = new StringBuilder();
+        await using var writer = new StringWriter(output);
+
+        var originalOut = Console.Out;
+        Console.SetOut(writer);
+
+        try
+        {
+            var exitCode = await app.RunAsync(args);
+            return (exitCode, output.ToString());
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
     }
 
     public static string CaptureConsoleOutput(Action action)

@@ -1,17 +1,20 @@
 using FluentAssertions;
 using ProjGraph.Lib.Services;
+using ProjGraph.Lib.Services.ClassAnalysis;
 using ProjGraph.Lib.Services.EfAnalysis;
 using ProjGraph.Mcp;
+using ProjGraph.Tests.Integration.Helpers;
 
 namespace ProjGraph.Tests.Integration.Mcp;
 
-public class McpErdTests : IDisposable
+public sealed class McpErdTests : IDisposable
 {
+    private readonly TestDirectory _temp = new();
     private readonly string _tempFile;
 
     public McpErdTests()
     {
-        _tempFile = Path.GetTempFileName() + ".cs";
+        _tempFile = Path.Combine(_temp.DirectoryPath, "temp.cs");
         const string content = """
                                using Microsoft.EntityFrameworkCore;
                                using System.Collections.Generic;
@@ -57,7 +60,8 @@ public class McpErdTests : IDisposable
     {
         var graphService = new GraphService();
         var efService = new EfAnalysisService();
-        return new ProjGraphTools(graphService, efService);
+        var classService = new ClassAnalysisService();
+        return new ProjGraphTools(graphService, efService, classService);
     }
 
     #region Simple In-Memory DbContext Tests
@@ -222,24 +226,14 @@ public class McpErdTests : IDisposable
     {
         // Arrange
         var tools = CreateTools();
-        var invalidFile = Path.GetTempFileName() + ".cs";
+        var invalidFile = Path.Combine(_temp.DirectoryPath, "invalid.cs");
         await File.WriteAllTextAsync(invalidFile, "public class NotADbContext { }");
 
-        try
-        {
-            // Act
-            var result = await tools.GetErd(invalidFile);
+        // Act
+        var result = await tools.GetErd(invalidFile);
 
-            // Assert
-            result.Should().StartWith("Error");
-        }
-        finally
-        {
-            if (File.Exists(invalidFile))
-            {
-                File.Delete(invalidFile);
-            }
-        }
+        // Assert
+        result.Should().StartWith("Error");
     }
 
     [Fact]
@@ -247,35 +241,28 @@ public class McpErdTests : IDisposable
     {
         // Arrange
         var tools = CreateTools();
-        var nonCsFile = Path.GetTempFileName() + ".txt";
+        var nonCsFile = Path.Combine(_temp.DirectoryPath, "test.txt");
         await File.WriteAllTextAsync(nonCsFile, "Not a C# file");
 
-        try
-        {
-            // Act
-            var result = await tools.GetErd(nonCsFile);
+        // Act
+        var result = await tools.GetErd(nonCsFile);
 
-            // Assert
-            result.Should().StartWith("Error");
-        }
-        finally
-        {
-            if (File.Exists(nonCsFile))
-            {
-                File.Delete(nonCsFile);
-            }
-        }
+        // Assert
+        result.Should().StartWith("Error");
     }
 
     #endregion
 
     public void Dispose()
     {
-        if (File.Exists(_tempFile))
-        {
-            File.Delete(_tempFile);
-        }
+        Dispose(true);
+    }
 
-        GC.SuppressFinalize(this);
+    private void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _temp.Dispose();
+        }
     }
 }

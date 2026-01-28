@@ -11,13 +11,13 @@ Build a cross-platform .NET 10 core library for parsing `.sln`, `.slnx`, and `.c
 
 ## Technical Context
 
-**Language/Version**: .NET 10.0 (C# 14+)  
-**Primary Dependencies**: Buildalyzer (Parsing), Spectre.Console (CLI), ModelContextProtocol (MCP)  
-**Storage**: N/A (Memory-only graph processing)  
+**Language/Version**: .NET 10.0 (C# 14+)
+**Primary Dependencies**: Buildalyzer (Parsing), Spectre.Console (CLI), ModelContextProtocol (MCP)
+**Storage**: N/A (Memory-only graph processing)
 **Testing**: xUnit, FluentAssertions, Moq, Testcontainers (if needed)
 **Target Platform**: .NET (Windows, Linux, macOS)
-**Project Type**: Library, CLI Tool, MCP Server  
-**Performance Goals**: <1s for solutions with <50 projects  
+**Project Type**: Library, CLI Tool, MCP Server
+**Performance Goals**: <1s for solutions with <50 projects
 **Constraints**: MCP 1.0 Compliance, Zero Warnings, Strict SemVer, Clean Architecture
 **Scale/Scope**: Local project file analysis
 
@@ -29,7 +29,6 @@ Build a cross-platform .NET 10 core library for parsing `.sln`, `.slnx`, and `.c
 - [x] **II. MCP Native Interoperability**: `get_project_graph` tool defined in spec.
 - [x] **III. Library-First Core**: Logic will be in `ProjGraph.Lib`.
 - [x] **IV. Absolute Testing Requirement**: Unit, Integration, and MCP contract tests will be implemented.
-- [x] **V. Traceability & Semantic Stability**: OpenTelemetry (logs/traces) and SemVer 2.0.0 planned.
 
 ## Project Structure
 
@@ -69,5 +68,5 @@ tests/
 > **Fill ONLY if Constitution Check has violations that must be justified**
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| None | N/A | N/A |
+|-----------|------------|--------------------------------------|
+| None      | N/A        | N/A                                  |

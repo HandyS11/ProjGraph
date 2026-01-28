@@ -91,6 +91,8 @@ public static class EntityFileDiscovery
     /// This method starts with the context directory and its parent directory (if it exists),
     /// then adds sibling directories that are likely to contain entity files based on their names
     /// or their match with the provided entity namespaces.
+    /// If the context directory is within the system temp directory, the parent temp directory is excluded
+    /// from the search to avoid finding files from other processes or parallel tests.
     /// </remarks>
     public static List<string> BuildSearchDirectories(
         string contextDirectory,
@@ -100,6 +102,14 @@ public static class EntityFileDiscovery
         var parentDir = Directory.GetParent(contextDirectory);
 
         if (parentDir is null)
+        {
+            return searchDirectories;
+        }
+
+        // Avoid searching outside the temp directory if we are in one,
+        // to prevent finding files from parallel test runs.
+        var tempPath = Path.GetTempPath();
+        if (contextDirectory.StartsWith(tempPath, StringComparison.OrdinalIgnoreCase))
         {
             return searchDirectories;
         }
@@ -347,6 +357,15 @@ public static class EntityFileDiscovery
     private static DirectoryInfo FindSolutionRoot(string startDirectory, int maxLevels)
     {
         var solutionRoot = new DirectoryInfo(startDirectory);
+        var tempPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        // Don't traverse up if we're already in the temp directory to avoid 
+        // escaping our sandbox in parallel test environments.
+        if (startDirectory.StartsWith(tempPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return solutionRoot;
+        }
+
         for (var i = 0; i < maxLevels && solutionRoot.Parent != null; i++)
         {
             solutionRoot = solutionRoot.Parent;

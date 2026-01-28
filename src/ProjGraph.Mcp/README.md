@@ -1,7 +1,7 @@
 # ProjGraph MCP Server
 
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that enables AI assistants to analyze .NET
-solution architectures and generate Entity Relationship Diagrams.
+solution architectures, generate Entity Relationship Diagrams, and visualize class hierarchies.
 
 ## Requirements
 
@@ -21,7 +21,7 @@ Analyzes a solution or project file and returns the dependency graph as a Mermai
 
 **Example prompts:**
 
-```
+```text
 "Analyze the dependencies in ./MySolution.slnx"
 "Show me the project structure"
 "Are there any circular dependencies?"
@@ -49,10 +49,35 @@ Generates a Mermaid Entity Relationship Diagram from an EF Core DbContext file.
 
 **Example prompts:**
 
-```
+```text
 "Show me the database schema from ./Data/MyDbContext.cs"
 "Generate an ERD for my DbContext"
 "What are the entity relationships in my database?"
+```
+
+### `get_class_diagram`
+
+Generates a Mermaid class diagram for the types defined in a specific C# file, with options to discover inheritance and
+related types in the workspace.
+
+**Parameters:**
+
+- `filePath` (string): Absolute path to the C# file to analyze
+- `includeInheritance` (boolean, optional): Whether to search the workspace for base classes and interfaces (default:
+  false)
+- `includeDependencies` (boolean, optional): Whether to search for and include other classes used as properties or
+  fields (default: false)
+- `depth` (number, optional): How many levels of relationships to follow (default: 1)
+
+**Returns:** Mermaid class diagram code
+
+**Example prompts:**
+
+```text
+"Show me the class hierarchy for ./Models/Admin.cs"
+"Visualize the dependencies of the GuestUser class in Guest.cs"
+"Draw a class diagram for my domain model starting at ./Domain/Entity.cs with inheritance"
+"Generate a class diagram with all dependencies at depth 2"
 ```
 
 ## License

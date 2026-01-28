@@ -25,21 +25,21 @@ description: "Task list template for feature implementation"
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
 
-<!-- 
+<!--
   ============================================================================
   IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
-  
+
   The /speckit.tasks command MUST replace these with actual tasks based on:
   - User stories from spec.md (with their priorities P1, P2, P3...)
   - Feature requirements from plan.md
   - Entities from data-model.md
   - Endpoints from contracts/
-  
+
   Tasks MUST be organized by user story so each story can be:
   - Implemented independently
   - Tested independently
   - Delivered as an MVP increment
-  
+
   DO NOT keep these sample tasks in the generated tasks.md file.
   ============================================================================
 -->
@@ -50,8 +50,7 @@ description: "Task list template for feature implementation"
 
 - [ ] T001 Create project structure per implementation plan (Core, Lib, Cli, Mcp)
 - [ ] T002 Initialize .NET 10 projects with strict EditorConfig
-- [ ] T003 [P] Configure OpenTelemetry for traceability (Principle V)
-- [ ] T004 Define MCP 1.0 tool schemas in `specs/[###-feature]/contracts/`
+- [ ] T003 Define MCP 1.0 tool schemas in `specs/[###-feature]/contracts/`
 
 ---
 
@@ -62,9 +61,8 @@ description: "Task list template for feature implementation"
 - [ ] T005 Implement core domain models in `src/ProjGraph.Core/`
 - [ ] T006 Implement base service logic in `src/ProjGraph.Lib/`
 - [ ] T007 [P] Setup xUnit and logic for Unit Tests
-- [ ] T008 Configure structured logging and spans in libraries
-- [ ] T009 Setup CLI entry point in `src/ProjGraph.Cli/`
-- [ ] T010 Setup MCP Server skeleton in `src/ProjGraph.Mcp/`
+- [ ] T008 Setup CLI entry point in `src/ProjGraph.Cli/`
+- [ ] T009 Setup MCP Server skeleton in `src/ProjGraph.Mcp/`
 
 **Checkpoint**: Foundation ready - libraries and interfaces established
 

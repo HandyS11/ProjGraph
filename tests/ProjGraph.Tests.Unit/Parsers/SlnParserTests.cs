@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Lib.Parsers;
+using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Parsers;
 
@@ -9,27 +10,14 @@ public class SlnParserTests
     public void GetProjectPaths_ShouldExtractPathsFromSln()
     {
         // Arrange
-        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(tempDir);
+        using var temp = new TestDirectory();
 
-        var tempSln = Path.Combine(tempDir, "TestSolution.sln");
-        var srcDir = Path.Combine(tempDir, "src");
-        var testsDir = Path.Combine(tempDir, "tests");
-        Directory.CreateDirectory(srcDir);
-        Directory.CreateDirectory(testsDir);
-
+        var tempSln = Path.Combine(temp.DirectoryPath, "TestSolution.sln");
+        
         // Create dummy project files
-        var projAPath = Path.Combine(srcDir, "ProjA", "ProjA.csproj");
-        var projBPath = Path.Combine(srcDir, "ProjB", "ProjB.csproj");
-        var projTestPath = Path.Combine(testsDir, "ProjA.Tests", "ProjA.Tests.csproj");
-
-        Directory.CreateDirectory(Path.GetDirectoryName(projAPath)!);
-        Directory.CreateDirectory(Path.GetDirectoryName(projBPath)!);
-        Directory.CreateDirectory(Path.GetDirectoryName(projTestPath)!);
-
-        File.WriteAllText(projAPath, "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
-        File.WriteAllText(projBPath, "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
-        File.WriteAllText(projTestPath, "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
+        temp.CreateFile("src/ProjA/ProjA.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
+        temp.CreateFile("src/ProjB/ProjB.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
+        temp.CreateFile("tests/ProjA.Tests/ProjA.Tests.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
 
         // Create a valid .sln file
         const string csharpProjectTypeGuid = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}";
@@ -67,31 +55,22 @@ public class SlnParserTests
 
         File.WriteAllText(tempSln, content);
 
-        try
-        {
-            // Act
-            var paths = SlnParser.GetProjectPaths(tempSln).ToList();
+        // Act
+        var paths = SlnParser.GetProjectPaths(tempSln).ToList();
 
-            // Assert
-            paths.Should().HaveCount(3);
-            paths.Any(p => p.EndsWith("ProjA.csproj")).Should().BeTrue();
-            paths.Any(p => p.EndsWith("ProjB.csproj")).Should().BeTrue();
-            paths.Any(p => p.EndsWith("ProjA.Tests.csproj")).Should().BeTrue();
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, true);
-            }
-        }
+        // Assert
+        paths.Should().HaveCount(3);
+        paths.Any(p => p.EndsWith("ProjA.csproj")).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjB.csproj")).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjA.Tests.csproj")).Should().BeTrue();
     }
 
     [Fact]
     public void GetProjectPaths_ShouldReturnEmpty_WhenFileDoesNotExist()
     {
         // Arrange
-        var nonExistentPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.sln");
+        using var temp = new TestDirectory();
+        var nonExistentPath = temp.GetTempFilePath(".sln");
 
         // Act
         var paths = SlnParser.GetProjectPaths(nonExistentPath).ToList();
@@ -104,17 +83,12 @@ public class SlnParserTests
     public void GetProjectPaths_ShouldFilterNonMSBuildProjects()
     {
         // Arrange
-        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(tempDir);
+        using var temp = new TestDirectory();
 
-        var tempSln = Path.Combine(tempDir, "TestSolution.sln");
-        var srcDir = Path.Combine(tempDir, "src");
-        Directory.CreateDirectory(srcDir);
-
+        var tempSln = Path.Combine(temp.DirectoryPath, "TestSolution.sln");
+        
         // Create dummy project files
-        var csProjPath = Path.Combine(srcDir, "CsProj", "CsProj.csproj");
-        Directory.CreateDirectory(Path.GetDirectoryName(csProjPath)!);
-        File.WriteAllText(csProjPath, "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
+        temp.CreateFile("src/CsProj/CsProj.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
 
         const string csharpProjectTypeGuid = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}";
         var csProjGuid = Guid.NewGuid().ToString("B").ToUpperInvariant();
@@ -138,21 +112,11 @@ public class SlnParserTests
 
         File.WriteAllText(tempSln, content);
 
-        try
-        {
-            // Act
-            var paths = SlnParser.GetProjectPaths(tempSln).ToList();
+        // Act
+        var paths = SlnParser.GetProjectPaths(tempSln).ToList();
 
-            // Assert
-            paths.Should().HaveCount(1);
-            paths.Single().Should().EndWith("CsProj.csproj");
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-            {
-                Directory.Delete(tempDir, true);
-            }
-        }
+        // Assert
+        paths.Should().HaveCount(1);
+        paths.Single().Should().EndWith("CsProj.csproj");
     }
 }

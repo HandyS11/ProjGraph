@@ -21,19 +21,24 @@ Sync Impact Report:
 ## Core Principles
 
 ### I. Modern .NET 10 Baseline
+
 All project code MUST target .NET 10.0 or higher. We leverage the latest framework features, C# innovations, and high-performance APIs. Code quality is non-negotiable: zero warnings, strict style enforcement (EditorConfig), and optimal memory management for tool execution.
 
 ### II. MCP Native Interoperability
+
 The system is built with Model Context Protocol (MCP) as a first-class citizen. Every "Tool" functionality exposed by the system MUST be accessible via an MCP server interface. Protocol compliance and schema-perfect tool descriptions are required to ensure seamless LLM interaction.
 
 ### III. Library-First Core
+
 Core business logic and domain models MUST reside in standalone, SDK-style libraries. The .NET CLI tool and MCP server are thin consumers of these libraries. This ensures logic is reusable, independently testable, and decoupled from the delivery mechanism.
 
 ### IV. Absolute Testing Requirement (NON-NEGOTIABLE)
+
 No code is merged without comprehensive test coverage. Unit tests for logic, integration tests for tool workflows, and contract tests for MCP endpoints are mandatory. We follow a "test-first" mentality where specifications drive test cases before implementation begins.
 
-### V. Traceability & Semantic Stability
-We adhere strictly to Semantic Versioning (SemVer) 2.0.0. Observability is baked in via OpenTelemetry; every tool execution and MCP request must be traceable with appropriate spans and attributes. Diagnostic logs must provide enough context to debug issues without access to the source.
+### V. Semantic Stability
+
+We adhere strictly to Semantic Versioning (SemVer) 2.0.0. Diagnostic logs must provide enough context to debug issues without access to the source.
 
 ## Technical Constraints
 

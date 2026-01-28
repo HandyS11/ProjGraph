@@ -27,7 +27,6 @@ This feature enables generating Mermaid Entity Relationship Diagrams (ERD) from 
 - [x] **II. MCP Native Interoperability**: Tool functionality exposed via MCP?
 - [x] **III. Library-First Core**: Logic in libraries, not just CLI/MCP?
 - [x] **IV. Absolute Testing Requirement**: Tests planned for unit, integration, and MCP contract?
-- [x] **V. Traceability & Semantic Stability**: OpenTelemetry and SemVer considered?
 
 ## Project Structure
 

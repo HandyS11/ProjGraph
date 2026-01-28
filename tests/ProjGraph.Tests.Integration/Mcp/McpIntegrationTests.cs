@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Lib.Services;
+using ProjGraph.Lib.Services.ClassAnalysis;
 using ProjGraph.Lib.Services.EfAnalysis;
 using ProjGraph.Mcp;
 
@@ -135,6 +136,7 @@ public class McpIntegrationTests
     {
         var graphService = new GraphService();
         var efService = new EfAnalysisService();
-        return new ProjGraphTools(graphService, efService);
+        var classService = new ClassAnalysisService();
+        return new ProjGraphTools(graphService, efService, classService);
     }
 }

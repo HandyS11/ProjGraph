@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using ProjGraph.Tests.Integration.Helpers;
 using Spectre.Console.Cli;
 
 namespace ProjGraph.Tests.Integration.Cli;
