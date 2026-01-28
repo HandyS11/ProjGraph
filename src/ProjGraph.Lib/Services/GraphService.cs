@@ -25,24 +25,15 @@ public class GraphService : IGraphService
             throw new FileNotFoundException($"The specified file does not exist: {path}", path);
         }
 
-        IEnumerable<string> projectFilePaths;
+        var extension = Path.GetExtension(path).ToLowerInvariant();
 
-        if (path.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
+        var projectFilePaths = extension switch
         {
-            projectFilePaths = SlnxParser.GetProjectPaths(path);
-        }
-        else if (path.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
-        {
-            projectFilePaths = SlnParser.GetProjectPaths(path);
-        }
-        else if (path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-        {
-            projectFilePaths = DiscoverProjectsRecursively(path);
-        }
-        else
-        {
-            throw new ArgumentException("Unsupported file type: must be .sln, .slnx, or .csproj", nameof(path));
-        }
+            ".slnx" => SlnxParser.GetProjectPaths(path),
+            ".sln" => SlnParser.GetProjectPaths(path),
+            ".csproj" => DiscoverProjectsRecursively(path),
+            _ => throw new ArgumentException("Unsupported file type: must be .sln, .slnx, or .csproj", nameof(path))
+        };
 
         var projects = new List<Project>();
         var dependencies = new List<Dependency>();

@@ -108,7 +108,9 @@ public static class EntityFileDiscovery
 
         // Avoid searching outside the temp directory if we are in one,
         // to prevent finding files from parallel test runs.
-        var tempPath = Path.GetTempPath();
+        // Security: Path.GetTempPath() is used only for read-only path comparison to detect
+        // if we're in a test sandbox. No files are written to or read from the temp directory itself.
+        var tempPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         if (contextDirectory.StartsWith(tempPath, StringComparison.OrdinalIgnoreCase))
         {
             return searchDirectories;
@@ -357,6 +359,8 @@ public static class EntityFileDiscovery
     private static DirectoryInfo FindSolutionRoot(string startDirectory, int maxLevels)
     {
         var solutionRoot = new DirectoryInfo(startDirectory);
+        // Security: Path.GetTempPath() is used only for read-only path comparison to detect
+        // if we're in a test sandbox. No files are written to or read from the temp directory itself.
         var tempPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
         // Don't traverse up if we're already in the temp directory to avoid 
