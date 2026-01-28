@@ -106,6 +106,14 @@ public static class EntityFileDiscovery
             return searchDirectories;
         }
 
+        // Avoid searching outside the temp directory if we are in one,
+        // to prevent finding files from parallel test runs.
+        var tempPath = Path.GetTempPath();
+        if (contextDirectory.StartsWith(tempPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return searchDirectories;
+        }
+
         searchDirectories.Add(parentDir.FullName);
         AddSiblingEntityDirectories(parentDir.FullName, entityNamespaces, searchDirectories);
 
@@ -349,6 +357,15 @@ public static class EntityFileDiscovery
     private static DirectoryInfo FindSolutionRoot(string startDirectory, int maxLevels)
     {
         var solutionRoot = new DirectoryInfo(startDirectory);
+        var tempPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        // Don't traverse up if we're already in the temp directory to avoid 
+        // escaping our sandbox in parallel test environments.
+        if (startDirectory.StartsWith(tempPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return solutionRoot;
+        }
+
         for (var i = 0; i < maxLevels && solutionRoot.Parent != null; i++)
         {
             solutionRoot = solutionRoot.Parent;

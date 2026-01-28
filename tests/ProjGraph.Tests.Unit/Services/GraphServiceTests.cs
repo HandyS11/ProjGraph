@@ -161,7 +161,7 @@ public class GraphServiceTests
                                    </Solution>
                                    """;
 
-        var projectPath = temp.CreateFile("Project.csproj", projectContent);
+        temp.CreateFile("Project.csproj", projectContent);
         var slnxPath = temp.CreateFile("Solution.slnx", slnxContent);
 
         // Act

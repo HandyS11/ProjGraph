@@ -101,6 +101,8 @@ public static class WorkspaceTypeDiscovery
     private static string? FindWorkspaceRoot(string startDir)
     {
         var current = new DirectoryInfo(startDir);
+        var tempPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
         while (current != null)
         {
             if (current.GetFiles("*.sln").Length > 0 ||
@@ -109,6 +111,13 @@ public static class WorkspaceTypeDiscovery
                 current.GetDirectories(".git").Length > 0)
             {
                 return current.FullName;
+            }
+
+            // Don't traverse above the temp directory if we're in it
+            if (current.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Equals(tempPath, StringComparison.OrdinalIgnoreCase))
+            {
+                break;
             }
 
             current = current.Parent;

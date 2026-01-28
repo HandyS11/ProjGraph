@@ -8,7 +8,7 @@ using ProjGraph.Tests.Integration.Helpers;
 namespace ProjGraph.Tests.Integration.Mcp;
 
 [Collection("McpClassDiagram")]
-public class McpClassDiagramTests : IDisposable
+public sealed class McpClassDiagramTests : IDisposable
 {
     private readonly TestDirectory _temp = new();
     private readonly string _tempFile;
@@ -108,8 +108,15 @@ public class McpClassDiagramTests : IDisposable
 
     public void Dispose()
     {
-        _temp.Dispose();
-        GC.SuppressFinalize(this);
+        Dispose(true);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _temp.Dispose();
+        }
     }
 
     private static ProjGraphTools CreateTools()

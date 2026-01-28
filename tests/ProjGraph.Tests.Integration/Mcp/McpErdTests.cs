@@ -7,7 +7,7 @@ using ProjGraph.Tests.Integration.Helpers;
 
 namespace ProjGraph.Tests.Integration.Mcp;
 
-public class McpErdTests : IDisposable
+public sealed class McpErdTests : IDisposable
 {
     private readonly TestDirectory _temp = new();
     private readonly string _tempFile;
@@ -255,7 +255,14 @@ public class McpErdTests : IDisposable
 
     public void Dispose()
     {
-        _temp.Dispose();
-        GC.SuppressFinalize(this);
+        Dispose(true);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _temp.Dispose();
+        }
     }
 }
