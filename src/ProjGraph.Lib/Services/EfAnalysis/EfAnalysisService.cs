@@ -69,6 +69,43 @@ public class EfAnalysisService : IEfAnalysisService
         return await AnalyzeFileAsync(path, contextName);
     }
 
+    /// <inheritdoc />
+    public async Task<List<string>> DiscoverSnapshotsAsync(string path)
+    {
+        ValidateCsFilePath(path);
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(await File.ReadAllTextAsync(path));
+        var root = await syntaxTree.GetRootAsync();
+
+        return
+        [
+            .. root.DescendantNodes()
+                .OfType<ClassDeclarationSyntax>()
+                .Where(DbContextIdentifier.IsModelSnapshot)
+                .Select(c => c.Identifier.Text)
+                .Distinct()
+        ];
+    }
+
+    /// <inheritdoc />
+    public async Task<EfModel> AnalyzeSnapshotAsync(string path, string? snapshotName = null)
+    {
+        ValidateCsFilePath(path);
+
+        var code = await File.ReadAllTextAsync(path);
+        var syntaxTree = CSharpSyntaxTree.ParseText(code);
+        var root = await syntaxTree.GetRootAsync();
+
+        var snapshotClass = FindSnapshotClass(root, snapshotName);
+        var compilation = CompilationFactory.CreateCompilation([syntaxTree]);
+        var semanticModel = compilation.GetSemanticModel(syntaxTree);
+
+        var snapshotType = semanticModel.GetDeclaredSymbol(snapshotClass)
+                           ?? throw new InvalidOperationException("Could not get semantic symbol for snapshot");
+
+        return ModelSnapshotParser.Parse(snapshotClass, snapshotType, compilation);
+    }
+
     /// <summary>
     /// Validates that the provided file path corresponds to a C# source file.
     /// </summary>
@@ -145,6 +182,20 @@ public class EfAnalysisService : IEfAnalysisService
         var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
         return DbContextIdentifier.FindContextClass(classDeclarations, contextName)
                ?? throw new InvalidOperationException("DbContext not found in file");
+    }
+
+    /// <summary>
+    /// Finds the ModelSnapshot class within the given syntax tree root node, optionally filtering by a specific snapshot name.
+    /// </summary>
+    /// <param name="root">The root syntax node of the syntax tree to search.</param>
+    /// <param name="snapshotName">The optional name of the ModelSnapshot class to find. If null, the first ModelSnapshot class is returned.</param>
+    /// <returns>The <see cref="ClassDeclarationSyntax"/> representing the ModelSnapshot class.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if no ModelSnapshot class is found in the provided syntax tree.</exception>
+    private static ClassDeclarationSyntax FindSnapshotClass(SyntaxNode root, string? snapshotName)
+    {
+        var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
+        return DbContextIdentifier.FindSnapshotClass(classDeclarations, snapshotName)
+               ?? throw new InvalidOperationException("ModelSnapshot not found in file");
     }
 
     /// <summary>

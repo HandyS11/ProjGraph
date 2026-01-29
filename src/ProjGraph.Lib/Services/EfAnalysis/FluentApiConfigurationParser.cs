@@ -45,9 +45,34 @@ public static partial class FluentApiConfigurationParser
             return;
         }
 
+        ApplyConstraintsFromMethod(methodSyntax, entities, model, compilation);
+    }
+
+    /// <summary>
+    /// Applies Fluent API constraints from a specific method (e.g., OnModelCreating or BuildModel) 
+    /// to the specified Entity Framework model.
+    /// </summary>
+    /// <param name="methodSyntax">The <see cref="MethodDeclarationSyntax"/> representing the method to parse.</param>
+    /// <param name="entities">
+    /// A dictionary of all entities, where the key is the entity name and the value is the <see cref="EfEntity"/> object.
+    /// </param>
+    /// <param name="model">The <see cref="EfModel"/> object to which the parsed Fluent API constraints will be applied.</param>
+    /// <param name="compilation">The <see cref="Compilation"/> used to find symbols for entities.</param>
+    public static void ApplyConstraintsFromMethod(
+        MethodDeclarationSyntax methodSyntax,
+        Dictionary<string, EfEntity> entities,
+        EfModel model,
+        Compilation compilation)
+    {
+        if (methodSyntax.Body is null)
+        {
+            return;
+        }
+
         var methodText = methodSyntax.ToString();
         var entityConfigSections = EntitySplitRegex().Split(methodText);
 
+        // Skip the first part (before the first .Entity)
         for (var i = 1; i < entityConfigSections.Length; i++)
         {
             ProcessEntityConfigSection(entityConfigSections[i], entities, model, compilation);
@@ -96,10 +121,11 @@ public static partial class FluentApiConfigurationParser
         EfModel model,
         Compilation compilation)
     {
-        var section = ".Entity<" + sectionContent;
+        // Add back "Entity" which was removed by the split
+        var section = "Entity" + sectionContent;
 
-        // Extract just this entity's configuration (up to the next .Entity<)
-        var entityConfigEnd = section.IndexOf(".Entity<", 10, StringComparison.Ordinal);
+        // Extract just this entity's configuration (up to the next .Entity)
+        var entityConfigEnd = EntitySplitRegex().Match(section, 7).Index;
         if (entityConfigEnd > 0)
         {
             section = section[..entityConfigEnd];
@@ -165,22 +191,34 @@ public static partial class FluentApiConfigurationParser
         }
 
         var entityName = entityMatch.Groups[1].Value;
+        if (string.IsNullOrEmpty(entityName))
+        {
+            entityName = entityMatch.Groups[2].Value;
+        }
+
+        // Simplify name if it contains namespace
+        if (entityName.Contains('.'))
+        {
+            entityName = entityName.Split('.')[^1];
+        }
+
         if (!entities.TryGetValue(entityName, out var entity))
         {
             var symbol = compilation.GlobalNamespace.GetAllNamedTypes()
                 .FirstOrDefault(t => t.Name == entityName);
 
-            if (symbol == null)
-            {
-                return shadowRelationships;
-            }
+            entity = symbol != null
+                ? EntityAnalyzer.AnalyzeEntity(symbol)
+                :
+                // Create a basic entity if symbol not found (common in ModelSnapshots)
+                new EfEntity { Name = entityName };
 
-            entity = EntityAnalyzer.AnalyzeEntity(symbol);
             entities[entityName] = entity;
             model.Entities.Add(entity);
         }
 
         ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
+        ParseExplicitRelationships(configSection, entityName, shadowRelationships);
         ParsePropertyConfigurations(configSection, entity);
 
         // Parse table mapping
@@ -230,6 +268,83 @@ public static partial class FluentApiConfigurationParser
                 shadowRelationships.Add(rel);
             }
         }
+    }
+
+    /// <summary>
+    /// Parses explicit relationships (e.g., HasOne, HasMany) from a given configuration section.
+    /// handles string-based names common in ModelSnapshots.
+    /// </summary>
+    private static void ParseExplicitRelationships(
+        string configSection,
+        string entityName,
+        List<EfRelationship> relationships)
+    {
+        var matches = MethodCallRegex().Matches(configSection);
+        for (var i = 0; i < matches.Count; i++)
+        {
+            var match = matches[i];
+            var methodName = match.Groups[1].Value;
+            var args = match.Groups[2].Value;
+
+            if (methodName is not ("HasOne" or "HasMany"))
+            {
+                continue;
+            }
+
+            var targetEntityName = ExtractTargetEntityName(args);
+            if (targetEntityName == null)
+            {
+                continue;
+            }
+
+            var withMethod = FindWithMethod(matches, i);
+            if (withMethod != null)
+            {
+                relationships.Add(CreateShadowRelationship(entityName, targetEntityName, methodName, withMethod));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extracts the target entity name from method arguments.
+    /// </summary>
+    /// <param name="args">The method arguments to parse.</param>
+    /// <returns>The extracted entity name, or null if not found.</returns>
+    private static string? ExtractTargetEntityName(string args)
+    {
+        var stringMatch = StringArgumentRegex().Match(args);
+        if (!stringMatch.Success)
+        {
+            return null;
+        }
+
+        var targetEntityName = stringMatch.Groups[1].Value;
+        if (targetEntityName.Contains('.'))
+        {
+            targetEntityName = targetEntityName.Split('.')[^1];
+        }
+
+        return targetEntityName;
+    }
+
+    /// <summary>
+    /// Finds the corresponding WithOne or WithMany method call following a HasOne or HasMany call.
+    /// </summary>
+    /// <param name="matches">The collection of method call matches.</param>
+    /// <param name="startIndex">The starting index to search from.</param>
+    /// <returns>The name of the With method found, or null if not found.</returns>
+    private static string? FindWithMethod(MatchCollection matches, int startIndex)
+    {
+        for (var j = startIndex + 1; j < Math.Min(startIndex + 5, matches.Count); j++)
+        {
+            var nextMethod = matches[j].Groups[1].Value;
+            if (nextMethod is "WithOne" or "WithMany")
+            {
+                return nextMethod;
+            }
+        }
+
+        return null;
     }
 
     private static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
@@ -317,37 +432,97 @@ public static partial class FluentApiConfigurationParser
     /// <param name="entity">The <see cref="EfEntity"/> object representing the entity to which the property configurations will be applied.</param>
     /// <remarks>
     /// This method extracts property configuration details from the provided configuration section.
-    /// It identifies the property name using a lambda expression and then parses all subsequent method calls
-    /// (e.g., IsRequired, HasMaxLength) to apply the corresponding configurations to the entity's property.
+    /// It identifies the property name using either a lambda expression or a string argument, 
+    /// and then parses all subsequent method calls (e.g., IsRequired, HasMaxLength) 
+    /// to apply the corresponding configurations to the entity's property.
     /// </remarks>
     private static void ParsePropertyConfigurations(string configSection, EfEntity entity)
     {
-        var propertyParts = configSection.Split(".Property", StringSplitOptions.RemoveEmptyEntries);
-        foreach (var part in propertyParts)
+        EfProperty? currentProperty = null;
+
+        var matches = MethodCallRegex().Matches(configSection);
+        foreach (var groups in matches.Select(match => match.Groups))
         {
-            var match = PropertyLambdaRegex().Match(part);
-            if (!match.Success)
+            var methodName = groups[1].Value;
+            var args = groups[2].Value;
+
+            if (methodName == "Property" || methodName.StartsWith("Property<"))
             {
-                continue;
+                currentProperty = ProcessPropertyDeclaration(entity, methodName, args);
             }
-
-            var propName = match.Groups[2].Value;
-            var property = entity.Properties.FirstOrDefault(p => p.Name == propName);
-            if (property == null)
+            else if (currentProperty != null)
             {
-                continue;
-            }
-
-            var methods = MethodCallRegex().Matches(part)
-                .Select(method => method.Groups);
-
-            foreach (var groups in methods)
-            {
-                var configMethod = groups[1].Value;
-                var configArg = groups[2].Value;
-                ApplyPropertyConfiguration(property, configMethod, configArg);
+                ApplyPropertyConfiguration(currentProperty, methodName, args);
             }
         }
+    }
+
+    /// <summary>
+    /// Processes a Property declaration and returns or creates the corresponding EfProperty.
+    /// </summary>
+    /// <param name="entity">The entity containing the property.</param>
+    /// <param name="methodName">The method name (e.g., "Property" or "Property&lt;T&gt;").</param>
+    /// <param name="args">The method arguments.</param>
+    /// <returns>The EfProperty object, or null if the property name is invalid.</returns>
+    private static EfProperty? ProcessPropertyDeclaration(EfEntity entity, string methodName, string args)
+    {
+        var propName = ExtractPropertyName(args);
+        if (string.IsNullOrEmpty(propName))
+        {
+            return null;
+        }
+
+        var type = ExtractGenericType(methodName);
+        return GetOrCreateProperty(entity, propName, type);
+    }
+
+    /// <summary>
+    /// Extracts the property name from method arguments.
+    /// </summary>
+    /// <param name="args">The method arguments to parse.</param>
+    /// <returns>The extracted property name.</returns>
+    private static string ExtractPropertyName(string args)
+    {
+        var lambdaMatch = PropertyLambdaRegex().Match(args);
+        return lambdaMatch.Success ? lambdaMatch.Groups[2].Value : args.Trim('"', ' ');
+    }
+
+    /// <summary>
+    /// Extracts the generic type from a method name like "Property&lt;T&gt;".
+    /// </summary>
+    /// <param name="methodName">The method name to parse.</param>
+    /// <returns>The extracted type, or empty string if no generic type is found.</returns>
+    private static string ExtractGenericType(string methodName)
+    {
+        if (methodName.Contains('<') && methodName.Contains('>'))
+        {
+            return methodName.Split('<')[1].Split('>')[0];
+        }
+
+        return "";
+    }
+
+    /// <summary>
+    /// Gets an existing property or creates a new one if it doesn't exist.
+    /// </summary>
+    /// <param name="entity">The entity containing the property.</param>
+    /// <param name="propName">The property name.</param>
+    /// <param name="type">The property type.</param>
+    /// <returns>The EfProperty object.</returns>
+    private static EfProperty GetOrCreateProperty(EfEntity entity, string propName, string type)
+    {
+        var property = entity.Properties.FirstOrDefault(p => p.Name == propName);
+        if (property == null)
+        {
+            property = new EfProperty { Name = propName, Type = type };
+            entity.Properties.Add(property);
+        }
+        else if (!string.IsNullOrEmpty(type))
+        {
+            property.Type = type;
+        }
+
+        return property;
     }
 
     /// <summary>
@@ -437,17 +612,17 @@ public static partial class FluentApiConfigurationParser
     }
 
     /// <summary>
-    /// A regex pattern to match entity type names in the format "Entity&lt;TypeName&gt;".
+    /// A regex pattern to match entity type names in the format "Entity&lt;TypeName&gt;" or "Entity(\"TypeName\")".
     /// </summary>
     /// <returns>A compiled <see cref="Regex"/> instance for matching entity type names.</returns>
-    [GeneratedRegex(@"Entity<(\w+)>")]
+    [GeneratedRegex("""Entity(?:<([^>]+)>|\("([^"]+)"(?:,\s*[^)]+)?\))""")]
     private static partial Regex EntityNameRegex();
 
     /// <summary>
-    /// A regex pattern to split a string by occurrences of ".Entity&lt;".
+    /// A regex pattern to split a string by occurrences of ".Entity&lt;" or ".Entity(".
     /// </summary>
-    /// <returns>A compiled <see cref="Regex"/> instance for splitting strings by ".Entity&lt;".</returns>
-    [GeneratedRegex(@"\.Entity<")]
+    /// <returns>A compiled <see cref="Regex"/> instance for splitting strings by ".Entity".</returns>
+    [GeneratedRegex(@"\.Entity(?=[<(])")]
     private static partial Regex EntitySplitRegex();
 
     /// <summary>
@@ -458,18 +633,18 @@ public static partial class FluentApiConfigurationParser
     private static partial Regex ShadowRelationshipRegex();
 
     /// <summary>
-    /// A regex pattern to match property lambda expressions in the format "(e => e.PropertyName)".
+    /// A regex pattern to match property lambda expressions in the format "e => e.PropertyName".
     /// </summary>
     /// <returns>A compiled <see cref="Regex"/> instance for matching property lambda expressions.</returns>
-    [GeneratedRegex(@"^\s*\(\s*(\w+)\s*=>\s*\1\.(\w+)\s*\)")]
+    [GeneratedRegex(@"^\s*\(?\s*(\w+)\s*\)?\s*=>\s*\1\.(\w+)\s*$")]
     private static partial Regex PropertyLambdaRegex();
 
     /// <summary>
     /// A regex pattern to match fluent method calls in the format ".MethodName(arguments)".
-    /// Supports one level of nested parentheses.
+    /// Supports one level of nested parentheses and generic arguments.
     /// </summary>
     /// <returns>A compiled <see cref="Regex"/> instance for matching fluent method calls.</returns>
-    [GeneratedRegex(@"\.(\w+)\(([^()]*(?:\([^()]*\)[^()]*)*)\)")]
+    [GeneratedRegex(@"\.(\w+(?:<[^>]+>)?)\(([^()]*(?:\([^()]*\)[^()]*)*)\)")]
     private static partial Regex MethodCallRegex();
 
     /// <summary>
@@ -478,4 +653,11 @@ public static partial class FluentApiConfigurationParser
     /// <returns>A compiled <see cref="Regex"/> instance for matching ToTable configurations.</returns>
     [GeneratedRegex("""\.ToTable\(\"([^\"]+)\"\)""")]
     private static partial Regex ToTableRegex();
+
+    /// <summary>
+    /// A regex pattern to match string arguments in the format "string_value".
+    /// </summary>
+    /// <returns>A compiled <see cref="Regex"/> instance for matching quoted string arguments.</returns>
+    [GeneratedRegex(@"^""([^""]+)""")]
+    private static partial Regex StringArgumentRegex();
 }

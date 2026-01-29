@@ -1,40 +1,41 @@
-# Feature Specification: DbContext ERD Generation
+# Feature Specification: DbContext & ModelSnapshot ERD Generation
 
 **Feature Branch**: 002-dbcontext-erd
 **Created**: 2026-01-15
+**Updated**: 2026-01-29 (Added ModelSnapshot support)
 **Status**: Draft
-**Input**: User description: "I want the tool to be able to generate a erd mermaid diagram based on a DbContext. The tool will be able to locate the dbContext in a solution or take a file path as argument. Also add it to the mcp server."
+**Input**: User description: "I want the tool to be able to generate a erd mermaid diagram based on a DbContext or a ModelSnapshot. The tool will be able to locate the base file in a solution or take a file path as argument. Also add it to the mcp server."
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Generate ERD from Solution (Priority: P1)
 
-As a developer working on a large .NET solution, I want to quickly visualize the database schema defined in my Entity Framework Core DbContext without having to run the application or connect to a live database.
+As a developer working on a large .NET solution, I want to quickly visualize the database schema defined in my Entity Framework Core DbContext or migration history without having to run the application or connect to a live database.
 
 **Why this priority**: This is the primary use case for understanding existing or new data models during development.
 
-**Independent Test**: Running `projgraph erd [path]` where path is a `.cs` file prints a valid Mermaid `erDiagram` to the console.
+**Independent Test**: Running `projgraph erd [path]` where path is a `.cs` file (DbContext or ModelSnapshot) prints a valid Mermaid `erDiagram` to the console.
 
 **Acceptance Scenarios**:
 
-1. **Given** a directory with one DbContext and several entities, **When** I run the ERD command without arguments, **Then** I see a Mermaid diagram showing the entities and their relationships.
-2. **Given** a file or directory with multiple DbContext classes, **When** I run the command, **Then** the tool provides an interactive selection prompt to choose the context.
-3. **Given** a file or solution where no DbContext is found, **When** I run the command, **Then** I see a helpful error message.
+1. **Given** a directory with one DbContext, several entities, and migration snapshots, **When** I run the ERD command without arguments, **Then** the tool finds the nearest context or snapshot and displays a Mermaid diagram showing the entities and their relationships.
+2. **Given** a file or directory with multiple DbContext or ModelSnapshot classes, **When** I run the command, **Then** the tool provides an interactive selection prompt to choose the target.
+3. **Given** a file or solution where no DbContext or ModelSnapshot is found, **When** I run the command, **Then** I see a helpful error message.
 
 ---
 
-### User Story 2 - Generate ERD from Specific File (Priority: P1)
+### User Story 2 - Generate ERD from Discovery or Specific File (Priority: P1)
 
-As a developer, I want to generate a diagram for a specific DbContext file I am currently editing, even if it's not yet part of a fully buildable solution.
+As a developer, I want to generate a diagram for a specific DbContext file or a ModelSnapshot I am currently editing, even if it's not yet part of a fully buildable solution.
 
-**Why this priority**: Enables fast feedback loops during the design phase of a data model.
+**Why this priority**: Enables fast feedback loops during the design phase or while reviewing migrations.
 
-**Independent Test**: Running `projgraph erd ./Data/AppDbContext.cs` produces a Mermaid diagram based on the source code analysis.
+**Independent Test**: Running `projgraph erd ./Migrations/AppDbContextModelSnapshot.cs` produces a Mermaid diagram based on the migration snapshot analysis.
 
 **Acceptance Scenarios**:
 
-1. **Given** a .cs file containing a class inheriting from DbContext with DbSet properties, **When** I run the ERD command on that file, **Then** the tool extracts the entity names and generates the diagram by recursively locating entity definitions in adjacent projects.
-2. **Given** a file that does not contain a DbContext, **When** I run the command, **Then** I see an error message stating the file does not contain a valid context.
+1. **Given** a .cs file containing a class inheriting from DbContext or ModelSnapshot, **When** I run the ERD command on that file, **Then** the tool extracts the metadata and generates the diagram.
+2. **Given** a file that does not contain a DbContext or ModelSnapshot, **When** I run the command, **Then** I see an error message stating the file does not contain a valid source.
 
 ---
 
@@ -60,13 +61,13 @@ As an AI Assistant, I want to retrieve a Mermaid ERD of the project's data model
 
 ### Functional Requirements
 
-- **FR-001**: System MUST be able to identify classes inheriting from `DbContext` through Roslyn source code analysis.
-- **FR-002**: System MUST extract entity sets defined as `DbSet<T>` properties.
-- **FR-003**: System MUST identify relationships (1:1, 1:N, N:M) by analyzing property types and naming conventions.
+- **FR-001**: System MUST be able to identify classes inheriting from `DbContext` or `ModelSnapshot` through Roslyn source code analysis.
+- **FR-002**: System MUST extract entity metadata from `DbSet<T>` properties (DbContext) or `modelBuilder.Entity` calls (ModelSnapshot).
+- **FR-003**: System MUST identify relationships (1:1, 1:N, N:M) by analyzing property types, naming conventions, and Fluent API configurations.
 - **FR-004**: System MUST support generating Mermaid `erDiagram` syntax with property markers (PK, FK) and constraints.
 - **FR-005**: System MUST provide a CLI command `erd` that accepts an optional `path`.
-- **FR-006**: System MUST expose an MCP tool `get_erd` that provides the Mermaid diagram.
-- **FR-007**: System MUST support interactive selection if multiple `DbContext` classes or files are found.
+- **FR-006**: System MUST expose an MCP tool `get_erd` that provides the Mermaid diagram from either context or snapshot.
+- **FR-007**: System MUST support interactive selection if multiple relevant classes or files are found.
 
 ### Key Entities *(include if feature involves data)*
 
