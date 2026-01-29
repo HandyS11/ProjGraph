@@ -218,7 +218,7 @@ public static partial class FluentApiConfigurationParser
         }
 
         ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
-        ParseExplicitRelationships(configSection, entityName, shadowRelationships);
+        ParseExplicitRelationships(configSection, entityName, entities, shadowRelationships);
         ParsePropertyConfigurations(configSection, entity);
 
         // Parse table mapping
@@ -277,6 +277,7 @@ public static partial class FluentApiConfigurationParser
     private static void ParseExplicitRelationships(
         string configSection,
         string entityName,
+        Dictionary<string, EfEntity> entities,
         List<EfRelationship> relationships)
     {
         var matches = MethodCallRegex().Matches(configSection);
@@ -306,6 +307,30 @@ public static partial class FluentApiConfigurationParser
             var isRequired = IsRelationshipRequired(matches, i);
             var rel = CreateShadowRelationship(entityName, targetEntityName, methodName, method,
                 isRequired);
+
+            // Handle Foreign Key configuration
+            var (fkEntityNameOverride, fkPropNames) = FindForeignKeyInfo(matches, i);
+            if (fkPropNames.Count > 0)
+            {
+                // Determine which entity the FK belongs to
+                // Default: HasOne -> current entity, HasMany -> target entity
+                var dependentEntityName = methodName == "HasOne" ? entityName : targetEntityName;
+
+                // Override if generic type specified in HasForeignKey<T>
+                if (!string.IsNullOrEmpty(fkEntityNameOverride))
+                {
+                    dependentEntityName = fkEntityNameOverride;
+                }
+
+                if (entities.TryGetValue(dependentEntityName, out var dependentEntity))
+                {
+                    foreach (var propName in fkPropNames)
+                    {
+                        var prop = GetOrCreateProperty(dependentEntity, propName, "");
+                        prop.IsForeignKey = true;
+                    }
+                }
+            }
 
             // Set labels if available
             if (label != null)
@@ -340,6 +365,34 @@ public static partial class FluentApiConfigurationParser
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Finds the corresponding HasForeignKey method call following a HasOne or HasMany call.
+    /// </summary>
+    private static (string? EntityNameOverride, List<string> PropertyNames) FindForeignKeyInfo(MatchCollection matches,
+        int startIndex)
+    {
+        for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
+        {
+            var nextMethodMatch = matches[j].Groups[1].Value;
+            if (!nextMethodMatch.StartsWith("HasForeignKey"))
+            {
+                if (nextMethodMatch is "Entity" or "HasOne" or "HasMany" or "ToTable")
+                {
+                    // Boundary of the relationship chain
+                    break;
+                }
+
+                continue;
+            }
+
+            var typeName = ExtractGenericType(nextMethodMatch);
+            var propNames = ExtractPropertyNamesFromArgs(matches[j].Groups[2].Value);
+            return (typeName, propNames);
+        }
+
+        return (null, []);
     }
 
     /// <summary>
@@ -504,11 +557,7 @@ public static partial class FluentApiConfigurationParser
                 ApplyKeyConfiguration(entity, args);
                 currentProperty = null;
             }
-            else if (methodName == "HasForeignKey")
-            {
-                ApplyForeignKeyConfiguration(entity, args);
-                currentProperty = null;
-            }
+
             else if (currentProperty != null)
             {
                 ApplyPropertyConfiguration(currentProperty, methodName, args);
@@ -526,19 +575,6 @@ public static partial class FluentApiConfigurationParser
         {
             var prop = GetOrCreateProperty(entity, propName, "");
             prop.IsPrimaryKey = true;
-        }
-    }
-
-    /// <summary>
-    /// Applies foreign key configuration to the entity.
-    /// </summary>
-    private static void ApplyForeignKeyConfiguration(EfEntity entity, string args)
-    {
-        var propNames = ExtractPropertyNamesFromArgs(args);
-        foreach (var propName in propNames)
-        {
-            var prop = GetOrCreateProperty(entity, propName, "");
-            prop.IsForeignKey = true;
         }
     }
 
