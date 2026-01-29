@@ -54,6 +54,22 @@ public sealed class ClassAnalysisServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AnalyzeFileAsync_GenericClass_ExtractsGenericName()
+    {
+        const string code = """
+                            namespace TestNamespace;
+                            public class MyGeneric<T1, T2> {}
+                            """;
+        await File.WriteAllTextAsync(_tempFile, code);
+
+        var result = await _service.AnalyzeFileAsync(_tempFile, false);
+
+        result.Types.Should().HaveCount(1);
+        var type = result.Types[0];
+        type.Name.Should().Be("MyGeneric<T1, T2>");
+    }
+
+    [Fact]
     public async Task AnalyzeFileAsync_WithInheritance_SingleFile_FindsRelationship()
     {
         const string code = """

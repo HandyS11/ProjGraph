@@ -28,6 +28,9 @@ public class MermaidClassDiagramRendererTests
         type.Members.Add(new MemberDefinition("Id", "int", Visibility.Public, MemberKind.Property));
         type.Members.Add(new MemberDefinition("Username", "string", Visibility.Private, MemberKind.Field));
         type.Members.Add(new MemberDefinition("Save", "void", Visibility.Protected, MemberKind.Method, []));
+        type.Members.Add(new MemberDefinition("Tags", "List<string>", Visibility.Public, MemberKind.Property));
+        type.Members.Add(new MemberDefinition("Metadata", "Dictionary<string, string>", Visibility.Public,
+            MemberKind.Property));
 
         var model = new ClassModel("Test", [type], []);
 
@@ -37,6 +40,8 @@ public class MermaidClassDiagramRendererTests
         result.Should().Contain("+int Id");
         result.Should().Contain("-string Username");
         result.Should().Contain("#Save() void");
+        result.Should().Contain("+List~string~ Tags");
+        result.Should().Contain("+Dictionary~string, string~ Metadata");
     }
 
     [Fact]
@@ -66,6 +71,23 @@ public class MermaidClassDiagramRendererTests
         var result = MermaidClassDiagramRenderer.Render(model);
 
         result.Should().Contain("class System_Collections_Generic_List_T_ [\"List~T~\"]");
+    }
+
+    [Fact]
+    public void Render_WithMultipleGenerics_SanitizesCorrectly()
+    {
+        var type = new TypeDefinition(
+            "Dictionary<TKey, TValue>",
+            "System.Collections.Generic",
+            "System.Collections.Generic.Dictionary<TKey, TValue>",
+            TypeKind.Class,
+            []);
+        var model = new ClassModel(null, [type], []);
+
+        var result = MermaidClassDiagramRenderer.Render(model);
+
+        result.Should()
+            .Contain("class System_Collections_Generic_Dictionary_TKey__TValue_ [\"Dictionary~TKey, TValue~\"]");
     }
 
     [Fact]
