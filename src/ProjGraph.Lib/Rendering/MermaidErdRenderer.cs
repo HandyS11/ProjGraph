@@ -57,6 +57,10 @@ public static class MermaidErdRenderer
     private static string RenderProperty(EfProperty prop)
     {
         var sanitizedType = SanitizeTypeForMermaid(prop.Type);
+        if (string.IsNullOrWhiteSpace(sanitizedType))
+        {
+            sanitizedType = "unknown";
+        }
         var markers = BuildKeyMarkers(prop);
         var constraints = BuildConstraintComment(prop);
 

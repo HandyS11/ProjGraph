@@ -634,7 +634,13 @@ public static partial class FluentApiConfigurationParser
         var property = entity.Properties.FirstOrDefault(p => p.Name == propName);
         if (property == null)
         {
-            property = new EfProperty { Name = propName, Type = type };
+            var detectedType = type;
+            if (string.IsNullOrEmpty(detectedType))
+            {
+                detectedType = propName.EndsWith("Id", StringComparison.OrdinalIgnoreCase) ? "Guid" : "string";
+            }
+
+            property = new EfProperty { Name = propName, Type = detectedType };
             entity.Properties.Add(property);
         }
         else if (!string.IsNullOrEmpty(type))
