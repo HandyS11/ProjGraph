@@ -111,17 +111,15 @@ internal static class TypeProcessor
         AnalysisContext context)
     {
         // First, resolve all unique symbols to ensure consistency
-        var resolvedSymbolsCache = new Dictionary<string, INamedTypeSymbol?>();
+        var resolvedSymbolsCache = new Dictionary<ISymbol, INamedTypeSymbol?>(SymbolEqualityComparer.Default);
 
         foreach (var (relatedSymbol, kind, label, cardinality) in relatedSymbols)
         {
-            var symbolKey = relatedSymbol.Name; // Use simple name as key
-
             // Resolve symbol only once per unique type
-            if (!resolvedSymbolsCache.TryGetValue(symbolKey, out var resolvedSymbol))
+            if (!resolvedSymbolsCache.TryGetValue(relatedSymbol, out var resolvedSymbol))
             {
                 resolvedSymbol = await SymbolResolver.ResolveRelatedSymbolAsync(relatedSymbol, context);
-                resolvedSymbolsCache[symbolKey] = resolvedSymbol;
+                resolvedSymbolsCache[relatedSymbol] = resolvedSymbol;
             }
 
             var symbolToUse = resolvedSymbol ?? relatedSymbol;
