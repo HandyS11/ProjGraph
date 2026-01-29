@@ -292,7 +292,7 @@ public static class EntityFileDiscovery
     /// It then extracts the names of the base types using the <see cref="ExtractBaseTypeName"/> method 
     /// and filters them using the <see cref="IsValidBaseClassName"/> method before adding them to the set.
     /// </remarks>
-    private static void ExtractBaseClassNamesFromSyntax(SyntaxNode root, HashSet<string> baseClassNames)
+    public static void ExtractBaseClassNamesFromSyntax(SyntaxNode root, HashSet<string> baseClassNames)
     {
         foreach (var baseTypeName in root.DescendantNodes()
                      .OfType<ClassDeclarationSyntax>()
@@ -392,7 +392,7 @@ public static class EntityFileDiscovery
     /// file paths by calling the <see cref="TryFindBaseClassFile"/> method. If a file is found, it is added
     /// to the resulting dictionary. If no file is found for a base class name, it is skipped.
     /// </remarks>
-    private static Dictionary<string, string> SearchForBaseClassFiles(
+    public static Dictionary<string, string> SearchForBaseClassFiles(
         HashSet<string> baseClassNames,
         DirectoryInfo solutionRoot)
     {
