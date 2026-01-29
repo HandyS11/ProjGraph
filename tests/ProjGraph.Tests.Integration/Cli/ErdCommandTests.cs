@@ -70,4 +70,55 @@ public class ErdCommandTests
 
         exception.Message.Should().Contain("Only .cs files are supported");
     }
+
+    [Fact]
+    public void ErdCommand_FileNotFound_ShouldFail()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        const string nonExistentPath = "NonExistentFile.cs";
+
+        // Act & Assert
+        var exception = Assert.Throws<CommandRuntimeException>(() =>
+            app.Run(["erd", nonExistentPath]));
+
+        exception.Message.Should().Contain("File not found");
+    }
+
+    [Fact]
+    public void ErdCommand_FileWithNoContext_ShouldReturnError()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        // Create a temporary file with no DbContext
+        var tempFile = Path.GetTempFileName();
+        var csFile = Path.ChangeExtension(tempFile, ".cs");
+        File.WriteAllText(csFile, "public class NotAContext {}");
+
+        try
+        {
+            // Act
+            var resultCode = 0;
+            var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            {
+                resultCode = app.Run(["erd", csFile]);
+            });
+
+            // Assert
+            resultCode.Should().Be(1);
+            capturedOutput.Should().Contain("No DbContext found");
+        }
+        finally
+        {
+            if (File.Exists(csFile))
+            {
+                File.Delete(csFile);
+            }
+
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
 }

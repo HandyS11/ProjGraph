@@ -180,7 +180,16 @@ public class EfAnalysisService : IEfAnalysisService
             entityTypeNames,
             contextPath);
 
+        // Also discover base classes for entities that might be in the context file itself
         var baseClassFiles = await EntityFileDiscovery.DiscoverBaseClassFilesAsync(entityFiles, contextDirectory);
+
+        // New step: extract base classes from the context file root as well
+        var additionalBaseClassNames = new HashSet<string>();
+        EntityFileDiscovery.ExtractBaseClassNamesFromSyntax(root, additionalBaseClassNames);
+        var additionalBaseFiles =
+            EntityFileDiscovery.SearchForBaseClassFiles(additionalBaseClassNames, new DirectoryInfo(contextDirectory));
+        MergeFileDictionaries(baseClassFiles, additionalBaseFiles);
+
         MergeFileDictionaries(entityFiles, baseClassFiles);
 
         return await CreateSyntaxTreesAsync(contextSyntaxTree, entityFiles);
@@ -252,7 +261,7 @@ public class EfAnalysisService : IEfAnalysisService
         var entities = DiscoverEntitiesFromDbSets(contextType);
 
         model.Entities.AddRange(entities.Values);
-        FluentApiConfigurationParser.ApplyFluentApiConstraints(contextType, entities, model);
+        FluentApiConfigurationParser.ApplyFluentApiConstraints(contextType, entities, model, compilation);
         RelationshipAnalyzer.AnalyzeRelationships(model, entities, compilation);
 
         return model;

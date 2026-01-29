@@ -2,7 +2,7 @@ using FluentAssertions;
 using ProjGraph.Lib.Services.EfAnalysis;
 using ProjGraph.Tests.Unit.Helpers;
 
-namespace ProjGraph.Tests.Unit.Services;
+namespace ProjGraph.Tests.Unit.Services.EfAnalysis;
 
 public class EfAnalysisServiceTests
 {
