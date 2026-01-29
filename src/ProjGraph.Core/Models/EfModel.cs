@@ -40,6 +40,11 @@ public class EfEntity
     /// Gets or sets a value indicating whether the entity is a join entity.
     /// </summary>
     public bool IsJoinEntity { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the database table associated with the entity.
+    /// </summary>
+    public string TableName { get; set; } = string.Empty;
 }
 
 /// <summary>

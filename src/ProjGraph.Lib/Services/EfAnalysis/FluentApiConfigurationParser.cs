@@ -183,6 +183,13 @@ public static partial class FluentApiConfigurationParser
         ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
         ParsePropertyConfigurations(configSection, entity);
 
+        // Parse table mapping
+        var tableMatch = ToTableRegex().Match(configSection);
+        if (tableMatch.Success)
+        {
+            entity.TableName = tableMatch.Groups[1].Value;
+        }
+
         return shadowRelationships;
     }
 
@@ -377,7 +384,26 @@ public static partial class FluentApiConfigurationParser
                 break;
 
             case "HasDefaultValue":
-                property.DefaultValue = configArg.Trim('"', '\'');
+                var trimmedArg = configArg.Trim();
+                var isQuoted = (trimmedArg.StartsWith('\"') && trimmedArg.EndsWith('\"')) ||
+                               (trimmedArg.StartsWith('\'') && trimmedArg.EndsWith('\''));
+                var val = trimmedArg.Trim('\"', '\'');
+
+                if (!isQuoted && val.Contains('.'))
+                {
+                    var lastPart = val.Split('.')[^1];
+                    // Only shorten if it doesn't look like a numeric value (e.g., 0.7f or 0.7)
+                    if (lastPart.Length > 0 && !char.IsDigit(lastPart[0]))
+                    {
+                        val = lastPart;
+                    }
+                }
+
+                property.DefaultValue = val;
+                break;
+
+            case "HasDefaultValueSql":
+                property.DefaultValue = configArg.Trim('\"', '\'', ' ');
                 break;
         }
     }
@@ -440,8 +466,16 @@ public static partial class FluentApiConfigurationParser
 
     /// <summary>
     /// A regex pattern to match fluent method calls in the format ".MethodName(arguments)".
+    /// Supports one level of nested parentheses.
     /// </summary>
     /// <returns>A compiled <see cref="Regex"/> instance for matching fluent method calls.</returns>
-    [GeneratedRegex(@"\.(\w+)\(([^)]*)\)")]
+    [GeneratedRegex(@"\.(\w+)\(([^()]*(?:\([^()]*\)[^()]*)*)\)")]
     private static partial Regex MethodCallRegex();
+
+    /// <summary>
+    /// A regex pattern to match ToTable configuration in the format ".ToTable("TableName")".
+    /// </summary>
+    /// <returns>A compiled <see cref="Regex"/> instance for matching ToTable configurations.</returns>
+    [GeneratedRegex("""\.ToTable\(\"([^\"]+)\"\)""")]
+    private static partial Regex ToTableRegex();
 }

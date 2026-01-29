@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Rendering;
 using ProjGraph.Lib.Services.EfAnalysis;
 using ProjGraph.Tests.Unit.Helpers;
 
@@ -250,5 +251,93 @@ public class EfAnalysisAdvancedTests
         var msg = log.Properties.Should().Contain(p => p.Name == "Message").Which;
         msg.IsRequired.Should().BeTrue();
         msg.MaxLength.Should().Be(500);
+    }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_ShouldShortenDefaultValueNamespaces()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               using System;
+                               namespace Test;
+                               public class AppDbContext : DbContext 
+                               { 
+                                   public DbSet<Assistant> Assistants { get; set; }
+                                   
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity<Assistant>()
+                                           .Property(a => a.AiProviderName)
+                                           .HasDefaultValue(Shared.Constants.Constants.AiProviderModels.AzureOpenAi);
+                                           
+                                       modelBuilder.Entity<Assistant>()
+                                           .Property(a => a.Temperature)
+                                           .HasDefaultValue(0.7f);
+                                           
+                                       modelBuilder.Entity<Assistant>()
+                                           .Property(a => a.CreatedAt)
+                                           .HasDefaultValueSql("GETUTCDATE()");
+                                           
+                                       modelBuilder.Entity<Assistant>().ToTable("tbl_Assistants");
+                                   }
+                               }
+                               public class Assistant { 
+                                   public Guid Id { get; set; }
+                                   public string AiProviderName { get; set; }
+                                   public float Temperature { get; set; }
+                                   public DateTime CreatedAt { get; set; }
+                               }
+                               """;
+        var filePath = temp.CreateFile("ContextDefaultValues.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        var assistant = model.Entities.First(e => e.Name == "Assistant");
+        assistant.TableName.Should().Be("tbl_Assistants");
+
+        var provider = assistant.Properties.First(p => p.Name == "AiProviderName");
+        provider.DefaultValue.Should().Be("AzureOpenAi");
+
+        var tempProp = assistant.Properties.First(p => p.Name == "Temperature");
+        tempProp.DefaultValue.Should().Be("0.7f");
+
+        var created = assistant.Properties.First(p => p.Name == "CreatedAt");
+        created.DefaultValue.Should().Be("GETUTCDATE()");
+    }
+
+    [Fact]
+    public void MermaidErdRenderer_ShouldRenderShortenedDefaultValues()
+    {
+        // Arrange
+        var model = new EfModel
+        {
+            Entities =
+            [
+                new EfEntity
+                {
+                    Name = "Assistant",
+                    Properties =
+                    [
+                        new EfProperty
+                        {
+                            Name = "AiProviderName",
+                            Type = "string",
+                            DefaultValue = "AzureOpenAi",
+                            IsRequired = true
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Act
+        var result = MermaidErdRenderer.Render(model);
+
+        // Assert
+        result.Should().Contain("AiProviderName \"required, default:AzureOpenAi\"");
     }
 }
