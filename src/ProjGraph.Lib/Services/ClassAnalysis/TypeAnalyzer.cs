@@ -65,7 +65,7 @@ internal static class TypeAnalyzer
         }
 
         return new TypeDefinition(
-            symbol.Name,
+            symbol.ToDisplayString(ShortNameFormat),
             symbol.ContainingNamespace.ToDisplayString(),
             GetFullyQualifiedName(symbol),
             MapKind(symbol),
