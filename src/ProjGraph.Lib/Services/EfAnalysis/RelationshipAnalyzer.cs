@@ -157,7 +157,7 @@ public static class RelationshipAnalyzer
     }
 
     /// <summary>
-    /// Determines the type of a collection navigation property in an entity relationship.
+    /// Determines the type of collection navigation property in an entity relationship.
     /// </summary>
     /// <param name="relationship">The <see cref="EfRelationship"/> object representing the relationship being analyzed.</param>
     /// <param name="targetType">The <see cref="INamedTypeSymbol"/> representing the type of the target entity.</param>
@@ -263,11 +263,28 @@ public static class RelationshipAnalyzer
                 .ToArray();
             var joinTableName = $"{entitiesSorted[0]}{entitiesSorted[1]}";
 
-            var joinEntity = CreateJoinEntity(joinTableName, m2m);
+            var sourceEntity = model.Entities.FirstOrDefault(e => e.Name == m2m.SourceEntity);
+            var targetEntity = model.Entities.FirstOrDefault(e => e.Name == m2m.TargetEntity);
+
+            var sourcePkType = GetPrimaryKeyType(sourceEntity);
+            var targetPkType = GetPrimaryKeyType(targetEntity);
+
+            var joinEntity = CreateJoinEntity(joinTableName, m2m, sourcePkType, targetPkType);
             model.Entities.Add(joinEntity);
 
             AddJoinTableRelationships(model, joinTableName, m2m);
         }
+    }
+
+    private static string GetPrimaryKeyType(EfEntity? entity)
+    {
+        if (entity == null)
+        {
+            return "int";
+        }
+
+        var pk = entity.Properties.FirstOrDefault(p => p.IsPrimaryKey);
+        return pk?.Type ?? "int";
     }
 
     /// <summary>
@@ -275,6 +292,8 @@ public static class RelationshipAnalyzer
     /// </summary>
     /// <param name="joinTableName">The name of the join table to be created.</param>
     /// <param name="m2m">The <see cref="EfRelationship"/> representing the many-to-many relationship.</param>
+    /// <param name="sourcePkType">The type of the primary key for the source entity.</param>
+    /// <param name="targetPkType">The type of the primary key for the target entity.</param>
     /// <returns>
     /// An <see cref="EfEntity"/> representing the join table with properties for the source and target entity IDs.
     /// </returns>
@@ -282,7 +301,8 @@ public static class RelationshipAnalyzer
     /// The created join entity includes two properties: one for the source entity ID and one for the target entity ID.
     /// Both properties are marked as primary keys and foreign keys.
     /// </remarks>
-    private static EfEntity CreateJoinEntity(string joinTableName, EfRelationship m2m)
+    private static EfEntity CreateJoinEntity(string joinTableName, EfRelationship m2m, string sourcePkType,
+        string targetPkType)
     {
         return new EfEntity
         {
@@ -292,11 +312,11 @@ public static class RelationshipAnalyzer
             [
                 new EfProperty
                 {
-                    Name = $"{m2m.SourceEntity}Id", Type = "int", IsPrimaryKey = true, IsForeignKey = true
+                    Name = $"{m2m.SourceEntity}Id", Type = sourcePkType, IsPrimaryKey = true, IsForeignKey = true
                 },
                 new EfProperty
                 {
-                    Name = $"{m2m.TargetEntity}Id", Type = "int", IsPrimaryKey = true, IsForeignKey = true
+                    Name = $"{m2m.TargetEntity}Id", Type = targetPkType, IsPrimaryKey = true, IsForeignKey = true
                 }
             ]
         };
