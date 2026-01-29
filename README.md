@@ -8,8 +8,8 @@
 [![ProjGraph.Mcp NuGet](https://img.shields.io/nuget/v/ProjGraph.Mcp?label=MCP&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Mcp)
 [![ProjGraph.Mcp Downloads](https://img.shields.io/nuget/dt/ProjGraph.Mcp?label=MCP%20downloads&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Mcp)
 
-**ProjGraph** is a .NET tool ecosystem for visualizing and analyzing project dependencies within solutions. It provides
-both a CLI for manual analysis and an MCP server for AI-assisted exploration of your codebase architecture.
+**ProjGraph** is a .NET tool ecosystem for visualizing project dependencies, database schemas, and class hierarchies.
+It provides both a CLI for manual analysis and an MCP server for AI-assisted exploration of your codebase architecture.
 
 ## 🚀 Quick Start
 

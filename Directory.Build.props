@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.3.1</Version>
+    <Version>0.3.2</Version>
 
     <!-- Code Analysis & Quality -->
     <AnalysisLevel>latest</AnalysisLevel>
@@ -16,6 +16,7 @@
     <!-- Package Metadata -->
     <Authors>HandyS11</Authors>
     <Company>HandyS11</Company>
+    <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://github.com/HandyS11/ProjGraph</PackageProjectUrl>
     <RepositoryUrl>https://github.com/HandyS11/ProjGraph.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -30,5 +31,9 @@
 
   <ItemGroup Condition="'$(IsTestProject)' != 'true'">
     <InternalsVisibleTo Include="$(AssemblyName).Tests"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath=""/>
   </ItemGroup>
 </Project>
