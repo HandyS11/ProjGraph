@@ -19,7 +19,7 @@
     <PackageId>ProjGraph.Mcp</PackageId>
     <Title>ProjGraph MCP Server</Title>
     <Description>MCP server for ProjGraph to interact with LLMs and provide project graph context.</Description>
-    <PackageTags>AI;MCP;server;stdio;graph;dependencies;dotnet</PackageTags>
+    <PackageTags>AI;MCP;server;stdio;graph;dependencies;visualization;erd;classdiagram;mermaid;dotnet</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 

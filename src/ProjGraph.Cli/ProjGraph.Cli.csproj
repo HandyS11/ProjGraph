@@ -14,7 +14,7 @@
     <PackageId>ProjGraph.Cli</PackageId>
     <Title>ProjGraph CLI</Title>
     <Description>CLI tool to visualize project dependencies and generate graphs.</Description>
-    <PackageTags>dotnet-tool;graph;dependencies;visualization;mermaid;cli</PackageTags>
+    <PackageTags>dotnet-tool;graph;dependencies;visualization;erd;classdiagram;mermaid;cli</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
