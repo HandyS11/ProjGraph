@@ -291,64 +291,103 @@ public static partial class FluentApiConfigurationParser
                 continue;
             }
 
-            var targetEntityName = ExtractTargetEntityName(args);
-            if (targetEntityName == null)
+            var (targetEntityName, label) = ExtractTargetInfo(args);
+            if (targetEntityName is null)
             {
                 continue;
             }
 
-            var withMethod = FindWithMethod(matches, i);
-            if (withMethod != null)
+            var (method, arg) = FindWithMethodInfo(matches, i);
+            if (method is null)
             {
-                relationships.Add(CreateShadowRelationship(entityName, targetEntityName, methodName, withMethod));
+                continue;
             }
+
+            var isRequired = IsRelationshipRequired(matches, i);
+            var rel = CreateShadowRelationship(entityName, targetEntityName, methodName, method,
+                isRequired);
+
+            // Set labels if available
+            if (label != null)
+            {
+                rel.Label = label;
+            }
+            else if (arg != null)
+            {
+                var inverseLabel = ExtractFirstStringArg(arg);
+                if (inverseLabel != null)
+                {
+                    rel.Label = inverseLabel;
+                }
+            }
+
+            relationships.Add(rel);
         }
     }
 
-    /// <summary>
-    /// Extracts the target entity name from method arguments.
-    /// </summary>
-    /// <param name="args">The method arguments to parse.</param>
-    /// <returns>The extracted entity name, or null if not found.</returns>
-    private static string? ExtractTargetEntityName(string args)
+    private static bool IsRelationshipRequired(MatchCollection matches, int startIndex)
     {
-        var stringMatch = StringArgumentRegex().Match(args);
-        if (!stringMatch.Success)
+        for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
-            return null;
+            var nextMethod = matches[j].Groups[1].Value;
+            if (nextMethod != "IsRequired")
+            {
+                continue;
+            }
+
+            var arg = matches[j].Groups[2].Value.Trim();
+            return string.IsNullOrEmpty(arg) || arg.Equals("true", StringComparison.OrdinalIgnoreCase);
         }
 
-        var targetEntityName = stringMatch.Groups[1].Value;
-        if (targetEntityName.Contains('.'))
+        return false;
+    }
+
+    /// <summary>
+    /// Extracts target information (entity name and optional label) from method arguments.
+    /// </summary>
+    private static (string? Name, string? Label) ExtractTargetInfo(string args)
+    {
+        var stringMatches = StringLiteralRegex().Matches(args);
+        if (stringMatches.Count == 0)
         {
-            targetEntityName = targetEntityName.Split('.')[^1];
+            return (null, null);
         }
 
-        return targetEntityName;
+        var name = stringMatches[0].Groups[1].Value;
+        if (name.Contains('.'))
+        {
+            name = name.Split('.')[^1];
+        }
+
+        var label = stringMatches.Count > 1 ? stringMatches[1].Groups[1].Value : null;
+        return (name, label);
     }
 
     /// <summary>
     /// Finds the corresponding WithOne or WithMany method call following a HasOne or HasMany call.
     /// </summary>
-    /// <param name="matches">The collection of method call matches.</param>
-    /// <param name="startIndex">The starting index to search from.</param>
-    /// <returns>The name of the With method found, or null if not found.</returns>
-    private static string? FindWithMethod(MatchCollection matches, int startIndex)
+    private static (string? Method, string? Arg) FindWithMethodInfo(MatchCollection matches, int startIndex)
     {
-        for (var j = startIndex + 1; j < Math.Min(startIndex + 5, matches.Count); j++)
+        for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
             var nextMethod = matches[j].Groups[1].Value;
             if (nextMethod is "WithOne" or "WithMany")
             {
-                return nextMethod;
+                return (nextMethod, matches[j].Groups[2].Value);
             }
         }
 
-        return null;
+        return (null, null);
+    }
+
+    private static string? ExtractFirstStringArg(string args)
+    {
+        var match = StringLiteralRegex().Match(args);
+        return match.Success ? match.Groups[1].Value : null;
     }
 
     private static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
-        string withMethod)
+        string withMethod, bool isRequired)
     {
         return (hasMethod, withMethod) switch
         {
@@ -358,7 +397,7 @@ public static partial class FluentApiConfigurationParser
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
                 Label = "",
-                IsRequired = false
+                IsRequired = isRequired
             },
             ("HasMany", "WithOne") => new EfRelationship
             {
@@ -366,7 +405,7 @@ public static partial class FluentApiConfigurationParser
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToMany,
                 Label = "",
-                IsRequired = false
+                IsRequired = isRequired
             },
             ("HasOne", "WithOne") => new EfRelationship
             {
@@ -374,7 +413,7 @@ public static partial class FluentApiConfigurationParser
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToOne,
                 Label = "",
-                IsRequired = false
+                IsRequired = isRequired
             },
             ("HasMany", "WithMany") => new EfRelationship
             {
@@ -382,7 +421,7 @@ public static partial class FluentApiConfigurationParser
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.ManyToMany,
                 Label = "",
-                IsRequired = false
+                IsRequired = isRequired
             },
             _ => new EfRelationship
             {
@@ -390,9 +429,19 @@ public static partial class FluentApiConfigurationParser
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
                 Label = "",
-                IsRequired = false
+                IsRequired = isRequired
             }
         };
+    }
+
+    /// <summary>
+    /// Creates a shadow relationship between two entities based on method names.
+    /// handles generic types common in OnModelCreating.
+    /// </summary>
+    private static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
+        string withMethod)
+    {
+        return CreateShadowRelationship(sourceEntity, targetEntity, hasMethod, withMethod, false);
     }
 
     /// <summary>
@@ -450,11 +499,82 @@ public static partial class FluentApiConfigurationParser
             {
                 currentProperty = ProcessPropertyDeclaration(entity, methodName, args);
             }
+            else if (methodName == "HasKey")
+            {
+                ApplyKeyConfiguration(entity, args);
+                currentProperty = null;
+            }
+            else if (methodName == "HasForeignKey")
+            {
+                ApplyForeignKeyConfiguration(entity, args);
+                currentProperty = null;
+            }
             else if (currentProperty != null)
             {
                 ApplyPropertyConfiguration(currentProperty, methodName, args);
             }
         }
+    }
+
+    /// <summary>
+    /// Applies primary key configuration to the entity.
+    /// </summary>
+    private static void ApplyKeyConfiguration(EfEntity entity, string args)
+    {
+        var propNames = ExtractPropertyNamesFromArgs(args);
+        foreach (var propName in propNames)
+        {
+            var prop = GetOrCreateProperty(entity, propName, "");
+            prop.IsPrimaryKey = true;
+        }
+    }
+
+    /// <summary>
+    /// Applies foreign key configuration to the entity.
+    /// </summary>
+    private static void ApplyForeignKeyConfiguration(EfEntity entity, string args)
+    {
+        var propNames = ExtractPropertyNamesFromArgs(args);
+        foreach (var propName in propNames)
+        {
+            var prop = GetOrCreateProperty(entity, propName, "");
+            prop.IsForeignKey = true;
+        }
+    }
+
+    /// <summary>
+    /// Extracts property names from method arguments, handling both lambdas and string literals.
+    /// </summary>
+    private static List<string> ExtractPropertyNamesFromArgs(string args)
+    {
+        var result = new List<string>();
+
+        // Handle lambda: e => new { e.P1, e.P2 } or e => e.P1
+        if (args.Contains("=>"))
+        {
+            var matches = MethodChainRegex().Matches(args);
+            result.AddRange(matches.Select(match => match.Groups[1].Value));
+        }
+        else
+        {
+            // Handle string list: "P1", "P2"
+            var matches = StringLiteralRegex().Matches(args);
+            result.AddRange(matches.Select(match => match.Groups[1].Value));
+
+            if (result.Count != 0 || string.IsNullOrWhiteSpace(args))
+            {
+                return result;
+            }
+
+            // Fallback for single unquoted arg
+            var identifier = args.Trim('"', ' ');
+            if (!string.IsNullOrEmpty(identifier))
+            {
+                result.Add(identifier);
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -540,47 +660,118 @@ public static partial class FluentApiConfigurationParser
     /// </remarks>
     private static void ApplyPropertyConfiguration(EfProperty property, string configMethod, string configArg)
     {
-        switch (configMethod)
+        var configActions = new Dictionary<string, Action<EfProperty, string>>
         {
-            case "IsRequired":
-                property.IsRequired = true;
-                break;
+            ["IsRequired"] = ApplyIsRequiredConfiguration,
+            ["HasMaxLength"] = ApplyMaxLengthConfiguration,
+            ["HasPrecision"] = ApplyPrecisionConfiguration,
+            ["HasColumnType"] = ApplyColumnTypeConfiguration,
+            ["HasDefaultValue"] = ApplyDefaultValueConfiguration,
+            ["HasDefaultValueSql"] = ApplyDefaultValueSqlConfiguration
+        };
 
-            case "HasMaxLength":
-                if (int.TryParse(configArg, out var maxLen))
-                {
-                    property.MaxLength = maxLen;
-                }
-
-                break;
-
-            case "HasPrecision":
-                ApplyPrecisionConfiguration(property, configArg);
-                break;
-
-            case "HasDefaultValue":
-                var trimmedArg = configArg.Trim();
-                var isQuoted = (trimmedArg.StartsWith('\"') && trimmedArg.EndsWith('\"')) ||
-                               (trimmedArg.StartsWith('\'') && trimmedArg.EndsWith('\''));
-                var val = trimmedArg.Trim('\"', '\'');
-
-                if (!isQuoted && val.Contains('.'))
-                {
-                    var lastPart = val.Split('.')[^1];
-                    // Only shorten if it doesn't look like a numeric value (e.g., 0.7f or 0.7)
-                    if (lastPart.Length > 0 && !char.IsDigit(lastPart[0]))
-                    {
-                        val = lastPart;
-                    }
-                }
-
-                property.DefaultValue = val;
-                break;
-
-            case "HasDefaultValueSql":
-                property.DefaultValue = configArg.Trim('\"', '\'', ' ');
-                break;
+        if (configActions.TryGetValue(configMethod, out var action))
+        {
+            action(property, configArg);
         }
+    }
+
+    /// <summary>
+    /// Configures the IsRequired property based on the configuration argument.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The configuration argument.</param>
+    private static void ApplyIsRequiredConfiguration(EfProperty property, string configArg)
+    {
+        property.IsRequired = string.IsNullOrEmpty(configArg) ||
+                              configArg.Equals("true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Configures the MaxLength property based on the configuration argument.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The configuration argument containing the max length value.</param>
+    private static void ApplyMaxLengthConfiguration(EfProperty property, string configArg)
+    {
+        if (int.TryParse(configArg, out var maxLen))
+        {
+            property.MaxLength = maxLen;
+        }
+    }
+
+    /// <summary>
+    /// Configures the DefaultValue property based on the configuration argument.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The configuration argument containing the default value.</param>
+    private static void ApplyDefaultValueConfiguration(EfProperty property, string configArg)
+    {
+        property.DefaultValue = ParseDefaultValue(configArg);
+    }
+
+    /// <summary>
+    /// Configures the DefaultValue property from SQL based on the configuration argument.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The configuration argument containing the SQL default value.</param>
+    private static void ApplyDefaultValueSqlConfiguration(EfProperty property, string configArg)
+    {
+        property.DefaultValue = configArg.Trim('\"', '\'', ' ');
+    }
+
+    /// <summary>
+    /// Configures the column type for a property, inferring max length from column type definition if needed.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The column type argument (e.g., "nvarchar(30)").</param>
+    /// <remarks>
+    /// If the property doesn't have a max length set and the column type contains a length specification
+    /// in parentheses (e.g., "nvarchar(30)"), this method will extract and set the max length.
+    /// </remarks>
+    private static void ApplyColumnTypeConfiguration(EfProperty property, string configArg)
+    {
+        // If it's something like "nvarchar(30)", we can infer max length if not already set
+        if (property.MaxLength is null)
+        {
+            var match = NumberInParensRegex().Match(configArg);
+            if (match.Success && int.TryParse(match.Groups[1].Value, out var len))
+            {
+                property.MaxLength = len;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Parses a default value argument and returns a simplified string representation.
+    /// </summary>
+    /// <param name="configArg">The configuration argument containing the default value.</param>
+    /// <returns>
+    /// A string representing the default value, with quotes removed and qualified names shortened
+    /// to their simple name when appropriate.
+    /// </returns>
+    /// <remarks>
+    /// This method handles quoted strings and attempts to simplify fully qualified names
+    /// (e.g., "MyNamespace.MyEnum.Value" becomes "Value") unless the value appears to be numeric.
+    /// </remarks>
+    private static string ParseDefaultValue(string configArg)
+    {
+        var trimmedArg = configArg.Trim();
+        var isQuoted = (trimmedArg.StartsWith('\"') && trimmedArg.EndsWith('\"')) ||
+                       (trimmedArg.StartsWith('\'') && trimmedArg.EndsWith('\''));
+        var val = trimmedArg.Trim('\"', '\'');
+
+        if (!isQuoted && val.Contains('.'))
+        {
+            var lastPart = val.Split('.')[^1];
+            // Only shorten if it doesn't look like a numeric value (e.g., 0.7f or 0.7)
+            if (lastPart.Length > 0 && !char.IsDigit(lastPart[0]))
+            {
+                val = lastPart;
+            }
+        }
+
+        return val;
     }
 
     /// <summary>
@@ -655,9 +846,39 @@ public static partial class FluentApiConfigurationParser
     private static partial Regex ToTableRegex();
 
     /// <summary>
-    /// A regex pattern to match string arguments in the format "string_value".
+    /// A regex pattern to match string literals enclosed in double quotes.
     /// </summary>
-    /// <returns>A compiled <see cref="Regex"/> instance for matching quoted string arguments.</returns>
-    [GeneratedRegex(@"^""([^""]+)""")]
-    private static partial Regex StringArgumentRegex();
+    /// <returns>A compiled <see cref="Regex"/> instance for matching quoted strings.</returns>
+    /// <remarks>
+    /// This pattern captures the content within double quotes, excluding the quotes themselves.
+    /// Example: In <c>"Hello World"</c>, it captures <c>Hello World</c>.
+    /// </remarks>
+    [GeneratedRegex("""
+                    "([^"]+)"
+                    """)]
+    private static partial Regex StringLiteralRegex();
+
+    /// <summary>
+    /// A regex pattern to match method names in a method chain, preceded by a dot.
+    /// </summary>
+    /// <returns>A compiled <see cref="Regex"/> instance for matching method names in chains.</returns>
+    /// <remarks>
+    /// This pattern matches a dot followed by optional whitespace and a word (method name).
+    /// Example: In <c>.HasMaxLength</c> or <c>. IsRequired</c>, it captures <c>HasMaxLength</c> and <c>IsRequired</c>.
+    /// Used to parse Fluent API method chains like <c>entity.Property(x => x.Name).HasMaxLength(100).IsRequired()</c>.
+    /// </remarks>
+    [GeneratedRegex(@"\.\s*(\w+)")]
+    private static partial Regex MethodChainRegex();
+
+    /// <summary>
+    /// A regex pattern to match numbers enclosed in parentheses.
+    /// </summary>
+    /// <returns>A compiled <see cref="Regex"/> instance for matching numbers in parentheses.</returns>
+    /// <remarks>
+    /// This pattern captures numeric values within parentheses.
+    /// Example: In <c>nvarchar(30)</c> or <c>decimal(18,2)</c>, it captures <c>30</c> from the first match.
+    /// Used to extract length specifications from column type definitions.
+    /// </remarks>
+    [GeneratedRegex(@"\((\d+)\)")]
+    private static partial Regex NumberInParensRegex();
 }

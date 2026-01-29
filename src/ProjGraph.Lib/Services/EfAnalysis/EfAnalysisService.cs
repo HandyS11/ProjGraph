@@ -3,13 +3,14 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Interfaces;
+using System.Text.RegularExpressions;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
 
 /// <summary>
 /// Service for analyzing Entity Framework DbContext classes and their models.
 /// </summary>
-public class EfAnalysisService : IEfAnalysisService
+public partial class EfAnalysisService : IEfAnalysisService
 {
     /// <summary>
     /// Discovers all DbContext classes within a specified C# file and returns their names as a list of strings.
@@ -97,13 +98,87 @@ public class EfAnalysisService : IEfAnalysisService
         var root = await syntaxTree.GetRootAsync();
 
         var snapshotClass = FindSnapshotClass(root, snapshotName);
-        var compilation = CompilationFactory.CreateCompilation([syntaxTree]);
-        var semanticModel = compilation.GetSemanticModel(syntaxTree);
+        var snapshotDirectory = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
 
+        var syntaxTrees = await BuildSnapshotSyntaxTreesAsync(path, snapshotClass, snapshotDirectory, syntaxTree);
+        var compilation = CompilationFactory.CreateCompilation(syntaxTrees);
+
+        var semanticModel = compilation.GetSemanticModel(syntaxTree);
         var snapshotType = semanticModel.GetDeclaredSymbol(snapshotClass)
                            ?? throw new InvalidOperationException("Could not get semantic symbol for snapshot");
 
-        return ModelSnapshotParser.Parse(snapshotClass, snapshotType, compilation);
+        var model = ModelSnapshotParser.Parse(snapshotClass, snapshotType, compilation);
+
+        // Analyze relationships using the semantic model now that we have all symbols
+        var entities = model.Entities.ToDictionary(e => e.Name);
+        RelationshipAnalyzer.AnalyzeRelationships(model, entities, compilation);
+
+        return model;
+    }
+
+    /// <summary>
+    /// Builds a list of syntax trees for a ModelSnapshot and its related entity files.
+    /// </summary>
+    private static async Task<List<SyntaxTree>> BuildSnapshotSyntaxTreesAsync(
+        string snapshotPath,
+        ClassDeclarationSyntax snapshotClass,
+        string snapshotDirectory,
+        SyntaxTree snapshotSyntaxTree)
+    {
+        var root = await snapshotSyntaxTree.GetRootAsync();
+        var entityNamespaces = EntityFileDiscovery.ExtractEntityNamespaces(root);
+        var entityTypeNames = ExtractEntityTypeNamesFromSnapshot(snapshotClass);
+        var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(snapshotDirectory, entityNamespaces);
+
+        var entityFiles = await EntityFileDiscovery.DiscoverEntityFilesAsync(
+            searchDirectories,
+            entityTypeNames,
+            snapshotPath);
+
+        // Also discover base classes
+        var baseClassFiles = await EntityFileDiscovery.DiscoverBaseClassFilesAsync(entityFiles, snapshotDirectory);
+
+        var additionalBaseClassNames = new HashSet<string>();
+        EntityFileDiscovery.ExtractBaseClassNamesFromSyntax(root, additionalBaseClassNames);
+        var additionalBaseFiles =
+            EntityFileDiscovery.SearchForBaseClassFiles(additionalBaseClassNames, new DirectoryInfo(snapshotDirectory));
+        MergeFileDictionaries(baseClassFiles, additionalBaseFiles);
+
+        MergeFileDictionaries(entityFiles, baseClassFiles);
+
+        return await CreateSyntaxTreesAsync(snapshotSyntaxTree, entityFiles);
+    }
+
+    /// <summary>
+    /// Extracts entity type names from a ModelSnapshot class by searching for .Entity calls.
+    /// </summary>
+    private static HashSet<string> ExtractEntityTypeNamesFromSnapshot(ClassDeclarationSyntax snapshotClass)
+    {
+        var entityTypeNames = new HashSet<string>();
+        var buildModelMethod = snapshotClass.Members.OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault(m => m.Identifier.Text == "BuildModel");
+
+        if (buildModelMethod?.Body == null)
+        {
+            return entityTypeNames;
+        }
+
+        var methodText = buildModelMethod.ToString();
+
+        // Match .Entity<T> or .Entity("Namespace.T")
+        var entityMatches = EntityMatchRegex().Matches(methodText);
+
+        var shortNames = entityMatches
+            .Select(match => match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value)
+            .Where(fullName => !string.IsNullOrEmpty(fullName))
+            .Select(fullName => fullName.Contains('.') ? fullName.Split('.')[^1] : fullName);
+
+        foreach (var shortName in shortNames)
+        {
+            entityTypeNames.Add(shortName);
+        }
+
+        return entityTypeNames;
     }
 
     /// <summary>
@@ -348,4 +423,7 @@ public class EfAnalysisService : IEfAnalysisService
 
         return entities;
     }
+
+    [GeneratedRegex("""\.Entity\s*(?:<([^>]+)>|\(\s*"([^"]+)"\s*)""")]
+    private static partial Regex EntityMatchRegex();
 }
