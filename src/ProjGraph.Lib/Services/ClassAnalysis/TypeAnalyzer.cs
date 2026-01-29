@@ -10,6 +10,12 @@ namespace ProjGraph.Lib.Services.ClassAnalysis;
 /// </summary>
 internal static class TypeAnalyzer
 {
+    private static readonly SymbolDisplayFormat ShortNameFormat = new(
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypes,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
+                              SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
     /// <summary>
     /// Analyzes a type symbol and extracts its definition including members (properties, fields, and methods).
     /// </summary>
@@ -29,13 +35,13 @@ internal static class TypeAnalyzer
                 case IPropertySymbol prop:
                     members.Add(new MemberDefinition(
                         prop.Name,
-                        prop.Type.ToDisplayString(),
+                        prop.Type.ToDisplayString(ShortNameFormat),
                         MapAccessibility(prop.DeclaredAccessibility),
                         MemberKind.Property));
                     break;
                 case IFieldSymbol { IsImplicitlyDeclared: false } field:
                     // For enums, only show the field name without the type
-                    var fieldType = isEnum ? string.Empty : field.Type.ToDisplayString();
+                    var fieldType = isEnum ? string.Empty : field.Type.ToDisplayString(ShortNameFormat);
                     members.Add(new MemberDefinition(
                         field.Name,
                         fieldType,
@@ -45,10 +51,11 @@ internal static class TypeAnalyzer
                 case IMethodSymbol { MethodKind: MethodKind.Ordinary } method:
                     {
                         var parameters = method.Parameters
-                            .Select(p => new ParameterDefinition(p.Name, p.Type.ToDisplayString())).ToList();
+                            .Select(p => new ParameterDefinition(p.Name, p.Type.ToDisplayString(ShortNameFormat)))
+                            .ToList();
                         members.Add(new MemberDefinition(
                             method.Name,
-                            method.ReturnType.ToDisplayString(),
+                            method.ReturnType.ToDisplayString(ShortNameFormat),
                             MapAccessibility(method.DeclaredAccessibility),
                             MemberKind.Method,
                             parameters));

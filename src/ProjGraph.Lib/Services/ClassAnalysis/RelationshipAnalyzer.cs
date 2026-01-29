@@ -160,14 +160,16 @@ internal static class RelationshipAnalyzer
                 }
                 else if (!TypeFilter.IsSystemType(namedTypeArg))
                 {
-                    result.Add(namedTypeArg);
+                    // Use OriginalDefinition to strip off nullability markers for reference types
+                    result.Add(namedTypeArg.OriginalDefinition);
                 }
             }
         }
         else if (!TypeFilter.IsSystemType(type))
         {
             // Not a generic type, return the type itself if it's not a system type
-            result.Add(type);
+            // Use OriginalDefinition to strip off nullability markers for reference types
+            result.Add(type.OriginalDefinition);
         }
 
         return result;

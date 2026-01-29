@@ -24,26 +24,19 @@ internal static class SymbolResolver
         INamedTypeSymbol relatedSymbol,
         AnalysisContext context)
     {
-        if (relatedSymbol.Locations.Any(l => l.IsInSource))
-        {
-            return relatedSymbol;
-        }
+        // Ensure we are working with the original definition (e.g., strip nullability markers)
+        var symbolToResolve = relatedSymbol.OriginalDefinition;
 
         var foundFile =
-            await WorkspaceTypeDiscovery.FindTypeDefinitionFileAsync(relatedSymbol.Name, context.StartDirectory);
+            await WorkspaceTypeDiscovery.FindTypeDefinitionFileAsync(symbolToResolve.Name, context.StartDirectory);
 
         if (foundFile is null)
         {
-            AddExternalType(relatedSymbol, context);
+            AddExternalType(symbolToResolve, context);
             return null;
         }
 
-        if (context.Compilation.SyntaxTrees.Any(t => t.FilePath == foundFile))
-        {
-            return relatedSymbol;
-        }
-
-        return await LoadAndResolveSymbolAsync(relatedSymbol, foundFile, context);
+        return await LoadAndResolveSymbolAsync(symbolToResolve, foundFile, context);
     }
 
     /// <summary>
@@ -61,16 +54,33 @@ internal static class SymbolResolver
         string foundFile,
         AnalysisContext context)
     {
-        var relatedCode = await File.ReadAllTextAsync(foundFile);
-        var relatedTree = CSharpSyntaxTree.ParseText(relatedCode, path: foundFile);
-        context.Compilation = context.Compilation.AddSyntaxTrees(relatedTree);
+        var existingTree = context.Compilation.SyntaxTrees.FirstOrDefault(t => t.FilePath == foundFile);
+        SyntaxTree treeToUse;
 
-        var newSemanticModel = context.Compilation.GetSemanticModel(relatedTree);
-        var root = await relatedTree.GetRootAsync();
-        var decl = root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>()
-            .FirstOrDefault(t => t.Identifier.Text == relatedSymbol.Name);
+        if (existingTree == null)
+        {
+            var relatedCode = await File.ReadAllTextAsync(foundFile);
+            treeToUse = CSharpSyntaxTree.ParseText(relatedCode, path: foundFile);
+            context.Compilation = context.Compilation.AddSyntaxTrees(treeToUse);
+        }
+        else
+        {
+            treeToUse = existingTree;
+        }
 
-        return decl != null ? newSemanticModel.GetDeclaredSymbol(decl) ?? relatedSymbol : relatedSymbol;
+        var newSemanticModel = context.Compilation.GetSemanticModel(treeToUse);
+        var root = await treeToUse.GetRootAsync();
+        var decls = root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>();
+
+        // Find the specific type declaration that matches our symbol's name
+        var decl = decls.FirstOrDefault(t => t.Identifier.Text == relatedSymbol.Name);
+
+        if (decl is not null && newSemanticModel.GetDeclaredSymbol(decl) is { } resolved)
+        {
+            return resolved.OriginalDefinition;
+        }
+
+        return relatedSymbol.OriginalDefinition;
     }
 
     /// <summary>
