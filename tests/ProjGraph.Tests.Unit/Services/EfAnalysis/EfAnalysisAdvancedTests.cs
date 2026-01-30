@@ -340,4 +340,149 @@ public class EfAnalysisAdvancedTests
         // Assert
         result.Should().Contain("AiProviderName \"required, default:AzureOpenAi\"");
     }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_ShouldMarkCompositePrimaryKeyAsForeignKey()
+    {
+        // This test verifies that when a property is part of a composite primary key
+        // AND is also a foreign key (configured via Fluent API with lambda expressions),
+        // both the PK and FK flags are correctly set.
+        // Bug: Previously, lambda expressions like HasMany(a => a.Options) were not parsed,
+        // causing the FK flag to be missing even though the PK flag was set.
+
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               using System;
+                               using System.Collections.Generic;
+                               namespace Test;
+                               public class AppDbContext : DbContext 
+                               { 
+                                   public DbSet<Activity> Activities { get; set; }
+                                   public DbSet<ActivityStep> ActivitySteps { get; set; }
+                                   public DbSet<ActivityOption> ActivityOptions { get; set; }
+                                   
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity<Activity>(e =>
+                                       {
+                                           e.HasMany(a => a.Steps)
+                                               .WithOne()
+                                               .HasForeignKey(s => s.ActivityId);
+                                       })
+                                       .Entity<ActivityStep>(e =>
+                                       {
+                                           e.HasMany(a => a.Options)
+                                               .WithOne()
+                                               .HasForeignKey(o => o.StepId);
+                                       })
+                                       .Entity<ActivityOption>(e =>
+                                       {
+                                           e.HasKey(o => new { o.StepId, o.Value });
+                                       });
+                                   }
+                               }
+                               public class Activity { 
+                                   public Guid Id { get; set; }
+                                   public List<ActivityStep> Steps { get; set; }
+                               }
+                               public class ActivityStep { 
+                                   public Guid Id { get; set; }
+                                   public Guid ActivityId { get; set; }
+                                   public List<ActivityOption> Options { get; set; }
+                               }
+                               public class ActivityOption { 
+                                   public Guid StepId { get; set; }
+                                   public string Value { get; set; }
+                               }
+                               """;
+        var filePath = temp.CreateFile("ContextCompositePK.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        var activityOption = model.Entities.First(e => e.Name == "ActivityOption");
+        var stepId = activityOption.Properties.First(p => p.Name == "StepId");
+        var value = activityOption.Properties.First(p => p.Name == "Value");
+
+        // Both should be marked as PK
+        stepId.IsPrimaryKey.Should().BeTrue("StepId is part of composite PK");
+        value.IsPrimaryKey.Should().BeTrue("Value is part of composite PK");
+
+        // StepId should also be marked as FK
+        stepId.IsForeignKey.Should().BeTrue("StepId is a foreign key to ActivityStep");
+    }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_ShouldNotCreateDuplicateEntitiesOrRelationships()
+    {
+        // This test verifies that entities and relationships are not duplicated in the model
+        // even when they are defined in multiple places (DbSets, Fluent API, navigation properties)
+
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               using System;
+                               using System.Collections.Generic;
+                               namespace Test;
+                               public class AppDbContext : DbContext 
+                               { 
+                                   public DbSet<Group> Groups { get; set; }
+                                   public DbSet<User> Users { get; set; }
+                                   public DbSet<GroupUser> GroupUsers { get; set; }
+                                   
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity<GroupUser>(e =>
+                                       {
+                                           e.HasKey(gu => new { gu.GroupId, gu.UserId });
+                                           
+                                           e.HasOne<Group>()
+                                               .WithMany()
+                                               .HasForeignKey(gu => gu.GroupId);
+                                               
+                                           e.HasOne<User>()
+                                               .WithMany()
+                                               .HasForeignKey(gu => gu.UserId);
+                                       });
+                                   }
+                               }
+                               public class Group { 
+                                   public Guid Id { get; set; }
+                                   public List<GroupUser> GroupUsers { get; set; }
+                               }
+                               public class User { 
+                                   public Guid Id { get; set; }
+                                   public List<GroupUser> GroupUsers { get; set; }
+                               }
+                               public class GroupUser { 
+                                   public Guid GroupId { get; set; }
+                                   public Guid UserId { get; set; }
+                               }
+                               """;
+        var filePath = temp.CreateFile("ContextNoDuplicates.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert - No duplicate entities
+        var entityNames = model.Entities.Select(e => e.Name).ToList();
+        var uniqueEntityNames = entityNames.Distinct().ToList();
+        entityNames.Should().BeEquivalentTo(uniqueEntityNames, "there should be no duplicate entities");
+
+        // Assert - No duplicate relationships
+        var relationshipKeys = model.Relationships
+            .Select(r => $"{r.SourceEntity}->{r.TargetEntity}:{r.Type}")
+            .ToList();
+        var uniqueRelationshipKeys = relationshipKeys.Distinct().ToList();
+        relationshipKeys.Should().BeEquivalentTo(uniqueRelationshipKeys, "there should be no duplicate relationships");
+
+        // Assert - Specific checks
+        model.Entities.Count(e => e.Name == "GroupUser").Should().Be(1, "GroupUser should appear only once");
+        model.Entities.Count(e => e.Name == "Group").Should().Be(1, "Group should appear only once");
+        model.Entities.Count(e => e.Name == "User").Should().Be(1, "User should appear only once");
+    }
 }

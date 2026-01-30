@@ -162,20 +162,42 @@ public static partial class FluentApiConfigurationParser
     /// <param name="model">The <see cref="EfModel"/> object to which the relationships will be added.</param>
     /// <remarks>
     /// This method ensures that only unique relationships are added to the model by checking if a relationship
-    /// with the same source entity, target entity, and type already exists in the model's relationships collection.
+    /// with the same key already exists in the model's relationships collection. Uses the same key generation
+    /// logic as RelationshipAnalyzer to ensure consistency.
     /// </remarks>
     private static void AddUniqueRelationships(List<EfRelationship> relationships, EfModel model)
     {
-        foreach (var relationship in from relationship in relationships
-                 let alreadyExists = model.Relationships.Any(r =>
-                     r.SourceEntity == relationship.SourceEntity &&
-                     r.TargetEntity == relationship.TargetEntity &&
-                     r.Type == relationship.Type)
-                 where !alreadyExists
-                 select relationship)
+        var existingKeys = model.Relationships.Select(GenerateRelationshipKey).ToHashSet();
+
+        foreach (var relationship in relationships)
         {
-            model.Relationships.Add(relationship);
+            var key = GenerateRelationshipKey(relationship);
+            if (existingKeys.Add(key))
+            {
+                model.Relationships.Add(relationship);
+            }
         }
+    }
+
+    /// <summary>
+    /// Generates a unique key for a relationship to enable deduplication.
+    /// Uses the same logic as RelationshipAnalyzer to ensure consistency.
+    /// </summary>
+    /// <param name="relationship">The relationship to generate a key for.</param>
+    /// <returns>A unique string key representing the relationship.</returns>
+    private static string GenerateRelationshipKey(EfRelationship relationship)
+    {
+        // For symmetric relationships (1:1, M:M), sort entity names to avoid duplicates
+        if (relationship.Type is EfRelationshipType.OneToOne or EfRelationshipType.ManyToMany)
+        {
+            var entitiesSorted = new[] { relationship.SourceEntity, relationship.TargetEntity }
+                .OrderBy(e => e)
+                .ToArray();
+            return $"{entitiesSorted[0]}-{entitiesSorted[1]}-{relationship.Type}";
+        }
+
+        // For OneToMany, direction matters
+        return $"{relationship.SourceEntity}-{relationship.TargetEntity}-{relationship.Type}";
     }
 
     /// <summary>
@@ -234,11 +256,16 @@ public static partial class FluentApiConfigurationParser
                 new EfEntity { Name = entityName };
 
             entities[entityName] = entity;
-            model.Entities.Add(entity);
+
+            // Only add to model if not already present (prevents duplicates)
+            if (model.Entities.All(e => e.Name != entityName))
+            {
+                model.Entities.Add(entity);
+            }
         }
 
         ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
-        ParseExplicitRelationships(configSection, entityName, entities, shadowRelationships);
+        ParseExplicitRelationships(configSection, entityName, entities, shadowRelationships, compilation);
         ParsePropertyConfigurations(configSection, entity);
 
         // Parse table mapping
@@ -298,7 +325,8 @@ public static partial class FluentApiConfigurationParser
         string configSection,
         string entityName,
         Dictionary<string, EfEntity> entities,
-        List<EfRelationship> relationships)
+        List<EfRelationship> relationships,
+        Compilation compilation)
     {
         var matches = MethodCallRegex().Matches(configSection);
         for (var i = 0; i < matches.Count; i++)
@@ -312,7 +340,7 @@ public static partial class FluentApiConfigurationParser
                 continue;
             }
 
-            var relationship = TryCreateRelationship(matches, i, methodName, args, entityName);
+            var relationship = TryCreateRelationship(matches, i, methodName, args, entityName, entities, compilation);
             if (relationship is null)
             {
                 continue;
@@ -332,7 +360,9 @@ public static partial class FluentApiConfigurationParser
         int startIndex,
         string methodName,
         string args,
-        string entityName)
+        string entityName,
+        Dictionary<string, EfEntity> entities,
+        Compilation compilation)
     {
         var (targetEntityName, label) = ExtractTargetInfo(args);
 
@@ -340,6 +370,27 @@ public static partial class FluentApiConfigurationParser
         {
             // Try to extract from generic type: HasOne<ActivityType>()
             targetEntityName = ExtractGenericType(methodName);
+        }
+
+        // If we got a navigation property name, try to resolve it to an entity type
+        if (!string.IsNullOrEmpty(targetEntityName) && !entities.ContainsKey(targetEntityName))
+        {
+            // Save the navigation property name to use as label
+            var navigationPropertyName = targetEntityName;
+            
+            // Try to find the entity by checking if any entity has a property with a type matching this name
+            // This handles cases like HasMany(a => a.Options) where Options is List<ActivityOption>
+            var resolvedName =
+                ResolveNavigationPropertyToEntityType(entityName, targetEntityName, entities, compilation);
+            if (resolvedName is not null)
+            {
+                targetEntityName = resolvedName;
+                // If no explicit label was provided, use the navigation property name
+                if (string.IsNullOrEmpty(label))
+                {
+                    label = navigationPropertyName;
+                }
+            }
         }
 
         if (string.IsNullOrEmpty(targetEntityName))
@@ -377,6 +428,48 @@ public static partial class FluentApiConfigurationParser
                 relationship.Label = inverseLabel;
             }
         }
+    }
+
+    /// <summary>
+    /// Resolves a navigation property name to its target entity type by examining the source entity's properties.
+    /// </summary>
+    /// <param name="sourceEntityName">The name of the source entity.</param>
+    /// <param name="navigationPropertyName">The name of the navigation property (e.g., "Options").</param>
+    /// <param name="entities">Dictionary of all known entities.</param>
+    /// <param name="compilation">The compilation to use for semantic analysis.</param>
+    /// <returns>The target entity type name, or null if not found.</returns>
+    /// <remarks>
+    /// This method uses semantic analysis to find the source entity symbol and resolve the navigation property
+    /// to its target entity type. For example, if the source entity has a property "Options" of type "List&lt;ActivityOption&gt;",
+    /// this will resolve "Options" to "ActivityOption".
+    /// </remarks>
+    private static string? ResolveNavigationPropertyToEntityType(
+        string sourceEntityName,
+        string navigationPropertyName,
+        Dictionary<string, EfEntity> entities,
+        Compilation compilation)
+    {
+        // Find the source entity symbol using semantic analysis
+        var sourceSymbol = compilation.GlobalNamespace.GetAllNamedTypes()
+            .FirstOrDefault(t => t.Name == sourceEntityName);
+
+        // Look for a property with a matching name (case-insensitive)
+        var navProperty = sourceSymbol?.GetMembers().OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.Name.Equals(navigationPropertyName, StringComparison.OrdinalIgnoreCase));
+
+        if (navProperty is null)
+        {
+            return null;
+        }
+
+        // Check if this is a navigation property and extract the target type
+        if (NavigationPropertyAnalyzer.IsNavigationProperty(navProperty, out var targetType, out _) &&
+            targetType != null && entities.ContainsKey(targetType.Name))
+        {
+            return targetType.Name;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -487,20 +580,34 @@ public static partial class FluentApiConfigurationParser
     /// </summary>
     private static (string? Name, string? Label) ExtractTargetInfo(string args)
     {
+        // First try string literals (common in ModelSnapshots)
         var stringMatches = StringLiteralRegex().Matches(args);
-        if (stringMatches.Count == 0)
+        if (stringMatches.Count > 0)
+        {
+            var name = stringMatches[0].Groups[1].Value;
+            if (name.Contains('.'))
+            {
+                name = name.Split('.')[^1];
+            }
+
+            var label = stringMatches.Count > 1 ? stringMatches[1].Groups[1].Value : null;
+            return (name, label);
+        }
+
+        // Try lambda expression: e => e.NavigationProperty (common in DbContext fluent API)
+        if (!args.Contains("=>"))
         {
             return (null, null);
         }
 
-        var name = stringMatches[0].Groups[1].Value;
-        if (name.Contains('.'))
+        var lambdaMatch = PropertyLambdaRegex().Match(args);
+        if (!lambdaMatch.Success)
         {
-            name = name.Split('.')[^1];
+            return (null, null);
         }
 
-        var label = stringMatches.Count > 1 ? stringMatches[1].Groups[1].Value : null;
-        return (name, label);
+        var propertyName = lambdaMatch.Groups[2].Value;
+        return (propertyName, null);
     }
 
     /// <summary>
@@ -537,7 +644,7 @@ public static partial class FluentApiConfigurationParser
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
                 Label = "",
-                IsRequired = isRequired
+                IsRequired = true // OneToMany defaults to required
             },
             (HasMany, WithOne) => new EfRelationship
             {
@@ -545,7 +652,7 @@ public static partial class FluentApiConfigurationParser
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToMany,
                 Label = "",
-                IsRequired = isRequired
+                IsRequired = true // OneToMany defaults to required
             },
             (HasOne, WithOne) => new EfRelationship
             {
@@ -569,7 +676,7 @@ public static partial class FluentApiConfigurationParser
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
                 Label = "",
-                IsRequired = isRequired
+                IsRequired = true // OneToMany defaults to required
             }
         };
     }

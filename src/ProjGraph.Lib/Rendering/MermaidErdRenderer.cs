@@ -36,7 +36,9 @@ public static class MermaidErdRenderer
     /// <param name="sb">The StringBuilder to append the rendered output to.</param>
     private static void RenderEntities(EfModel model, StringBuilder sb)
     {
-        foreach (var entity in model.Entities)
+        var sortedEntities = model.Entities.OrderBy(e => e.Name);
+
+        foreach (var entity in sortedEntities)
         {
             sb.AppendLine($"    {entity.Name} {{");
 
@@ -102,7 +104,12 @@ public static class MermaidErdRenderer
     /// <param name="sb">The StringBuilder to append the rendered output to.</param>
     private static void RenderRelationships(EfModel model, StringBuilder sb)
     {
-        foreach (var rel in model.Relationships)
+        var sortedRelationships = model.Relationships
+            .OrderBy(r => r.SourceEntity)
+            .ThenBy(r => r.TargetEntity)
+            .ThenBy(r => r.Type);
+
+        foreach (var rel in sortedRelationships)
         {
             var relSyntax = GetRelationshipSyntax(rel);
             var sourceEntity = rel.SourceEntity.Trim();
