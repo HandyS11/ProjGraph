@@ -307,7 +307,7 @@ public static partial class FluentApiConfigurationParser
             var methodName = match.Groups[1].Value;
             var args = match.Groups[2].Value;
 
-            if (methodName is not (HasOne or HasMany))
+            if (!methodName.StartsWith(HasOne) && !methodName.StartsWith(HasMany))
             {
                 continue;
             }
@@ -335,7 +335,14 @@ public static partial class FluentApiConfigurationParser
         string entityName)
     {
         var (targetEntityName, label) = ExtractTargetInfo(args);
-        if (targetEntityName is null)
+
+        if (string.IsNullOrEmpty(targetEntityName))
+        {
+            // Try to extract from generic type: HasOne<ActivityType>()
+            targetEntityName = ExtractGenericType(methodName);
+        }
+
+        if (string.IsNullOrEmpty(targetEntityName))
         {
             return null;
         }
@@ -414,7 +421,7 @@ public static partial class FluentApiConfigurationParser
         }
 
         // Default: HasOne -> current entity, HasMany -> target entity
-        return methodName == HasOne ? sourceEntityName : targetEntityName;
+        return methodName.StartsWith(HasOne) ? sourceEntityName : targetEntityName;
     }
 
     /// <summary>
@@ -457,7 +464,8 @@ public static partial class FluentApiConfigurationParser
             var nextMethodMatch = matches[j].Groups[1].Value;
             if (!nextMethodMatch.StartsWith(HasForeignKey))
             {
-                if (nextMethodMatch is Entity or HasOne or HasMany or ToTable)
+                if (nextMethodMatch.Contains(Entity) || nextMethodMatch.StartsWith(HasOne) ||
+                    nextMethodMatch.StartsWith(HasMany) || nextMethodMatch.StartsWith(ToTable))
                 {
                     // Boundary of the relationship chain
                     break;
@@ -503,7 +511,7 @@ public static partial class FluentApiConfigurationParser
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
             var nextMethod = matches[j].Groups[1].Value;
-            if (nextMethod is WithOne or WithMany)
+            if (nextMethod.StartsWith(WithOne) || nextMethod.StartsWith(WithMany))
             {
                 return (nextMethod, matches[j].Groups[2].Value);
             }

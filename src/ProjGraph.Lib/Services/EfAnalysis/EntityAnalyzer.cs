@@ -124,14 +124,13 @@ public static partial class EntityAnalyzer
         HashSet<string> primaryKeyNames)
     {
         var isPrimaryKey = IsPrimaryKey(prop.Name, entityType.Name, currentType.Name, primaryKeyNames);
-        var isForeignKey = IsForeignKey(prop.Name, primaryKeyNames);
 
         return new EfProperty
         {
             Name = prop.Name,
             Type = prop.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
             IsPrimaryKey = isPrimaryKey,
-            IsForeignKey = isForeignKey,
+            IsForeignKey = false,
             IsRequired = !prop.Type.IsNullable()
         };
     }
@@ -184,22 +183,6 @@ public static partial class EntityAnalyzer
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Determines whether the specified property name represents a foreign key.
-    /// </summary>
-    /// <param name="propName">The name of the property to check.</param>
-    /// <param name="primaryKeyNames">A set of primary key names to compare against.</param>
-    /// <returns>
-    /// <c>true</c> if the property name ends with "Id", is not equal to "Id", and is not present in the set of primary key names;
-    /// otherwise, <c>false</c>.
-    /// </returns>
-    private static bool IsForeignKey(string propName, HashSet<string> primaryKeyNames)
-    {
-        return propName.EndsWith("Id", StringComparison.OrdinalIgnoreCase) &&
-               !propName.Equals("Id", StringComparison.OrdinalIgnoreCase) &&
-               !primaryKeyNames.Contains(propName);
     }
 
     /// <summary>

@@ -78,6 +78,18 @@ public static class RelationshipAnalyzer
                 continue;
             }
 
+            // Mark potential foreign key properties by convention
+            if (!isCollection)
+            {
+                MarkConventionForeignKey(entity, prop.Name, targetType.Name);
+            }
+            else
+            {
+                // For collections, the foreign key is typically on the target entity 
+                // and follows the pattern [SourceEntity]Id
+                MarkConventionForeignKey(targetEntity, symbol.Name, symbol.Name);
+            }
+
             var relationship = CreateRelationship(entity, targetEntity, prop, targetType, isCollection);
             var relationshipKey = GenerateRelationshipKey(relationship);
 
@@ -123,6 +135,22 @@ public static class RelationshipAnalyzer
         DetermineRelationshipType(relationship, sourceEntity, targetEntity, prop, targetType, isCollection);
 
         return relationship;
+    }
+
+    private static void MarkConventionForeignKey(EfEntity entity, string navigationName, string targetEntityName)
+    {
+        var potentialNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            $"{navigationName}Id", $"{targetEntityName}Id"
+        };
+
+        foreach (var prop in entity.Properties)
+        {
+            if (potentialNames.Contains(prop.Name))
+            {
+                prop.IsForeignKey = true;
+            }
+        }
     }
 
     /// <summary>
