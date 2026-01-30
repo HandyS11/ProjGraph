@@ -18,6 +18,26 @@ namespace ProjGraph.Lib.Services.EfAnalysis;
 /// </remarks>
 public static partial class FluentApiConfigurationParser
 {
+    // EF Relationship Method Names
+    private const string HasOne = "HasOne";
+    private const string HasMany = "HasMany";
+    private const string WithOne = "WithOne";
+    private const string WithMany = "WithMany";
+
+    // EF Configuration Method Names
+    private const string Entity = "Entity";
+    private const string ToTable = "ToTable";
+    private const string Property = "Property";
+    private const string HasKey = "HasKey";
+    private const string HasForeignKey = "HasForeignKey";
+    private const string IsRequired = "IsRequired";
+    private const string HasMaxLength = "HasMaxLength";
+    private const string HasPrecision = "HasPrecision";
+    private const string HasColumnType = "HasColumnType";
+    private const string HasDefaultValue = "HasDefaultValue";
+    private const string HasDefaultValueSql = "HasDefaultValueSql";
+    private const string UsingEntity = "UsingEntity";
+
     /// <summary>
     /// Applies Fluent API constraints to the specified Entity Framework model by parsing the "OnModelCreating" method
     /// of the provided context type and processing each entity configuration section.
@@ -122,7 +142,7 @@ public static partial class FluentApiConfigurationParser
         Compilation compilation)
     {
         // Add back "Entity" which was removed by the split
-        var section = "Entity" + sectionContent;
+        var section = Entity + sectionContent;
 
         // Extract just this entity's configuration (up to the next .Entity)
         var entityConfigEnd = EntitySplitRegex().Match(section, 7).Index;
@@ -287,66 +307,125 @@ public static partial class FluentApiConfigurationParser
             var methodName = match.Groups[1].Value;
             var args = match.Groups[2].Value;
 
-            if (methodName is not ("HasOne" or "HasMany"))
+            if (methodName is not (HasOne or HasMany))
             {
                 continue;
             }
 
-            var (targetEntityName, label) = ExtractTargetInfo(args);
-            if (targetEntityName is null)
+            var relationship = TryCreateRelationship(matches, i, methodName, args, entityName);
+            if (relationship is null)
             {
                 continue;
             }
 
-            var (method, arg) = FindWithMethodInfo(matches, i);
-            if (method is null)
+            ApplyForeignKeyConfiguration(matches, i, methodName, entityName, relationship.TargetEntity, entities);
+            relationships.Add(relationship);
+        }
+    }
+
+    /// <summary>
+    /// Attempts to create a relationship from method call information.
+    /// </summary>
+    /// <returns>The created relationship, or null if creation failed.</returns>
+    private static EfRelationship? TryCreateRelationship(
+        MatchCollection matches,
+        int startIndex,
+        string methodName,
+        string args,
+        string entityName)
+    {
+        var (targetEntityName, label) = ExtractTargetInfo(args);
+        if (targetEntityName is null)
+        {
+            return null;
+        }
+
+        var (method, arg) = FindWithMethodInfo(matches, startIndex);
+        if (method is null)
+        {
+            return null;
+        }
+
+        var isRequired = IsRelationshipRequired(matches, startIndex);
+        var rel = CreateShadowRelationship(entityName, targetEntityName, methodName, method, isRequired);
+
+        SetRelationshipLabel(rel, label, arg);
+        return rel;
+    }
+
+    /// <summary>
+    /// Sets the relationship label from available sources.
+    /// </summary>
+    private static void SetRelationshipLabel(EfRelationship relationship, string? label, string? withMethodArg)
+    {
+        if (label != null)
+        {
+            relationship.Label = label;
+        }
+        else if (withMethodArg != null)
+        {
+            var inverseLabel = ExtractFirstStringArg(withMethodArg);
+            if (inverseLabel != null)
             {
-                continue;
+                relationship.Label = inverseLabel;
             }
+        }
+    }
 
-            var isRequired = IsRelationshipRequired(matches, i);
-            var rel = CreateShadowRelationship(entityName, targetEntityName, methodName, method,
-                isRequired);
+    /// <summary>
+    /// Applies foreign key configuration to the appropriate entity.
+    /// </summary>
+    private static void ApplyForeignKeyConfiguration(
+        MatchCollection matches,
+        int startIndex,
+        string methodName,
+        string sourceEntityName,
+        string targetEntityName,
+        Dictionary<string, EfEntity> entities)
+    {
+        var (fkEntityNameOverride, fkPropNames) = FindForeignKeyInfo(matches, startIndex);
+        if (fkPropNames.Count == 0)
+        {
+            return;
+        }
 
-            // Handle Foreign Key configuration
-            var (fkEntityNameOverride, fkPropNames) = FindForeignKeyInfo(matches, i);
-            if (fkPropNames.Count > 0)
-            {
-                // Determine which entity the FK belongs to
-                // Default: HasOne -> current entity, HasMany -> target entity
-                var dependentEntityName = methodName == "HasOne" ? entityName : targetEntityName;
+        var dependentEntityName =
+            DetermineDependentEntity(methodName, sourceEntityName, targetEntityName, fkEntityNameOverride);
 
-                // Override if generic type specified in HasForeignKey<T>
-                if (!string.IsNullOrEmpty(fkEntityNameOverride))
-                {
-                    dependentEntityName = fkEntityNameOverride;
-                }
+        if (entities.TryGetValue(dependentEntityName, out var dependentEntity))
+        {
+            MarkPropertiesAsForeignKeys(dependentEntity, fkPropNames);
+        }
+    }
 
-                if (entities.TryGetValue(dependentEntityName, out var dependentEntity))
-                {
-                    foreach (var propName in fkPropNames)
-                    {
-                        var prop = GetOrCreateProperty(dependentEntity, propName, "");
-                        prop.IsForeignKey = true;
-                    }
-                }
-            }
+    /// <summary>
+    /// Determines which entity is the dependent entity (holds the foreign key).
+    /// </summary>
+    private static string DetermineDependentEntity(
+        string methodName,
+        string sourceEntityName,
+        string targetEntityName,
+        string? fkEntityNameOverride)
+    {
+        // Override if generic type specified in HasForeignKey<T>
+        if (!string.IsNullOrEmpty(fkEntityNameOverride))
+        {
+            return fkEntityNameOverride;
+        }
 
-            // Set labels if available
-            if (label != null)
-            {
-                rel.Label = label;
-            }
-            else if (arg != null)
-            {
-                var inverseLabel = ExtractFirstStringArg(arg);
-                if (inverseLabel != null)
-                {
-                    rel.Label = inverseLabel;
-                }
-            }
+        // Default: HasOne -> current entity, HasMany -> target entity
+        return methodName == HasOne ? sourceEntityName : targetEntityName;
+    }
 
-            relationships.Add(rel);
+    /// <summary>
+    /// Marks the specified properties as foreign keys in the entity.
+    /// </summary>
+    private static void MarkPropertiesAsForeignKeys(EfEntity entity, List<string> propertyNames)
+    {
+        foreach (var propName in propertyNames)
+        {
+            var prop = GetOrCreateProperty(entity, propName, "");
+            prop.IsForeignKey = true;
         }
     }
 
@@ -355,7 +434,7 @@ public static partial class FluentApiConfigurationParser
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
             var nextMethod = matches[j].Groups[1].Value;
-            if (nextMethod != "IsRequired")
+            if (nextMethod != IsRequired)
             {
                 continue;
             }
@@ -376,9 +455,9 @@ public static partial class FluentApiConfigurationParser
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
             var nextMethodMatch = matches[j].Groups[1].Value;
-            if (!nextMethodMatch.StartsWith("HasForeignKey"))
+            if (!nextMethodMatch.StartsWith(HasForeignKey))
             {
-                if (nextMethodMatch is "Entity" or "HasOne" or "HasMany" or "ToTable")
+                if (nextMethodMatch is Entity or HasOne or HasMany or ToTable)
                 {
                     // Boundary of the relationship chain
                     break;
@@ -424,7 +503,7 @@ public static partial class FluentApiConfigurationParser
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
             var nextMethod = matches[j].Groups[1].Value;
-            if (nextMethod is "WithOne" or "WithMany")
+            if (nextMethod is WithOne or WithMany)
             {
                 return (nextMethod, matches[j].Groups[2].Value);
             }
@@ -440,11 +519,11 @@ public static partial class FluentApiConfigurationParser
     }
 
     private static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
-        string withMethod, bool isRequired)
+        string withMethod, bool isRequired = false)
     {
         return (hasMethod, withMethod) switch
         {
-            ("HasOne", "WithMany") => new EfRelationship
+            (HasOne, WithMany) => new EfRelationship
             {
                 SourceEntity = targetEntity,
                 TargetEntity = sourceEntity,
@@ -452,7 +531,7 @@ public static partial class FluentApiConfigurationParser
                 Label = "",
                 IsRequired = isRequired
             },
-            ("HasMany", "WithOne") => new EfRelationship
+            (HasMany, WithOne) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
@@ -460,7 +539,7 @@ public static partial class FluentApiConfigurationParser
                 Label = "",
                 IsRequired = isRequired
             },
-            ("HasOne", "WithOne") => new EfRelationship
+            (HasOne, WithOne) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
@@ -468,7 +547,7 @@ public static partial class FluentApiConfigurationParser
                 Label = "",
                 IsRequired = isRequired
             },
-            ("HasMany", "WithMany") => new EfRelationship
+            (HasMany, WithMany) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
@@ -488,16 +567,6 @@ public static partial class FluentApiConfigurationParser
     }
 
     /// <summary>
-    /// Creates a shadow relationship between two entities based on method names.
-    /// handles generic types common in OnModelCreating.
-    /// </summary>
-    private static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
-        string withMethod)
-    {
-        return CreateShadowRelationship(sourceEntity, targetEntity, hasMethod, withMethod, false);
-    }
-
-    /// <summary>
     /// Determines whether a match is inside a "UsingEntity" block within the given configuration section.
     /// </summary>
     /// <param name="configSection">The configuration section to search within.</param>
@@ -513,7 +582,7 @@ public static partial class FluentApiConfigurationParser
     private static bool IsInsideUsingEntityBlock(string configSection, int matchIndex)
     {
         var textBeforeMatch = configSection[..matchIndex];
-        var lastUsingEntity = textBeforeMatch.LastIndexOf("UsingEntity", StringComparison.Ordinal);
+        var lastUsingEntity = textBeforeMatch.LastIndexOf(UsingEntity, StringComparison.Ordinal);
 
         if (lastUsingEntity < 0)
         {
@@ -548,11 +617,11 @@ public static partial class FluentApiConfigurationParser
             var methodName = groups[1].Value;
             var args = groups[2].Value;
 
-            if (methodName == "Property" || methodName.StartsWith("Property<"))
+            if (methodName == Property || methodName.StartsWith(Property + "<"))
             {
                 currentProperty = ProcessPropertyDeclaration(entity, methodName, args);
             }
-            else if (methodName == "HasKey")
+            else if (methodName == HasKey)
             {
                 ApplyKeyConfiguration(entity, args);
                 currentProperty = null;
@@ -704,12 +773,12 @@ public static partial class FluentApiConfigurationParser
     {
         var configActions = new Dictionary<string, Action<EfProperty, string>>
         {
-            ["IsRequired"] = ApplyIsRequiredConfiguration,
-            ["HasMaxLength"] = ApplyMaxLengthConfiguration,
-            ["HasPrecision"] = ApplyPrecisionConfiguration,
-            ["HasColumnType"] = ApplyColumnTypeConfiguration,
-            ["HasDefaultValue"] = ApplyDefaultValueConfiguration,
-            ["HasDefaultValueSql"] = ApplyDefaultValueSqlConfiguration
+            [IsRequired] = ApplyIsRequiredConfiguration,
+            [HasMaxLength] = ApplyMaxLengthConfiguration,
+            [HasPrecision] = ApplyPrecisionConfiguration,
+            [HasColumnType] = ApplyColumnTypeConfiguration,
+            [HasDefaultValue] = ApplyDefaultValueConfiguration,
+            [HasDefaultValueSql] = ApplyDefaultValueSqlConfiguration
         };
 
         if (configActions.TryGetValue(configMethod, out var action))
@@ -803,14 +872,16 @@ public static partial class FluentApiConfigurationParser
                        (trimmedArg.StartsWith('\'') && trimmedArg.EndsWith('\''));
         var val = trimmedArg.Trim('\"', '\'');
 
-        if (!isQuoted && val.Contains('.'))
+        if (isQuoted || !val.Contains('.'))
         {
-            var lastPart = val.Split('.')[^1];
-            // Only shorten if it doesn't look like a numeric value (e.g., 0.7f or 0.7)
-            if (lastPart.Length > 0 && !char.IsDigit(lastPart[0]))
-            {
-                val = lastPart;
-            }
+            return val;
+        }
+
+        var lastPart = val.Split('.')[^1];
+        // Only shorten if it doesn't look like a numeric value (e.g., 0.7f or 0.7)
+        if (lastPart.Length > 0 && !char.IsDigit(lastPart[0]))
+        {
+            val = lastPart;
         }
 
         return val;
