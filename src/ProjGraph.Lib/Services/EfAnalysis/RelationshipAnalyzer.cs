@@ -30,7 +30,10 @@ public static class RelationshipAnalyzer
         Dictionary<string, EfEntity> entities,
         Compilation compilation)
     {
-        var addedRelationships = new HashSet<string>();
+        // Initialize with existing relationships to prevent duplicates
+        var addedRelationships = model.Relationships
+            .Select(GenerateRelationshipKey)
+            .ToHashSet();
 
         foreach (var entity in entities.Values)
         {
@@ -44,6 +47,9 @@ public static class RelationshipAnalyzer
         }
 
         ConvertManyToManyToJoinTables(model);
+        
+        // Remove direct relationships when join tables exist
+        RemoveDirectRelationshipsWithJoinTables(model);
     }
 
     /// <summary>
@@ -76,6 +82,18 @@ public static class RelationshipAnalyzer
             if (targetType is null || !entities.TryGetValue(targetType.Name, out var targetEntity))
             {
                 continue;
+            }
+
+            // Mark potential foreign key properties by convention
+            if (!isCollection)
+            {
+                MarkConventionForeignKey(entity, prop.Name, targetType.Name);
+            }
+            else
+            {
+                // For collections, the foreign key is typically on the target entity 
+                // and follows the pattern [SourceEntity]Id
+                MarkConventionForeignKey(targetEntity, symbol.Name, symbol.Name);
             }
 
             var relationship = CreateRelationship(entity, targetEntity, prop, targetType, isCollection);
@@ -123,6 +141,19 @@ public static class RelationshipAnalyzer
         DetermineRelationshipType(relationship, sourceEntity, targetEntity, prop, targetType, isCollection);
 
         return relationship;
+    }
+
+    private static void MarkConventionForeignKey(EfEntity entity, string navigationName, string targetEntityName)
+    {
+        var potentialNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            $"{navigationName}Id", $"{targetEntityName}Id"
+        };
+
+        foreach (var prop in entity.Properties.Where(prop => potentialNames.Contains(prop.Name)))
+        {
+            prop.IsForeignKey = true;
+        }
     }
 
     /// <summary>
@@ -352,4 +383,72 @@ public static class RelationshipAnalyzer
             Label = ""
         });
     }
+
+    /// <summary>
+    /// Removes direct relationships between entities when a join table exists for that relationship.
+    /// For example, if Group has Permissions navigation but GroupPermissionEntry join table exists,
+    /// remove the direct Group->PermissionEntry relationship.
+    /// </summary>
+    private static void RemoveDirectRelationshipsWithJoinTables(EfModel model)
+    {
+        var joinTables = model.Entities.Where(e => e.IsJoinEntity || IsJoinTable(e)).ToList();
+        var relationshipsToRemove = new List<EfRelationship>();
+
+        foreach (var joinTable in joinTables)
+        {
+            // Get the two FK properties of the join table
+            var fkProperties = joinTable.Properties.Where(p => p.IsForeignKey).ToList();
+            if (fkProperties.Count != 2)
+            {
+                continue;
+            }
+
+            // Extract entity names from FK property names (e.g., "GroupId" -> "Group")
+            var entityNames = fkProperties
+                .Select(fk => fk.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase) 
+                    ? fk.Name.Substring(0, fk.Name.Length - 2)
+                    : null)
+                .Where(name => name != null)
+                .ToList();
+
+            if (entityNames.Count != 2)
+            {
+                continue;
+            }
+
+            var entity1 = entityNames[0]!;
+            var entity2 = entityNames[1]!;
+
+            // Find and mark for removal any direct relationships between these entities
+            var directRelationships = model.Relationships
+                .Where(r => 
+                    (r.SourceEntity == entity1 && r.TargetEntity == entity2) ||
+                    (r.SourceEntity == entity2 && r.TargetEntity == entity1))
+                .ToList();
+
+            relationshipsToRemove.AddRange(directRelationships);
+        }
+
+        // Remove the direct relationships
+        foreach (var rel in relationshipsToRemove.Distinct())
+        {
+            model.Relationships.Remove(rel);
+        }
+    }
+
+    /// <summary>
+    /// Determines if an entity is a join table based on naming convention and structure.
+    /// A join table typically has exactly 2 FK properties that are also PKs.
+    /// </summary>
+    private static bool IsJoinTable(EfEntity entity)
+    {
+        var fkProperties = entity.Properties.Where(p => p.IsForeignKey).ToList();
+        var pkProperties = entity.Properties.Where(p => p.IsPrimaryKey).ToList();
+
+        // A join table should have exactly 2 FKs that are also PKs
+        return fkProperties.Count == 2 && 
+               pkProperties.Count == 2 &&
+               fkProperties.All(fk => fk.IsPrimaryKey);
+    }
 }
+

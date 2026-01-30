@@ -3,13 +3,14 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Interfaces;
+using System.Text.RegularExpressions;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
 
 /// <summary>
 /// Service for analyzing Entity Framework DbContext classes and their models.
 /// </summary>
-public class EfAnalysisService : IEfAnalysisService
+public partial class EfAnalysisService : IEfAnalysisService
 {
     /// <summary>
     /// Discovers all DbContext classes within a specified C# file and returns their names as a list of strings.
@@ -67,6 +68,117 @@ public class EfAnalysisService : IEfAnalysisService
         ValidateCsFilePath(path);
 
         return await AnalyzeFileAsync(path, contextName);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<string>> DiscoverSnapshotsAsync(string path)
+    {
+        ValidateCsFilePath(path);
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(await File.ReadAllTextAsync(path));
+        var root = await syntaxTree.GetRootAsync();
+
+        return
+        [
+            .. root.DescendantNodes()
+                .OfType<ClassDeclarationSyntax>()
+                .Where(DbContextIdentifier.IsModelSnapshot)
+                .Select(c => c.Identifier.Text)
+                .Distinct()
+        ];
+    }
+
+    /// <inheritdoc />
+    public async Task<EfModel> AnalyzeSnapshotAsync(string path, string? snapshotName = null)
+    {
+        ValidateCsFilePath(path);
+
+        var code = await File.ReadAllTextAsync(path);
+        var syntaxTree = CSharpSyntaxTree.ParseText(code);
+        var root = await syntaxTree.GetRootAsync();
+
+        var snapshotClass = FindSnapshotClass(root, snapshotName);
+        var snapshotDirectory = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
+
+        var syntaxTrees = await BuildSnapshotSyntaxTreesAsync(path, snapshotClass, snapshotDirectory, syntaxTree);
+        var compilation = CompilationFactory.CreateCompilation(syntaxTrees);
+
+        var semanticModel = compilation.GetSemanticModel(syntaxTree);
+        var snapshotType = semanticModel.GetDeclaredSymbol(snapshotClass)
+                           ?? throw new InvalidOperationException("Could not get semantic symbol for snapshot");
+
+        var model = ModelSnapshotParser.Parse(snapshotClass, snapshotType, compilation);
+
+        // Analyze relationships using the semantic model now that we have all symbols
+        var entities = model.Entities.ToDictionary(e => e.Name);
+        RelationshipAnalyzer.AnalyzeRelationships(model, entities, compilation);
+
+        return model;
+    }
+
+    /// <summary>
+    /// Builds a list of syntax trees for a ModelSnapshot and its related entity files.
+    /// </summary>
+    private static async Task<List<SyntaxTree>> BuildSnapshotSyntaxTreesAsync(
+        string snapshotPath,
+        ClassDeclarationSyntax snapshotClass,
+        string snapshotDirectory,
+        SyntaxTree snapshotSyntaxTree)
+    {
+        var root = await snapshotSyntaxTree.GetRootAsync();
+        var entityNamespaces = EntityFileDiscovery.ExtractEntityNamespaces(root);
+        var entityTypeNames = ExtractEntityTypeNamesFromSnapshot(snapshotClass);
+        var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(snapshotDirectory, entityNamespaces);
+
+        var entityFiles = await EntityFileDiscovery.DiscoverEntityFilesAsync(
+            searchDirectories,
+            entityTypeNames,
+            snapshotPath);
+
+        // Also discover base classes
+        var baseClassFiles = await EntityFileDiscovery.DiscoverBaseClassFilesAsync(entityFiles, snapshotDirectory);
+
+        var additionalBaseClassNames = new HashSet<string>();
+        EntityFileDiscovery.ExtractBaseClassNamesFromSyntax(root, additionalBaseClassNames);
+        var additionalBaseFiles =
+            EntityFileDiscovery.SearchForBaseClassFiles(additionalBaseClassNames, new DirectoryInfo(snapshotDirectory));
+        MergeFileDictionaries(baseClassFiles, additionalBaseFiles);
+
+        MergeFileDictionaries(entityFiles, baseClassFiles);
+
+        return await CreateSyntaxTreesAsync(snapshotSyntaxTree, entityFiles);
+    }
+
+    /// <summary>
+    /// Extracts entity type names from a ModelSnapshot class by searching for .Entity calls.
+    /// </summary>
+    private static HashSet<string> ExtractEntityTypeNamesFromSnapshot(ClassDeclarationSyntax snapshotClass)
+    {
+        var entityTypeNames = new HashSet<string>();
+        var buildModelMethod = snapshotClass.Members.OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault(m => m.Identifier.Text == "BuildModel");
+
+        if (buildModelMethod?.Body == null)
+        {
+            return entityTypeNames;
+        }
+
+        var methodText = buildModelMethod.ToString();
+
+        // Match .Entity<T> or .Entity("Namespace.T")
+        var entityMatches = EntityMatchRegex().Matches(methodText);
+
+        var shortNames = entityMatches
+            .Select(match => match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value)
+            .Where(fullName => !string.IsNullOrEmpty(fullName))
+            .Select(fullName => fullName.Contains('.') ? fullName.Split('.')[^1] : fullName);
+
+        foreach (var shortName in shortNames)
+        {
+            entityTypeNames.Add(shortName);
+        }
+
+        return entityTypeNames;
     }
 
     /// <summary>
@@ -145,6 +257,20 @@ public class EfAnalysisService : IEfAnalysisService
         var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
         return DbContextIdentifier.FindContextClass(classDeclarations, contextName)
                ?? throw new InvalidOperationException("DbContext not found in file");
+    }
+
+    /// <summary>
+    /// Finds the ModelSnapshot class within the given syntax tree root node, optionally filtering by a specific snapshot name.
+    /// </summary>
+    /// <param name="root">The root syntax node of the syntax tree to search.</param>
+    /// <param name="snapshotName">The optional name of the ModelSnapshot class to find. If null, the first ModelSnapshot class is returned.</param>
+    /// <returns>The <see cref="ClassDeclarationSyntax"/> representing the ModelSnapshot class.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if no ModelSnapshot class is found in the provided syntax tree.</exception>
+    private static ClassDeclarationSyntax FindSnapshotClass(SyntaxNode root, string? snapshotName)
+    {
+        var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
+        return DbContextIdentifier.FindSnapshotClass(classDeclarations, snapshotName)
+               ?? throw new InvalidOperationException("ModelSnapshot not found in file");
     }
 
     /// <summary>
@@ -264,7 +390,76 @@ public class EfAnalysisService : IEfAnalysisService
         FluentApiConfigurationParser.ApplyFluentApiConstraints(contextType, entities, model, compilation);
         RelationshipAnalyzer.AnalyzeRelationships(model, entities, compilation);
 
+        // Deduplicate entities and relationships (in case any were added multiple times)
+        DeduplicateModelContent(model);
+
         return model;
+    }
+
+    /// <summary>
+    /// Removes duplicate entities and relationships from the model.
+    /// Prefers relationships with labels (from Fluent API) over auto-discovered ones.
+    /// For self-referencing relationships with the same label, keeps only one (preferring OneToMany).
+    /// </summary>
+    private static void DeduplicateModelContent(EfModel model)
+    {
+        // Deduplicate entities by name
+        var uniqueEntities = model.Entities
+            .GroupBy(e => e.Name)
+            .Select(g => g.First())
+            .ToList();
+        model.Entities.Clear();
+        model.Entities.AddRange(uniqueEntities);
+
+        // Deduplicate relationships by generating unique keys
+        // Prefer relationships with non-empty labels (from Fluent API) over auto-discovered ones
+        var uniqueRelationships = model.Relationships
+            .GroupBy(r => GenerateRelationshipKey(r))
+            .Select(g =>
+            {
+                // If there are multiple, prefer the one with a label
+                var withLabel = g.FirstOrDefault(r => !string.IsNullOrEmpty(r.Label));
+                return withLabel ?? g.First();
+            })
+            .ToList();
+
+        // Additional deduplication for self-referencing relationships with same label
+        // This handles cases like PermissionEntry -> PermissionEntry with "ParentPermission"
+        // appearing as both OneToOne and OneToMany
+        var finalRelationships = uniqueRelationships
+            .GroupBy(r => new { r.SourceEntity, r.TargetEntity, r.Label })
+            .Select(g =>
+            {
+                // If only one, return it
+                if (g.Count() == 1) return g.First();
+                
+                // If multiple with same source, target, and label, prefer OneToMany over OneToOne
+                // for self-referencing (parent-child hierarchies)
+                var oneToMany = g.FirstOrDefault(r => r.Type == EfRelationshipType.OneToMany);
+                return oneToMany ?? g.First();
+            })
+            .ToList();
+
+        model.Relationships.Clear();
+        model.Relationships.AddRange(finalRelationships);
+    }
+
+    /// <summary>
+    /// Generates a unique key for a relationship to enable deduplication.
+    /// </summary>
+    private static string GenerateRelationshipKey(EfRelationship relationship)
+    {
+        // For symmetric relationships (1:1, M:M), sort entity names to avoid duplicates
+        if (relationship.Type is EfRelationshipType.OneToOne or EfRelationshipType.ManyToMany)
+        {
+            var entitiesSorted = new[] { relationship.SourceEntity, relationship.TargetEntity }
+                .OrderBy(e => e)
+                .ToArray();
+            return $"{entitiesSorted[0]}-{entitiesSorted[1]}-{relationship.Type}";
+        }
+
+        // For OneToMany, direction matters
+        return $"{relationship.SourceEntity}-{relationship.TargetEntity}-{relationship.Type}";
     }
 
     /// <summary>
@@ -297,4 +492,7 @@ public class EfAnalysisService : IEfAnalysisService
 
         return entities;
     }
+
+    [GeneratedRegex("""\.Entity\s*(?:<([^>]+)>|\(\s*"([^"]+)"\s*)""")]
+    private static partial Regex EntityMatchRegex();
 }

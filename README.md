@@ -24,7 +24,7 @@ dotnet tool install -g ProjGraph.Cli
 # Visualize project dependencies
 projgraph visualize ./MySolution.slnx
 
-# Generate Entity Relationship Diagram
+# Generate Entity Relationship Diagram (from DbContext or ModelSnapshot)
 projgraph erd ./Data/MyDbContext.cs
 
 # Generate Class Diagram for a class and its hierarchy
@@ -56,7 +56,7 @@ Configure your MCP client (e.g., GitHub Copilot, Claude) with the following sett
 ## ✨ Key Features
 
 - **📊 Multiple Output Formats**: ASCII tree and Mermaid.js diagrams
-- **🗄️ Entity Relationship Diagrams**: Generate ERDs from EF Core DbContext files
+- **🗄️ Entity Relationship Diagrams**: Generate ERDs from EF Core `DbContext` or `ModelSnapshot` files
 - **🏗️ Class Hierarchies**: Visualize class diagrams with inheritance and dependencies
 - **🔄 Circular Dependency Detection**: Automatically identifies problematic cycles
 - **📁 Modern .NET Support**: Full support for `.slnx`, `.sln`, and `.csproj` files
@@ -97,15 +97,18 @@ projgraph visualize ./MySolution.slnx --format mermaid > docs/dependencies.mmd
 # Generate ERD from DbContext
 projgraph erd ./Data/MyDbContext.cs
 
-# Save to documentation
+# Generate ERD from ModelSnapshot (leveraging migrations)
+projgraph erd ./Migrations/MyDbContextModelSnapshot.cs
+
+```bash
 projgraph erd ./Data/MyDbContext.cs > docs/database-schema.md
 ```
 
 ### Visualize Class Hierarchies
 
 ```bash
-# Generate diagram for a class and its dependencies
-projgraph classdiagram ./Models/Admin.cs
+# Generate diagram for a class and its inheritance and dependencies
+projgraph classdiagram ./Models/Admin.cs -i -d
 
 # Control discovery depth (default: 3)
 projgraph classdiagram ./Models/Admin.cs --depth 5

@@ -35,11 +35,14 @@ graph TD
 
 ### `erd` - Entity Relationship Diagrams
 
-Generate Mermaid ERD from EF Core DbContext files.
+Generate Mermaid ERD from EF Core `DbContext` or `ModelSnapshot` files.
 
 ```bash
 # Generate ERD from DbContext
 projgraph erd ./Data/MyDbContext.cs
+
+# Generate ERD from ModelSnapshot (useful if migrations already exist)
+projgraph erd ./Migrations/MyDbContextModelSnapshot.cs
 
 # Save to file
 projgraph erd ./Data/MyDbContext.cs > database-schema.md
@@ -47,7 +50,7 @@ projgraph erd ./Data/MyDbContext.cs > database-schema.md
 
 **Features**:
 
-- Detects entities, properties, and relationships
+- Detects entities, properties, and relationships from source or snapshots
 - Shows primary keys, foreign keys, and constraints
 - Supports inheritance and base classes
 - Extracts `MaxLength`, `Required`, and other data annotations

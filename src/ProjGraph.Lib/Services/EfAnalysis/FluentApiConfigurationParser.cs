@@ -18,6 +18,26 @@ namespace ProjGraph.Lib.Services.EfAnalysis;
 /// </remarks>
 public static partial class FluentApiConfigurationParser
 {
+    // EF Relationship Method Names
+    private const string HasOne = "HasOne";
+    private const string HasMany = "HasMany";
+    private const string WithOne = "WithOne";
+    private const string WithMany = "WithMany";
+
+    // EF Configuration Method Names
+    private const string Entity = "Entity";
+    private const string ToTable = "ToTable";
+    private const string Property = "Property";
+    private const string HasKey = "HasKey";
+    private const string HasForeignKey = "HasForeignKey";
+    private const string IsRequired = "IsRequired";
+    private const string HasMaxLength = "HasMaxLength";
+    private const string HasPrecision = "HasPrecision";
+    private const string HasColumnType = "HasColumnType";
+    private const string HasDefaultValue = "HasDefaultValue";
+    private const string HasDefaultValueSql = "HasDefaultValueSql";
+    private const string UsingEntity = "UsingEntity";
+
     /// <summary>
     /// Applies Fluent API constraints to the specified Entity Framework model by parsing the "OnModelCreating" method
     /// of the provided context type and processing each entity configuration section.
@@ -45,9 +65,34 @@ public static partial class FluentApiConfigurationParser
             return;
         }
 
+        ApplyConstraintsFromMethod(methodSyntax, entities, model, compilation);
+    }
+
+    /// <summary>
+    /// Applies Fluent API constraints from a specific method (e.g., OnModelCreating or BuildModel) 
+    /// to the specified Entity Framework model.
+    /// </summary>
+    /// <param name="methodSyntax">The <see cref="MethodDeclarationSyntax"/> representing the method to parse.</param>
+    /// <param name="entities">
+    /// A dictionary of all entities, where the key is the entity name and the value is the <see cref="EfEntity"/> object.
+    /// </param>
+    /// <param name="model">The <see cref="EfModel"/> object to which the parsed Fluent API constraints will be applied.</param>
+    /// <param name="compilation">The <see cref="Compilation"/> used to find symbols for entities.</param>
+    public static void ApplyConstraintsFromMethod(
+        MethodDeclarationSyntax methodSyntax,
+        Dictionary<string, EfEntity> entities,
+        EfModel model,
+        Compilation compilation)
+    {
+        if (methodSyntax.Body is null)
+        {
+            return;
+        }
+
         var methodText = methodSyntax.ToString();
         var entityConfigSections = EntitySplitRegex().Split(methodText);
 
+        // Skip the first part (before the first .Entity)
         for (var i = 1; i < entityConfigSections.Length; i++)
         {
             ProcessEntityConfigSection(entityConfigSections[i], entities, model, compilation);
@@ -96,10 +141,11 @@ public static partial class FluentApiConfigurationParser
         EfModel model,
         Compilation compilation)
     {
-        var section = ".Entity<" + sectionContent;
+        // Add back "Entity" which was removed by the split
+        var section = Entity + sectionContent;
 
-        // Extract just this entity's configuration (up to the next .Entity<)
-        var entityConfigEnd = section.IndexOf(".Entity<", 10, StringComparison.Ordinal);
+        // Extract just this entity's configuration (up to the next .Entity)
+        var entityConfigEnd = EntitySplitRegex().Match(section, 7).Index;
         if (entityConfigEnd > 0)
         {
             section = section[..entityConfigEnd];
@@ -116,20 +162,42 @@ public static partial class FluentApiConfigurationParser
     /// <param name="model">The <see cref="EfModel"/> object to which the relationships will be added.</param>
     /// <remarks>
     /// This method ensures that only unique relationships are added to the model by checking if a relationship
-    /// with the same source entity, target entity, and type already exists in the model's relationships collection.
+    /// with the same key already exists in the model's relationships collection. Uses the same key generation
+    /// logic as RelationshipAnalyzer to ensure consistency.
     /// </remarks>
     private static void AddUniqueRelationships(List<EfRelationship> relationships, EfModel model)
     {
-        foreach (var relationship in from relationship in relationships
-                 let alreadyExists = model.Relationships.Any(r =>
-                     r.SourceEntity == relationship.SourceEntity &&
-                     r.TargetEntity == relationship.TargetEntity &&
-                     r.Type == relationship.Type)
-                 where !alreadyExists
-                 select relationship)
+        var existingKeys = model.Relationships.Select(GenerateRelationshipKey).ToHashSet();
+
+        foreach (var relationship in relationships)
         {
-            model.Relationships.Add(relationship);
+            var key = GenerateRelationshipKey(relationship);
+            if (existingKeys.Add(key))
+            {
+                model.Relationships.Add(relationship);
+            }
         }
+    }
+
+    /// <summary>
+    /// Generates a unique key for a relationship to enable deduplication.
+    /// Uses the same logic as RelationshipAnalyzer to ensure consistency.
+    /// </summary>
+    /// <param name="relationship">The relationship to generate a key for.</param>
+    /// <returns>A unique string key representing the relationship.</returns>
+    private static string GenerateRelationshipKey(EfRelationship relationship)
+    {
+        // For symmetric relationships (1:1, M:M), sort entity names to avoid duplicates
+        if (relationship.Type is EfRelationshipType.OneToOne or EfRelationshipType.ManyToMany)
+        {
+            var entitiesSorted = new[] { relationship.SourceEntity, relationship.TargetEntity }
+                .OrderBy(e => e)
+                .ToArray();
+            return $"{entitiesSorted[0]}-{entitiesSorted[1]}-{relationship.Type}";
+        }
+
+        // For OneToMany, direction matters
+        return $"{relationship.SourceEntity}-{relationship.TargetEntity}-{relationship.Type}";
     }
 
     /// <summary>
@@ -165,22 +233,39 @@ public static partial class FluentApiConfigurationParser
         }
 
         var entityName = entityMatch.Groups[1].Value;
+        if (string.IsNullOrEmpty(entityName))
+        {
+            entityName = entityMatch.Groups[2].Value;
+        }
+
+        // Simplify name if it contains namespace
+        if (entityName.Contains('.'))
+        {
+            entityName = entityName.Split('.')[^1];
+        }
+
         if (!entities.TryGetValue(entityName, out var entity))
         {
             var symbol = compilation.GlobalNamespace.GetAllNamedTypes()
                 .FirstOrDefault(t => t.Name == entityName);
 
-            if (symbol == null)
-            {
-                return shadowRelationships;
-            }
+            entity = symbol != null
+                ? EntityAnalyzer.AnalyzeEntity(symbol)
+                :
+                // Create a basic entity if symbol not found (common in ModelSnapshots)
+                new EfEntity { Name = entityName };
 
-            entity = EntityAnalyzer.AnalyzeEntity(symbol);
             entities[entityName] = entity;
-            model.Entities.Add(entity);
+
+            // Only add to model if not already present (prevents duplicates)
+            if (model.Entities.All(e => e.Name != entityName))
+            {
+                model.Entities.Add(entity);
+            }
         }
 
         ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
+        ParseExplicitRelationships(configSection, entityName, entities, shadowRelationships, compilation);
         ParsePropertyConfigurations(configSection, entity);
 
         // Parse table mapping
@@ -232,42 +317,358 @@ public static partial class FluentApiConfigurationParser
         }
     }
 
+    /// <summary>
+    /// Parses explicit relationships (e.g., HasOne, HasMany) from a given configuration section.
+    /// handles string-based names common in ModelSnapshots.
+    /// </summary>
+    private static void ParseExplicitRelationships(
+        string configSection,
+        string entityName,
+        Dictionary<string, EfEntity> entities,
+        List<EfRelationship> relationships,
+        Compilation compilation)
+    {
+        var matches = MethodCallRegex().Matches(configSection);
+        for (var i = 0; i < matches.Count; i++)
+        {
+            var match = matches[i];
+            var methodName = match.Groups[1].Value;
+            var args = match.Groups[2].Value;
+
+            if (!methodName.StartsWith(HasOne) && !methodName.StartsWith(HasMany))
+            {
+                continue;
+            }
+
+            var relationship = TryCreateRelationship(matches, i, methodName, args, entityName, entities, compilation);
+            if (relationship is null)
+            {
+                continue;
+            }
+
+            ApplyForeignKeyConfiguration(matches, i, methodName, entityName, relationship.TargetEntity, entities);
+            relationships.Add(relationship);
+        }
+    }
+
+    /// <summary>
+    /// Attempts to create a relationship from method call information.
+    /// </summary>
+    /// <returns>The created relationship, or null if creation failed.</returns>
+    private static EfRelationship? TryCreateRelationship(
+        MatchCollection matches,
+        int startIndex,
+        string methodName,
+        string args,
+        string entityName,
+        Dictionary<string, EfEntity> entities,
+        Compilation compilation)
+    {
+        var (targetEntityName, label) = ExtractTargetInfo(args);
+
+        if (string.IsNullOrEmpty(targetEntityName))
+        {
+            // Try to extract from generic type: HasOne<ActivityType>()
+            targetEntityName = ExtractGenericType(methodName);
+        }
+
+        // If we got a navigation property name, try to resolve it to an entity type
+        if (!string.IsNullOrEmpty(targetEntityName) && !entities.ContainsKey(targetEntityName))
+        {
+            // Save the navigation property name to use as label
+            var navigationPropertyName = targetEntityName;
+            
+            // Try to find the entity by checking if any entity has a property with a type matching this name
+            // This handles cases like HasMany(a => a.Options) where Options is List<ActivityOption>
+            var resolvedName =
+                ResolveNavigationPropertyToEntityType(entityName, targetEntityName, entities, compilation);
+            if (resolvedName is not null)
+            {
+                targetEntityName = resolvedName;
+                // If no explicit label was provided, use the navigation property name
+                if (string.IsNullOrEmpty(label))
+                {
+                    label = navigationPropertyName;
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(targetEntityName))
+        {
+            return null;
+        }
+
+        var (method, arg) = FindWithMethodInfo(matches, startIndex);
+        if (method is null)
+        {
+            return null;
+        }
+
+        var isRequired = IsRelationshipRequired(matches, startIndex);
+        var rel = CreateShadowRelationship(entityName, targetEntityName, methodName, method, isRequired);
+
+        SetRelationshipLabel(rel, label, arg);
+        return rel;
+    }
+
+    /// <summary>
+    /// Sets the relationship label from available sources.
+    /// </summary>
+    private static void SetRelationshipLabel(EfRelationship relationship, string? label, string? withMethodArg)
+    {
+        if (label != null)
+        {
+            relationship.Label = label;
+        }
+        else if (withMethodArg != null)
+        {
+            var inverseLabel = ExtractFirstStringArg(withMethodArg);
+            if (inverseLabel != null)
+            {
+                relationship.Label = inverseLabel;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Resolves a navigation property name to its target entity type by examining the source entity's properties.
+    /// </summary>
+    /// <param name="sourceEntityName">The name of the source entity.</param>
+    /// <param name="navigationPropertyName">The name of the navigation property (e.g., "Options").</param>
+    /// <param name="entities">Dictionary of all known entities.</param>
+    /// <param name="compilation">The compilation to use for semantic analysis.</param>
+    /// <returns>The target entity type name, or null if not found.</returns>
+    /// <remarks>
+    /// This method uses semantic analysis to find the source entity symbol and resolve the navigation property
+    /// to its target entity type. For example, if the source entity has a property "Options" of type "List&lt;ActivityOption&gt;",
+    /// this will resolve "Options" to "ActivityOption".
+    /// </remarks>
+    private static string? ResolveNavigationPropertyToEntityType(
+        string sourceEntityName,
+        string navigationPropertyName,
+        Dictionary<string, EfEntity> entities,
+        Compilation compilation)
+    {
+        // Find the source entity symbol using semantic analysis
+        var sourceSymbol = compilation.GlobalNamespace.GetAllNamedTypes()
+            .FirstOrDefault(t => t.Name == sourceEntityName);
+
+        // Look for a property with a matching name (case-insensitive)
+        var navProperty = sourceSymbol?.GetMembers().OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.Name.Equals(navigationPropertyName, StringComparison.OrdinalIgnoreCase));
+
+        if (navProperty is null)
+        {
+            return null;
+        }
+
+        // Check if this is a navigation property and extract the target type
+        if (NavigationPropertyAnalyzer.IsNavigationProperty(navProperty, out var targetType, out _) &&
+            targetType != null && entities.ContainsKey(targetType.Name))
+        {
+            return targetType.Name;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Applies foreign key configuration to the appropriate entity.
+    /// </summary>
+    private static void ApplyForeignKeyConfiguration(
+        MatchCollection matches,
+        int startIndex,
+        string methodName,
+        string sourceEntityName,
+        string targetEntityName,
+        Dictionary<string, EfEntity> entities)
+    {
+        var (fkEntityNameOverride, fkPropNames) = FindForeignKeyInfo(matches, startIndex);
+        if (fkPropNames.Count == 0)
+        {
+            return;
+        }
+
+        var dependentEntityName =
+            DetermineDependentEntity(methodName, sourceEntityName, targetEntityName, fkEntityNameOverride);
+
+        if (entities.TryGetValue(dependentEntityName, out var dependentEntity))
+        {
+            MarkPropertiesAsForeignKeys(dependentEntity, fkPropNames);
+        }
+    }
+
+    /// <summary>
+    /// Determines which entity is the dependent entity (holds the foreign key).
+    /// </summary>
+    private static string DetermineDependentEntity(
+        string methodName,
+        string sourceEntityName,
+        string targetEntityName,
+        string? fkEntityNameOverride)
+    {
+        // Override if generic type specified in HasForeignKey<T>
+        if (!string.IsNullOrEmpty(fkEntityNameOverride))
+        {
+            return fkEntityNameOverride;
+        }
+
+        // Default: HasOne -> current entity, HasMany -> target entity
+        return methodName.StartsWith(HasOne) ? sourceEntityName : targetEntityName;
+    }
+
+    /// <summary>
+    /// Marks the specified properties as foreign keys in the entity.
+    /// </summary>
+    private static void MarkPropertiesAsForeignKeys(EfEntity entity, List<string> propertyNames)
+    {
+        foreach (var propName in propertyNames)
+        {
+            var prop = GetOrCreateProperty(entity, propName, "");
+            prop.IsForeignKey = true;
+        }
+    }
+
+    private static bool IsRelationshipRequired(MatchCollection matches, int startIndex)
+    {
+        for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
+        {
+            var nextMethod = matches[j].Groups[1].Value;
+            if (nextMethod != IsRequired)
+            {
+                continue;
+            }
+
+            var arg = matches[j].Groups[2].Value.Trim();
+            return string.IsNullOrEmpty(arg) || arg.Equals("true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Finds the corresponding HasForeignKey method call following a HasOne or HasMany call.
+    /// </summary>
+    private static (string? EntityNameOverride, List<string> PropertyNames) FindForeignKeyInfo(MatchCollection matches,
+        int startIndex)
+    {
+        for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
+        {
+            var nextMethodMatch = matches[j].Groups[1].Value;
+            if (!nextMethodMatch.StartsWith(HasForeignKey))
+            {
+                if (nextMethodMatch.Contains(Entity) || nextMethodMatch.StartsWith(HasOne) ||
+                    nextMethodMatch.StartsWith(HasMany) || nextMethodMatch.StartsWith(ToTable))
+                {
+                    // Boundary of the relationship chain
+                    break;
+                }
+
+                continue;
+            }
+
+            var typeName = ExtractGenericType(nextMethodMatch);
+            var propNames = ExtractPropertyNamesFromArgs(matches[j].Groups[2].Value);
+            return (typeName, propNames);
+        }
+
+        return (null, []);
+    }
+
+    /// <summary>
+    /// Extracts target information (entity name and optional label) from method arguments.
+    /// </summary>
+    private static (string? Name, string? Label) ExtractTargetInfo(string args)
+    {
+        // First try string literals (common in ModelSnapshots)
+        var stringMatches = StringLiteralRegex().Matches(args);
+        if (stringMatches.Count > 0)
+        {
+            var name = stringMatches[0].Groups[1].Value;
+            if (name.Contains('.'))
+            {
+                name = name.Split('.')[^1];
+            }
+
+            var label = stringMatches.Count > 1 ? stringMatches[1].Groups[1].Value : null;
+            return (name, label);
+        }
+
+        // Try lambda expression: e => e.NavigationProperty (common in DbContext fluent API)
+        if (!args.Contains("=>"))
+        {
+            return (null, null);
+        }
+
+        var lambdaMatch = PropertyLambdaRegex().Match(args);
+        if (!lambdaMatch.Success)
+        {
+            return (null, null);
+        }
+
+        var propertyName = lambdaMatch.Groups[2].Value;
+        return (propertyName, null);
+    }
+
+    /// <summary>
+    /// Finds the corresponding WithOne or WithMany method call following a HasOne or HasMany call.
+    /// </summary>
+    private static (string? Method, string? Arg) FindWithMethodInfo(MatchCollection matches, int startIndex)
+    {
+        for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
+        {
+            var nextMethod = matches[j].Groups[1].Value;
+            if (nextMethod.StartsWith(WithOne) || nextMethod.StartsWith(WithMany))
+            {
+                return (nextMethod, matches[j].Groups[2].Value);
+            }
+        }
+
+        return (null, null);
+    }
+
+    private static string? ExtractFirstStringArg(string args)
+    {
+        var match = StringLiteralRegex().Match(args);
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
     private static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
-        string withMethod)
+        string withMethod, bool isRequired = false)
     {
         return (hasMethod, withMethod) switch
         {
-            ("HasOne", "WithMany") => new EfRelationship
+            (HasOne, WithMany) => new EfRelationship
             {
                 SourceEntity = targetEntity,
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
                 Label = "",
-                IsRequired = false
+                IsRequired = true // OneToMany defaults to required
             },
-            ("HasMany", "WithOne") => new EfRelationship
+            (HasMany, WithOne) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToMany,
                 Label = "",
-                IsRequired = false
+                IsRequired = true // OneToMany defaults to required
             },
-            ("HasOne", "WithOne") => new EfRelationship
+            (HasOne, WithOne) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToOne,
                 Label = "",
-                IsRequired = false
+                IsRequired = isRequired
             },
-            ("HasMany", "WithMany") => new EfRelationship
+            (HasMany, WithMany) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.ManyToMany,
                 Label = "",
-                IsRequired = false
+                IsRequired = isRequired
             },
             _ => new EfRelationship
             {
@@ -275,7 +676,7 @@ public static partial class FluentApiConfigurationParser
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
                 Label = "",
-                IsRequired = false
+                IsRequired = true // OneToMany defaults to required
             }
         };
     }
@@ -296,7 +697,7 @@ public static partial class FluentApiConfigurationParser
     private static bool IsInsideUsingEntityBlock(string configSection, int matchIndex)
     {
         var textBeforeMatch = configSection[..matchIndex];
-        var lastUsingEntity = textBeforeMatch.LastIndexOf("UsingEntity", StringComparison.Ordinal);
+        var lastUsingEntity = textBeforeMatch.LastIndexOf(UsingEntity, StringComparison.Ordinal);
 
         if (lastUsingEntity < 0)
         {
@@ -317,37 +718,157 @@ public static partial class FluentApiConfigurationParser
     /// <param name="entity">The <see cref="EfEntity"/> object representing the entity to which the property configurations will be applied.</param>
     /// <remarks>
     /// This method extracts property configuration details from the provided configuration section.
-    /// It identifies the property name using a lambda expression and then parses all subsequent method calls
-    /// (e.g., IsRequired, HasMaxLength) to apply the corresponding configurations to the entity's property.
+    /// It identifies the property name using either a lambda expression or a string argument, 
+    /// and then parses all subsequent method calls (e.g., IsRequired, HasMaxLength) 
+    /// to apply the corresponding configurations to the entity's property.
     /// </remarks>
     private static void ParsePropertyConfigurations(string configSection, EfEntity entity)
     {
-        var propertyParts = configSection.Split(".Property", StringSplitOptions.RemoveEmptyEntries);
-        foreach (var part in propertyParts)
+        EfProperty? currentProperty = null;
+
+        var matches = MethodCallRegex().Matches(configSection);
+        foreach (var groups in matches.Select(match => match.Groups))
         {
-            var match = PropertyLambdaRegex().Match(part);
-            if (!match.Success)
+            var methodName = groups[1].Value;
+            var args = groups[2].Value;
+
+            if (methodName == Property || methodName.StartsWith(Property + "<"))
             {
-                continue;
+                currentProperty = ProcessPropertyDeclaration(entity, methodName, args);
+            }
+            else if (methodName == HasKey)
+            {
+                ApplyKeyConfiguration(entity, args);
+                currentProperty = null;
             }
 
-            var propName = match.Groups[2].Value;
-            var property = entity.Properties.FirstOrDefault(p => p.Name == propName);
-            if (property == null)
+            else if (currentProperty != null)
             {
-                continue;
-            }
-
-            var methods = MethodCallRegex().Matches(part)
-                .Select(method => method.Groups);
-
-            foreach (var groups in methods)
-            {
-                var configMethod = groups[1].Value;
-                var configArg = groups[2].Value;
-                ApplyPropertyConfiguration(property, configMethod, configArg);
+                ApplyPropertyConfiguration(currentProperty, methodName, args);
             }
         }
+    }
+
+    /// <summary>
+    /// Applies primary key configuration to the entity.
+    /// </summary>
+    private static void ApplyKeyConfiguration(EfEntity entity, string args)
+    {
+        var propNames = ExtractPropertyNamesFromArgs(args);
+        foreach (var propName in propNames)
+        {
+            var prop = GetOrCreateProperty(entity, propName, "");
+            prop.IsPrimaryKey = true;
+        }
+    }
+
+    /// <summary>
+    /// Extracts property names from method arguments, handling both lambdas and string literals.
+    /// </summary>
+    private static List<string> ExtractPropertyNamesFromArgs(string args)
+    {
+        var result = new List<string>();
+
+        // Handle lambda: e => new { e.P1, e.P2 } or e => e.P1
+        if (args.Contains("=>"))
+        {
+            var matches = MethodChainRegex().Matches(args);
+            result.AddRange(matches.Select(match => match.Groups[1].Value));
+        }
+        else
+        {
+            // Handle string list: "P1", "P2"
+            var matches = StringLiteralRegex().Matches(args);
+            result.AddRange(matches.Select(match => match.Groups[1].Value));
+
+            if (result.Count != 0 || string.IsNullOrWhiteSpace(args))
+            {
+                return result;
+            }
+
+            // Fallback for single unquoted arg
+            var identifier = args.Trim('"', ' ');
+            if (!string.IsNullOrEmpty(identifier))
+            {
+                result.Add(identifier);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Processes a Property declaration and returns or creates the corresponding EfProperty.
+    /// </summary>
+    /// <param name="entity">The entity containing the property.</param>
+    /// <param name="methodName">The method name (e.g., "Property" or "Property&lt;T&gt;").</param>
+    /// <param name="args">The method arguments.</param>
+    /// <returns>The EfProperty object, or null if the property name is invalid.</returns>
+    private static EfProperty? ProcessPropertyDeclaration(EfEntity entity, string methodName, string args)
+    {
+        var propName = ExtractPropertyName(args);
+        if (string.IsNullOrEmpty(propName))
+        {
+            return null;
+        }
+
+        var type = ExtractGenericType(methodName);
+        return GetOrCreateProperty(entity, propName, type);
+    }
+
+    /// <summary>
+    /// Extracts the property name from method arguments.
+    /// </summary>
+    /// <param name="args">The method arguments to parse.</param>
+    /// <returns>The extracted property name.</returns>
+    private static string ExtractPropertyName(string args)
+    {
+        var lambdaMatch = PropertyLambdaRegex().Match(args);
+        return lambdaMatch.Success ? lambdaMatch.Groups[2].Value : args.Trim('"', ' ');
+    }
+
+    /// <summary>
+    /// Extracts the generic type from a method name like "Property&lt;T&gt;".
+    /// </summary>
+    /// <param name="methodName">The method name to parse.</param>
+    /// <returns>The extracted type, or empty string if no generic type is found.</returns>
+    private static string ExtractGenericType(string methodName)
+    {
+        if (methodName.Contains('<') && methodName.Contains('>'))
+        {
+            return methodName.Split('<')[1].Split('>')[0];
+        }
+
+        return "";
+    }
+
+    /// <summary>
+    /// Gets an existing property or creates a new one if it doesn't exist.
+    /// </summary>
+    /// <param name="entity">The entity containing the property.</param>
+    /// <param name="propName">The property name.</param>
+    /// <param name="type">The property type.</param>
+    /// <returns>The EfProperty object.</returns>
+    private static EfProperty GetOrCreateProperty(EfEntity entity, string propName, string type)
+    {
+        var property = entity.Properties.FirstOrDefault(p => p.Name == propName);
+        if (property == null)
+        {
+            var detectedType = type;
+            if (string.IsNullOrEmpty(detectedType))
+            {
+                detectedType = propName.EndsWith("Id", StringComparison.OrdinalIgnoreCase) ? "Guid" : "string";
+            }
+
+            property = new EfProperty { Name = propName, Type = detectedType };
+            entity.Properties.Add(property);
+        }
+        else if (!string.IsNullOrEmpty(type))
+        {
+            property.Type = type;
+        }
+
+        return property;
     }
 
     /// <summary>
@@ -365,47 +886,120 @@ public static partial class FluentApiConfigurationParser
     /// </remarks>
     private static void ApplyPropertyConfiguration(EfProperty property, string configMethod, string configArg)
     {
-        switch (configMethod)
+        var configActions = new Dictionary<string, Action<EfProperty, string>>
         {
-            case "IsRequired":
-                property.IsRequired = true;
-                break;
+            [IsRequired] = ApplyIsRequiredConfiguration,
+            [HasMaxLength] = ApplyMaxLengthConfiguration,
+            [HasPrecision] = ApplyPrecisionConfiguration,
+            [HasColumnType] = ApplyColumnTypeConfiguration,
+            [HasDefaultValue] = ApplyDefaultValueConfiguration,
+            [HasDefaultValueSql] = ApplyDefaultValueSqlConfiguration
+        };
 
-            case "HasMaxLength":
-                if (int.TryParse(configArg, out var maxLen))
-                {
-                    property.MaxLength = maxLen;
-                }
-
-                break;
-
-            case "HasPrecision":
-                ApplyPrecisionConfiguration(property, configArg);
-                break;
-
-            case "HasDefaultValue":
-                var trimmedArg = configArg.Trim();
-                var isQuoted = (trimmedArg.StartsWith('\"') && trimmedArg.EndsWith('\"')) ||
-                               (trimmedArg.StartsWith('\'') && trimmedArg.EndsWith('\''));
-                var val = trimmedArg.Trim('\"', '\'');
-
-                if (!isQuoted && val.Contains('.'))
-                {
-                    var lastPart = val.Split('.')[^1];
-                    // Only shorten if it doesn't look like a numeric value (e.g., 0.7f or 0.7)
-                    if (lastPart.Length > 0 && !char.IsDigit(lastPart[0]))
-                    {
-                        val = lastPart;
-                    }
-                }
-
-                property.DefaultValue = val;
-                break;
-
-            case "HasDefaultValueSql":
-                property.DefaultValue = configArg.Trim('\"', '\'', ' ');
-                break;
+        if (configActions.TryGetValue(configMethod, out var action))
+        {
+            action(property, configArg);
         }
+    }
+
+    /// <summary>
+    /// Configures the IsRequired property based on the configuration argument.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The configuration argument.</param>
+    private static void ApplyIsRequiredConfiguration(EfProperty property, string configArg)
+    {
+        property.IsRequired = string.IsNullOrEmpty(configArg) ||
+                              configArg.Equals("true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Configures the MaxLength property based on the configuration argument.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The configuration argument containing the max length value.</param>
+    private static void ApplyMaxLengthConfiguration(EfProperty property, string configArg)
+    {
+        if (int.TryParse(configArg, out var maxLen))
+        {
+            property.MaxLength = maxLen;
+        }
+    }
+
+    /// <summary>
+    /// Configures the DefaultValue property based on the configuration argument.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The configuration argument containing the default value.</param>
+    private static void ApplyDefaultValueConfiguration(EfProperty property, string configArg)
+    {
+        property.DefaultValue = ParseDefaultValue(configArg);
+    }
+
+    /// <summary>
+    /// Configures the DefaultValue property from SQL based on the configuration argument.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The configuration argument containing the SQL default value.</param>
+    private static void ApplyDefaultValueSqlConfiguration(EfProperty property, string configArg)
+    {
+        property.DefaultValue = configArg.Trim('\"', '\'', ' ');
+    }
+
+    /// <summary>
+    /// Configures the column type for a property, inferring max length from column type definition if needed.
+    /// </summary>
+    /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
+    /// <param name="configArg">The column type argument (e.g., "nvarchar(30)").</param>
+    /// <remarks>
+    /// If the property doesn't have a max length set and the column type contains a length specification
+    /// in parentheses (e.g., "nvarchar(30)"), this method will extract and set the max length.
+    /// </remarks>
+    private static void ApplyColumnTypeConfiguration(EfProperty property, string configArg)
+    {
+        // If it's something like "nvarchar(30)", we can infer max length if not already set
+        if (property.MaxLength is null)
+        {
+            var match = NumberInParensRegex().Match(configArg);
+            if (match.Success && int.TryParse(match.Groups[1].Value, out var len))
+            {
+                property.MaxLength = len;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Parses a default value argument and returns a simplified string representation.
+    /// </summary>
+    /// <param name="configArg">The configuration argument containing the default value.</param>
+    /// <returns>
+    /// A string representing the default value, with quotes removed and qualified names shortened
+    /// to their simple name when appropriate.
+    /// </returns>
+    /// <remarks>
+    /// This method handles quoted strings and attempts to simplify fully qualified names
+    /// (e.g., "MyNamespace.MyEnum.Value" becomes "Value") unless the value appears to be numeric.
+    /// </remarks>
+    private static string ParseDefaultValue(string configArg)
+    {
+        var trimmedArg = configArg.Trim();
+        var isQuoted = (trimmedArg.StartsWith('\"') && trimmedArg.EndsWith('\"')) ||
+                       (trimmedArg.StartsWith('\'') && trimmedArg.EndsWith('\''));
+        var val = trimmedArg.Trim('\"', '\'');
+
+        if (isQuoted || !val.Contains('.'))
+        {
+            return val;
+        }
+
+        var lastPart = val.Split('.')[^1];
+        // Only shorten if it doesn't look like a numeric value (e.g., 0.7f or 0.7)
+        if (lastPart.Length > 0 && !char.IsDigit(lastPart[0]))
+        {
+            val = lastPart;
+        }
+
+        return val;
     }
 
     /// <summary>
@@ -437,17 +1031,17 @@ public static partial class FluentApiConfigurationParser
     }
 
     /// <summary>
-    /// A regex pattern to match entity type names in the format "Entity&lt;TypeName&gt;".
+    /// A regex pattern to match entity type names in the format "Entity&lt;TypeName&gt;" or "Entity(\"TypeName\")".
     /// </summary>
     /// <returns>A compiled <see cref="Regex"/> instance for matching entity type names.</returns>
-    [GeneratedRegex(@"Entity<(\w+)>")]
+    [GeneratedRegex("""Entity(?:<([^>]+)>|\("([^"]+)"(?:,\s*[^)]+)?\))""")]
     private static partial Regex EntityNameRegex();
 
     /// <summary>
-    /// A regex pattern to split a string by occurrences of ".Entity&lt;".
+    /// A regex pattern to split a string by occurrences of ".Entity&lt;" or ".Entity(".
     /// </summary>
-    /// <returns>A compiled <see cref="Regex"/> instance for splitting strings by ".Entity&lt;".</returns>
-    [GeneratedRegex(@"\.Entity<")]
+    /// <returns>A compiled <see cref="Regex"/> instance for splitting strings by ".Entity".</returns>
+    [GeneratedRegex(@"\.Entity(?=[<(])")]
     private static partial Regex EntitySplitRegex();
 
     /// <summary>
@@ -458,18 +1052,18 @@ public static partial class FluentApiConfigurationParser
     private static partial Regex ShadowRelationshipRegex();
 
     /// <summary>
-    /// A regex pattern to match property lambda expressions in the format "(e => e.PropertyName)".
+    /// A regex pattern to match property lambda expressions in the format "e => e.PropertyName".
     /// </summary>
     /// <returns>A compiled <see cref="Regex"/> instance for matching property lambda expressions.</returns>
-    [GeneratedRegex(@"^\s*\(\s*(\w+)\s*=>\s*\1\.(\w+)\s*\)")]
+    [GeneratedRegex(@"^\s*\(?\s*(\w+)\s*\)?\s*=>\s*\1\.(\w+)\s*$")]
     private static partial Regex PropertyLambdaRegex();
 
     /// <summary>
     /// A regex pattern to match fluent method calls in the format ".MethodName(arguments)".
-    /// Supports one level of nested parentheses.
+    /// Supports one level of nested parentheses and generic arguments.
     /// </summary>
     /// <returns>A compiled <see cref="Regex"/> instance for matching fluent method calls.</returns>
-    [GeneratedRegex(@"\.(\w+)\(([^()]*(?:\([^()]*\)[^()]*)*)\)")]
+    [GeneratedRegex(@"\.(\w+(?:<[^>]+>)?)\(([^()]*(?:\([^()]*\)[^()]*)*)\)")]
     private static partial Regex MethodCallRegex();
 
     /// <summary>
@@ -478,4 +1072,41 @@ public static partial class FluentApiConfigurationParser
     /// <returns>A compiled <see cref="Regex"/> instance for matching ToTable configurations.</returns>
     [GeneratedRegex("""\.ToTable\(\"([^\"]+)\"\)""")]
     private static partial Regex ToTableRegex();
+
+    /// <summary>
+    /// A regex pattern to match string literals enclosed in double quotes.
+    /// </summary>
+    /// <returns>A compiled <see cref="Regex"/> instance for matching quoted strings.</returns>
+    /// <remarks>
+    /// This pattern captures the content within double quotes, excluding the quotes themselves.
+    /// Example: In <c>"Hello World"</c>, it captures <c>Hello World</c>.
+    /// </remarks>
+    [GeneratedRegex("""
+                    "([^"]+)"
+                    """)]
+    private static partial Regex StringLiteralRegex();
+
+    /// <summary>
+    /// A regex pattern to match method names in a method chain, preceded by a dot.
+    /// </summary>
+    /// <returns>A compiled <see cref="Regex"/> instance for matching method names in chains.</returns>
+    /// <remarks>
+    /// This pattern matches a dot followed by optional whitespace and a word (method name).
+    /// Example: In <c>.HasMaxLength</c> or <c>. IsRequired</c>, it captures <c>HasMaxLength</c> and <c>IsRequired</c>.
+    /// Used to parse Fluent API method chains like <c>entity.Property(x => x.Name).HasMaxLength(100).IsRequired()</c>.
+    /// </remarks>
+    [GeneratedRegex(@"\.\s*(\w+)")]
+    private static partial Regex MethodChainRegex();
+
+    /// <summary>
+    /// A regex pattern to match numbers enclosed in parentheses.
+    /// </summary>
+    /// <returns>A compiled <see cref="Regex"/> instance for matching numbers in parentheses.</returns>
+    /// <remarks>
+    /// This pattern captures numeric values within parentheses.
+    /// Example: In <c>nvarchar(30)</c> or <c>decimal(18,2)</c>, it captures <c>30</c> from the first match.
+    /// Used to extract length specifications from column type definitions.
+    /// </remarks>
+    [GeneratedRegex(@"\((\d+)\)")]
+    private static partial Regex NumberInParensRegex();
 }

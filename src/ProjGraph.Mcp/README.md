@@ -29,29 +29,29 @@ Analyzes a solution or project file and returns the dependency graph as a Mermai
 
 ### `get_erd`
 
-Generates a Mermaid Entity Relationship Diagram from an EF Core DbContext file.
+Generates a Mermaid Entity Relationship Diagram from an EF Core `DbContext` or `ModelSnapshot` file.
 
 **Parameters:**
 
-- `path` (string): Absolute path to DbContext `.cs` file
-- `contextName` (string, optional): Specific DbContext class name if multiple exist
+- `path` (string): Absolute path to `.cs` file containing a `DbContext` or `ModelSnapshot`
+- `contextName` (string, optional): Specific class name if multiple exist in the file
 
 **Returns:** Mermaid ERD diagram code
 
 **Features:**
 
-- Detects entities, properties, and relationships
+- Detects entities, properties (including types), and relationships from source or migration snapshots
 - Shows primary keys, foreign keys, and constraints
 - Supports inheritance and base classes
-- Extracts MaxLength, Required, and other data annotations
-- Detects Fluent API shadow relationships
+- Extracts `MaxLength`, `Required`, and other data annotations
+- Detects Fluent API configurations and shadow relationships
 - Handles many-to-many with join tables
 
 **Example prompts:**
 
 ```text
 "Show me the database schema from ./Data/MyDbContext.cs"
-"Generate an ERD for my DbContext"
+"Generate an ERD from the migration snapshot in ./Migrations/MyDbContextModelSnapshot.cs"
 "What are the entity relationships in my database?"
 ```
 

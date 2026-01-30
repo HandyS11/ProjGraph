@@ -36,11 +36,18 @@ public static class MermaidErdRenderer
     /// <param name="sb">The StringBuilder to append the rendered output to.</param>
     private static void RenderEntities(EfModel model, StringBuilder sb)
     {
-        foreach (var entity in model.Entities)
+        var sortedEntities = model.Entities.OrderBy(e => e.Name);
+
+        foreach (var entity in sortedEntities)
         {
             sb.AppendLine($"    {entity.Name} {{");
 
-            foreach (var propertyLine in entity.Properties.Select(RenderProperty))
+            var orderedProperties = entity.Properties
+                .OrderByDescending(p => p.IsPrimaryKey)
+                .ThenByDescending(p => p is { IsPrimaryKey: false, IsForeignKey: true })
+                .ThenBy(p => p.Name);
+
+            foreach (var propertyLine in orderedProperties.Select(RenderProperty))
             {
                 sb.AppendLine($"        {propertyLine}");
             }
@@ -57,6 +64,11 @@ public static class MermaidErdRenderer
     private static string RenderProperty(EfProperty prop)
     {
         var sanitizedType = SanitizeTypeForMermaid(prop.Type);
+        if (string.IsNullOrWhiteSpace(sanitizedType))
+        {
+            sanitizedType = "unknown";
+        }
+
         var markers = BuildKeyMarkers(prop);
         var constraints = BuildConstraintComment(prop);
 
@@ -92,7 +104,12 @@ public static class MermaidErdRenderer
     /// <param name="sb">The StringBuilder to append the rendered output to.</param>
     private static void RenderRelationships(EfModel model, StringBuilder sb)
     {
-        foreach (var rel in model.Relationships)
+        var sortedRelationships = model.Relationships
+            .OrderBy(r => r.SourceEntity)
+            .ThenBy(r => r.TargetEntity)
+            .ThenBy(r => r.Type);
+
+        foreach (var rel in sortedRelationships)
         {
             var relSyntax = GetRelationshipSyntax(rel);
             var sourceEntity = rel.SourceEntity.Trim();
@@ -131,13 +148,6 @@ public static class MermaidErdRenderer
     private static string BuildConstraintComment(EfProperty prop)
     {
         var commentParts = new List<string>();
-
-        // Add original type if different from sanitized
-        var sanitizedType = SanitizeTypeForMermaid(prop.Type);
-        if (prop.Type != sanitizedType)
-        {
-            commentParts.Add(prop.Type);
-        }
 
         // Add constraints
         var constraints = new List<string>();
