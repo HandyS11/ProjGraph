@@ -136,13 +136,6 @@ public static class MermaidErdRenderer
     {
         var commentParts = new List<string>();
 
-        // Add original type if different from sanitized
-        var sanitizedType = SanitizeTypeForMermaid(prop.Type);
-        if (prop.Type != sanitizedType)
-        {
-            commentParts.Add(prop.Type);
-        }
-
         // Add constraints
         var constraints = new List<string>();
 
