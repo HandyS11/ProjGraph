@@ -40,7 +40,12 @@ public static class MermaidErdRenderer
         {
             sb.AppendLine($"    {entity.Name} {{");
 
-            foreach (var propertyLine in entity.Properties.Select(RenderProperty))
+            var orderedProperties = entity.Properties
+                .OrderByDescending(p => p.IsPrimaryKey)
+                .ThenByDescending(p => p is { IsPrimaryKey: false, IsForeignKey: true })
+                .ThenBy(p => p.Name);
+
+            foreach (var propertyLine in orderedProperties.Select(RenderProperty))
             {
                 sb.AppendLine($"        {propertyLine}");
             }
@@ -61,6 +66,7 @@ public static class MermaidErdRenderer
         {
             sanitizedType = "unknown";
         }
+
         var markers = BuildKeyMarkers(prop);
         var constraints = BuildConstraintComment(prop);
 
