@@ -1,4 +1,6 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Services.EfAnalysis.Extensions;
 using System.Text.RegularExpressions;
@@ -12,6 +14,23 @@ namespace ProjGraph.Lib.Services.EfAnalysis;
 /// </summary>
 public static partial class EntityAnalyzer
 {
+    // Attribute name constants
+    private const string PrimaryKeyAttribute = "PrimaryKeyAttribute";
+    private const string PrimaryKey = "PrimaryKey";
+    private const string KeyAttribute = "KeyAttribute";
+    private const string Key = "Key";
+    private const string RequiredAttribute = "RequiredAttribute";
+    private const string MaxLengthAttribute = "MaxLengthAttribute";
+    private const string StringLengthAttribute = "StringLengthAttribute";
+    private const string ColumnAttribute = "ColumnAttribute";
+
+    // Property name constants
+    private const string TypeName = "TypeName";
+    private const string Id = "Id";
+
+    // Method name constants
+    private const string Nameof = "nameof";
+
     /// <summary>
     /// Analyzes the specified entity type symbol and extracts its properties, primary keys, and constraints.
     /// </summary>
@@ -90,16 +109,8 @@ public static partial class EntityAnalyzer
 
         while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
         {
-            foreach (var arg in currentType.GetAttributes()
-                         .Where(attribute => attribute.AttributeClass?.Name == "PrimaryKeyAttribute")
-                         .SelectMany(attribute => attribute.ConstructorArguments))
-            {
-                if (arg.Value is string pkName)
-                {
-                    primaryKeyNames.Add(pkName);
-                }
-            }
-
+            ExtractPrimaryKeysFromSemanticModel(currentType, primaryKeyNames);
+            ExtractPrimaryKeysFromSyntax(currentType, primaryKeyNames);
             currentType = currentType.BaseType;
         }
 
@@ -107,11 +118,170 @@ public static partial class EntityAnalyzer
     }
 
     /// <summary>
+    /// Extracts primary key names from the semantic model of the specified type.
+    /// </summary>
+    /// <param name="type">The type symbol to analyze.</param>
+    /// <param name="primaryKeyNames">The set to populate with primary key names.</param>
+    private static void ExtractPrimaryKeysFromSemanticModel(INamedTypeSymbol type, HashSet<string> primaryKeyNames)
+    {
+        ExtractPrimaryKeysFromTypeAttributes(type, primaryKeyNames);
+        ExtractPrimaryKeysFromPropertyAttributes(type, primaryKeyNames);
+    }
+
+    /// <summary>
+    /// Extracts primary key names from type-level attributes.
+    /// </summary>
+    /// <param name="type">The type symbol to analyze.</param>
+    /// <param name="primaryKeyNames">The set to populate with primary key names.</param>
+    private static void ExtractPrimaryKeysFromTypeAttributes(INamedTypeSymbol type, HashSet<string> primaryKeyNames)
+    {
+        foreach (var attribute in type.GetAttributes())
+        {
+            var attrName = attribute.AttributeClass?.Name;
+            if (attrName is not (PrimaryKeyAttribute or PrimaryKey))
+            {
+                continue;
+            }
+
+            foreach (var arg in attribute.ConstructorArguments)
+            {
+                CollectNamesFromConstant(arg, primaryKeyNames);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extracts primary key names from property-level attributes.
+    /// </summary>
+    /// <param name="type">The type symbol to analyze.</param>
+    /// <param name="primaryKeyNames">The set to populate with primary key names.</param>
+    private static void ExtractPrimaryKeysFromPropertyAttributes(INamedTypeSymbol type, HashSet<string> primaryKeyNames)
+    {
+        foreach (var prop in type.GetMembers().OfType<IPropertySymbol>()
+                     .Where(p => p.GetAttributes().Any(a => a.AttributeClass?.Name is KeyAttribute or Key)))
+        {
+            primaryKeyNames.Add(prop.Name);
+        }
+    }
+
+    /// <summary>
+    /// Extracts primary key names from the syntax tree of the specified type.
+    /// </summary>
+    /// <param name="type">The type symbol to analyze.</param>
+    /// <param name="primaryKeyNames">The set to populate with primary key names.</param>
+    private static void ExtractPrimaryKeysFromSyntax(INamedTypeSymbol type, HashSet<string> primaryKeyNames)
+    {
+        foreach (var syntaxRef in type.DeclaringSyntaxReferences)
+        {
+            if (syntaxRef.GetSyntax() is not ClassDeclarationSyntax classSyntax)
+            {
+                continue;
+            }
+
+            ExtractPrimaryKeysFromClassAttributes(classSyntax, primaryKeyNames);
+            ExtractPrimaryKeysFromPropertySyntax(classSyntax, primaryKeyNames);
+        }
+    }
+
+    /// <summary>
+    /// Extracts primary key names from class-level attribute syntax.
+    /// </summary>
+    /// <param name="classSyntax">The class declaration syntax to analyze.</param>
+    /// <param name="primaryKeyNames">The set to populate with primary key names.</param>
+    private static void ExtractPrimaryKeysFromClassAttributes(ClassDeclarationSyntax classSyntax,
+        HashSet<string> primaryKeyNames)
+    {
+        foreach (var attr in classSyntax.AttributeLists.SelectMany(al => al.Attributes))
+        {
+            var name = attr.Name.ToString();
+            if (name is not (PrimaryKey or PrimaryKeyAttribute))
+            {
+                continue;
+            }
+
+            if (attr.ArgumentList is null)
+            {
+                continue;
+            }
+
+            foreach (var pkName in attr.ArgumentList.Arguments
+                         .Select(arg => ExtractNameFromExpression(arg.Expression)).OfType<string>())
+            {
+                primaryKeyNames.Add(pkName);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extracts primary key names from property syntax with Key attributes.
+    /// </summary>
+    /// <param name="classSyntax">The class declaration syntax to analyze.</param>
+    /// <param name="primaryKeyNames">The set to populate with primary key names.</param>
+    private static void ExtractPrimaryKeysFromPropertySyntax(ClassDeclarationSyntax classSyntax,
+        HashSet<string> primaryKeyNames)
+    {
+        foreach (var prop in classSyntax.Members.OfType<PropertyDeclarationSyntax>()
+                     .Where(p => p.AttributeLists.SelectMany(al => al.Attributes)
+                         .Any(a => a.Name.ToString() is Key or KeyAttribute)))
+        {
+            primaryKeyNames.Add(prop.Identifier.Text);
+        }
+    }
+
+
+    private static void CollectNamesFromConstant(TypedConstant constant, HashSet<string> names)
+    {
+        if (constant.Kind == TypedConstantKind.Array)
+        {
+            foreach (var value in constant.Values)
+            {
+                CollectNamesFromConstant(value, names);
+            }
+        }
+        else if (constant.Value is string name)
+        {
+            names.Add(name);
+        }
+    }
+
+    private static string? ExtractNameFromExpression(ExpressionSyntax expression)
+    {
+        switch (expression)
+        {
+            case InvocationExpressionSyntax
+            {
+                Expression: IdentifierNameSyntax { Identifier.Text: Nameof }
+            } invocation:
+                {
+                    var args = invocation.ArgumentList.Arguments;
+                    if (args.Count > 0)
+                    {
+                        var argExpr = args[0].Expression;
+                        switch (argExpr)
+                        {
+                            case MemberAccessExpressionSyntax ma:
+                                return ma.Name.Identifier.Text;
+                            case IdentifierNameSyntax id2:
+                                return id2.Identifier.Text;
+                        }
+                    }
+
+                    break;
+                }
+            case LiteralExpressionSyntax literal when
+                literal.IsKind(SyntaxKind.StringLiteralExpression):
+                return literal.Token.ValueText;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Creates an <see cref="EfProperty"/> instance for the specified property symbol, entity type, and current type.
     /// </summary>
     /// <param name="prop">The property symbol representing the property to analyze.</param>
     /// <param name="entityType">The entity type symbol to which the property belongs.</param>
-    /// <param name="currentType">The current type symbol being analyzed (may be a base type of the entity).</param>
+    /// <param name="currentType">The current type symbol being analyzed (maybe a base type of the entity).</param>
     /// <param name="primaryKeyNames">A set of explicitly defined primary key names for the entity.</param>
     /// <returns>
     /// An <see cref="EfProperty"/> object containing metadata about the property, including its name, type,
@@ -170,16 +340,16 @@ public static partial class EntityAnalyzer
         }
 
         // 2. Property named "Id" (EF Core convention)
-        if (propName.Equals("Id", StringComparison.OrdinalIgnoreCase))
+        if (propName.Equals(Id, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
         // 3. Property named "{EntityName}Id" pattern
-        if (propName.EndsWith("Id", StringComparison.OrdinalIgnoreCase))
+        if (propName.EndsWith(Id, StringComparison.OrdinalIgnoreCase))
         {
-            return propName.Equals($"{entityTypeName}Id", StringComparison.OrdinalIgnoreCase) ||
-                   propName.Equals($"{currentTypeName}Id", StringComparison.OrdinalIgnoreCase);
+            return propName.Equals($"{entityTypeName}{Id}", StringComparison.OrdinalIgnoreCase) ||
+                   propName.Equals($"{currentTypeName}{Id}", StringComparison.OrdinalIgnoreCase);
         }
 
         return false;
@@ -227,12 +397,12 @@ public static partial class EntityAnalyzer
 
         switch (attrName)
         {
-            case "RequiredAttribute":
+            case RequiredAttribute:
                 efProperty.IsRequired = true;
                 break;
 
-            case "MaxLengthAttribute":
-            case "StringLengthAttribute":
+            case MaxLengthAttribute:
+            case StringLengthAttribute:
                 if (attribute.ConstructorArguments.Length > 0 &&
                     attribute.ConstructorArguments[0].Value is int maxLength)
                 {
@@ -241,7 +411,7 @@ public static partial class EntityAnalyzer
 
                 break;
 
-            case "ColumnAttribute":
+            case ColumnAttribute:
                 ExtractColumnTypeNameConstraints(attribute, efProperty);
                 break;
         }
@@ -261,7 +431,7 @@ public static partial class EntityAnalyzer
     {
         foreach (var namedArg in attribute.NamedArguments)
         {
-            if (namedArg is not { Key: "TypeName", Value.Value: string typeName })
+            if (namedArg is not { Key: TypeName, Value.Value: string typeName })
             {
                 continue;
             }
