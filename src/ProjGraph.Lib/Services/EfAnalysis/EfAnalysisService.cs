@@ -129,7 +129,7 @@ public class EfAnalysisService : IEfAnalysisService
         var root = await snapshotSyntaxTree.GetRootAsync();
         var entityNamespaces = EntityFileDiscovery.ExtractEntityNamespaces(root);
         var entityTypeNames = ExtractEntityTypeNamesFromSnapshot(snapshotClass);
-        var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(snapshotDirectory, entityNamespaces);
+        var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(snapshotDirectory);
 
         var entityFiles = await EntityFileDiscovery.DiscoverEntityFilesAsync(
             searchDirectories,
@@ -301,7 +301,7 @@ public class EfAnalysisService : IEfAnalysisService
         var root = await contextSyntaxTree.GetRootAsync();
         var entityNamespaces = EntityFileDiscovery.ExtractEntityNamespaces(root);
         var entityTypeNames = EntityFileDiscovery.ExtractEntityTypeNames(contextClass);
-        var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(contextDirectory, entityNamespaces);
+        var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(contextDirectory);
 
         var entityFiles = await EntityFileDiscovery.DiscoverEntityFilesAsync(
             searchDirectories,

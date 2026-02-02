@@ -69,9 +69,9 @@ public static class EntityAnalyzer
     /// </returns>
     public static INamedTypeSymbol? FindEntitySymbol(EfEntity entity, Compilation compilation)
     {
-        return compilation.GlobalNamespace
-            .GetAllNamedTypes()
-            .FirstOrDefault(t => t.Name == entity.Name);
+        return compilation.GetSymbolsWithName(entity.Name, SymbolFilter.Type)
+            .OfType<INamedTypeSymbol>()
+            .FirstOrDefault();
     }
 
     /// <summary>

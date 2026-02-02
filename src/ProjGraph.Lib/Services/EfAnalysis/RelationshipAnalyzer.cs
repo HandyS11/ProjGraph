@@ -234,8 +234,10 @@ public static class RelationshipAnalyzer
             relationship.SourceEntity = targetEntity.Name;
             relationship.TargetEntity = sourceEntity.Name;
         }
-        else if (NavigationPropertyAnalyzer.HasInverseReference(prop, targetType))
+        else if (NavigationPropertyAnalyzer.HasInverseReference(prop, targetType) ||
+                 sourceEntity.Name == targetEntity.Name)
         {
+            // If it has an inverse reference OR it's a self-reference, treat as One-to-One
             relationship.Type = EfRelationshipType.OneToOne;
         }
         else

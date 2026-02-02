@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Services.EfAnalysis.Constants;
-using ProjGraph.Lib.Services.EfAnalysis.Extensions;
 using ProjGraph.Lib.Services.EfAnalysis.Patterns;
 using System.Text.RegularExpressions;
 
@@ -226,8 +225,9 @@ public static class FluentApiConfigurationParser
 
         if (!entities.TryGetValue(entityName, out var entity))
         {
-            var symbol = compilation.GlobalNamespace.GetAllNamedTypes()
-                .FirstOrDefault(t => t.Name == entityName);
+            var symbol = compilation.GetSymbolsWithName(entityName, SymbolFilter.Type)
+                .OfType<INamedTypeSymbol>()
+                .FirstOrDefault();
 
             entity = symbol != null
                 ? EntityAnalyzer.AnalyzeEntity(symbol)
@@ -403,8 +403,9 @@ public static class FluentApiConfigurationParser
         Compilation compilation)
     {
         // Find the source entity symbol using semantic analysis
-        var sourceSymbol = compilation.GlobalNamespace.GetAllNamedTypes()
-            .FirstOrDefault(t => t.Name == sourceEntityName);
+        var sourceSymbol = compilation.GetSymbolsWithName(sourceEntityName, SymbolFilter.Type)
+            .OfType<INamedTypeSymbol>()
+            .FirstOrDefault();
 
         // Look for a property with a matching name (case-insensitive)
         var navProperty = sourceSymbol?.GetMembers().OfType<IPropertySymbol>()
@@ -417,7 +418,7 @@ public static class FluentApiConfigurationParser
 
         // Check if this is a navigation property and extract the target type
         if (NavigationPropertyAnalyzer.IsNavigationProperty(navProperty, out var targetType, out _) &&
-            targetType != null && entities.ContainsKey(targetType.Name))
+            targetType is not null && entities.ContainsKey(targetType.Name))
         {
             return targetType.Name;
         }

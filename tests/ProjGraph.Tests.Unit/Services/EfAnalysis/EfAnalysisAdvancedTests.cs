@@ -485,4 +485,35 @@ public class EfAnalysisAdvancedTests
         model.Entities.Count(e => e.Name == "Group").Should().Be(1, "Group should appear only once");
         model.Entities.Count(e => e.Name == "User").Should().Be(1, "User should appear only once");
     }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_ShouldHandleSelfReferencingEntity()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               using System;
+                               namespace Test;
+                               public class AppDbContext : DbContext 
+                               { 
+                                   public DbSet<PermissionEntry> Permissions { get; set; }
+                               }
+                               public class PermissionEntry {
+                                   public Guid Id { get; set; }
+                                   public Guid? ParentPermissionId { get; set; }
+                                   public virtual PermissionEntry? ParentPermission { get; set; }
+                               }
+                               """;
+        var filePath = temp.CreateFile("SelfRef.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        var rel = model.Relationships.Should().ContainSingle().Which;
+        rel.SourceEntity.Should().Be("PermissionEntry");
+        rel.TargetEntity.Should().Be("PermissionEntry");
+        rel.Type.Should().Be(EfRelationshipType.OneToOne);
+    }
 }

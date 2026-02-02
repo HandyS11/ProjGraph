@@ -75,32 +75,10 @@ public static class NavigationPropertyAnalyzer
         var sourceTypeName = prop.ContainingType.Name;
         return targetType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Any(p => IsNavigationProperty(p, out var t, out var isColl) &&
+            .Any(p => !SymbolEqualityComparer.Default.Equals(p, prop) &&
+                      IsNavigationProperty(p, out var t, out var isColl) &&
                       isColl &&
                       t?.Name == sourceTypeName);
-    }
-
-    /// <summary>
-    /// Finds the name of the inverse collection navigation property in the target type for the specified property.
-    /// </summary>
-    /// <param name="prop">The <see cref="IPropertySymbol"/> representing the property to check.</param>
-    /// <param name="targetType">The <see cref="INamedTypeSymbol"/> representing the target type to search for an inverse collection.</param>
-    /// <returns>
-    /// The name of the inverse collection navigation property if found; otherwise, <c>null</c>.
-    /// </returns>
-    /// <remarks>
-    /// This method searches the members of the target type for a property that is a collection navigation property
-    /// and references the source type of the provided property. If such a property is found, its name is returned.
-    /// </remarks>
-    public static string? FindInverseCollectionName(IPropertySymbol prop, INamedTypeSymbol targetType)
-    {
-        var sourceTypeName = prop.ContainingType.Name;
-        return targetType.GetMembers()
-            .OfType<IPropertySymbol>()
-            .FirstOrDefault(p => IsNavigationProperty(p, out var t, out var isColl) &&
-                                 isColl &&
-                                 t?.Name == sourceTypeName)
-            ?.Name;
     }
 
     /// <summary>
@@ -120,7 +98,8 @@ public static class NavigationPropertyAnalyzer
         var sourceTypeName = prop.ContainingType.Name;
         return targetType.GetMembers()
             .OfType<IPropertySymbol>()
-            .Any(p => IsNavigationProperty(p, out var t, out var isColl) &&
+            .Any(p => !SymbolEqualityComparer.Default.Equals(p, prop) &&
+                      IsNavigationProperty(p, out var t, out var isColl) &&
                       !isColl &&
                       t?.Name == sourceTypeName);
     }

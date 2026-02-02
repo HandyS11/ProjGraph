@@ -58,11 +58,20 @@ public static class WorkspaceTypeDiscovery
     /// </returns>
     private static async Task<string?> SearchDirectoryForTypeAsync(string directory, string typeName)
     {
-        var files = Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories);
-        foreach (var file in files)
+        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
+
+        foreach (var file in Directory.EnumerateFiles(directory, "*.cs", options))
         {
+            var fullPath = Path.GetFullPath(file);
+            // Skip common non-source directories
+            var pathSegments = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (pathSegments.Any(s => s is "bin" or "obj" or ".git" or "node_modules"))
+            {
+                continue;
+            }
+
             // Simple string check first for performance
-            var content = await File.ReadAllTextAsync(file);
+            var content = await File.ReadAllTextAsync(fullPath);
             if (!content.Contains($"class {typeName}") &&
                 !content.Contains($"interface {typeName}") &&
                 !content.Contains($"struct {typeName}") &&
@@ -81,7 +90,7 @@ public static class WorkspaceTypeDiscovery
 
             if (hasType)
             {
-                return file;
+                return fullPath;
             }
         }
 
