@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using ProjGraph.Lib.Services.EfAnalysis.Constants;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
 
@@ -141,7 +142,7 @@ public static class EntityFileDiscovery
         {
             if (member.Type is not GenericNameSyntax
                 {
-                    Identifier.Text: "DbSet", TypeArgumentList.Arguments.Count: 1
+                    Identifier.Text: EfAnalysisConstants.CommonNames.DbSet, TypeArgumentList.Arguments.Count: 1
                 } genericType)
             {
                 continue;
@@ -205,7 +206,8 @@ public static class EntityFileDiscovery
     {
         try
         {
-            foreach (var csFile in Directory.GetFiles(searchDir, "*.cs", SearchOption.AllDirectories))
+            foreach (var csFile in Directory.GetFiles(searchDir, EfAnalysisConstants.FilePatterns.CSharpFiles,
+                         SearchOption.AllDirectories))
             {
                 if (Path.GetFullPath(csFile).Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
                 {

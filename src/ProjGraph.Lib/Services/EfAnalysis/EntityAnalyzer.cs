@@ -2,8 +2,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Services.EfAnalysis.Constants;
 using ProjGraph.Lib.Services.EfAnalysis.Extensions;
-using System.Text.RegularExpressions;
+using ProjGraph.Lib.Services.EfAnalysis.Patterns;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
 
@@ -12,25 +13,8 @@ namespace ProjGraph.Lib.Services.EfAnalysis;
 /// primary keys, and constraints. This class is implemented as a partial class to allow for 
 /// extension in other files.
 /// </summary>
-public static partial class EntityAnalyzer
+public static class EntityAnalyzer
 {
-    // Attribute name constants
-    private const string PrimaryKeyAttribute = "PrimaryKeyAttribute";
-    private const string PrimaryKey = "PrimaryKey";
-    private const string KeyAttribute = "KeyAttribute";
-    private const string Key = "Key";
-    private const string RequiredAttribute = "RequiredAttribute";
-    private const string MaxLengthAttribute = "MaxLengthAttribute";
-    private const string StringLengthAttribute = "StringLengthAttribute";
-    private const string ColumnAttribute = "ColumnAttribute";
-
-    // Property name constants
-    private const string TypeName = "TypeName";
-    private const string Id = "Id";
-
-    // Method name constants
-    private const string Nameof = "nameof";
-
     /// <summary>
     /// Analyzes the specified entity type symbol and extracts its properties, primary keys, and constraints.
     /// </summary>
@@ -50,7 +34,7 @@ public static partial class EntityAnalyzer
         var primaryKeyNames = ExtractPrimaryKeyNames(type);
 
         var currentType = type;
-        while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
+        while (currentType is not null && currentType.SpecialType is not SpecialType.System_Object)
         {
             foreach (var prop in currentType.GetMembers().OfType<IPropertySymbol>())
             {
@@ -107,7 +91,7 @@ public static partial class EntityAnalyzer
         var primaryKeyNames = new HashSet<string>();
         var currentType = type;
 
-        while (currentType != null && currentType.SpecialType != SpecialType.System_Object)
+        while (currentType is not null && currentType.SpecialType is not SpecialType.System_Object)
         {
             ExtractPrimaryKeysFromSemanticModel(currentType, primaryKeyNames);
             ExtractPrimaryKeysFromSyntax(currentType, primaryKeyNames);
@@ -138,7 +122,8 @@ public static partial class EntityAnalyzer
         foreach (var attribute in type.GetAttributes())
         {
             var attrName = attribute.AttributeClass?.Name;
-            if (attrName is not (PrimaryKeyAttribute or PrimaryKey))
+            if (attrName is not (EfAnalysisConstants.EfAttributes.PrimaryKeyAttribute
+                or EfAnalysisConstants.EfAttributes.PrimaryKey))
             {
                 continue;
             }
@@ -158,7 +143,9 @@ public static partial class EntityAnalyzer
     private static void ExtractPrimaryKeysFromPropertyAttributes(INamedTypeSymbol type, HashSet<string> primaryKeyNames)
     {
         foreach (var prop in type.GetMembers().OfType<IPropertySymbol>()
-                     .Where(p => p.GetAttributes().Any(a => a.AttributeClass?.Name is KeyAttribute or Key)))
+                     .Where(p => p.GetAttributes().Any(a =>
+                         a.AttributeClass?.Name is EfAnalysisConstants.EfAttributes.KeyAttribute
+                             or EfAnalysisConstants.EfAttributes.Key)))
         {
             primaryKeyNames.Add(prop.Name);
         }
@@ -194,7 +181,8 @@ public static partial class EntityAnalyzer
         foreach (var attr in classSyntax.AttributeLists.SelectMany(al => al.Attributes))
         {
             var name = attr.Name.ToString();
-            if (name is not (PrimaryKey or PrimaryKeyAttribute))
+            if (name is not (EfAnalysisConstants.EfAttributes.PrimaryKey
+                or EfAnalysisConstants.EfAttributes.PrimaryKeyAttribute))
             {
                 continue;
             }
@@ -222,7 +210,8 @@ public static partial class EntityAnalyzer
     {
         foreach (var prop in classSyntax.Members.OfType<PropertyDeclarationSyntax>()
                      .Where(p => p.AttributeLists.SelectMany(al => al.Attributes)
-                         .Any(a => a.Name.ToString() is Key or KeyAttribute)))
+                         .Any(a => a.Name.ToString() is EfAnalysisConstants.EfAttributes.Key
+                             or EfAnalysisConstants.EfAttributes.KeyAttribute)))
         {
             primaryKeyNames.Add(prop.Identifier.Text);
         }
@@ -231,7 +220,7 @@ public static partial class EntityAnalyzer
 
     private static void CollectNamesFromConstant(TypedConstant constant, HashSet<string> names)
     {
-        if (constant.Kind == TypedConstantKind.Array)
+        if (constant.Kind is TypedConstantKind.Array)
         {
             foreach (var value in constant.Values)
             {
@@ -250,7 +239,7 @@ public static partial class EntityAnalyzer
         {
             case InvocationExpressionSyntax
             {
-                Expression: IdentifierNameSyntax { Identifier.Text: Nameof }
+                Expression: IdentifierNameSyntax { Identifier.Text: EfAnalysisConstants.CommonNames.Nameof }
             } invocation:
                 {
                     var args = invocation.ArgumentList.Arguments;
@@ -340,16 +329,18 @@ public static partial class EntityAnalyzer
         }
 
         // 2. Property named "Id" (EF Core convention)
-        if (propName.Equals(Id, StringComparison.OrdinalIgnoreCase))
+        if (propName.Equals(EfAnalysisConstants.CommonNames.Id, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
         // 3. Property named "{EntityName}Id" pattern
-        if (propName.EndsWith(Id, StringComparison.OrdinalIgnoreCase))
+        if (propName.EndsWith(EfAnalysisConstants.CommonNames.Id, StringComparison.OrdinalIgnoreCase))
         {
-            return propName.Equals($"{entityTypeName}{Id}", StringComparison.OrdinalIgnoreCase) ||
-                   propName.Equals($"{currentTypeName}{Id}", StringComparison.OrdinalIgnoreCase);
+            return propName.Equals($"{entityTypeName}{EfAnalysisConstants.CommonNames.Id}",
+                       StringComparison.OrdinalIgnoreCase) ||
+                   propName.Equals($"{currentTypeName}{EfAnalysisConstants.CommonNames.Id}",
+                       StringComparison.OrdinalIgnoreCase);
         }
 
         return false;
@@ -397,12 +388,17 @@ public static partial class EntityAnalyzer
 
         switch (attrName)
         {
-            case RequiredAttribute:
+            case EfAnalysisConstants.EfAttributes.KeyAttribute:
+            case EfAnalysisConstants.EfAttributes.Key:
+                efProperty.IsPrimaryKey = true;
+                break;
+
+            case EfAnalysisConstants.EfAttributes.RequiredAttribute:
                 efProperty.IsRequired = true;
                 break;
 
-            case MaxLengthAttribute:
-            case StringLengthAttribute:
+            case EfAnalysisConstants.EfAttributes.MaxLengthAttribute:
+            case EfAnalysisConstants.EfAttributes.StringLengthAttribute:
                 if (attribute.ConstructorArguments.Length > 0 &&
                     attribute.ConstructorArguments[0].Value is int maxLength)
                 {
@@ -411,7 +407,7 @@ public static partial class EntityAnalyzer
 
                 break;
 
-            case ColumnAttribute:
+            case EfAnalysisConstants.EfAttributes.ColumnAttribute:
                 ExtractColumnTypeNameConstraints(attribute, efProperty);
                 break;
         }
@@ -431,12 +427,12 @@ public static partial class EntityAnalyzer
     {
         foreach (var namedArg in attribute.NamedArguments)
         {
-            if (namedArg is not { Key: TypeName, Value.Value: string typeName })
+            if (namedArg is not { Key: EfAnalysisConstants.CommonNames.TypeName, Value.Value: string typeName })
             {
                 continue;
             }
 
-            var match = DecimalPrecisionRegex().Match(typeName);
+            var match = EfAnalysisRegexPatterns.DecimalPrecisionRegex().Match(typeName);
             if (!match.Success)
             {
                 continue;
@@ -446,22 +442,4 @@ public static partial class EntityAnalyzer
             efProperty.Scale = int.Parse(match.Groups[2].Value);
         }
     }
-
-    /// <summary>
-    /// Defines a regular expression to match a decimal type with precision and scale in the format "decimal(precision, scale)".
-    /// </summary>
-    /// <remarks>
-    /// The regular expression captures two groups:
-    /// <list type="bullet">
-    /// <item>
-    /// <description>The first group captures the precision (number of total digits).</description>
-    /// </item>
-    /// <item>
-    /// <description>The second group captures the scale (number of digits after the decimal point).</description>
-    /// </item>
-    /// </list>
-    /// </remarks>
-    /// <returns>A <see cref="Regex"/> object that matches the specified decimal format.</returns>
-    [GeneratedRegex(@"decimal\((\d+),\s*(\d+)\)")]
-    private static partial Regex DecimalPrecisionRegex();
 }

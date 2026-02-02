@@ -3,14 +3,15 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Interfaces;
-using System.Text.RegularExpressions;
+using ProjGraph.Lib.Services.EfAnalysis.Constants;
+using ProjGraph.Lib.Services.EfAnalysis.Patterns;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
 
 /// <summary>
 /// Service for analyzing Entity Framework DbContext classes and their models.
 /// </summary>
-public partial class EfAnalysisService : IEfAnalysisService
+public class EfAnalysisService : IEfAnalysisService
 {
     /// <summary>
     /// Discovers all DbContext classes within a specified C# file and returns their names as a list of strings.
@@ -156,7 +157,7 @@ public partial class EfAnalysisService : IEfAnalysisService
     {
         var entityTypeNames = new HashSet<string>();
         var buildModelMethod = snapshotClass.Members.OfType<MethodDeclarationSyntax>()
-            .FirstOrDefault(m => m.Identifier.Text == "BuildModel");
+            .FirstOrDefault(m => m.Identifier.Text == EfAnalysisConstants.EfMethods.BuildModel);
 
         if (buildModelMethod?.Body == null)
         {
@@ -166,7 +167,7 @@ public partial class EfAnalysisService : IEfAnalysisService
         var methodText = buildModelMethod.ToString();
 
         // Match .Entity<T> or .Entity("Namespace.T")
-        var entityMatches = EntityMatchRegex().Matches(methodText);
+        var entityMatches = EfAnalysisRegexPatterns.EntityMatchRegex().Matches(methodText);
 
         var shortNames = entityMatches
             .Select(match => match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value)
@@ -192,9 +193,10 @@ public partial class EfAnalysisService : IEfAnalysisService
     /// </remarks>
     private static void ValidateCsFilePath(string path)
     {
-        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+        if (!path.EndsWith(EfAnalysisConstants.FilePatterns.CSharpExtension, StringComparison.OrdinalIgnoreCase))
         {
-            throw new ArgumentException("Only .cs files are supported", nameof(path));
+            throw new ArgumentException($"Only {EfAnalysisConstants.FilePatterns.CSharpExtension} files are supported",
+                nameof(path));
         }
     }
 
@@ -431,8 +433,11 @@ public partial class EfAnalysisService : IEfAnalysisService
             .Select(g =>
             {
                 // If only one, return it
-                if (g.Count() == 1) return g.First();
-                
+                if (g.Count() == 1)
+                {
+                    return g.First();
+                }
+
                 // If multiple with same source, target, and label, prefer OneToMany over OneToOne
                 // for self-referencing (parent-child hierarchies)
                 var oneToMany = g.FirstOrDefault(r => r.Type == EfRelationshipType.OneToMany);
@@ -455,11 +460,13 @@ public partial class EfAnalysisService : IEfAnalysisService
             var entitiesSorted = new[] { relationship.SourceEntity, relationship.TargetEntity }
                 .OrderBy(e => e)
                 .ToArray();
-            return $"{entitiesSorted[0]}-{entitiesSorted[1]}-{relationship.Type}";
+            return
+                $"{entitiesSorted[0]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{entitiesSorted[1]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.Type}";
         }
 
         // For OneToMany, direction matters
-        return $"{relationship.SourceEntity}-{relationship.TargetEntity}-{relationship.Type}";
+        return
+            $"{relationship.SourceEntity}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.TargetEntity}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.Type}";
     }
 
     /// <summary>
@@ -478,7 +485,10 @@ public partial class EfAnalysisService : IEfAnalysisService
 
         foreach (var member in contextType.GetMembers().OfType<IPropertySymbol>())
         {
-            if (member.Type is not INamedTypeSymbol { Name: "DbSet", TypeArguments.Length: 1 } dbSetType)
+            if (member.Type is not INamedTypeSymbol
+                {
+                    Name: EfAnalysisConstants.CommonNames.DbSet, TypeArguments.Length: 1
+                } dbSetType)
             {
                 continue;
             }
@@ -492,7 +502,4 @@ public partial class EfAnalysisService : IEfAnalysisService
 
         return entities;
     }
-
-    [GeneratedRegex("""\.Entity\s*(?:<([^>]+)>|\(\s*"([^"]+)"\s*)""")]
-    private static partial Regex EntityMatchRegex();
 }

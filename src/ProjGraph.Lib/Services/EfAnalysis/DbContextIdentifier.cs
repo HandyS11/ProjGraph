@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using ProjGraph.Lib.Services.EfAnalysis.Constants;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
 
@@ -16,7 +17,8 @@ public static class DbContextIdentifier
     /// </returns>
     public static bool IsDbContext(ClassDeclarationSyntax @class)
     {
-        return @class.BaseList?.Types.Any(t => t.ToString().Contains("DbContext")) ?? false;
+        return @class.BaseList?.Types.Any(t => t.ToString().Contains(EfAnalysisConstants.CommonNames.DbContext)) ??
+               false;
     }
 
     /// <summary>
@@ -28,7 +30,8 @@ public static class DbContextIdentifier
     /// </returns>
     public static bool IsModelSnapshot(ClassDeclarationSyntax @class)
     {
-        return @class.BaseList?.Types.Any(t => t.ToString().Contains("ModelSnapshot")) ?? false;
+        return @class.BaseList?.Types.Any(t => t.ToString().Contains(EfAnalysisConstants.CommonNames.ModelSnapshot)) ??
+               false;
     }
 
     /// <summary>

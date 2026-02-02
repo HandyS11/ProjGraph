@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Services.EfAnalysis.Constants;
 using ProjGraph.Lib.Services.EfAnalysis.Extensions;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
@@ -47,7 +48,7 @@ public static class RelationshipAnalyzer
         }
 
         ConvertManyToManyToJoinTables(model);
-        
+
         // Remove direct relationships when join tables exist
         RemoveDirectRelationshipsWithJoinTables(model);
     }
@@ -147,7 +148,8 @@ public static class RelationshipAnalyzer
     {
         var potentialNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            $"{navigationName}Id", $"{targetEntityName}Id"
+            $"{navigationName}{EfAnalysisConstants.Suffixes.IdSuffix}",
+            $"{targetEntityName}{EfAnalysisConstants.Suffixes.IdSuffix}"
         };
 
         foreach (var prop in entity.Properties.Where(prop => potentialNames.Contains(prop.Name)))
@@ -263,11 +265,12 @@ public static class RelationshipAnalyzer
             var entitiesSorted = new[] { relationship.SourceEntity, relationship.TargetEntity }
                 .OrderBy(e => e)
                 .ToArray();
-            return $"{entitiesSorted[0]}-{entitiesSorted[1]}-{relationship.Type}";
+            return
+                $"{entitiesSorted[0]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{entitiesSorted[1]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.Type}";
         }
 
-        // For OneToMany, direction matters
-        return $"{relationship.SourceEntity}-{relationship.TargetEntity}-{relationship.Type}";
+        return
+            $"{relationship.SourceEntity}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.TargetEntity}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.Type}";
     }
 
     /// <summary>
@@ -309,13 +312,13 @@ public static class RelationshipAnalyzer
 
     private static string GetPrimaryKeyType(EfEntity? entity)
     {
-        if (entity == null)
+        if (entity is null)
         {
-            return "int";
+            return EfAnalysisConstants.DataTypes.Int;
         }
 
         var pk = entity.Properties.FirstOrDefault(p => p.IsPrimaryKey);
-        return pk?.Type ?? "int";
+        return pk?.Type ?? EfAnalysisConstants.DataTypes.Int;
     }
 
     /// <summary>
@@ -343,11 +346,17 @@ public static class RelationshipAnalyzer
             [
                 new EfProperty
                 {
-                    Name = $"{m2m.SourceEntity}Id", Type = sourcePkType, IsPrimaryKey = true, IsForeignKey = true
+                    Name = $"{m2m.SourceEntity}{EfAnalysisConstants.Suffixes.IdSuffix}",
+                    Type = sourcePkType,
+                    IsPrimaryKey = true,
+                    IsForeignKey = true
                 },
                 new EfProperty
                 {
-                    Name = $"{m2m.TargetEntity}Id", Type = targetPkType, IsPrimaryKey = true, IsForeignKey = true
+                    Name = $"{m2m.TargetEntity}{EfAnalysisConstants.Suffixes.IdSuffix}",
+                    Type = targetPkType,
+                    IsPrimaryKey = true,
+                    IsForeignKey = true
                 }
             ]
         };
@@ -385,70 +394,64 @@ public static class RelationshipAnalyzer
     }
 
     /// <summary>
-    /// Removes direct relationships between entities when a join table exists for that relationship.
-    /// For example, if Group has Permissions navigation but GroupPermissionEntry join table exists,
-    /// remove the direct Group->PermissionEntry relationship.
+    /// Removes direct relationships between entities that are already connected through join tables.
     /// </summary>
+    /// <param name="model">The <see cref="EfModel"/> representing the entity framework model.</param>
+    /// <remarks>
+    /// This method identifies join tables in the model, determines the entities they connect, and removes any direct relationships
+    /// between those entities. A join table is identified as an entity with exactly two foreign key properties, which are also primary keys.
+    /// </remarks>
     private static void RemoveDirectRelationshipsWithJoinTables(EfModel model)
     {
         var joinTables = model.Entities.Where(e => e.IsJoinEntity || IsJoinTable(e)).ToList();
-        var relationshipsToRemove = new List<EfRelationship>();
 
-        foreach (var joinTable in joinTables)
-        {
-            // Get the two FK properties of the join table
-            var fkProperties = joinTable.Properties.Where(p => p.IsForeignKey).ToList();
-            if (fkProperties.Count != 2)
-            {
-                continue;
-            }
-
-            // Extract entity names from FK property names (e.g., "GroupId" -> "Group")
-            var entityNames = fkProperties
-                .Select(fk => fk.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase) 
-                    ? fk.Name.Substring(0, fk.Name.Length - 2)
-                    : null)
+        var relationshipsToRemove = joinTables
+            .Select(joinTable => joinTable.Properties.Where(p => p.IsForeignKey).ToList())
+            .Where(fkProperties => fkProperties.Count == 2)
+            .Select(fkProperties => fkProperties
+                .Select(fk =>
+                    fk.Name.EndsWith(EfAnalysisConstants.Suffixes.IdSuffix, StringComparison.OrdinalIgnoreCase)
+                        ? fk.Name[..^2]
+                        : null)
                 .Where(name => name != null)
-                .ToList();
-
-            if (entityNames.Count != 2)
+                .ToList())
+            .Where(entityNames => entityNames.Count == 2)
+            .Select(entityNames =>
             {
-                continue;
-            }
-
-            var entity1 = entityNames[0]!;
-            var entity2 = entityNames[1]!;
-
-            // Find and mark for removal any direct relationships between these entities
-            var directRelationships = model.Relationships
-                .Where(r => 
+                var entity1 = entityNames[0]!;
+                var entity2 = entityNames[1]!;
+                return model.Relationships.Where(r =>
                     (r.SourceEntity == entity1 && r.TargetEntity == entity2) ||
-                    (r.SourceEntity == entity2 && r.TargetEntity == entity1))
-                .ToList();
-
-            relationshipsToRemove.AddRange(directRelationships);
-        }
+                    (r.SourceEntity == entity2 && r.TargetEntity == entity1));
+            })
+            .SelectMany(relationships => relationships)
+            .Distinct()
+            .ToList();
 
         // Remove the direct relationships
-        foreach (var rel in relationshipsToRemove.Distinct())
+        foreach (var rel in relationshipsToRemove)
         {
             model.Relationships.Remove(rel);
         }
     }
 
     /// <summary>
-    /// Determines if an entity is a join table based on naming convention and structure.
-    /// A join table typically has exactly 2 FK properties that are also PKs.
+    /// Determines if the given entity is a join table.
     /// </summary>
+    /// <param name="entity">The <see cref="EfEntity"/> to evaluate.</param>
+    /// <returns>
+    /// A boolean value indicating whether the entity is a join table.
+    /// A join table is defined as an entity that has exactly two foreign key properties,
+    /// which are also primary keys.
+    /// </returns>
     private static bool IsJoinTable(EfEntity entity)
     {
         var fkProperties = entity.Properties.Where(p => p.IsForeignKey).ToList();
         var pkProperties = entity.Properties.Where(p => p.IsPrimaryKey).ToList();
 
         // A join table should have exactly 2 FKs that are also PKs
-        return fkProperties.Count == 2 && 
+        return fkProperties.Count == 2 &&
                pkProperties.Count == 2 &&
                fkProperties.All(fk => fk.IsPrimaryKey);
     }
 }
-
