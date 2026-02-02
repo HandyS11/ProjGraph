@@ -136,4 +136,42 @@ public class EfAnalysisServiceSnapshotTests
         rel.TargetEntity.Should().Be("Post");
         rel.Type.Should().Be(EfRelationshipType.OneToMany);
     }
+
+    [Fact]
+    public async Task AnalyzeSnapshotAsync_WithCompositeKey_ShouldNotIncludeCommaAsProperty()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               using Microsoft.EntityFrameworkCore.Infrastructure;
+                               using Microsoft.EntityFrameworkCore.Metadata;
+
+                               [DbContext(typeof(TestDbContext))]
+                               partial class TestDbContextModelSnapshot : ModelSnapshot
+                               {
+                                   protected override void BuildModel(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity("Test.OrderItem", b =>
+                                       {
+                                           b.Property<int>("OrderId");
+                                           b.Property<int>("ProductId");
+                                           b.HasKey("OrderId", "ProductId");
+                                           b.ToTable("OrderItems");
+                                       });
+                                   }
+                               }
+                               """;
+        var filePath = temp.CreateFile("Snapshot.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeSnapshotAsync(filePath, "TestDbContextModelSnapshot");
+
+        // Assert
+        var entity = model.Entities.Should().ContainSingle(e => e.Name == "OrderItem").Which;
+        entity.Properties.Should().HaveCount(2);
+        entity.Properties.Should().Contain(p => p.Name == "OrderId");
+        entity.Properties.Should().Contain(p => p.Name == "ProductId");
+        entity.Properties.Should().NotContain(p => p.Name.Contains(','));
+    }
 }

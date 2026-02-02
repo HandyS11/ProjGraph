@@ -40,7 +40,6 @@ Represents a link between two entities.
 - `TargetEntity`: String
 - `Type`: Enum (`OneToOne`, `OneToMany`, `ManyToMany`)
 - `IsRequired`: Boolean
-- `Label`: String (usually the navigation property name)
 
 ## State Transitions
 

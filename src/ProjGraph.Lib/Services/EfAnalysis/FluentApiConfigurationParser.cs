@@ -347,7 +347,7 @@ public static class FluentApiConfigurationParser
         Dictionary<string, EfEntity> entities,
         Compilation compilation)
     {
-        var (targetEntityName, label) = ExtractTargetInfo(args);
+        var targetEntityName = ExtractTargetName(args);
 
         if (string.IsNullOrEmpty(targetEntityName))
         {
@@ -358,9 +358,6 @@ public static class FluentApiConfigurationParser
         // If we got a navigation property name, try to resolve it to an entity type
         if (!string.IsNullOrEmpty(targetEntityName) && !entities.ContainsKey(targetEntityName))
         {
-            // Save the navigation property name to use as label
-            var navigationPropertyName = targetEntityName;
-
             // Try to find the entity by checking if any entity has a property with a type matching this name
             // This handles cases like HasMany(a => a.Options) where Options is List<ActivityOption>
             var resolvedName =
@@ -368,11 +365,6 @@ public static class FluentApiConfigurationParser
             if (resolvedName is not null)
             {
                 targetEntityName = resolvedName;
-                // If no explicit label was provided, use the navigation property name
-                if (string.IsNullOrEmpty(label))
-                {
-                    label = navigationPropertyName;
-                }
             }
         }
 
@@ -381,36 +373,14 @@ public static class FluentApiConfigurationParser
             return null;
         }
 
-        var (method, arg) = FindWithMethodInfo(matches, startIndex);
+        var method = FindWithMethodInfo(matches, startIndex);
         if (method is null)
         {
             return null;
         }
 
         var isRequired = IsRelationshipRequired(matches, startIndex);
-        var rel = CreateShadowRelationship(entityName, targetEntityName, methodName, method, isRequired);
-
-        SetRelationshipLabel(rel, label, arg);
-        return rel;
-    }
-
-    /// <summary>
-    /// Sets the relationship label from available sources.
-    /// </summary>
-    private static void SetRelationshipLabel(EfRelationship relationship, string? label, string? withMethodArg)
-    {
-        if (label is not null)
-        {
-            relationship.Label = label;
-        }
-        else if (withMethodArg is not null)
-        {
-            var inverseLabel = ExtractFirstStringArg(withMethodArg);
-            if (inverseLabel is not null)
-            {
-                relationship.Label = inverseLabel;
-            }
-        }
+        return CreateShadowRelationship(entityName, targetEntityName, methodName, method, isRequired);
     }
 
     /// <summary>
@@ -561,9 +531,9 @@ public static class FluentApiConfigurationParser
     }
 
     /// <summary>
-    /// Extracts target information (entity name and optional label) from method arguments.
+    /// Extracts the target entity name from method arguments.
     /// </summary>
-    private static (string? Name, string? Label) ExtractTargetInfo(string args)
+    private static string? ExtractTargetName(string args)
     {
         // First try string literals (common in ModelSnapshots)
         var stringMatches = EfAnalysisRegexPatterns.StringLiteralRegex().Matches(args);
@@ -575,30 +545,28 @@ public static class FluentApiConfigurationParser
                 name = name.Split('.')[^1];
             }
 
-            var label = stringMatches.Count > 1 ? stringMatches[1].Groups[1].Value : null;
-            return (name, label);
+            return name;
         }
 
         // Try lambda expression: e => e.NavigationProperty (common in DbContext fluent API)
         if (!args.Contains("=>"))
         {
-            return (null, null);
+            return null;
         }
 
         var lambdaMatch = EfAnalysisRegexPatterns.PropertyLambdaRegex().Match(args);
         if (!lambdaMatch.Success)
         {
-            return (null, null);
+            return null;
         }
 
-        var propertyName = lambdaMatch.Groups[2].Value;
-        return (propertyName, null);
+        return lambdaMatch.Groups[2].Value;
     }
 
     /// <summary>
     /// Finds the corresponding WithOne or WithMany method call following a HasOne or HasMany call.
     /// </summary>
-    private static (string? Method, string? Arg) FindWithMethodInfo(MatchCollection matches, int startIndex)
+    private static string? FindWithMethodInfo(MatchCollection matches, int startIndex)
     {
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
@@ -606,17 +574,11 @@ public static class FluentApiConfigurationParser
             if (nextMethod.StartsWith(EfAnalysisConstants.EfMethods.WithOne) ||
                 nextMethod.StartsWith(EfAnalysisConstants.EfMethods.WithMany))
             {
-                return (nextMethod, matches[j].Groups[2].Value);
+                return nextMethod;
             }
         }
 
-        return (null, null);
-    }
-
-    private static string? ExtractFirstStringArg(string args)
-    {
-        var match = EfAnalysisRegexPatterns.StringLiteralRegex().Match(args);
-        return match.Success ? match.Groups[1].Value : null;
+        return null;
     }
 
     private static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
@@ -629,7 +591,6 @@ public static class FluentApiConfigurationParser
                 SourceEntity = targetEntity,
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
-                Label = "",
                 IsRequired = true // OneToMany defaults to required
             },
             (EfAnalysisConstants.EfMethods.HasMany, EfAnalysisConstants.EfMethods.WithOne) => new EfRelationship
@@ -637,7 +598,6 @@ public static class FluentApiConfigurationParser
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToMany,
-                Label = "",
                 IsRequired = true // OneToMany defaults to required
             },
             (EfAnalysisConstants.EfMethods.HasOne, EfAnalysisConstants.EfMethods.WithOne) => new EfRelationship
@@ -645,7 +605,6 @@ public static class FluentApiConfigurationParser
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToOne,
-                Label = "",
                 IsRequired = isRequired
             },
             (EfAnalysisConstants.EfMethods.HasMany, EfAnalysisConstants.EfMethods.WithMany) => new EfRelationship
@@ -653,7 +612,6 @@ public static class FluentApiConfigurationParser
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.ManyToMany,
-                Label = "",
                 IsRequired = isRequired
             },
             _ => new EfRelationship
@@ -661,7 +619,6 @@ public static class FluentApiConfigurationParser
                 SourceEntity = targetEntity,
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
-                Label = "",
                 IsRequired = true // OneToMany defaults to required
             }
         };

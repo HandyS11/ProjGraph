@@ -122,11 +122,6 @@ public class EfRelationship
     /// Gets or sets a value indicating whether the relationship is required.
     /// </summary>
     public bool IsRequired { get; set; }
-
-    /// <summary>
-    /// Gets or sets the label associated with the relationship.
-    /// </summary>
-    public string Label { get; set; } = string.Empty;
 }
 
 /// <summary>

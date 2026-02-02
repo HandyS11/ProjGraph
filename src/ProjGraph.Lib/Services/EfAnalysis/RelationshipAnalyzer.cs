@@ -120,7 +120,7 @@ public static class RelationshipAnalyzer
     /// </returns>
     /// <remarks>
     /// This method initializes a new <see cref="EfRelationship"/> object with default values, such as the source entity name,
-    /// target entity name, relationship type, and label. It also determines the specific type of the relationship
+    /// target entity name and relationship type. It also determines the specific type of the relationship
     /// (e.g., One-to-One, One-to-Many, Many-to-Many) by delegating to the <see cref="DetermineRelationshipType"/> method.
     /// </remarks>
     private static EfRelationship CreateRelationship(
@@ -135,7 +135,6 @@ public static class RelationshipAnalyzer
             SourceEntity = sourceEntity.Name,
             TargetEntity = targetEntity.Name,
             Type = EfRelationshipType.OneToOne,
-            Label = prop.Name,
             IsRequired = !prop.Type.IsNullable()
         };
 
@@ -219,7 +218,7 @@ public static class RelationshipAnalyzer
     /// <param name="targetType">The <see cref="INamedTypeSymbol"/> representing the type of the target entity.</param>
     /// <remarks>
     /// This method determines the type of relationship (e.g., One-to-One, One-to-Many) based on the navigation property
-    /// and its inverse. It updates the relationship object with the appropriate type, source, target, and label.
+    /// and its inverse. It updates the relationship object with the appropriate type, source, and target.
     /// </remarks>
     private static void HandleReferenceNavigation(
         EfRelationship relationship,
@@ -234,7 +233,6 @@ public static class RelationshipAnalyzer
             relationship.Type = EfRelationshipType.OneToMany;
             relationship.SourceEntity = targetEntity.Name;
             relationship.TargetEntity = sourceEntity.Name;
-            relationship.Label = NavigationPropertyAnalyzer.FindInverseCollectionName(prop, targetType) ?? "";
         }
         else if (NavigationPropertyAnalyzer.HasInverseReference(prop, targetType))
         {
@@ -379,8 +377,7 @@ public static class RelationshipAnalyzer
             SourceEntity = m2m.SourceEntity,
             TargetEntity = joinTableName,
             Type = EfRelationshipType.OneToMany,
-            IsRequired = true,
-            Label = ""
+            IsRequired = true
         });
 
         model.Relationships.Add(new EfRelationship
@@ -388,8 +385,7 @@ public static class RelationshipAnalyzer
             SourceEntity = m2m.TargetEntity,
             TargetEntity = joinTableName,
             Type = EfRelationshipType.OneToMany,
-            IsRequired = true,
-            Label = ""
+            IsRequired = true
         });
     }
 

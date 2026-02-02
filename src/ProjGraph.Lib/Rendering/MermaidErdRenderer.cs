@@ -114,9 +114,8 @@ public static class MermaidErdRenderer
             var relSyntax = GetRelationshipSyntax(rel);
             var sourceEntity = rel.SourceEntity.Trim();
             var targetEntity = rel.TargetEntity.Trim();
-            var label = string.IsNullOrWhiteSpace(rel.Label) ? "" : rel.Label;
 
-            sb.AppendLine($"    {sourceEntity} {relSyntax} {targetEntity} : \"{label}\"");
+            sb.AppendLine($"    {sourceEntity} {relSyntax} {targetEntity} : \"\"");
         }
     }
 

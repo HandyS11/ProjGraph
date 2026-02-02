@@ -145,7 +145,7 @@ public static class EfAnalysisConstants
         public const string LambdaPropertyPattern = @"^\s*\(?\s*(\w+)\s*\)?\s*=>\s*\1\.(\w+)\s*$";
         public const string MethodCallPattern = @"\.(\w+(?:<[^>]+>)?)\(([^()]*(?:\([^()]*\)[^()]*)*)\)";
         public const string ToTablePattern = """\.ToTable\(\"([^\"]+)\"\)""";
-        public const string StringLiteralPattern = """([^"]+)""";
+        public const string StringLiteralPattern = "\"([^\"]+)\"";
         public const string MethodNamePattern = @"\.\s*(\w+)";
         public const string NumericArgumentPattern = @"\((\d+)\)";
     }

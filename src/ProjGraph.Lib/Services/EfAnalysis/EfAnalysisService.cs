@@ -400,8 +400,6 @@ public class EfAnalysisService : IEfAnalysisService
 
     /// <summary>
     /// Removes duplicate entities and relationships from the model.
-    /// Prefers relationships with labels (from Fluent API) over auto-discovered ones.
-    /// For self-referencing relationships with the same label, keeps only one (preferring OneToMany).
     /// </summary>
     private static void DeduplicateModelContent(EfModel model)
     {
@@ -414,22 +412,16 @@ public class EfAnalysisService : IEfAnalysisService
         model.Entities.AddRange(uniqueEntities);
 
         // Deduplicate relationships by generating unique keys
-        // Prefer relationships with non-empty labels (from Fluent API) over auto-discovered ones
         var uniqueRelationships = model.Relationships
-            .GroupBy(r => GenerateRelationshipKey(r))
-            .Select(g =>
-            {
-                // If there are multiple, prefer the one with a label
-                var withLabel = g.FirstOrDefault(r => !string.IsNullOrEmpty(r.Label));
-                return withLabel ?? g.First();
-            })
+            .GroupBy(GenerateRelationshipKey)
+            .Select(g => g.First())
             .ToList();
 
-        // Additional deduplication for self-referencing relationships with same label
-        // This handles cases like PermissionEntry -> PermissionEntry with "ParentPermission"
+        // Additional deduplication for self-referencing relationships
+        // This handles cases like PermissionEntry -> PermissionEntry
         // appearing as both OneToOne and OneToMany
         var finalRelationships = uniqueRelationships
-            .GroupBy(r => new { r.SourceEntity, r.TargetEntity, r.Label })
+            .GroupBy(r => new { r.SourceEntity, r.TargetEntity })
             .Select(g =>
             {
                 // If only one, return it
@@ -438,7 +430,7 @@ public class EfAnalysisService : IEfAnalysisService
                     return g.First();
                 }
 
-                // If multiple with same source, target, and label, prefer OneToMany over OneToOne
+                // If multiple with same source and target, prefer OneToMany over OneToOne
                 // for self-referencing (parent-child hierarchies)
                 var oneToMany = g.FirstOrDefault(r => r.Type == EfRelationshipType.OneToMany);
                 return oneToMany ?? g.First();
