@@ -189,10 +189,11 @@ public static class EntityFileDiscovery
                 var fullPath = Path.GetFullPath(filePath);
                 if (fullPath.Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
                 {
-                    return;
+                    return true; // Continue searching
                 }
 
                 await ProcessSourceFileAsync(fullPath, entityTypeNames, entityFiles);
+                return true; // Continue searching
             });
     }
 
@@ -334,25 +335,25 @@ public static class EntityFileDiscovery
     /// </summary>
     /// <param name="directory">The directory to search.</param>
     /// <param name="searchPattern">The file search pattern (e.g., "*.cs").</param>
-    /// <param name="fileProcessor">An async action to process each matching file.</param>
+    /// <param name="fileProcessor">An async action to process each matching file. Return false to stop searching.</param>
     /// <param name="currentDepth">The current recursion depth (used internally).</param>
-    /// <param name="maxDepth">The maximum recursion depth to prevent infinite recursion.</param>
-    /// <returns>A task that represents the asynchronous operation.</returns>
+    /// <param name="maxDepth">The maximum recursion depth to prevent infinite recursion. Default is 100.</param>
+    /// <returns>A task that represents the asynchronous operation. Returns false if search was stopped early.</returns>
     /// <remarks>
     /// This method performs manual directory traversal to avoid enumerating files in excluded directories.
     /// This is more efficient than using built-in recursive enumeration with post-filtering, especially
     /// for large projects with many build artifacts.
     /// </remarks>
-    private static async Task SearchDirectoryRecursivelyAsync(
+    private static async Task<bool> SearchDirectoryRecursivelyAsync(
         string directory,
         string searchPattern,
-        Func<string, Task> fileProcessor,
+        Func<string, Task<bool>> fileProcessor,
         int currentDepth = 0,
-        int maxDepth = int.MaxValue)
+        int maxDepth = 100)
     {
         if (currentDepth >= maxDepth)
         {
-            return;
+            return true;
         }
 
         try
@@ -367,7 +368,10 @@ public static class EntityFileDiscovery
 
             foreach (var file in Directory.EnumerateFiles(directory, searchPattern, options))
             {
-                await fileProcessor(file);
+                if (!await fileProcessor(file))
+                {
+                    return false; // Stop searching if fileProcessor returns false
+                }
             }
 
             // Recursively process subdirectories, skipping excluded ones
@@ -380,13 +384,18 @@ public static class EntityFileDiscovery
                     continue;
                 }
 
-                await SearchDirectoryRecursivelyAsync(subDir, searchPattern, fileProcessor, currentDepth + 1, maxDepth);
+                if (!await SearchDirectoryRecursivelyAsync(subDir, searchPattern, fileProcessor, currentDepth + 1, maxDepth))
+                {
+                    return false; // Propagate early termination
+                }
             }
         }
         catch
         {
             // Ignore access errors for directories we can't read
         }
+
+        return true;
     }
 
     /// <summary>
@@ -444,15 +453,21 @@ public static class EntityFileDiscovery
         SearchDirectoryRecursivelyAsync(
             solutionRoot.FullName,
             "*.cs",
-            async (filePath) =>
+            (filePath) =>
             {
                 var fileName = Path.GetFileNameWithoutExtension(filePath);
                 if (baseClassNames.Contains(fileName))
                 {
                     var fullPath = Path.GetFullPath(filePath);
                     baseClassFiles.TryAdd(fileName, fullPath);
+                    
+                    // Early termination: stop searching if we've found all base classes
+                    if (baseClassFiles.Count == baseClassNames.Count)
+                    {
+                        return Task.FromResult(false);
+                    }
                 }
-                await Task.CompletedTask;
+                return Task.FromResult(true);
             },
             maxDepth: 10).GetAwaiter().GetResult();
 
