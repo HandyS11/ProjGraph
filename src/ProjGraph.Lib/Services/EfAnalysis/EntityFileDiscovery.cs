@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using ProjGraph.Lib.Services.EfAnalysis.Constants;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
 
@@ -15,6 +16,11 @@ namespace ProjGraph.Lib.Services.EfAnalysis;
 /// </remarks>
 public static class EntityFileDiscovery
 {
+    /// <summary>
+    /// Maximum recursion depth when searching for base class files to prevent infinite recursion
+    /// and limit search scope to reasonable project structures.
+    /// </summary>
+    private const int MaxSearchDepth = 10;
     /// <summary>
     /// Discovers the file paths of entity files within the specified search directories.
     /// </summary>
@@ -41,6 +47,12 @@ public static class EntityFileDiscovery
         foreach (var searchDir in searchDirectories.Where(Directory.Exists))
         {
             await SearchDirectoryForEntitiesAsync(searchDir, entityTypeNames, normalizedContextPath, entityFiles);
+
+            // Optimization: stop searching if we've found all entities
+            if (entityTypeNames.All(entityFiles.ContainsKey))
+            {
+                break;
+            }
         }
 
         return entityFiles;
@@ -73,30 +85,25 @@ public static class EntityFileDiscovery
             return [];
         }
 
-        var solutionRoot = FindSolutionRoot(contextDirectory, 4);
+        // Search in context directory and its parents for base classes
+        var solutionRoot = FindSolutionRoot(contextDirectory, 3);
         return SearchForBaseClassFiles(baseClassNames, solutionRoot);
     }
 
     /// <summary>
-    /// Builds a list of directories to search for entity files based on the provided context directory
-    /// and a list of entity namespaces.
+    /// Builds a list of directories to search for entity files based on the provided context directory.
     /// </summary>
     /// <param name="contextDirectory">The directory containing the context file.</param>
-    /// <param name="entityNamespaces">A list of namespaces associated with the entity types.</param>
     /// <returns>
-    /// A list of directories to search for entity files, including the context directory, its parent directory,
-    /// and any sibling directories that are likely to contain entity files.
+    /// A list of directories to search for entity files, including the context directory and its parent directory.
     /// </returns>
     /// <remarks>
-    /// This method starts with the context directory and its parent directory (if it exists),
-    /// then adds sibling directories that are likely to contain entity files based on their names
-    /// or their match with the provided entity namespaces.
-    /// If the context directory is within the system temp directory, the parent temp directory is excluded
-    /// from the search to avoid finding files from other processes or parallel tests.
+    /// This method starts with the context directory and then its parent directory.
+    /// Since the parent directory scan is recursive, it will naturally include the context directory
+    /// and all siblings through the recursive search.
     /// </remarks>
     public static List<string> BuildSearchDirectories(
-        string contextDirectory,
-        List<string> entityNamespaces)
+        string contextDirectory)
     {
         var searchDirectories = new List<string> { contextDirectory };
         var parentDir = Directory.GetParent(contextDirectory);
@@ -108,18 +115,16 @@ public static class EntityFileDiscovery
 
         // Avoid searching outside the temp directory if we are in one,
         // to prevent finding files from parallel test runs.
-        // Security: Path.GetTempPath() is used only for read-only path comparison to detect
-        // if we're in a test sandbox. No files are written to or read from the temp directory itself.
         var tempPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         if (contextDirectory.StartsWith(tempPath, StringComparison.OrdinalIgnoreCase))
         {
             return searchDirectories;
         }
 
+        // Adding the parent directory handles most cases as it encompasses siblings and the context dir itself.
         searchDirectories.Add(parentDir.FullName);
-        AddSiblingEntityDirectories(parentDir.FullName, entityNamespaces, searchDirectories);
 
-        return searchDirectories;
+        return searchDirectories.Distinct().ToList();
     }
 
     /// <summary>
@@ -141,7 +146,7 @@ public static class EntityFileDiscovery
         {
             if (member.Type is not GenericNameSyntax
                 {
-                    Identifier.Text: "DbSet", TypeArgumentList.Arguments.Count: 1
+                    Identifier.Text: EfAnalysisConstants.CommonNames.DbSet, TypeArgumentList.Arguments.Count: 1
                 } genericType)
             {
                 continue;
@@ -152,31 +157,6 @@ public static class EntityFileDiscovery
         }
 
         return entityTypeNames;
-    }
-
-    /// <summary>
-    /// Extracts the namespaces of entity types from the given syntax tree root node.
-    /// </summary>
-    /// <param name="root">The root <see cref="SyntaxNode"/> of the syntax tree to analyze.</param>
-    /// <returns>
-    /// A list of strings representing the namespaces of entity types found in the syntax tree.
-    /// Only namespaces that do not start with "System" or "Microsoft" are included.
-    /// </returns>
-    /// <remarks>
-    /// This method traverses the syntax tree to find all using directives. It filters out namespaces
-    /// that are null or start with "System" or "Microsoft", and returns the remaining namespaces as a list of strings.
-    /// </remarks>
-    public static List<string> ExtractEntityNamespaces(SyntaxNode root)
-    {
-        return
-        [
-            .. root.DescendantNodes()
-                .OfType<UsingDirectiveSyntax>()
-                .Where(u => u.Name is not null &&
-                            !u.Name.ToString().StartsWith("System") &&
-                            !u.Name.ToString().StartsWith("Microsoft"))
-                .Select(u => u.Name!.ToString())
-        ];
     }
 
     /// <summary>
@@ -196,6 +176,7 @@ public static class EntityFileDiscovery
     /// For each file, it calls <see cref="ProcessSourceFileAsync"/> to process the file and add matching
     /// entity type names and their file paths to the <paramref name="entityFiles"/> dictionary.
     /// Any access errors encountered during directory traversal are ignored.
+    /// Directories like bin, obj, .git, and node_modules are skipped during traversal for performance.
     /// </remarks>
     private static async Task SearchDirectoryForEntitiesAsync(
         string searchDir,
@@ -203,16 +184,61 @@ public static class EntityFileDiscovery
         string normalizedContextPath,
         Dictionary<string, string> entityFiles)
     {
+        await SearchDirectoryRecursiveAsync(searchDir, entityTypeNames, normalizedContextPath, entityFiles);
+    }
+
+    /// <summary>
+    /// Recursively searches a directory for C# files, skipping common build and version control directories.
+    /// </summary>
+    /// <param name="currentDir">The current directory to search.</param>
+    /// <param name="entityTypeNames">A set of entity type names to search for in the C# files.</param>
+    /// <param name="normalizedContextPath">The normalized file path of the context file to exclude from the search.</param>
+    /// <param name="entityFiles">
+    /// A dictionary where the keys are entity type names and the values are the corresponding file paths.
+    /// </param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    /// <remarks>
+    /// This method implements manual recursion to avoid descending into directories that typically
+    /// contain build artifacts or dependencies (bin, obj, .git, node_modules), improving performance
+    /// for large projects.
+    /// </remarks>
+    private static async Task SearchDirectoryRecursiveAsync(
+        string currentDir,
+        HashSet<string> entityTypeNames,
+        string normalizedContextPath,
+        Dictionary<string, string> entityFiles)
+    {
         try
         {
-            foreach (var csFile in Directory.GetFiles(searchDir, "*.cs", SearchOption.AllDirectories))
+            // Process files in the current directory
+            var options = new EnumerationOptions
             {
-                if (Path.GetFullPath(csFile).Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.System
+            };
+
+            foreach (var csFile in Directory.EnumerateFiles(currentDir, EfAnalysisConstants.FilePatterns.CSharpFiles, options))
+            {
+                var fullPath = Path.GetFullPath(csFile);
+                if (fullPath.Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
-                await ProcessSourceFileAsync(csFile, entityTypeNames, entityFiles);
+                await ProcessSourceFileAsync(fullPath, entityTypeNames, entityFiles);
+            }
+
+            // Recursively process subdirectories, skipping excluded directories
+            foreach (var subDir in Directory.EnumerateDirectories(currentDir, "*", options))
+            {
+                var dirName = Path.GetFileName(subDir);
+                if (dirName is "bin" or "obj" or ".git" or "node_modules")
+                {
+                    continue;
+                }
+
+                await SearchDirectoryRecursiveAsync(subDir, entityTypeNames, normalizedContextPath, entityFiles);
             }
         }
         catch
@@ -242,6 +268,13 @@ public static class EntityFileDiscovery
         Dictionary<string, string> entityFiles)
     {
         var fileCode = await File.ReadAllTextAsync(filePath);
+
+        // Performance optimization: skip heavy parsing if none of the entity names are present in the text
+        if (!entityTypeNames.Any(name => fileCode.Contains(name, StringComparison.Ordinal)))
+        {
+            return;
+        }
+
         var syntaxTree = CSharpSyntaxTree.ParseText(fileCode);
         var root = await syntaxTree.GetRootAsync();
 
@@ -388,103 +421,91 @@ public static class EntityFileDiscovery
     /// if the files are found; otherwise, the dictionary will be empty.
     /// </returns>
     /// <remarks>
-    /// This method iterates through the provided base class names and attempts to locate their corresponding
-    /// file paths by calling the <see cref="TryFindBaseClassFile"/> method. If a file is found, it is added
-    /// to the resulting dictionary. If no file is found for a base class name, it is skipped.
+    /// This method recursively searches for base class files while skipping common build and version control
+    /// directories (bin, obj, .git, node_modules) to improve performance for large projects.
     /// </remarks>
     public static Dictionary<string, string> SearchForBaseClassFiles(
         HashSet<string> baseClassNames,
         DirectoryInfo solutionRoot)
     {
         var baseClassFiles = new Dictionary<string, string>();
-
-        foreach (var baseClassName in baseClassNames)
-        {
-            var foundFile = TryFindBaseClassFile(baseClassName, solutionRoot);
-            if (foundFile != null)
-            {
-                baseClassFiles[baseClassName] = foundFile;
-            }
-        }
-
+        SearchForBaseClassFilesRecursive(solutionRoot.FullName, baseClassNames, baseClassFiles, 0, MaxSearchDepth);
         return baseClassFiles;
     }
 
     /// <summary>
-    /// Attempts to find the file path of a base class file within the specified solution root directory.
+    /// Recursively searches for base class files, skipping common build and version control directories.
     /// </summary>
-    /// <param name="baseClassName">The name of the base class to search for.</param>
-    /// <param name="solutionRoot">The root directory of the solution to search within.</param>
-    /// <returns>
-    /// The full file path of the base class file if found; otherwise, <c>null</c>.
-    /// </returns>
+    /// <param name="currentDir">The current directory to search.</param>
+    /// <param name="baseClassNames">A set of base class names to search for.</param>
+    /// <param name="baseClassFiles">
+    /// A dictionary to store the found base class files where the keys are base class names
+    /// and the values are the corresponding file paths.
+    /// </param>
+    /// <param name="currentDepth">The current recursion depth.</param>
+    /// <param name="maxDepth">The maximum recursion depth to prevent infinite recursion.</param>
     /// <remarks>
-    /// This method searches for a file matching the base class name with a ".cs" extension
-    /// in the specified solution root directory and its subdirectories, up to a maximum recursion depth of 10.
-    /// If any access errors occur during the directory enumeration, they are ignored.
+    /// This method implements manual recursion to avoid descending into directories that typically
+    /// contain build artifacts or dependencies (bin, obj, .git, node_modules), improving performance
+    /// for large projects.
     /// </remarks>
-    private static string? TryFindBaseClassFile(string baseClassName, DirectoryInfo solutionRoot)
+    private static void SearchForBaseClassFilesRecursive(
+        string currentDir,
+        HashSet<string> baseClassNames,
+        Dictionary<string, string> baseClassFiles,
+        int currentDepth,
+        int maxDepth)
     {
-        try
+        if (currentDepth >= maxDepth || baseClassFiles.Count == baseClassNames.Count)
         {
-            return Directory.EnumerateFiles(
-                    solutionRoot.FullName,
-                    $"{baseClassName}.cs",
-                    new EnumerationOptions
-                    {
-                        IgnoreInaccessible = true, RecurseSubdirectories = true, MaxRecursionDepth = 10
-                    })
-                .FirstOrDefault();
+            return;
         }
-        catch
-        {
-            return null;
-        }
-    }
 
-    /// <summary>
-    /// Adds sibling directories that are likely to contain entity files to the search directories list.
-    /// </summary>
-    /// <param name="parentPath">The path of the parent directory to search for sibling directories.</param>
-    /// <param name="entityNamespaces">A list of entity namespaces to compare against the directory names.</param>
-    /// <param name="searchDirectories">The list of directories to which the sibling directories will be added.</param>
-    /// <remarks>
-    /// This method attempts to find sibling directories in the parent directory and checks if they are likely
-    /// to represent entity directories based on their names or the provided entity namespaces. If access errors
-    /// occur while enumerating directories, they are ignored.
-    /// </remarks>
-    private static void AddSiblingEntityDirectories(
-        string parentPath,
-        List<string> entityNamespaces,
-        List<string> searchDirectories)
-    {
         try
         {
-            searchDirectories.AddRange(
-                from siblingDir in Directory.GetDirectories(parentPath, "*", SearchOption.TopDirectoryOnly)
-                let dirName = Path.GetFileName(siblingDir)
-                where IsLikelyEntityDirectory(dirName, entityNamespaces)
-                select siblingDir);
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.System
+            };
+
+            // Process files in the current directory
+            foreach (var file in Directory.EnumerateFiles(currentDir, "*.cs", options))
+            {
+                var fileName = Path.GetFileNameWithoutExtension(file);
+                if (baseClassNames.Contains(fileName))
+                {
+                    var fullPath = Path.GetFullPath(file);
+                    baseClassFiles.TryAdd(fileName, fullPath);
+                    
+                    if (baseClassFiles.Count == baseClassNames.Count)
+                    {
+                        return;
+                    }
+                }
+            }
+
+            // Recursively process subdirectories, skipping excluded directories
+            foreach (var subDir in Directory.EnumerateDirectories(currentDir, "*", options))
+            {
+                var dirName = Path.GetFileName(subDir);
+                if (dirName is "bin" or "obj" or ".git" or "node_modules")
+                {
+                    continue;
+                }
+
+                SearchForBaseClassFilesRecursive(subDir, baseClassNames, baseClassFiles, currentDepth + 1, maxDepth);
+                
+                if (baseClassFiles.Count == baseClassNames.Count)
+                {
+                    return;
+                }
+            }
         }
         catch
         {
             // Ignore access errors
         }
-    }
-
-    /// <summary>
-    /// Determines whether the specified directory name is likely to represent an entity directory.
-    /// </summary>
-    /// <param name="dirName">The name of the directory to evaluate.</param>
-    /// <param name="entityNamespaces">A list of entity namespaces to compare against the directory name.</param>
-    /// <returns>
-    /// <c>true</c> if the directory name contains "Entities" or "Models" (case-insensitive),
-    /// or if it matches any part of the provided entity namespaces; otherwise, <c>false</c>.
-    /// </returns>
-    private static bool IsLikelyEntityDirectory(string dirName, List<string> entityNamespaces)
-    {
-        return dirName.Contains("Entities", StringComparison.OrdinalIgnoreCase) ||
-               dirName.Contains("Models", StringComparison.OrdinalIgnoreCase) ||
-               entityNamespaces.Any(ns => ns.Contains(dirName, StringComparison.OrdinalIgnoreCase));
     }
 }

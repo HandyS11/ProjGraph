@@ -129,7 +129,7 @@ public class MermaidErdRendererTests
             Properties =
             [
                 new EfProperty { Name = "Id", Type = "int", IsPrimaryKey = true },
-                new EfProperty { Name = "Email", Type = "string", IsRequired = true }
+                new EfProperty { Name = "Email", Type = "string", IsRequired = true, IsExplicitlyRequired = true }
             ]
         };
 
@@ -277,7 +277,7 @@ public class MermaidErdRendererTests
                     SourceEntity = "User",
                     TargetEntity = "Profile",
                     Type = EfRelationshipType.OneToOne,
-                    Label = "has"
+                    IsRequired = true
                 }
             ]
         };
@@ -286,7 +286,7 @@ public class MermaidErdRendererTests
         var result = MermaidErdRenderer.Render(model);
 
         // Assert
-        result.Should().Contain("User ||--|| Profile");
+        result.Should().Contain("User ||--|| Profile : \"\"");
     }
 
     [Fact]
@@ -308,7 +308,6 @@ public class MermaidErdRendererTests
                     SourceEntity = "Customer",
                     TargetEntity = "Order",
                     Type = EfRelationshipType.OneToMany,
-                    Label = "places",
                     IsRequired = true
                 }
             ]
@@ -318,7 +317,7 @@ public class MermaidErdRendererTests
         var result = MermaidErdRenderer.Render(model);
 
         // Assert
-        result.Should().Contain("Customer ||--o{ Order");
+        result.Should().Contain("Customer ||--o{ Order : \"\"");
     }
 
     [Fact]
@@ -340,7 +339,6 @@ public class MermaidErdRendererTests
                     SourceEntity = "Category",
                     TargetEntity = "Product",
                     Type = EfRelationshipType.OneToMany,
-                    Label = "contains",
                     IsRequired = false
                 }
             ]
@@ -350,7 +348,7 @@ public class MermaidErdRendererTests
         var result = MermaidErdRenderer.Render(model);
 
         // Assert
-        result.Should().Contain("Category |o--o{ Product");
+        result.Should().Contain("Category |o--o{ Product : \"\"");
     }
 
     [Fact]
@@ -371,8 +369,7 @@ public class MermaidErdRendererTests
                 {
                     SourceEntity = "Student",
                     TargetEntity = "Course",
-                    Type = EfRelationshipType.ManyToMany,
-                    Label = "enrolls"
+                    Type = EfRelationshipType.ManyToMany
                 }
             ]
         };
@@ -381,7 +378,7 @@ public class MermaidErdRendererTests
         var result = MermaidErdRenderer.Render(model);
 
         // Assert
-        result.Should().Contain("Student }|--|{ Course");
+        result.Should().Contain("Student }|--|{ Course : \"\"");
     }
 
     [Fact]
@@ -421,7 +418,6 @@ public class MermaidErdRendererTests
                     SourceEntity = "User",
                     TargetEntity = "Post",
                     Type = EfRelationshipType.OneToMany,
-                    Label = "creates",
                     IsRequired = true
                 },
 
@@ -430,7 +426,6 @@ public class MermaidErdRendererTests
                     SourceEntity = "Post",
                     TargetEntity = "Comment",
                     Type = EfRelationshipType.OneToMany,
-                    Label = "has",
                     IsRequired = true
                 }
             ]
@@ -443,7 +438,7 @@ public class MermaidErdRendererTests
         result.Should().Contain("User {");
         result.Should().Contain("Post {");
         result.Should().Contain("Comment {");
-        result.Should().Contain("User ||--o{ Post");
-        result.Should().Contain("Post ||--o{ Comment");
+        result.Should().Contain("User ||--o{ Post : \"\"");
+        result.Should().Contain("Post ||--o{ Comment : \"\"");
     }
 }

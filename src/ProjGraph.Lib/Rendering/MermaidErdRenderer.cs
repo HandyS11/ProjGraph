@@ -20,6 +20,14 @@ public static class MermaidErdRenderer
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
+
+        if (!string.IsNullOrEmpty(model.ContextName))
+        {
+            sb.AppendLine("---");
+            sb.AppendLine($"title: {model.ContextName}");
+            sb.AppendLine("---");
+        }
+
         sb.AppendLine("erDiagram");
 
         RenderEntities(model, sb);
@@ -40,7 +48,7 @@ public static class MermaidErdRenderer
 
         foreach (var entity in sortedEntities)
         {
-            sb.AppendLine($"    {entity.Name} {{");
+            sb.AppendLine($"  {entity.Name} {{");
 
             var orderedProperties = entity.Properties
                 .OrderByDescending(p => p.IsPrimaryKey)
@@ -49,10 +57,10 @@ public static class MermaidErdRenderer
 
             foreach (var propertyLine in orderedProperties.Select(RenderProperty))
             {
-                sb.AppendLine($"        {propertyLine}");
+                sb.AppendLine($"    {propertyLine}");
             }
 
-            sb.AppendLine("    }");
+            sb.AppendLine("  }");
         }
     }
 
@@ -114,9 +122,8 @@ public static class MermaidErdRenderer
             var relSyntax = GetRelationshipSyntax(rel);
             var sourceEntity = rel.SourceEntity.Trim();
             var targetEntity = rel.TargetEntity.Trim();
-            var label = string.IsNullOrWhiteSpace(rel.Label) ? "" : rel.Label;
 
-            sb.AppendLine($"    {sourceEntity} {relSyntax} {targetEntity} : \"{label}\"");
+            sb.AppendLine($"  {sourceEntity} {relSyntax} {targetEntity} : \"\"");
         }
     }
 
@@ -129,7 +136,7 @@ public static class MermaidErdRenderer
     {
         return rel.Type switch
         {
-            EfRelationshipType.OneToOne => "||--||",
+            EfRelationshipType.OneToOne => rel.IsRequired ? "||--||" : "|o--||",
             EfRelationshipType.OneToMany => rel.IsRequired ? "||--o{" : "|o--o{",
             EfRelationshipType.ManyToMany => "}|--|{",
             _ => "--"
@@ -152,7 +159,8 @@ public static class MermaidErdRenderer
         // Add constraints
         var constraints = new List<string>();
 
-        if (prop is { IsRequired: true, IsPrimaryKey: false })
+        if (prop is { IsPrimaryKey: false } &&
+            (prop.IsExplicitlyRequired || prop is { IsRequired: true, IsValueType: false }))
         {
             constraints.Add("required");
         }

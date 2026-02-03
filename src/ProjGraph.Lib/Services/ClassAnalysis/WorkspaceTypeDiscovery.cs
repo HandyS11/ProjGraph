@@ -11,6 +11,13 @@ namespace ProjGraph.Lib.Services.ClassAnalysis;
 public static class WorkspaceTypeDiscovery
 {
     /// <summary>
+    /// Directories to skip during recursive file search for better performance.
+    /// </summary>
+    private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "bin", "obj", ".git", "node_modules"
+    };
+    /// <summary>
     /// Finds the file containing the definition of a specific type within a given directory or its subdirectories.
     /// The method first attempts to search in common subdirectories for better performance, and if not found,
     /// it searches the entire root directory. The search uses both a simple string match and Roslyn for verification.
@@ -58,8 +65,22 @@ public static class WorkspaceTypeDiscovery
     /// </returns>
     private static async Task<string?> SearchDirectoryForTypeAsync(string directory, string typeName)
     {
-        var files = Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories);
-        foreach (var file in files)
+        return await SearchDirectoryRecursiveAsync(directory, typeName);
+    }
+
+    /// <summary>
+    /// Recursively searches a directory and its subdirectories for a C# file containing a specific type definition.
+    /// This method manually handles recursion to avoid descending into common non-source directories for better performance.
+    /// </summary>
+    /// <param name="directory">The path of the directory to search.</param>
+    /// <param name="typeName">The name of the type to search for.</param>
+    /// <returns>
+    /// The full path of the file containing the type definition if found; otherwise, null.
+    /// </returns>
+    private static async Task<string?> SearchDirectoryRecursiveAsync(string directory, string typeName)
+    {
+        // Search files in the current directory
+        foreach (var file in Directory.EnumerateFiles(directory, "*.cs", new EnumerationOptions { IgnoreInaccessible = true }))
         {
             // Simple string check first for performance
             var content = await File.ReadAllTextAsync(file);
@@ -82,6 +103,22 @@ public static class WorkspaceTypeDiscovery
             if (hasType)
             {
                 return file;
+            }
+        }
+
+        // Recursively search subdirectories, skipping excluded directories
+        foreach (var subDir in Directory.EnumerateDirectories(directory, "*", new EnumerationOptions { IgnoreInaccessible = true }))
+        {
+            var dirName = Path.GetFileName(subDir);
+            if (ExcludedDirectories.Contains(dirName))
+            {
+                continue;
+            }
+
+            var result = await SearchDirectoryRecursiveAsync(subDir, typeName);
+            if (result != null)
+            {
+                return result;
             }
         }
 

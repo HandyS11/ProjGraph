@@ -7,9 +7,10 @@ relationships.
 
 This example includes:
 
-- **5 entities**: Author, Book, Category, Publisher, Review
+- **7 entities**: Author, Book, Category, Publisher, Review, Profile, BookDetail
 - **2 many-to-many relationships**: Book ↔ Author, Book ↔ Category
-- **2 one-to-many relationships**: Publisher → Book, Book → Review
+- **2 one-to-many relationships**: Publisher → Book (Required), Book → Review (Optional)
+- **2 one-to-one relationships**: Author ↔ Profile (Optional), Book ↔ BookDetail (Required)
 
 ## Usage
 
@@ -40,53 +41,73 @@ The tool generates a **Mermaid ERD diagram** showing:
 ### Example Output
 
 ```mermaid
+---
+title: MyDbContext
+---
 erDiagram
-    Author {
-        int Id PK
-        string Name "required, max:200"
-        string Bio "string? | max:1000"
-        DateTime BirthDate "DateTime?"
-    }
-    Book {
-        int Id PK
-        string Title "required, max:300"
-        string ISBN "string? | max:13"
-        DateTime PublishedDate
-        int PageCount
-        int PublisherId FK
-    }
-    Category {
-        int Id PK
-        string Name "required, max:100"
-        string Description "string? | max:500"
-    }
-    Publisher {
-        int Id PK
-        string Name "required, max:200"
-        string Country "string? | max:100"
-        DateTime FoundedDate "DateTime?"
-    }
-    Review {
-        int Id PK
-        int Rating "required"
-        string Comment "string? | max:2000"
-        DateTime ReviewDate
-        int BookId FK
-    }
-    AuthorBook {
-        int AuthorId PK,FK
-        int BookId PK,FK
-    }
-    BookCategory {
-        int BookId PK,FK
-        int CategoryId PK,FK
-    }
-    Publisher ||--o{ Book : "Books"
-    Book ||--o{ Review : "Reviews"
-    Author ||--o{ AuthorBook : ""
-    Book ||--o{ AuthorBook : ""
-    Book ||--o{ BookCategory : ""
-    Category ||--o{ BookCategory : ""
+  Author {
+    int Id PK
+    int MentorId FK
+    string Bio "max:1000"
+    DateTime BirthDate
+    bool IsActive
+    string Name "required, max:200"
+  }
+  AuthorBook {
+    int AuthorId PK,FK
+    int BookId PK,FK
+  }
+  Book {
+    int Id PK
+    int PublisherId FK
+    string ISBN "max:13"
+    int PageCount
+    DateTime PublishedDate
+    string Title "required, max:300"
+  }
+  BookCategory {
+    int BookId PK,FK
+    int CategoryId PK,FK
+  }
+  BookDetail {
+    int Id PK
+    int BookId FK
+    string Notes "required"
+    string Summary "required"
+  }
+  Category {
+    int Id PK
+    string Description "max:500"
+    string Name "required, max:100"
+  }
+  Profile {
+    int Id PK
+    int AuthorId FK
+    string AvatarUrl "required"
+    string BioData "required"
+  }
+  Publisher {
+    int Id PK
+    string Country "max:100"
+    DateTime FoundedDate
+    string Name "required, max:200"
+  }
+  Review {
+    int Id PK
+    int BookId FK
+    string Comment "max:2000"
+    int Rating "required"
+    DateTime ReviewDate
+  }
+  Author ||--o{ Author : ""
+  Author ||--o{ AuthorBook : ""
+  Author |o--|| Profile : ""
+  Book ||--o{ AuthorBook : ""
+  Book ||--o{ BookCategory : ""
+  Book ||--|| BookDetail : ""
+  Book ||--o{ Review : ""
+  Category ||--o{ BookCategory : ""
+  Publisher ||--o{ Book : ""
 ```
 
 ### Rendered Diagram
@@ -98,6 +119,7 @@ The Mermaid diagram renders as a visual ERD showing:
   - `||--o{` = One-to-Many (required)
   - `|o--o{` = One-to-Many (optional)
   - `||--||` = One-to-One (required)
+  - `||--o|` = One-to-One (optional)
   - `}|--|{` = Many-to-Many (shown as two One-to-Many via join table)
 
 ## Key Features
@@ -160,33 +182,3 @@ The output is **GitHub/GitLab compatible** Mermaid syntax, so you can:
 1. Copy the output directly into your `README.md`
 2. Commit it to version control
 3. It will render automatically in GitHub, GitLab, and other platforms
-
-## Example Workflow
-
-```bash
-# 1. Generate ERD from your DbContext
-projgraph erd MyProject/Data/ApplicationDbContext.cs > docs/database-erd.md
-
-# 2. Commit to repository
-git add docs/database-erd.md
-git commit -m "docs: Add database ERD diagram"
-
-# 3. Push - diagram will render automatically on GitHub!
-git push
-```
-
-## Tips
-
-💡 **Nullable Types**: Original C# types (including `?` for nullable) are preserved in comments
-
-💡 **Join Tables**: Many-to-many relationships create explicit join table entities for clarity
-
-💡 **Inheritance**: Base class properties are automatically included (e.g., `Id`, `CreatedAt` from `AuditEntity`)
-
-💡 **MaxLength Constraints**: `[MaxLength(N)]` attributes are extracted and displayed as `max:N`
-
-💡 **Complex Schemas**: Works with large DbContexts containing dozens of entities
-
-💡 **Entity Framework Core**: Supports EF Core 6.0+ including fluent API configurations
-
-💡 **Documentation**: Perfect for maintaining up-to-date database schema documentation

@@ -78,6 +78,16 @@ public class EfProperty
     public bool IsRequired { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the property is a value type.
+    /// </summary>
+    public bool IsValueType { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the property was explicitly marked as required.
+    /// </summary>
+    public bool IsExplicitlyRequired { get; set; }
+
+    /// <summary>
     /// Gets or sets the maximum length of the property value, if applicable.
     /// </summary>
     public int? MaxLength { get; set; }
@@ -122,11 +132,6 @@ public class EfRelationship
     /// Gets or sets a value indicating whether the relationship is required.
     /// </summary>
     public bool IsRequired { get; set; }
-
-    /// <summary>
-    /// Gets or sets the label associated with the relationship.
-    /// </summary>
-    public string Label { get; set; } = string.Empty;
 }
 
 /// <summary>
