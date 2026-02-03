@@ -129,7 +129,7 @@ public static class MermaidErdRenderer
         return rel.Type switch
         {
             EfRelationshipType.OneToOne => rel.IsRequired ? "||--||" : "|o--||",
-            EfRelationshipType.OneToMany => rel.IsRequired ? "||--o{" : "|o--o{" ,
+            EfRelationshipType.OneToMany => rel.IsRequired ? "||--o{" : "|o--o{",
             EfRelationshipType.ManyToMany => "}|--|{",
             _ => "--"
         };
@@ -151,7 +151,8 @@ public static class MermaidErdRenderer
         // Add constraints
         var constraints = new List<string>();
 
-        if (prop is { IsRequired: true, IsPrimaryKey: false })
+        if (prop is { IsPrimaryKey: false } &&
+            (prop.IsExplicitlyRequired || prop is { IsRequired: true, IsValueType: false }))
         {
             constraints.Add("required");
         }

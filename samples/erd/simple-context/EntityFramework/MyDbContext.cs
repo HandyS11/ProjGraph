@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+
 // ReSharper disable UnusedMember.Global
 // ReSharper disable PropertyCanBeMadeInitOnly.Global
 // ReSharper disable InconsistentNaming
@@ -110,6 +111,7 @@ public class Author
     public string Name { get; set; } = string.Empty;
     public string? Bio { get; set; }
     public DateTime? BirthDate { get; set; }
+    public bool IsActive { get; set; }
 
     public int? MentorId { get; set; }
     public Author? Mentor { get; set; }

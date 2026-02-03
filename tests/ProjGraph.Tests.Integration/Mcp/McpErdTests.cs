@@ -80,7 +80,7 @@ public sealed class McpErdTests : IDisposable
         result.Should().Contain("erDiagram");
         result.Should().Contain("Blog");
         result.Should().Contain("Post");
-        result.Should().Contain("|o--o{"); // Relationship
+        result.Should().Contain("||--o{"); // Relationship
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public sealed class McpErdTests : IDisposable
         var result = await tools.GetErd(_tempFile);
 
         // Assert
-        result.Should().Contain("Blog |o--o{ Post");
+        result.Should().Contain("Blog ||--o{ Post");
     }
 
     #endregion

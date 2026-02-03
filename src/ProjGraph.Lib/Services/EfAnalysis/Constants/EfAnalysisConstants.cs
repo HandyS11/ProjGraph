@@ -11,19 +11,43 @@ public static class EfAnalysisConstants
     public static class DataTypes
     {
         public const string Int = "int";
+        public const string Int32 = "Int32";
+        public const string Int64 = "Int64";
         public const string String = "string";
         public const string Bool = "bool";
+        public const string Boolean = "Boolean";
         public const string Guid = "Guid";
         public const string DateTime = "DateTime";
         public const string DateTimeOffset = "DateTimeOffset";
         public const string TimeSpan = "TimeSpan";
         public const string Decimal = "decimal";
-        public const string ByteArray = "byte[]";
         public const string Double = "double";
         public const string Float = "float";
         public const string Long = "long";
+        public const string Single = "Single";
         public const string Short = "short";
-        public const string Char = "char";
+
+        /// <summary>
+        /// A set of common .NET value types that are treated as having a default value in EF.
+        /// </summary>
+        public static readonly HashSet<string> ValueTypes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            Int,
+            Int32,
+            Int64,
+            Long,
+            Bool,
+            Boolean,
+            Guid,
+            DateTime,
+            DateTimeOffset,
+            TimeSpan,
+            Decimal,
+            Double,
+            Float,
+            Single,
+            Short
+        };
     }
 
     /// <summary>

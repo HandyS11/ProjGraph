@@ -290,7 +290,9 @@ public static class EntityAnalyzer
             Type = prop.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
             IsPrimaryKey = isPrimaryKey,
             IsForeignKey = false,
-            IsRequired = !prop.Type.IsNullable()
+            IsRequired = !prop.Type.IsNullable() || prop.IsRequired,
+            IsExplicitlyRequired = prop.IsRequired,
+            IsValueType = prop.Type.IsEfValueType()
         };
     }
 
@@ -395,6 +397,7 @@ public static class EntityAnalyzer
 
             case EfAnalysisConstants.EfAttributes.RequiredAttribute:
                 efProperty.IsRequired = true;
+                efProperty.IsExplicitlyRequired = true;
                 break;
 
             case EfAnalysisConstants.EfAttributes.MaxLengthAttribute:

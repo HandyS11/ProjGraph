@@ -47,6 +47,7 @@ erDiagram
     int MentorId FK
     string Bio "max:1000"
     DateTime BirthDate
+    bool IsActive
     string Name "required, max:200"
   }
   AuthorBook {
@@ -55,9 +56,9 @@ erDiagram
   }
   Book {
     int Id PK
-    int PublisherId FK "required"
+    int PublisherId FK
     string ISBN "max:13"
-    int PageCount "required"
+    int PageCount
     DateTime PublishedDate
     string Title "required, max:300"
   }
@@ -67,9 +68,9 @@ erDiagram
   }
   BookDetail {
     int Id PK
-    int BookId FK "required"
-    string Notes
-    string Summary
+    int BookId FK
+    string Notes "required"
+    string Summary "required"
   }
   Category {
     int Id PK
@@ -78,9 +79,9 @@ erDiagram
   }
   Profile {
     int Id PK
-    int AuthorId FK "required"
-    string AvatarUrl
-    string BioData
+    int AuthorId FK
+    string AvatarUrl "required"
+    string BioData "required"
   }
   Publisher {
     int Id PK

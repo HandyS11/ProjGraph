@@ -327,7 +327,8 @@ public class EfAnalysisAdvancedTests
                             Name = "AiProviderName",
                             Type = "string",
                             DefaultValue = "AzureOpenAi",
-                            IsRequired = true
+                            IsRequired = true,
+                            IsExplicitlyRequired = true
                         }
                     ]
                 }

@@ -17,9 +17,12 @@ public static class TypeSymbolExtensions
     /// </returns>
     public static bool IsNullable(this ITypeSymbol type)
     {
-        if (type.NullableAnnotation is NullableAnnotation.Annotated)
+        switch (type.NullableAnnotation)
         {
-            return true;
+            case NullableAnnotation.Annotated:
+                return true;
+            case NullableAnnotation.NotAnnotated:
+                return false;
         }
 
         if (type.Name is EfAnalysisConstants.CommonNames.Nullable)
@@ -34,6 +37,35 @@ public static class TypeSymbolExtensions
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Determines whether the specified <see cref="ITypeSymbol"/> represents a value type for EF purposes.
+    /// </summary>
+    /// <param name="type">The type symbol to check.</param>
+    /// <returns>
+    /// <c>true</c> if the type is a value type; otherwise, <c>false</c>.
+    /// </returns>
+    public static bool IsEfValueType(this ITypeSymbol type)
+    {
+        if (type.IsValueType)
+        {
+            return true;
+        }
+
+        if (type.IsReferenceType)
+        {
+            return false;
+        }
+
+        // Fallback for unresolved types or types where semantic info is incomplete
+        var typeString = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat).TrimEnd('?');
+        if (typeString.Contains('.'))
+        {
+            typeString = typeString[(typeString.LastIndexOf('.') + 1)..];
+        }
+
+        return EfAnalysisConstants.DataTypes.ValueTypes.Contains(typeString);
     }
 
     /// <summary>

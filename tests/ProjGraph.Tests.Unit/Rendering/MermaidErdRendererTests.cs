@@ -129,7 +129,7 @@ public class MermaidErdRendererTests
             Properties =
             [
                 new EfProperty { Name = "Id", Type = "int", IsPrimaryKey = true },
-                new EfProperty { Name = "Email", Type = "string", IsRequired = true }
+                new EfProperty { Name = "Email", Type = "string", IsRequired = true, IsExplicitlyRequired = true }
             ]
         };
 

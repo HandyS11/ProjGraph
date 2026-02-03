@@ -828,15 +828,30 @@ public static class FluentApiConfigurationParser
                         : EfAnalysisConstants.DataTypes.String;
             }
 
-            property = new EfProperty { Name = propName, Type = detectedType };
+            property = new EfProperty
+            {
+                Name = propName, Type = detectedType, IsValueType = IsValueTypeString(detectedType)
+            };
             entity.Properties.Add(property);
         }
         else if (!string.IsNullOrEmpty(type))
         {
             property.Type = type;
+            property.IsValueType = IsValueTypeString(type);
         }
 
         return property;
+    }
+
+    private static bool IsValueTypeString(string type)
+    {
+        var typeName = type.TrimEnd('?');
+        if (typeName.Contains('.'))
+        {
+            typeName = typeName[(typeName.LastIndexOf('.') + 1)..];
+        }
+
+        return EfAnalysisConstants.DataTypes.ValueTypes.Contains(typeName);
     }
 
     /// <summary>
@@ -877,8 +892,14 @@ public static class FluentApiConfigurationParser
     /// <param name="configArg">The configuration argument.</param>
     private static void ApplyIsRequiredConfiguration(EfProperty property, string configArg)
     {
-        property.IsRequired = string.IsNullOrEmpty(configArg) ||
-                              configArg.Equals("true", StringComparison.OrdinalIgnoreCase);
+        var isRequired = string.IsNullOrEmpty(configArg) ||
+                         configArg.Equals("true", StringComparison.OrdinalIgnoreCase);
+        property.IsRequired = isRequired;
+
+        if (isRequired)
+        {
+            property.IsExplicitlyRequired = true;
+        }
     }
 
     /// <summary>

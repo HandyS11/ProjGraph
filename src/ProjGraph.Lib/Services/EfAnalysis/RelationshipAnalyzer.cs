@@ -349,14 +349,16 @@ public static class RelationshipAnalyzer
                     Name = $"{m2m.SourceEntity}{EfAnalysisConstants.Suffixes.IdSuffix}",
                     Type = sourcePkType,
                     IsPrimaryKey = true,
-                    IsForeignKey = true
+                    IsForeignKey = true,
+                    IsValueType = true // ID fields are always value types (int, Guid, etc.)
                 },
                 new EfProperty
                 {
                     Name = $"{m2m.TargetEntity}{EfAnalysisConstants.Suffixes.IdSuffix}",
                     Type = targetPkType,
                     IsPrimaryKey = true,
-                    IsForeignKey = true
+                    IsForeignKey = true,
+                    IsValueType = true
                 }
             ]
         };
