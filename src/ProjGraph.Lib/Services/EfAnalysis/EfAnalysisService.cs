@@ -127,7 +127,6 @@ public class EfAnalysisService : IEfAnalysisService
         SyntaxTree snapshotSyntaxTree)
     {
         var root = await snapshotSyntaxTree.GetRootAsync();
-        var entityNamespaces = EntityFileDiscovery.ExtractEntityNamespaces(root);
         var entityTypeNames = ExtractEntityTypeNamesFromSnapshot(snapshotClass);
         var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(snapshotDirectory);
 
@@ -299,7 +298,6 @@ public class EfAnalysisService : IEfAnalysisService
         SyntaxTree contextSyntaxTree)
     {
         var root = await contextSyntaxTree.GetRootAsync();
-        var entityNamespaces = EntityFileDiscovery.ExtractEntityNamespaces(root);
         var entityTypeNames = EntityFileDiscovery.ExtractEntityTypeNames(contextClass);
         var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(contextDirectory);
 

@@ -44,7 +44,7 @@ public static class EntityFileDiscovery
             await SearchDirectoryForEntitiesAsync(searchDir, entityTypeNames, normalizedContextPath, entityFiles);
 
             // Optimization: stop searching if we've found all entities
-            if (entityTypeNames.All(name => entityFiles.ContainsKey(name)))
+            if (entityTypeNames.All(entityFiles.ContainsKey))
             {
                 break;
             }
@@ -154,31 +154,6 @@ public static class EntityFileDiscovery
         }
 
         return entityTypeNames;
-    }
-
-    /// <summary>
-    /// Extracts the namespaces of entity types from the given syntax tree root node.
-    /// </summary>
-    /// <param name="root">The root <see cref="SyntaxNode"/> of the syntax tree to analyze.</param>
-    /// <returns>
-    /// A list of strings representing the namespaces of entity types found in the syntax tree.
-    /// Only namespaces that do not start with "System" or "Microsoft" are included.
-    /// </returns>
-    /// <remarks>
-    /// This method traverses the syntax tree to find all using directives. It filters out namespaces
-    /// that are null or start with "System" or "Microsoft", and returns the remaining namespaces as a list of strings.
-    /// </remarks>
-    public static List<string> ExtractEntityNamespaces(SyntaxNode root)
-    {
-        return
-        [
-            .. root.DescendantNodes()
-                .OfType<UsingDirectiveSyntax>()
-                .Where(u => u.Name is not null &&
-                            !u.Name.ToString().StartsWith("System") &&
-                            !u.Name.ToString().StartsWith("Microsoft"))
-                .Select(u => u.Name!.ToString())
-        ];
     }
 
     /// <summary>

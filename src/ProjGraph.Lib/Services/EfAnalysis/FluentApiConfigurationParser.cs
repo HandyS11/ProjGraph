@@ -246,7 +246,7 @@ public static class FluentApiConfigurationParser
 
         ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
         ParseExplicitRelationships(configSection, entityName, entities, shadowRelationships, compilation);
-        ParsePropertyConfigurations(configSection, entity);
+        ParsePropertyConfigurations(configSection, entity, compilation);
 
         // Parse table mapping
         var tableMatch = EfAnalysisRegexPatterns.ToTableRegex().Match(configSection);
@@ -667,13 +667,14 @@ public static class FluentApiConfigurationParser
     /// </summary>
     /// <param name="configSection">The configuration section containing property configuration details.</param>
     /// <param name="entity">The <see cref="EfEntity"/> object representing the entity to which the property configurations will be applied.</param>
+    /// <param name="compilation">The <see cref="Compilation"/> used to resolve symbols for default values.</param>
     /// <remarks>
     /// This method extracts property configuration details from the provided configuration section.
     /// It identifies the property name using either a lambda expression or a string argument, 
     /// and then parses all subsequent method calls (e.g., IsRequired, HasMaxLength) 
     /// to apply the corresponding configurations to the entity's property.
     /// </remarks>
-    private static void ParsePropertyConfigurations(string configSection, EfEntity entity)
+    private static void ParsePropertyConfigurations(string configSection, EfEntity entity, Compilation compilation)
     {
         EfProperty? currentProperty = null;
 
@@ -710,7 +711,7 @@ public static class FluentApiConfigurationParser
 
             else if (currentProperty != null)
             {
-                ApplyPropertyConfiguration(currentProperty, methodName, args);
+                ApplyPropertyConfiguration(currentProperty, methodName, args, compilation);
             }
         }
     }
@@ -860,6 +861,7 @@ public static class FluentApiConfigurationParser
     /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
     /// <param name="configMethod">The name of the configuration method to apply (e.g., "IsRequired", "HasMaxLength").</param>
     /// <param name="configArg">The argument for the configuration method, if applicable (e.g., max length, precision).</param>
+    /// <param name="compilation">The <see cref="Compilation"/> used to resolve symbols for default values.</param>
     /// <remarks>
     /// This method applies various property configurations based on the provided method name:
     /// - "IsRequired": Marks the property as required.
@@ -867,21 +869,29 @@ public static class FluentApiConfigurationParser
     /// - "HasPrecision": Configures the precision and scale of the property using the <see cref="ApplyPrecisionConfiguration"/> method.
     /// - "HasDefaultValue": Sets the default value of the property using the provided argument.
     /// </remarks>
-    private static void ApplyPropertyConfiguration(EfProperty property, string configMethod, string configArg)
+    private static void ApplyPropertyConfiguration(EfProperty property, string configMethod, string configArg,
+        Compilation compilation)
     {
-        var configActions = new Dictionary<string, Action<EfProperty, string>>
+        switch (configMethod)
         {
-            [EfAnalysisConstants.EfMethods.IsRequired] = ApplyIsRequiredConfiguration,
-            [EfAnalysisConstants.EfMethods.HasMaxLength] = ApplyMaxLengthConfiguration,
-            [EfAnalysisConstants.EfMethods.HasPrecision] = ApplyPrecisionConfiguration,
-            [EfAnalysisConstants.EfMethods.HasColumnType] = ApplyColumnTypeConfiguration,
-            [EfAnalysisConstants.EfMethods.HasDefaultValue] = ApplyDefaultValueConfiguration,
-            [EfAnalysisConstants.EfMethods.HasDefaultValueSql] = ApplyDefaultValueSqlConfiguration
-        };
-
-        if (configActions.TryGetValue(configMethod, out var action))
-        {
-            action(property, configArg);
+            case EfAnalysisConstants.EfMethods.IsRequired:
+                ApplyIsRequiredConfiguration(property, configArg);
+                break;
+            case EfAnalysisConstants.EfMethods.HasMaxLength:
+                ApplyMaxLengthConfiguration(property, configArg);
+                break;
+            case EfAnalysisConstants.EfMethods.HasPrecision:
+                ApplyPrecisionConfiguration(property, configArg);
+                break;
+            case EfAnalysisConstants.EfMethods.HasColumnType:
+                ApplyColumnTypeConfiguration(property, configArg);
+                break;
+            case EfAnalysisConstants.EfMethods.HasDefaultValue:
+                ApplyDefaultValueConfiguration(property, configArg, compilation);
+                break;
+            case EfAnalysisConstants.EfMethods.HasDefaultValueSql:
+                ApplyDefaultValueSqlConfiguration(property, configArg);
+                break;
         }
     }
 
@@ -920,9 +930,10 @@ public static class FluentApiConfigurationParser
     /// </summary>
     /// <param name="property">The <see cref="EfProperty"/> object representing the property to configure.</param>
     /// <param name="configArg">The configuration argument containing the default value.</param>
-    private static void ApplyDefaultValueConfiguration(EfProperty property, string configArg)
+    /// <param name="compilation">The <see cref="Compilation"/> used to resolve symbols for default values.</param>
+    private static void ApplyDefaultValueConfiguration(EfProperty property, string configArg, Compilation compilation)
     {
-        property.DefaultValue = ParseDefaultValue(configArg);
+        property.DefaultValue = ParseDefaultValue(configArg, compilation);
     }
 
     /// <summary>
@@ -960,25 +971,39 @@ public static class FluentApiConfigurationParser
     }
 
     /// <summary>
-    /// Parses a default value argument and returns a simplified string representation.
+    /// Parses the default value from a configuration argument, resolving constant or enum values if possible.
     /// </summary>
-    /// <param name="configArg">The configuration argument containing the default value.</param>
+    /// <param name="configArg">The configuration argument to parse.</param>
+    /// <param name="compilation">The <see cref="Compilation"/> used to resolve symbols for default values.</param>
     /// <returns>
     /// A string representing the default value, with quotes removed and qualified names shortened
-    /// to their simple name when appropriate.
+    /// to their simple name when appropriate, or their constant value if resolvable.
     /// </returns>
     /// <remarks>
     /// This method handles quoted strings and attempts to simplify fully qualified names
     /// (e.g., "MyNamespace.MyEnum.Value" becomes "Value") unless the value appears to be numeric.
+    /// It also attempts to resolve enum values to their underlying constant values if a compilation is provided.
     /// </remarks>
-    private static string ParseDefaultValue(string configArg)
+    private static string ParseDefaultValue(string configArg, Compilation compilation)
     {
         var trimmedArg = configArg.Trim();
         var isQuoted = (trimmedArg.StartsWith('\"') && trimmedArg.EndsWith('\"')) ||
                        (trimmedArg.StartsWith('\'') && trimmedArg.EndsWith('\''));
         var val = trimmedArg.Trim('\"', '\'');
 
-        if (isQuoted || !val.Contains('.'))
+        if (isQuoted)
+        {
+            return val;
+        }
+
+        // Try to resolve as a constant/enum value using Roslyn
+        var resolvedValue = ResolveConstantValue(val, compilation);
+        if (resolvedValue != null)
+        {
+            return resolvedValue;
+        }
+
+        if (!val.Contains('.'))
         {
             return val;
         }
@@ -991,6 +1016,67 @@ public static class FluentApiConfigurationParser
         }
 
         return val;
+    }
+
+    /// <summary>
+    /// Attempts to resolve a constant or enum value from an expression string using the provided compilation.
+    /// </summary>
+    /// <param name="expression">The expression string to resolve (e.g., "UserStatus.Active").</param>
+    /// <param name="compilation">The <see cref="Compilation"/> used to resolve symbols.</param>
+    /// <returns>The constant value as a string if resolved; otherwise, <c>null</c>.</returns>
+    private static string? ResolveConstantValue(string expression, Compilation compilation)
+    {
+        var cleaned = expression.Trim();
+        // Remove casts like (string) or (int?)
+        if (cleaned.StartsWith('(') && cleaned.Contains(')') && cleaned.LastIndexOf(')') < cleaned.Length - 1)
+        {
+            var afterCast = cleaned[(cleaned.LastIndexOf(')') + 1)..].Trim();
+            if (!string.IsNullOrEmpty(afterCast) && !afterCast.Contains(' '))
+            {
+                cleaned = afterCast;
+            }
+        }
+
+        if (string.IsNullOrEmpty(cleaned) || cleaned.Contains('(') || cleaned.Contains(' '))
+        {
+            return null;
+        }
+
+        var parts = cleaned.Split('.');
+
+        // Case 1: Simple identifier (e.g., "MyConst")
+        if (parts.Length == 1)
+        {
+            var name = parts[0];
+            // Search for any constant field with this name in the compilation
+            // This might be slow, but it's a fallback. 
+            // Better: search in the current context (but we don't have it easily here)
+            return compilation.GetSymbolsWithName(name, SymbolFilter.Member)
+                .OfType<IFieldSymbol>()
+                .FirstOrDefault(f => f.HasConstantValue)?.ConstantValue?.ToString();
+        }
+
+        // Case 2: Qualified name (e.g., "MyClass.MyConst" or "Namespace.MyClass.MyConst")
+        // We start from the right and try to find a type
+        for (var i = parts.Length - 1; i > 0; i--)
+        {
+            var typeName = string.Join(".", parts[..i]);
+            var memberName = parts[i];
+
+            // Try searching by name if not fully qualified
+            var typeSymbol = compilation.GetTypeByMetadataName(typeName) ?? compilation
+                .GetSymbolsWithName(parts[i - 1], SymbolFilter.Type)
+                .OfType<INamedTypeSymbol>()
+                .FirstOrDefault();
+
+            var member = typeSymbol?.GetMembers(memberName).FirstOrDefault();
+            if (member is IFieldSymbol { HasConstantValue: true } field)
+            {
+                return field.ConstantValue?.ToString();
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

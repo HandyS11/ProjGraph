@@ -53,11 +53,6 @@ public static class TypeSymbolExtensions
             return true;
         }
 
-        if (type.IsReferenceType)
-        {
-            return false;
-        }
-
         // Fallback for unresolved types or types where semantic info is incomplete
         var typeString = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat).TrimEnd('?');
         if (typeString.Contains('.'))
@@ -65,7 +60,12 @@ public static class TypeSymbolExtensions
             typeString = typeString[(typeString.LastIndexOf('.') + 1)..];
         }
 
-        return EfAnalysisConstants.DataTypes.ValueTypes.Contains(typeString);
+        if (EfAnalysisConstants.DataTypes.ValueTypes.Contains(typeString))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
