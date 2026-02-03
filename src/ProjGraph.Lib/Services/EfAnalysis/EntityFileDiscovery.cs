@@ -168,7 +168,8 @@ public static class EntityFileDiscovery
     /// </param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     /// <remarks>
-    /// This method iterates through all C# files in the specified directory and its subdirectories.
+    /// This method uses manual recursion to efficiently traverse directories while skipping common
+    /// non-source directories (bin, obj, .git, node_modules) without enumerating their contents.
     /// It skips the context file specified by <paramref name="normalizedContextPath"/>.
     /// For each file, it calls <see cref="ProcessSourceFileAsync"/> to process the file and add matching
     /// entity type names and their file paths to the <paramref name="entityFiles"/> dictionary.
@@ -180,36 +181,19 @@ public static class EntityFileDiscovery
         string normalizedContextPath,
         Dictionary<string, string> entityFiles)
     {
-        try
-        {
-            var options = new EnumerationOptions
+        await SearchDirectoryRecursivelyAsync(
+            searchDir,
+            EfAnalysisConstants.FilePatterns.CSharpFiles,
+            async (filePath) =>
             {
-                RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.System
-            };
-
-            foreach (var csFile in Directory.EnumerateFiles(searchDir, EfAnalysisConstants.FilePatterns.CSharpFiles,
-                         options))
-            {
-                var fullPath = Path.GetFullPath(csFile);
+                var fullPath = Path.GetFullPath(filePath);
                 if (fullPath.Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
                 {
-                    continue;
-                }
-
-                // Skip common non-source directories that can be large
-                var pathSegments = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                if (pathSegments.Any(s => s is "bin" or "obj" or ".git" or "node_modules"))
-                {
-                    continue;
+                    return;
                 }
 
                 await ProcessSourceFileAsync(fullPath, entityTypeNames, entityFiles);
-            }
-        }
-        catch
-        {
-            // Ignore access errors for directories we can't read
-        }
+            });
     }
 
     /// <summary>
@@ -345,6 +329,67 @@ public static class EntityFileDiscovery
     }
 
     /// <summary>
+    /// Recursively searches a directory and its subdirectories for files matching the specified pattern,
+    /// while skipping common non-source directories (bin, obj, .git, node_modules).
+    /// </summary>
+    /// <param name="directory">The directory to search.</param>
+    /// <param name="searchPattern">The file search pattern (e.g., "*.cs").</param>
+    /// <param name="fileProcessor">An async action to process each matching file.</param>
+    /// <param name="currentDepth">The current recursion depth (used internally).</param>
+    /// <param name="maxDepth">The maximum recursion depth to prevent infinite recursion.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    /// <remarks>
+    /// This method performs manual directory traversal to avoid enumerating files in excluded directories.
+    /// This is more efficient than using built-in recursive enumeration with post-filtering, especially
+    /// for large projects with many build artifacts.
+    /// </remarks>
+    private static async Task SearchDirectoryRecursivelyAsync(
+        string directory,
+        string searchPattern,
+        Func<string, Task> fileProcessor,
+        int currentDepth = 0,
+        int maxDepth = int.MaxValue)
+    {
+        if (currentDepth >= maxDepth)
+        {
+            return;
+        }
+
+        try
+        {
+            // Process files in the current directory
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.System
+            };
+
+            foreach (var file in Directory.EnumerateFiles(directory, searchPattern, options))
+            {
+                await fileProcessor(file);
+            }
+
+            // Recursively process subdirectories, skipping excluded ones
+            foreach (var subDir in Directory.EnumerateDirectories(directory, "*", options))
+            {
+                var dirName = Path.GetFileName(subDir);
+                // Skip common non-source directories
+                if (dirName is "bin" or "obj" or ".git" or "node_modules")
+                {
+                    continue;
+                }
+
+                await SearchDirectoryRecursivelyAsync(subDir, searchPattern, fileProcessor, currentDepth + 1, maxDepth);
+            }
+        }
+        catch
+        {
+            // Ignore access errors for directories we can't read
+        }
+    }
+
+    /// <summary>
     /// Finds the root directory of a solution by traversing up the directory hierarchy
     /// starting from the specified directory, up to a maximum number of levels.
     /// </summary>
@@ -386,9 +431,9 @@ public static class EntityFileDiscovery
     /// if the files are found; otherwise, the dictionary will be empty.
     /// </returns>
     /// <remarks>
-    /// This method iterates through the provided base class names and attempts to locate their corresponding
-    /// file paths by calling the <see cref="TryFindBaseClassFile"/> method. If a file is found, it is added
-    /// to the resulting dictionary. If no file is found for a base class name, it is skipped.
+    /// This method uses manual recursion to efficiently traverse directories while skipping common
+    /// non-source directories (bin, obj, .git, node_modules) without enumerating their contents.
+    /// It searches up to a maximum depth of 10 levels to find matching base class files.
     /// </remarks>
     public static Dictionary<string, string> SearchForBaseClassFiles(
         HashSet<string> baseClassNames,
@@ -396,40 +441,20 @@ public static class EntityFileDiscovery
     {
         var baseClassFiles = new Dictionary<string, string>();
 
-        try
-        {
-            var options = new EnumerationOptions
+        SearchDirectoryRecursivelyAsync(
+            solutionRoot.FullName,
+            "*.cs",
+            async (filePath) =>
             {
-                RecurseSubdirectories = true, IgnoreInaccessible = true, MaxRecursionDepth = 10
-            };
-
-            foreach (var file in Directory.EnumerateFiles(solutionRoot.FullName, "*.cs", options))
-            {
-                var fullPath = Path.GetFullPath(file);
-                // Skip common non-source directories that can be large
-                var pathSegments = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                if (pathSegments.Any(s => s is "bin" or "obj" or ".git" or "node_modules"))
+                var fileName = Path.GetFileNameWithoutExtension(filePath);
+                if (baseClassNames.Contains(fileName))
                 {
-                    continue;
+                    var fullPath = Path.GetFullPath(filePath);
+                    baseClassFiles.TryAdd(fileName, fullPath);
                 }
-
-                var fileName = Path.GetFileNameWithoutExtension(file);
-                if (!baseClassNames.Contains(fileName))
-                {
-                    continue;
-                }
-
-                baseClassFiles.TryAdd(fileName, fullPath);
-                if (baseClassFiles.Count == baseClassNames.Count)
-                {
-                    break;
-                }
-            }
-        }
-        catch
-        {
-            // Ignore access errors
-        }
+                await Task.CompletedTask;
+            },
+            maxDepth: 10).GetAwaiter().GetResult();
 
         return baseClassFiles;
     }
