@@ -187,22 +187,17 @@ public static class EntityFileDiscovery
                 RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.System
             };
 
-            foreach (var csFile in Directory.EnumerateFiles(searchDir, EfAnalysisConstants.FilePatterns.CSharpFiles,
-                         options))
+            var filesToProcess = Directory.EnumerateFiles(searchDir, EfAnalysisConstants.FilePatterns.CSharpFiles, options)
+                .Select(Path.GetFullPath)
+                .Where(fullPath => !fullPath.Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
+                .Where(fullPath =>
+                {
+                    var pathSegments = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    return !pathSegments.Any(s => s is "bin" or "obj" or ".git" or "node_modules");
+                });
+
+            foreach (var fullPath in filesToProcess)
             {
-                var fullPath = Path.GetFullPath(csFile);
-                if (fullPath.Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                // Skip common non-source directories that can be large
-                var pathSegments = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                if (pathSegments.Any(s => s is "bin" or "obj" or ".git" or "node_modules"))
-                {
-                    continue;
-                }
-
                 await ProcessSourceFileAsync(fullPath, entityTypeNames, entityFiles);
             }
         }
