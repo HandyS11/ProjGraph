@@ -17,6 +17,11 @@ namespace ProjGraph.Lib.Services.EfAnalysis;
 public static class EntityFileDiscovery
 {
     /// <summary>
+    /// Maximum recursion depth when searching for base class files to prevent infinite recursion
+    /// and limit search scope to reasonable project structures.
+    /// </summary>
+    private const int MaxSearchDepth = 10;
+    /// <summary>
     /// Discovers the file paths of entity files within the specified search directories.
     /// </summary>
     /// <param name="searchDirectories">A list of directories to search for entity files.</param>
@@ -426,7 +431,7 @@ public static class EntityFileDiscovery
         DirectoryInfo solutionRoot)
     {
         var baseClassFiles = new Dictionary<string, string>();
-        SearchForBaseClassFilesRecursive(solutionRoot.FullName, baseClassNames, baseClassFiles, 0, 10);
+        SearchForBaseClassFilesRecursive(solutionRoot.FullName, baseClassNames, baseClassFiles, 0, MaxSearchDepth);
         return baseClassFiles;
     }
 
