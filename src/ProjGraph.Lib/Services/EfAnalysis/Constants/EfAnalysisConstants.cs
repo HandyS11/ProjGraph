@@ -26,6 +26,14 @@ public static class EfAnalysisConstants
         public const string Long = "long";
         public const string Single = "Single";
         public const string Short = "short";
+        public const string Byte = "byte";
+        public const string SByte = "sbyte";
+        public const string UShort = "ushort";
+        public const string UInt = "uint";
+        public const string UInt32 = "UInt32";
+        public const string ULong = "ulong";
+        public const string UInt64 = "UInt64";
+        public const string Char = "char";
 
         /// <summary>
         /// A set of common .NET value types that are treated as having a default value in EF.
@@ -46,7 +54,15 @@ public static class EfAnalysisConstants
             Double,
             Float,
             Single,
-            Short
+            Short,
+            Byte,
+            SByte,
+            UShort,
+            UInt,
+            UInt32,
+            ULong,
+            UInt64,
+            Char
         };
     }
 
