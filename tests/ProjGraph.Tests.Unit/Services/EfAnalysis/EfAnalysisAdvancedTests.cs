@@ -515,6 +515,6 @@ public class EfAnalysisAdvancedTests
         var rel = model.Relationships.Should().ContainSingle().Which;
         rel.SourceEntity.Should().Be("PermissionEntry");
         rel.TargetEntity.Should().Be("PermissionEntry");
-        rel.Type.Should().Be(EfRelationshipType.OneToOne);
+        rel.Type.Should().Be(EfRelationshipType.OneToMany);
     }
 }
