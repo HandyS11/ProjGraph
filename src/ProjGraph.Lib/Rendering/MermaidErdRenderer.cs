@@ -20,6 +20,14 @@ public static class MermaidErdRenderer
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
+
+        if (!string.IsNullOrEmpty(model.ContextName))
+        {
+            sb.AppendLine("---");
+            sb.AppendLine($"title: {model.ContextName}");
+            sb.AppendLine("---");
+        }
+
         sb.AppendLine("erDiagram");
 
         RenderEntities(model, sb);
