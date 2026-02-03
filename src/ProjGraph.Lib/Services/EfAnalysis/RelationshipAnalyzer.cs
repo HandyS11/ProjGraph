@@ -227,21 +227,15 @@ public static class RelationshipAnalyzer
         IPropertySymbol prop,
         INamedTypeSymbol targetType)
     {
-        if (NavigationPropertyAnalyzer.HasInverseCollection(prop, targetType))
-        {
-            // Target has a collection back: this is the "many" side of One-to-Many
-            relationship.Type = EfRelationshipType.OneToMany;
-            relationship.SourceEntity = targetEntity.Name;
-            relationship.TargetEntity = sourceEntity.Name;
-        }
-        else if (NavigationPropertyAnalyzer.HasInverseReference(prop, targetType))
+        if (NavigationPropertyAnalyzer.HasInverseReference(prop, targetType))
         {
             // If it has an inverse reference (including self-references with an explicit inverse), treat as One-to-One
             relationship.Type = EfRelationshipType.OneToOne;
         }
         else
         {
-            // No inverse navigation found: treat as optional One-to-Many
+            // Target has a collection back, or no inverse navigation found: treat as One-to-Many
+            // The foreign key will be on the source entity (the one with the reference navigation)
             relationship.Type = EfRelationshipType.OneToMany;
             relationship.SourceEntity = targetEntity.Name;
             relationship.TargetEntity = sourceEntity.Name;

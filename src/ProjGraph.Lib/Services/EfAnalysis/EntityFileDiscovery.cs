@@ -21,6 +21,7 @@ public static class EntityFileDiscovery
     /// and limit search scope to reasonable project structures.
     /// </summary>
     private const int MaxSearchDepth = 10;
+
     /// <summary>
     /// Discovers the file paths of entity files within the specified search directories.
     /// </summary>
@@ -124,7 +125,7 @@ public static class EntityFileDiscovery
         // Adding the parent directory handles most cases as it encompasses siblings and the context dir itself.
         searchDirectories.Add(parentDir.FullName);
 
-        return searchDirectories.Distinct().ToList();
+        return [.. searchDirectories.Distinct()];
     }
 
     /// <summary>
@@ -213,12 +214,11 @@ public static class EntityFileDiscovery
             // Process files in the current directory
             var options = new EnumerationOptions
             {
-                RecurseSubdirectories = false,
-                IgnoreInaccessible = true,
-                AttributesToSkip = FileAttributes.System
+                RecurseSubdirectories = false, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.System
             };
 
-            foreach (var csFile in Directory.EnumerateFiles(currentDir, EfAnalysisConstants.FilePatterns.CSharpFiles, options))
+            foreach (var csFile in Directory.EnumerateFiles(currentDir, EfAnalysisConstants.FilePatterns.CSharpFiles,
+                         options))
             {
                 var fullPath = Path.GetFullPath(csFile);
                 if (fullPath.Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
@@ -465,38 +465,37 @@ public static class EntityFileDiscovery
         {
             var options = new EnumerationOptions
             {
-                RecurseSubdirectories = false,
-                IgnoreInaccessible = true,
-                AttributesToSkip = FileAttributes.System
+                RecurseSubdirectories = false, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.System
             };
 
             // Process files in the current directory
             foreach (var file in Directory.EnumerateFiles(currentDir, "*.cs", options))
             {
                 var fileName = Path.GetFileNameWithoutExtension(file);
-                if (baseClassNames.Contains(fileName))
+                if (!baseClassNames.Contains(fileName))
                 {
-                    var fullPath = Path.GetFullPath(file);
-                    baseClassFiles.TryAdd(fileName, fullPath);
-                    
-                    if (baseClassFiles.Count == baseClassNames.Count)
-                    {
-                        return;
-                    }
+                    continue;
+                }
+
+                var fullPath = Path.GetFullPath(file);
+                baseClassFiles.TryAdd(fileName, fullPath);
+
+                if (baseClassFiles.Count == baseClassNames.Count)
+                {
+                    return;
                 }
             }
 
             // Recursively process subdirectories, skipping excluded directories
             foreach (var subDir in Directory.EnumerateDirectories(currentDir, "*", options))
             {
-                var dirName = Path.GetFileName(subDir);
-                if (dirName is "bin" or "obj" or ".git" or "node_modules")
+                if (ShouldSkipDirectory(subDir))
                 {
                     continue;
                 }
 
                 SearchForBaseClassFilesRecursive(subDir, baseClassNames, baseClassFiles, currentDepth + 1, maxDepth);
-                
+
                 if (baseClassFiles.Count == baseClassNames.Count)
                 {
                     return;
@@ -507,5 +506,19 @@ public static class EntityFileDiscovery
         {
             // Ignore access errors
         }
+    }
+
+    /// <summary>
+    /// Determines whether a directory should be skipped during file search operations.
+    /// </summary>
+    /// <param name="directory">The directory path to check.</param>
+    /// <returns>
+    /// <c>true</c> if the directory should be skipped (e.g., bin, obj, .git, node_modules);
+    /// otherwise, <c>false</c>.
+    /// </returns>
+    private static bool ShouldSkipDirectory(string directory)
+    {
+        var dirName = Path.GetFileName(directory);
+        return dirName is "bin" or "obj" or ".git" or "node_modules";
     }
 }

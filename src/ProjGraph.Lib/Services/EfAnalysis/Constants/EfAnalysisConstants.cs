@@ -38,7 +38,7 @@ public static class EfAnalysisConstants
         /// <summary>
         /// A set of common .NET value types that are treated as having a default value in EF.
         /// </summary>
-        public static readonly HashSet<string> ValueTypes = new(StringComparer.OrdinalIgnoreCase)
+        public static readonly IReadOnlySet<string> ValueTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             Int,
             Int32,
