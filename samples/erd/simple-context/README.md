@@ -41,6 +41,9 @@ The tool generates a **Mermaid ERD diagram** showing:
 ### Example Output
 
 ```mermaid
+---
+title: MyDbContext
+---
 erDiagram
   Author {
     int Id PK

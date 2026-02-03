@@ -46,7 +46,7 @@ public partial class MarkdownErdTests
         return NormalizeRegex().Replace(input, "\n").Trim();
     }
 
-    [GeneratedRegex(@"```mermaid\s+(erDiagram[\s\S]*?)\s+```")]
+    [GeneratedRegex(@"```mermaid\s+([\s\S]*?)\s+```")]
     private static partial Regex ExtractMermaidRegex();
 
     [GeneratedRegex(@"\r\n|\n|\r")]
