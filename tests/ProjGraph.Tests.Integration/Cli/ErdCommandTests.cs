@@ -58,6 +58,41 @@ public class ErdCommandTests
     }
 
     [Fact]
+    public void ErdCommand_SimpleContext_ShouldNotContainIrrelevantFields()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var contextPath = CliTestHelpers.GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+        {
+            var result = app.Run(["erd", contextPath]);
+            result.Should().Be(0);
+        });
+
+        // Assert
+        // Irrelevant fields should not be present in Book entity
+        capturedOutput.Should().NotContain("Guid AuthorId FK");
+        capturedOutput.Should().NotContain("Guid BookId FK");
+        capturedOutput.Should().NotContain("Guid CategoryId FK");
+        
+        // Ensure standard fields are still there
+        capturedOutput.Should().Contain("int PublisherId FK");
+        
+        // Ensure no self-referencing Book which was caused by misparsing UsingEntity
+        capturedOutput.Should().NotContain("Book ||--o{ Book : \"\"");
+
+        // Ensure junction tables and their relationships are present
+        capturedOutput.Should().Contain("AuthorBook {");
+        capturedOutput.Should().Contain("BookCategory {");
+        capturedOutput.Should().Contain("Author ||--o{ AuthorBook : \"\"");
+        capturedOutput.Should().Contain("Book ||--o{ AuthorBook : \"\"");
+        capturedOutput.Should().Contain("Book ||--o{ BookCategory : \"\"");
+        capturedOutput.Should().Contain("Category ||--o{ BookCategory : \"\"");
+    }
+
+    [Fact]
     public void ErdCommand_NonCsFile_ShouldFail()
     {
         // Arrange

@@ -17,8 +17,23 @@ public static class TypeSymbolExtensions
     /// </returns>
     public static bool IsNullable(this ITypeSymbol type)
     {
-        return type.NullableAnnotation is NullableAnnotation.Annotated ||
-               type.Name is EfAnalysisConstants.CommonNames.Nullable;
+        if (type.NullableAnnotation is NullableAnnotation.Annotated)
+        {
+            return true;
+        }
+
+        if (type.Name is EfAnalysisConstants.CommonNames.Nullable)
+        {
+            return true;
+        }
+
+        // Without NRT enabled, reference types are nullable
+        if (type.IsReferenceType)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

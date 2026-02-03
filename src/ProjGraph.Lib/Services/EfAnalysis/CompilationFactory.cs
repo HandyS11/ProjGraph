@@ -23,7 +23,11 @@ public static class CompilationFactory
     public static CSharpCompilation CreateCompilation(IEnumerable<SyntaxTree> syntaxTrees)
     {
         var references = BuildMetadataReferences();
+        var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+            .WithNullableContextOptions(NullableContextOptions.Enable);
+
         return CSharpCompilation.Create("AdHoc")
+            .WithOptions(options)
             .AddReferences(references)
             .AddSyntaxTrees(syntaxTrees);
     }

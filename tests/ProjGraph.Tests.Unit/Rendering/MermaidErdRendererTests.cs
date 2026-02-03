@@ -276,7 +276,8 @@ public class MermaidErdRendererTests
                 {
                     SourceEntity = "User",
                     TargetEntity = "Profile",
-                    Type = EfRelationshipType.OneToOne
+                    Type = EfRelationshipType.OneToOne,
+                    IsRequired = true
                 }
             ]
         };

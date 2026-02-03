@@ -40,7 +40,7 @@ public static class MermaidErdRenderer
 
         foreach (var entity in sortedEntities)
         {
-            sb.AppendLine($"    {entity.Name} {{");
+            sb.AppendLine($"  {entity.Name} {{");
 
             var orderedProperties = entity.Properties
                 .OrderByDescending(p => p.IsPrimaryKey)
@@ -49,10 +49,10 @@ public static class MermaidErdRenderer
 
             foreach (var propertyLine in orderedProperties.Select(RenderProperty))
             {
-                sb.AppendLine($"        {propertyLine}");
+                sb.AppendLine($"    {propertyLine}");
             }
 
-            sb.AppendLine("    }");
+            sb.AppendLine("  }");
         }
     }
 
@@ -115,7 +115,7 @@ public static class MermaidErdRenderer
             var sourceEntity = rel.SourceEntity.Trim();
             var targetEntity = rel.TargetEntity.Trim();
 
-            sb.AppendLine($"    {sourceEntity} {relSyntax} {targetEntity} : \"\"");
+            sb.AppendLine($"  {sourceEntity} {relSyntax} {targetEntity} : \"\"");
         }
     }
 
@@ -128,8 +128,8 @@ public static class MermaidErdRenderer
     {
         return rel.Type switch
         {
-            EfRelationshipType.OneToOne => "||--||",
-            EfRelationshipType.OneToMany => rel.IsRequired ? "||--o{" : "|o--o{",
+            EfRelationshipType.OneToOne => rel.IsRequired ? "||--||" : "|o--||",
+            EfRelationshipType.OneToMany => rel.IsRequired ? "||--o{" : "|o--o{" ,
             EfRelationshipType.ManyToMany => "}|--|{",
             _ => "--"
         };

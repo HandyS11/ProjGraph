@@ -314,6 +314,12 @@ public static class FluentApiConfigurationParser
         for (var i = 0; i < matches.Count; i++)
         {
             var match = matches[i];
+
+            if (IsInsideUsingEntityBlock(configSection, match.Index))
+            {
+                continue;
+            }
+
             var methodName = match.Groups[1].Value;
             var args = match.Groups[2].Value;
 
@@ -672,8 +678,15 @@ public static class FluentApiConfigurationParser
         EfProperty? currentProperty = null;
 
         var matches = EfAnalysisRegexPatterns.MethodCallRegex().Matches(configSection);
-        foreach (var groups in matches.Select(match => match.Groups))
+        for (var i = 0; i < matches.Count; i++)
         {
+            var match = matches[i];
+            if (IsInsideUsingEntityBlock(configSection, match.Index))
+            {
+                continue;
+            }
+
+            var groups = match.Groups;
             var methodName = groups[1].Value;
             var args = groups[2].Value;
 
@@ -682,9 +695,16 @@ public static class FluentApiConfigurationParser
             {
                 currentProperty = ProcessPropertyDeclaration(entity, methodName, args);
             }
-            else if (methodName == EfAnalysisConstants.EfMethods.HasKey)
+            else if (methodName == EfAnalysisConstants.EfMethods.HasKey ||
+                     methodName == EfAnalysisConstants.EfMethods.ToTable ||
+                     methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne) ||
+                     methodName.StartsWith(EfAnalysisConstants.EfMethods.HasMany))
             {
-                ApplyKeyConfiguration(entity, args);
+                if (methodName == EfAnalysisConstants.EfMethods.HasKey)
+                {
+                    ApplyKeyConfiguration(entity, args);
+                }
+
                 currentProperty = null;
             }
 
