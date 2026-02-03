@@ -86,18 +86,16 @@ public static class EntityFileDiscovery
     }
 
     /// <summary>
-    /// Builds a list of directories to search for entity files based on the provided context directory
-    /// and a list of entity namespaces.
+    /// Builds a list of directories to search for entity files based on the provided context directory.
     /// </summary>
     /// <param name="contextDirectory">The directory containing the context file.</param>
     /// <returns>
-    /// A list of directories to search for entity files, including the context directory, its parent directory,
-    /// and any sibling directories that are likely to contain entity files.
+    /// A list of directories to search for entity files, including the context directory and its parent directory.
     /// </returns>
     /// <remarks>
     /// This method starts with the context directory and then its parent directory.
     /// Since the parent directory scan is recursive, it will naturally include the context directory
-    /// and all siblings. The sibling check is kept as a fallback for non-nested structures.
+    /// and all siblings through the recursive search.
     /// </remarks>
     public static List<string> BuildSearchDirectories(
         string contextDirectory)
