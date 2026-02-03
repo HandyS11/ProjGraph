@@ -11,6 +11,13 @@ namespace ProjGraph.Lib.Services.ClassAnalysis;
 public static class WorkspaceTypeDiscovery
 {
     /// <summary>
+    /// Directories to skip during recursive file search for better performance.
+    /// </summary>
+    private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "bin", "obj", ".git", "node_modules"
+    };
+    /// <summary>
     /// Finds the file containing the definition of a specific type within a given directory or its subdirectories.
     /// The method first attempts to search in common subdirectories for better performance, and if not found,
     /// it searches the entire root directory. The search uses both a simple string match and Roslyn for verification.
@@ -72,9 +79,6 @@ public static class WorkspaceTypeDiscovery
     /// </returns>
     private static async Task<string?> SearchDirectoryRecursiveAsync(string directory, string typeName)
     {
-        // Directories to skip during recursion for better performance
-        var excludedDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bin", "obj", ".git", "node_modules" };
-
         // Search files in the current directory
         foreach (var file in Directory.EnumerateFiles(directory, "*.cs", new EnumerationOptions { IgnoreInaccessible = true }))
         {
@@ -106,7 +110,7 @@ public static class WorkspaceTypeDiscovery
         foreach (var subDir in Directory.EnumerateDirectories(directory, "*", new EnumerationOptions { IgnoreInaccessible = true }))
         {
             var dirName = Path.GetFileName(subDir);
-            if (excludedDirs.Contains(dirName))
+            if (ExcludedDirectories.Contains(dirName))
             {
                 continue;
             }
