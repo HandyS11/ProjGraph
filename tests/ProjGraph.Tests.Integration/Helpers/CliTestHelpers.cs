@@ -68,26 +68,6 @@ public static class CliTestHelpers
         return app;
     }
 
-    public static async Task<(int ExitCode, string Output)> RunCommandAsync(params string[] args)
-    {
-        var app = CreateApp();
-        var output = new StringBuilder();
-        await using var writer = new StringWriter(output);
-
-        var originalOut = Console.Out;
-        Console.SetOut(writer);
-
-        try
-        {
-            var exitCode = await app.RunAsync(args);
-            return (exitCode, output.ToString());
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
-    }
-
     public static string CaptureConsoleOutput(Action action)
     {
         var output = new StringBuilder();
