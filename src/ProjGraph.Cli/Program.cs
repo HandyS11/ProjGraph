@@ -1,13 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using ProjGraph.Cli.Commands;
 using ProjGraph.Cli.Infrastructure;
-using ProjGraph.Core.Models;
-using ProjGraph.Lib.Application.Interfaces;
-using ProjGraph.Lib.Application.Services;
-using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
-using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
-using ProjGraph.Lib.Infrastructure.Parsers;
-using ProjGraph.Lib.Infrastructure.Rendering;
+using ProjGraph.Lib;
 using Spectre.Console.Cli;
 
 namespace ProjGraph.Cli;
@@ -18,24 +12,8 @@ public static class Program
     {
         var services = new ServiceCollection();
 
-        // Infrastructure - Parsers
-        services.AddSingleton<ISlnParser, SlnParser>();
-        services.AddSingleton<ISlnxParser, SlnxParser>();
-        services.AddSingleton<IProjectParser, ProjectParser>();
-
-        // Infrastructure - Analysis
-        services.AddSingleton<ICompilationFactory, CompilationFactory>();
-        services.AddSingleton<ITypeProcessor, TypeProcessor>();
-
-        // Infrastructure - Renderers
-        services.AddSingleton<IDiagramRenderer<SolutionGraph>, MermaidGraphRenderer>();
-        services.AddSingleton<IDiagramRenderer<ClassModel>, MermaidClassDiagramRenderer>();
-        services.AddSingleton<IDiagramRenderer<EfModel>, MermaidErdRenderer>();
-
-        // Application Services
-        services.AddSingleton<IGraphService, GraphService>();
-        services.AddSingleton<IEfAnalysisService, EfAnalysisService>();
-        services.AddSingleton<IClassAnalysisService, ClassAnalysisService>();
+        // Register Library services
+        services.AddProjGraphLib();
 
         var registrar = new TypeRegistrar(services);
         var app = new CommandApp(registrar);

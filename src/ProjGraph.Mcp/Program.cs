@@ -3,12 +3,8 @@ using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using ProjGraph.Core.Models;
+using ProjGraph.Lib;
 using ProjGraph.Lib.Application.Interfaces;
-using ProjGraph.Lib.Application.Services;
-using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
-using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
-using ProjGraph.Lib.Infrastructure.Parsers;
-using ProjGraph.Lib.Infrastructure.Rendering;
 using System.ComponentModel;
 
 namespace ProjGraph.Mcp;
@@ -26,24 +22,8 @@ public static class Program
             .WithStdioServerTransport()
             .WithTools<ProjGraphTools>();
 
-        // Infrastructure - Parsers
-        builder.Services.AddSingleton<ISlnParser, SlnParser>();
-        builder.Services.AddSingleton<ISlnxParser, SlnxParser>();
-        builder.Services.AddSingleton<IProjectParser, ProjectParser>();
-
-        // Infrastructure - Analysis
-        builder.Services.AddSingleton<ICompilationFactory, CompilationFactory>();
-        builder.Services.AddSingleton<ITypeProcessor, TypeProcessor>();
-
-        // Infrastructure - Renderers
-        builder.Services.AddSingleton<IDiagramRenderer<SolutionGraph>, MermaidGraphRenderer>();
-        builder.Services.AddSingleton<IDiagramRenderer<ClassModel>, MermaidClassDiagramRenderer>();
-        builder.Services.AddSingleton<IDiagramRenderer<EfModel>, MermaidErdRenderer>();
-
-        // Application Services
-        builder.Services.AddSingleton<IGraphService, GraphService>();
-        builder.Services.AddSingleton<IEfAnalysisService, EfAnalysisService>();
-        builder.Services.AddSingleton<IClassAnalysisService, ClassAnalysisService>();
+        // Register Library services
+        builder.Services.AddProjGraphLib();
 
         builder.Services.AddSingleton<ProjGraphTools>();
 

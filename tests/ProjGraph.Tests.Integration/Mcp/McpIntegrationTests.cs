@@ -1,5 +1,9 @@
 using FluentAssertions;
 using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Application.UseCases.ClassAnalysis;
+using ProjGraph.Lib.Application.UseCases.EfAnalysis;
+using ProjGraph.Lib.Application.UseCases.SolutionGraph;
+using ProjGraph.Lib.Infrastructure.Analysis;
 using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
 using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 using ProjGraph.Lib.Infrastructure.Parsers;
@@ -139,13 +143,17 @@ public class McpIntegrationTests
         var slnParser = new SlnParser();
         var slnxParser = new SlnxParser();
         var projectParser = new ProjectParser();
-        var graphService = new GraphService(slnParser, slnxParser, projectParser);
+        var graphService = new GraphService(new BuildGraphUseCase(slnParser, slnxParser, projectParser,
+            new ProjectDiscoveryService(projectParser)));
 
         var compilationFactory = new CompilationFactory();
         var typeProcessor = new TypeProcessor();
 
-        var efService = new EfAnalysisService(compilationFactory);
-        var classService = new ClassAnalysisService(compilationFactory, typeProcessor);
+        var efService = new EfAnalysisService(new AnalyzeContextUseCase(new EfModelAnalyzer(compilationFactory)),
+            new DiscoverContextsUseCase(new EfModelAnalyzer(compilationFactory)),
+            new AnalyzeSnapshotUseCase(new EfModelAnalyzer(compilationFactory)),
+            new DiscoverSnapshotsUseCase(new EfModelAnalyzer(compilationFactory)));
+        var classService = new ClassAnalysisService(new AnalyzeFileUseCase(compilationFactory, typeProcessor));
 
         return new ProjGraphTools(
             graphService,
@@ -156,4 +164,6 @@ public class McpIntegrationTests
             new MermaidErdRenderer());
     }
 }
+
+
 

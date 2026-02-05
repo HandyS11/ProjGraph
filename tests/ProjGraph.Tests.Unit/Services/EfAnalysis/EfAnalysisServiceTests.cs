@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Application.UseCases.EfAnalysis;
 using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 using ProjGraph.Tests.Unit.Helpers;
 
@@ -7,7 +8,18 @@ namespace ProjGraph.Tests.Unit.Services.EfAnalysis;
 
 public class EfAnalysisServiceTests
 {
-    private readonly EfAnalysisService _service = new(new CompilationFactory());
+    private readonly EfAnalysisService _service = CreateService();
+
+    private static EfAnalysisService CreateService()
+    {
+        var analyzer = new EfModelAnalyzer(new CompilationFactory());
+        return new EfAnalysisService(
+            new AnalyzeContextUseCase(analyzer),
+            new DiscoverContextsUseCase(analyzer),
+            new AnalyzeSnapshotUseCase(analyzer),
+            new DiscoverSnapshotsUseCase(analyzer)
+        );
+    }
 
     [Fact]
     public async Task DiscoverContextsAsync_ShouldFindDbContextInFile()

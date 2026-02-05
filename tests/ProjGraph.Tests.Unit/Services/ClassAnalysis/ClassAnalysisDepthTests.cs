@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Application.UseCases.ClassAnalysis;
 using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
 using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 using ProjGraph.Tests.Unit.Helpers;
@@ -15,7 +16,7 @@ public sealed class ClassAnalysisDepthTests : IDisposable
     public ClassAnalysisDepthTests()
     {
         _tempRoot = _temp.DirectoryPath;
-        _service = new ClassAnalysisService(new CompilationFactory(), new TypeProcessor());
+        _service = new ClassAnalysisService(new AnalyzeFileUseCase(new CompilationFactory(), new TypeProcessor()));
     }
 
     public void Dispose()

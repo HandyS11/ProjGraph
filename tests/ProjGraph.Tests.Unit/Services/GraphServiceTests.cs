@@ -1,5 +1,7 @@
 using FluentAssertions;
 using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Application.UseCases.SolutionGraph;
+using ProjGraph.Lib.Infrastructure.Analysis;
 using ProjGraph.Lib.Infrastructure.Parsers;
 using ProjGraph.Tests.Unit.Helpers;
 
@@ -7,7 +9,15 @@ namespace ProjGraph.Tests.Unit.Services;
 
 public class GraphServiceTests
 {
-    private readonly GraphService _graphService = new(new SlnParser(), new SlnxParser(), new ProjectParser());
+    private readonly GraphService _graphService = CreateService();
+
+    private static GraphService CreateService()
+    {
+        var projectParser = new ProjectParser();
+        var discoveryService = new ProjectDiscoveryService(projectParser);
+        var useCase = new BuildGraphUseCase(new SlnParser(), new SlnxParser(), projectParser, discoveryService);
+        return new GraphService(useCase);
+    }
 
     [Fact]
     public void BuildGraph_FromCsproj_ShouldDiscoverAllDependencies()
