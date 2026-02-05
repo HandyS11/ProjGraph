@@ -2,8 +2,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using ProjGraph.Core.Models;
 using ProjGraph.Lib.Application.Interfaces;
 using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
+using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
+using ProjGraph.Lib.Infrastructure.Parsers;
 using ProjGraph.Lib.Infrastructure.Rendering;
 using System.ComponentModel;
 
@@ -22,9 +26,25 @@ public static class Program
             .WithStdioServerTransport()
             .WithTools<ProjGraphTools>();
 
+        // Infrastructure - Parsers
+        builder.Services.AddSingleton<ISlnParser, SlnParser>();
+        builder.Services.AddSingleton<ISlnxParser, SlnxParser>();
+        builder.Services.AddSingleton<IProjectParser, ProjectParser>();
+
+        // Infrastructure - Analysis
+        builder.Services.AddSingleton<ICompilationFactory, CompilationFactory>();
+        builder.Services.AddSingleton<ITypeProcessor, TypeProcessor>();
+
+        // Infrastructure - Renderers
+        builder.Services.AddSingleton<IDiagramRenderer<SolutionGraph>, MermaidGraphRenderer>();
+        builder.Services.AddSingleton<IDiagramRenderer<ClassModel>, MermaidClassDiagramRenderer>();
+        builder.Services.AddSingleton<IDiagramRenderer<EfModel>, MermaidErdRenderer>();
+
+        // Application Services
         builder.Services.AddSingleton<IGraphService, GraphService>();
         builder.Services.AddSingleton<IEfAnalysisService, EfAnalysisService>();
         builder.Services.AddSingleton<IClassAnalysisService, ClassAnalysisService>();
+
         builder.Services.AddSingleton<ProjGraphTools>();
 
         var host = builder.Build();
@@ -36,7 +56,10 @@ public static class Program
 public class ProjGraphTools(
     IGraphService graphService,
     IEfAnalysisService efService,
-    IClassAnalysisService classService)
+    IClassAnalysisService classService,
+    IDiagramRenderer<SolutionGraph> graphRenderer,
+    IDiagramRenderer<ClassModel> classRenderer,
+    IDiagramRenderer<EfModel> erdRenderer)
 {
     [McpServerTool]
     [Description(
@@ -56,7 +79,7 @@ public class ProjGraphTools(
         try
         {
             var model = await classService.AnalyzeFileAsync(filePath, includeInheritance, includeDependencies, depth);
-            return MermaidClassDiagramRenderer.Render(model);
+            return classRenderer.Render(model);
         }
         catch (Exception ex)
         {
@@ -73,7 +96,7 @@ public class ProjGraphTools(
         try
         {
             var graph = graphService.BuildGraph(path);
-            return MermaidGraphRenderer.Render(graph);
+            return graphRenderer.Render(graph);
         }
         catch (Exception ex)
         {
@@ -95,7 +118,7 @@ public class ProjGraphTools(
         try
         {
             var model = await efService.AnalyzeContextAsync(path, contextName);
-            return MermaidErdRenderer.Render(model);
+            return erdRenderer.Render(model);
         }
         catch (Exception ex)
         {

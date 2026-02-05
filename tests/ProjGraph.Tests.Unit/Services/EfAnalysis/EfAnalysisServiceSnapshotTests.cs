@@ -1,13 +1,14 @@
 using FluentAssertions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services.EfAnalysis;
 
 public class EfAnalysisServiceSnapshotTests
 {
-    private readonly EfAnalysisService _service = new();
+    private readonly EfAnalysisService _service = new(new CompilationFactory());
 
     [Fact]
     public async Task DiscoverSnapshotsAsync_ShouldFindModelSnapshotInFile()

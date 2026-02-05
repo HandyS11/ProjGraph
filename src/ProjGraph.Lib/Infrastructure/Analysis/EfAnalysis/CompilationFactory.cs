@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using ProjGraph.Lib.Application.Interfaces;
 using System.Reflection;
 
 namespace ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
@@ -7,7 +8,7 @@ namespace ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 /// <summary>
 /// Provides a factory for creating Roslyn <see cref="Compilation"/> objects.
 /// </summary>
-public static class CompilationFactory
+public sealed class CompilationFactory : ICompilationFactory
 {
     /// <summary>
     /// Creates a new Roslyn <see cref="CSharpCompilation"/> object using the provided syntax trees and necessary metadata references.
@@ -20,7 +21,15 @@ public static class CompilationFactory
     /// This method generates a new C# compilation named "AdHoc" by adding the provided syntax trees and
     /// a set of metadata references built using the <see cref="BuildMetadataReferences"/> method.
     /// </remarks>
-    public static CSharpCompilation CreateCompilation(IEnumerable<SyntaxTree> syntaxTrees)
+    public Compilation CreateCompilation(IEnumerable<SyntaxTree> syntaxTrees)
+    {
+        return CreateCSharpCompilation(syntaxTrees);
+    }
+
+    /// <summary>
+    /// Creates a new Roslyn <see cref="CSharpCompilation"/> object.
+    /// </summary>
+    private static CSharpCompilation CreateCSharpCompilation(IEnumerable<SyntaxTree> syntaxTrees)
     {
         var references = BuildMetadataReferences();
         var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)

@@ -3,8 +3,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Application.Interfaces;
-using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
-using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 
 namespace ProjGraph.Lib.Application.Services;
 
@@ -14,7 +12,11 @@ namespace ProjGraph.Lib.Application.Services;
 /// and provides methods to analyze C# source files and extract class definitions,
 /// relationships, and other metadata.
 /// </summary>
-public class ClassAnalysisService : IClassAnalysisService
+/// <remarks>
+/// Initializes a new instance of the <see cref="ClassAnalysisService"/> class.
+/// </remarks>
+public class ClassAnalysisService(ICompilationFactory compilationFactory, ITypeProcessor typeProcessor)
+    : IClassAnalysisService
 {
     /// <summary>
     /// Analyzes a C# source file to extract class definitions and their relationships.
@@ -48,7 +50,7 @@ public class ClassAnalysisService : IClassAnalysisService
         var code = await File.ReadAllTextAsync(filePath);
         var syntaxTree = CSharpSyntaxTree.ParseText(code, path: filePath);
 
-        var compilation = CompilationFactory.CreateCompilation([syntaxTree]);
+        var compilation = (CSharpCompilation)compilationFactory.CreateCompilation([syntaxTree]);
 
         var context = new AnalysisContext
         {
@@ -68,7 +70,7 @@ public class ClassAnalysisService : IClassAnalysisService
 
         await EnqueueInitialTypesAsync(syntaxTree, compilation, typesToAnalyze);
 
-        await TypeProcessor.ProcessTypeQueueAsync(typesToAnalyze, context, options);
+        await typeProcessor.ProcessTypeQueueAsync(typesToAnalyze, context, options);
 
         return new ClassModel(Path.GetFileName(filePath), context.Types, context.Relationships);
     }
@@ -105,5 +107,3 @@ public class ClassAnalysisService : IClassAnalysisService
         }
     }
 }
-
-

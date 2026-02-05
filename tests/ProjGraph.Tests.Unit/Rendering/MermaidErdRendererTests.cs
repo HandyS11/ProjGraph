@@ -6,6 +6,8 @@ namespace ProjGraph.Tests.Unit.Rendering;
 
 public class MermaidErdRendererTests
 {
+    private readonly MermaidErdRenderer _renderer = new();
+
     [Fact]
     public void Render_ShouldGenerateValidMermaidErDiagram()
     {
@@ -23,7 +25,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("```mermaid");
@@ -41,7 +43,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("```mermaid");
@@ -66,7 +68,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("ProductId PK");
@@ -89,7 +91,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("CustomerId FK");
@@ -112,7 +114,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("OrderId PK,FK");
@@ -136,7 +138,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("Email").And.Contain("required");
@@ -159,7 +161,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("Username").And.Contain("max:50");
@@ -182,7 +184,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("Price").And.Contain("precision(18,2)");
@@ -205,7 +207,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("IsActive").And.Contain("default:true");
@@ -228,7 +230,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("int Age");
@@ -252,7 +254,7 @@ public class MermaidErdRendererTests
         var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("List~string~ Items");
@@ -283,7 +285,7 @@ public class MermaidErdRendererTests
         };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("User ||--|| Profile : \"\"");
@@ -314,7 +316,7 @@ public class MermaidErdRendererTests
         };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("Customer ||--o{ Order : \"\"");
@@ -345,7 +347,7 @@ public class MermaidErdRendererTests
         };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("Category |o--o{ Product : \"\"");
@@ -375,7 +377,7 @@ public class MermaidErdRendererTests
         };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("Student }|--|{ Course : \"\"");
@@ -432,7 +434,7 @@ public class MermaidErdRendererTests
         };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("User {");

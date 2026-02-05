@@ -1,12 +1,14 @@
 using Microsoft.CodeAnalysis;
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Interfaces;
+using ProjGraph.Lib.Application.Services;
 
 namespace ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
 
 /// <summary>
 /// Provides methods for processing type queues and handling related types during analysis.
 /// </summary>
-internal static class TypeProcessor
+public sealed class TypeProcessor : ITypeProcessor
 {
     /// <summary>
     /// Processes a queue of types to analyze, extracting type definitions and discovering relationships.
@@ -16,7 +18,18 @@ internal static class TypeProcessor
     /// <param name="context">The <see cref="AnalysisContext"/> containing the current state of the analysis.</param>
     /// <param name="options">The <see cref="AnalysisOptions"/> controlling the analysis behavior.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    public static async Task ProcessTypeQueueAsync(
+    public async Task ProcessTypeQueueAsync(
+        Queue<(INamedTypeSymbol Symbol, int Depth)> typesToAnalyze,
+        AnalysisContext context,
+        AnalysisOptions options)
+    {
+        await ProcessTypeQueueInternalAsync(typesToAnalyze, context, options);
+    }
+
+    /// <summary>
+    /// Internal implementation of processing the type queue.
+    /// </summary>
+    private static async Task ProcessTypeQueueInternalAsync(
         Queue<(INamedTypeSymbol Symbol, int Depth)> typesToAnalyze,
         AnalysisContext context,
         AnalysisOptions options)

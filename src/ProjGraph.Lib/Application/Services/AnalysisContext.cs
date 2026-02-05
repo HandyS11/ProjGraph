@@ -1,13 +1,13 @@
 using Microsoft.CodeAnalysis.CSharp;
 using ProjGraph.Core.Models;
 
-namespace ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
+namespace ProjGraph.Lib.Application.Services;
 
 /// <summary>
 /// Represents the context for the analysis process, containing information about analyzed types,
 /// their relationships, and the compilation context.
 /// </summary>
-internal sealed class AnalysisContext
+public sealed class AnalysisContext
 {
     /// <summary>
     /// A set of fully qualified names of types that have already been analyzed.

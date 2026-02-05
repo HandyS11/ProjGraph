@@ -1,4 +1,5 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Interfaces;
 using System.Text;
 
 namespace ProjGraph.Lib.Infrastructure.Rendering;
@@ -6,14 +7,14 @@ namespace ProjGraph.Lib.Infrastructure.Rendering;
 /// <summary>
 /// Provides functionality to render a solution graph in Mermaid.js format.
 /// </summary>
-public static class MermaidGraphRenderer
+public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
 {
     /// <summary>
     /// Renders a solution graph into a Mermaid.js graph definition.
     /// </summary>
     /// <param name="graph">The solution graph to render.</param>
     /// <returns>A string containing the Mermaid.js graph definition.</returns>
-    public static string Render(SolutionGraph graph)
+    public string Render(SolutionGraph graph)
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");

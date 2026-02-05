@@ -1,12 +1,13 @@
 using FluentAssertions;
 using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services.EfAnalysis;
 
 public class EfAnalysisServiceTests
 {
-    private readonly EfAnalysisService _service = new();
+    private readonly EfAnalysisService _service = new(new CompilationFactory());
 
     [Fact]
     public async Task DiscoverContextsAsync_ShouldFindDbContextInFile()

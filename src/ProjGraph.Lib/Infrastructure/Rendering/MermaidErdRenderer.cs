@@ -1,4 +1,5 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Interfaces;
 using System.Text;
 
 namespace ProjGraph.Lib.Infrastructure.Rendering;
@@ -7,7 +8,7 @@ namespace ProjGraph.Lib.Infrastructure.Rendering;
 /// Provides functionality to render an Entity-Relationship Diagram (ERD) in Mermaid syntax
 /// based on the provided Entity Framework (EF) model.
 /// </summary>
-public static class MermaidErdRenderer
+public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 {
     /// <summary>
     /// Renders a Mermaid ERD diagram from the given Entity Framework model.
@@ -16,7 +17,7 @@ public static class MermaidErdRenderer
     /// <returns>
     /// A string representing the ERD in Mermaid syntax, which can be used to visualize the model.
     /// </returns>
-    public static string Render(EfModel model)
+    public string Render(EfModel model)
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");

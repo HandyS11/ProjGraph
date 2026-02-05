@@ -1,12 +1,13 @@
 using Microsoft.Build.Construction;
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Interfaces;
 
 namespace ProjGraph.Lib.Infrastructure.Parsers;
 
 /// <summary>
 /// Provides functionality to parse project files and extract project details and references.
 /// </summary>
-public static class ProjectParser
+public sealed class ProjectParser : IProjectParser
 {
     /// <summary>
     /// Parses the specified project file and extracts project details and its references.
@@ -24,7 +25,7 @@ public static class ProjectParser
     /// </list>
     /// </returns>
     /// <exception cref="InvalidOperationException">Thrown when the project file cannot be parsed.</exception>
-    public static (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath)
+    public (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath)
     {
         var root = ProjectRootElement.Open(projectPath)
                    ?? throw new InvalidOperationException($"Failed to parse project file: {projectPath}");

@@ -1,6 +1,6 @@
 using ProjGraph.Cli.Rendering;
-using ProjGraph.Lib.Application.Services;
-using ProjGraph.Lib.Infrastructure.Rendering;
+using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Interfaces;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -17,7 +17,10 @@ namespace ProjGraph.Cli.Commands;
 /// to configure the path to the solution or project file and the desired output format. It processes the input
 /// and renders the structure in the specified format (tree or mermaid).
 /// </remarks>
-public sealed class VisualizeCommand : AsyncCommand<VisualizeCommand.Settings>
+public sealed class VisualizeCommand(
+    IGraphService graphService,
+    IDiagramRenderer<SolutionGraph> mermaidRenderer)
+    : AsyncCommand<VisualizeCommand.Settings>
 {
     /// <summary>
     /// Represents the settings for the `VisualizeCommand`.
@@ -100,9 +103,8 @@ public sealed class VisualizeCommand : AsyncCommand<VisualizeCommand.Settings>
                 // For mermaid, we want clean stdout, so all status goes to stderr
                 await Console.Error.WriteLineAsync($"Analyzing {settings.Path}...");
 
-                var graphService = new GraphService();
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                Console.WriteLine(MermaidGraphRenderer.Render(graph));
+                Console.WriteLine(mermaidRenderer.Render(graph));
             }
             else
             {
@@ -110,7 +112,6 @@ public sealed class VisualizeCommand : AsyncCommand<VisualizeCommand.Settings>
                     .Spinner(Spinner.Known.Dots)
                     .StartAsync($"Analyzing [blue]{settings.Path}[/]...", async _ =>
                     {
-                        var graphService = new GraphService();
                         var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
                         TreeRenderer.Render(graph);
                     });

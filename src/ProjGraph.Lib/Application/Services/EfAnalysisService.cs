@@ -13,7 +13,7 @@ namespace ProjGraph.Lib.Application.Services;
 /// <summary>
 /// Service for analyzing Entity Framework DbContext classes and their models.
 /// </summary>
-public class EfAnalysisService : IEfAnalysisService
+public class EfAnalysisService(ICompilationFactory compilationFactory) : IEfAnalysisService
 {
     /// <summary>
     /// Analyzes a specified DbContext class within a C# file and returns its Entity Framework model representation.
@@ -104,7 +104,7 @@ public class EfAnalysisService : IEfAnalysisService
         var snapshotDirectory = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
 
         var syntaxTrees = await BuildSnapshotSyntaxTreesAsync(path, snapshotClass, snapshotDirectory, syntaxTree);
-        var compilation = CompilationFactory.CreateCompilation(syntaxTrees);
+        var compilation = compilationFactory.CreateCompilation(syntaxTrees);
 
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
         var snapshotType = semanticModel.GetDeclaredSymbol(snapshotClass)
@@ -122,7 +122,7 @@ public class EfAnalysisService : IEfAnalysisService
     /// <summary>
     /// Builds a list of syntax trees for a ModelSnapshot and its related entity files.
     /// </summary>
-    private static async Task<List<SyntaxTree>> BuildSnapshotSyntaxTreesAsync(
+    private async Task<List<SyntaxTree>> BuildSnapshotSyntaxTreesAsync(
         string snapshotPath,
         ClassDeclarationSyntax snapshotClass,
         string snapshotDirectory,
@@ -224,7 +224,7 @@ public class EfAnalysisService : IEfAnalysisService
     /// 7. Retrieves the semantic model for the syntax tree and resolves the DbContext type.
     /// 8. Builds and returns an <see cref="EfModel"/> object by analyzing the DbContext type and its entities.
     /// </remarks>
-    private static async Task<EfModel> AnalyzeFileAsync(string path, string? contextName)
+    private async Task<EfModel> AnalyzeFileAsync(string path, string? contextName)
     {
         var code = await File.ReadAllTextAsync(path);
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
@@ -234,7 +234,7 @@ public class EfAnalysisService : IEfAnalysisService
         var contextDirectory = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
 
         var syntaxTrees = await BuildSyntaxTreesAsync(path, contextClass, contextDirectory, syntaxTree);
-        var compilation = CompilationFactory.CreateCompilation(syntaxTrees);
+        var compilation = compilationFactory.CreateCompilation(syntaxTrees);
 
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
         var contextType = semanticModel.GetDeclaredSymbol(contextClass)
@@ -293,7 +293,7 @@ public class EfAnalysisService : IEfAnalysisService
     /// 5. Discovers base class files for the identified entity files and merges them into the entity files dictionary.
     /// 6. Creates and returns a list of syntax trees by parsing the context syntax tree and the discovered entity files.
     /// </remarks>
-    private static async Task<List<SyntaxTree>> BuildSyntaxTreesAsync(
+    private async Task<List<SyntaxTree>> BuildSyntaxTreesAsync(
         string contextPath,
         ClassDeclarationSyntax contextClass,
         string contextDirectory,

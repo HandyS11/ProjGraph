@@ -6,6 +6,7 @@ namespace ProjGraph.Tests.Unit.Parsers;
 
 public class SlnxParserTests
 {
+    private readonly SlnxParser _parser = new();
     [Fact]
     public void GetProjectPaths_ShouldExtractPathsFromSlnx()
     {
@@ -21,7 +22,7 @@ public class SlnxParserTests
         var tempSlnx = temp.CreateFile("test.slnx", content);
 
         // Act
-        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        var paths = _parser.GetProjectPaths(tempSlnx).ToList();
 
         // Assert
         paths.Should().HaveCount(2);
@@ -37,7 +38,7 @@ public class SlnxParserTests
         var nonExistentPath = temp.GetTempFilePath(".slnx");
 
         // Act
-        var paths = SlnxParser.GetProjectPaths(nonExistentPath).ToList();
+        var paths = _parser.GetProjectPaths(nonExistentPath).ToList();
 
         // Assert
         paths.Should().BeEmpty();
@@ -56,7 +57,7 @@ public class SlnxParserTests
         var tempSlnx = temp.CreateFile("empty.slnx", content);
 
         // Act
-        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        var paths = _parser.GetProjectPaths(tempSlnx).ToList();
 
         // Assert
         paths.Should().BeEmpty();
@@ -78,7 +79,7 @@ public class SlnxParserTests
         var tempSlnx = temp.CreateFile("ignore_invalid.slnx", content);
 
         // Act
-        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        var paths = _parser.GetProjectPaths(tempSlnx).ToList();
 
         // Assert
         paths.Should().HaveCount(2);
@@ -100,7 +101,7 @@ public class SlnxParserTests
         var tempSlnx = temp.CreateFile("resolve.slnx", content);
 
         // Act
-        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        var paths = _parser.GetProjectPaths(tempSlnx).ToList();
 
         // Assert
         paths.Should().HaveCount(1);
@@ -122,7 +123,7 @@ public class SlnxParserTests
         var tempSlnx = temp.CreateFile("invalid.slnx", content);
 
         // Act & Assert
-        var act = () => SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        var act = () => _parser.GetProjectPaths(tempSlnx).ToList();
         act.Should().Throw<Exception>();
     }
 
@@ -141,7 +142,7 @@ public class SlnxParserTests
         var tempSlnx = temp.CreateFile("paths.slnx", content);
 
         // Act
-        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        var paths = _parser.GetProjectPaths(tempSlnx).ToList();
 
         // Assert
         paths.Should().HaveCount(2);
@@ -166,10 +167,11 @@ public class SlnxParserTests
         var tempSlnx = temp.CreateFile("multiple.slnx", content);
 
         // Act
-        var paths = SlnxParser.GetProjectPaths(tempSlnx).ToList();
+        var paths = _parser.GetProjectPaths(tempSlnx).ToList();
 
         // Assert
         paths.Should().HaveCount(5);
         paths.Should().OnlyHaveUniqueItems();
     }
 }
+

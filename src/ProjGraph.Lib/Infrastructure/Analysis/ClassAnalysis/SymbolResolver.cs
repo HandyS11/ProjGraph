@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Services;
 
 namespace ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
 
@@ -30,13 +31,13 @@ internal static class SymbolResolver
         var foundFile =
             await WorkspaceTypeDiscovery.FindTypeDefinitionFileAsync(symbolToResolve.Name, context.StartDirectory);
 
-        if (foundFile is null)
+        if (foundFile is not null)
         {
-            AddExternalType(symbolToResolve, context);
-            return null;
+            return await LoadAndResolveSymbolAsync(symbolToResolve, foundFile, context);
         }
 
-        return await LoadAndResolveSymbolAsync(symbolToResolve, foundFile, context);
+        AddExternalType(symbolToResolve, context);
+        return null;
     }
 
     /// <summary>

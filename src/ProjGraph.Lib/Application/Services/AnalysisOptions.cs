@@ -1,9 +1,9 @@
-namespace ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
+namespace ProjGraph.Lib.Application.Services;
 
 /// <summary>
 /// Represents the options for configuring the analysis process, such as depth and inclusion of relationships.
 /// </summary>
-internal sealed class AnalysisOptions
+public sealed class AnalysisOptions
 {
     /// <summary>
     /// The maximum depth of type relationships to analyze.

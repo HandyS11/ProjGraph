@@ -6,11 +6,12 @@ namespace ProjGraph.Tests.Unit.Rendering;
 
 public class MermaidClassDiagramRendererTests
 {
+    private readonly MermaidClassDiagramRenderer _renderer = new();
     [Fact]
     public void Render_EmptyModel_ReturnsEmptyDiagram()
     {
         var model = new ClassModel(null, [], []);
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
         var expected = $"```mermaid{Environment.NewLine}classDiagram{Environment.NewLine}```{Environment.NewLine}";
         result.Should().Be(expected);
     }
@@ -34,7 +35,7 @@ public class MermaidClassDiagramRendererTests
 
         var model = new ClassModel("Test", [type], []);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         result.Should().Contain("class Models_User [\"User\"]");
         result.Should().Contain("+int Id");
@@ -52,7 +53,7 @@ public class MermaidClassDiagramRendererTests
             new TypeDefinition("Derived", "Ns", "Ns.Derived", TypeKind.Class, [])
         ], [new Relationship("Ns.Derived", "Ns.Base", RelationshipKind.Inheritance)]);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         result.Should().Contain("Ns_Base <|-- Ns_Derived");
     }
@@ -68,7 +69,7 @@ public class MermaidClassDiagramRendererTests
             []);
         var model = new ClassModel(null, [type], []);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         result.Should().Contain("class System_Collections_Generic_List_T_ [\"List~T~\"]");
     }
@@ -84,7 +85,7 @@ public class MermaidClassDiagramRendererTests
             []);
         var model = new ClassModel(null, [type], []);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         result.Should()
             .Contain("class System_Collections_Generic_Dictionary_TKey__TValue_ [\"Dictionary~TKey, TValue~\"]");
@@ -104,7 +105,7 @@ public class MermaidClassDiagramRendererTests
                     RelationshipKind.Inheritance)
             ]);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Should use sanitized fully qualified names in the relationship
         result.Should().Contain("SimpleHierarchy_Base_BaseEntity <|-- SimpleHierarchy_Models_User");
@@ -125,7 +126,7 @@ public class MermaidClassDiagramRendererTests
                     "*")
             ]);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         result.Should().Contain("Models_User \"1\" --> Models_Address : PrimaryAddress");
         result.Should().Contain("Models_User \"*\" --> Models_Address : ShippingAddresses");
@@ -152,7 +153,7 @@ public class MermaidClassDiagramRendererTests
         var model = new ClassModel(null, [abstractType, concreteType],
             [new Relationship("Models.User", "Models.BaseEntity", RelationshipKind.Inheritance)]);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         result.Should().Contain("<<abstract>> Models_BaseEntity");
         result.Should().NotContain("<<abstract>> Models_User");
@@ -176,7 +177,7 @@ public class MermaidClassDiagramRendererTests
 
         var model = new ClassModel("Types.cs", [enumType], []);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Should contain enum stereotype
         result.Should().Contain("<<enum>> SimpleHierarchy_Enums_Types");
@@ -215,7 +216,7 @@ public class MermaidClassDiagramRendererTests
 
         var model = new ClassModel("IRepository.cs", [interfaceType], []);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Should contain interface stereotype
         result.Should().Contain("<<interface>> SimpleHierarchy_Interfaces_IRepository_T_");
@@ -245,7 +246,7 @@ public class MermaidClassDiagramRendererTests
 
         var model = new ClassModel("Localisation.cs", [recordType], []);
 
-        var result = MermaidClassDiagramRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Should contain record stereotype
         result.Should().Contain("<<record>> SimpleHierarchy_Models_Localisation");
@@ -259,3 +260,4 @@ public class MermaidClassDiagramRendererTests
         result.Should().NotContain("SimpleHierarchy_Models_Localisation ..> SimpleHierarchy_Models_Localisation");
     }
 }
+

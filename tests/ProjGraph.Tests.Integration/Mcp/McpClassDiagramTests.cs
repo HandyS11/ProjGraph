@@ -1,5 +1,9 @@
 using FluentAssertions;
 using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
+using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
+using ProjGraph.Lib.Infrastructure.Parsers;
+using ProjGraph.Lib.Infrastructure.Rendering;
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Integration.Helpers;
 
@@ -119,10 +123,24 @@ public sealed class McpClassDiagramTests : IDisposable
 
     private static ProjGraphTools CreateTools()
     {
-        var graphService = new GraphService();
-        var efService = new EfAnalysisService();
-        var classService = new ClassAnalysisService();
-        return new ProjGraphTools(graphService, efService, classService);
+        var slnParser = new SlnParser();
+        var slnxParser = new SlnxParser();
+        var projectParser = new ProjectParser();
+        var graphService = new GraphService(slnParser, slnxParser, projectParser);
+
+        var compilationFactory = new CompilationFactory();
+        var typeProcessor = new TypeProcessor();
+
+        var efService = new EfAnalysisService(compilationFactory);
+        var classService = new ClassAnalysisService(compilationFactory, typeProcessor);
+
+        return new ProjGraphTools(
+            graphService,
+            efService,
+            classService,
+            new MermaidGraphRenderer(),
+            new MermaidClassDiagramRenderer(),
+            new MermaidErdRenderer());
     }
 
     #region Basic Class Diagram Tests
@@ -382,3 +400,4 @@ public sealed class McpClassDiagramTests : IDisposable
         return Path.GetFullPath(path);
     }
 }
+

@@ -1,6 +1,5 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Application.Interfaces;
-using ProjGraph.Lib.Infrastructure.Parsers;
 using System.Diagnostics;
 
 namespace ProjGraph.Lib.Application.Services;
@@ -8,7 +7,11 @@ namespace ProjGraph.Lib.Application.Services;
 /// <summary>
 /// Service responsible for building a solution graph from a given file path.
 /// </summary>
-public class GraphService : IGraphService
+/// <remarks>
+/// Initializes a new instance of the <see cref="GraphService"/> class.
+/// </remarks>
+public class GraphService(ISlnParser slnParser, ISlnxParser slnxParser, IProjectParser projectParser)
+    : IGraphService
 {
     /// <summary>
     /// Builds a solution graph by analyzing the specified file path.
@@ -29,8 +32,8 @@ public class GraphService : IGraphService
 
         var projectFilePaths = extension switch
         {
-            ".slnx" => SlnxParser.GetProjectPaths(path),
-            ".sln" => SlnParser.GetProjectPaths(path),
+            ".slnx" => slnxParser.GetProjectPaths(path),
+            ".sln" => slnParser.GetProjectPaths(path),
             ".csproj" => DiscoverProjectsRecursively(path),
             _ => throw new ArgumentException("Unsupported file type: must be .sln, .slnx, or .csproj", nameof(path))
         };
@@ -52,7 +55,7 @@ public class GraphService : IGraphService
 
             try
             {
-                var (project, refs) = ProjectParser.Parse(fullPath);
+                var (project, refs) = projectParser.Parse(fullPath);
                 projects.Add(project);
                 pathToProject[normalizedPath] = project; // Store by normalized path for lookup
 
@@ -96,7 +99,7 @@ public class GraphService : IGraphService
     /// It ensures that each project is only processed once by maintaining a set of discovered project paths.
     /// If a project fails to parse, it is skipped, and the error is logged for debugging purposes.
     /// </remarks>
-    private static HashSet<string> DiscoverProjectsRecursively(string rootProjectPath)
+    private HashSet<string> DiscoverProjectsRecursively(string rootProjectPath)
     {
         var discoveredNormalized = new HashSet<string>(new PathEqualityComparer());
         var discoveredFullPaths = new HashSet<string>();
@@ -119,7 +122,7 @@ public class GraphService : IGraphService
 
             try
             {
-                var (_, refs) = ProjectParser.Parse(currentFullPath);
+                var (_, refs) = projectParser.Parse(currentFullPath);
 
                 foreach (var refPath in refs)
                 {
@@ -224,4 +227,3 @@ public class GraphService : IGraphService
         }
     }
 }
-

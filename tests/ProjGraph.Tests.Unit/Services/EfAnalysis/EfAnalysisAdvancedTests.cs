@@ -1,6 +1,7 @@
 using FluentAssertions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 using ProjGraph.Lib.Infrastructure.Rendering;
 using ProjGraph.Tests.Unit.Helpers;
 
@@ -8,7 +9,8 @@ namespace ProjGraph.Tests.Unit.Services.EfAnalysis;
 
 public class EfAnalysisAdvancedTests
 {
-    private readonly EfAnalysisService _service = new();
+    private readonly EfAnalysisService _service = new(new CompilationFactory());
+    private readonly MermaidErdRenderer _renderer = new();
 
     [Fact]
     public async Task AnalyzeContextAsync_ShouldHandleManyToManyRelationships()
@@ -336,7 +338,7 @@ public class EfAnalysisAdvancedTests
         };
 
         // Act
-        var result = MermaidErdRenderer.Render(model);
+        var result = _renderer.Render(model);
 
         // Assert
         result.Should().Contain("AiProviderName \"required, default:AzureOpenAi\"");

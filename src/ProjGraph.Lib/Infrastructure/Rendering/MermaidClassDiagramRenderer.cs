@@ -1,4 +1,5 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Interfaces;
 using System.Text;
 
 namespace ProjGraph.Lib.Infrastructure.Rendering;
@@ -6,14 +7,14 @@ namespace ProjGraph.Lib.Infrastructure.Rendering;
 /// <summary>
 /// Provides functionality to render a ClassModel as a Mermaid class diagram.
 /// </summary>
-public static class MermaidClassDiagramRenderer
+public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
 {
     /// <summary>
     /// Renders a ClassModel as a Mermaid class diagram.
     /// </summary>
     /// <param name="model">The ClassModel containing the types, relationships, and an optional title to be rendered.</param>
     /// <returns>A string representation of the Mermaid class diagram.</returns>
-    public static string Render(ClassModel model)
+    public string Render(ClassModel model)
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");

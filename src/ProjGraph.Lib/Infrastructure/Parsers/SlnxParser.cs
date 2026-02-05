@@ -1,3 +1,4 @@
+using ProjGraph.Lib.Application.Interfaces;
 using System.Xml.Linq;
 
 namespace ProjGraph.Lib.Infrastructure.Parsers;
@@ -5,7 +6,7 @@ namespace ProjGraph.Lib.Infrastructure.Parsers;
 /// <summary>
 /// Provides functionality to parse `.slnx` files and extract project paths.
 /// </summary>
-public static class SlnxParser
+public sealed class SlnxParser : ISlnxParser
 {
     /// <summary>
     /// Retrieves the paths of all projects in the specified `.slnx` file.
@@ -15,7 +16,7 @@ public static class SlnxParser
     /// An enumerable collection of project file paths contained in the `.slnx` file.
     /// If the `.slnx` file does not exist, an empty collection is returned.
     /// </returns>
-    public static IEnumerable<string> GetProjectPaths(string slnxPath)
+    public IEnumerable<string> GetProjectPaths(string slnxPath)
     {
         if (!File.Exists(slnxPath))
         {

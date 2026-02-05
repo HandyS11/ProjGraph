@@ -1,10 +1,10 @@
-// ReSharper disable ClassNeverInstantiated.Global
-
-using ProjGraph.Lib.Application.Services;
-using ProjGraph.Lib.Infrastructure.Rendering;
+using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Interfaces;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
+
+// ReSharper disable ClassNeverInstantiated.Global
 
 namespace ProjGraph.Cli.Commands;
 
@@ -12,7 +12,10 @@ namespace ProjGraph.Cli.Commands;
 /// Represents a command that generates a class diagram from a specified .cs file.
 /// Inherits from <see cref="AsyncCommand{TSettings}"/> with <see cref="ClassDiagramCommand.Settings"/> as the settings type.
 /// </summary>
-public sealed class ClassDiagramCommand : AsyncCommand<ClassDiagramCommand.Settings>
+public sealed class ClassDiagramCommand(
+    IClassAnalysisService analysisService,
+    IDiagramRenderer<ClassModel> mermaidRenderer)
+    : AsyncCommand<ClassDiagramCommand.Settings>
 {
     /// <summary>
     /// Represents the settings for the ClassDiagramCommand.
@@ -97,15 +100,13 @@ public sealed class ClassDiagramCommand : AsyncCommand<ClassDiagramCommand.Setti
     {
         try
         {
-            var analysisService = new ClassAnalysisService();
-
             var model = await analysisService.AnalyzeFileAsync(
                 settings.Path,
                 settings.IncludeInheritance,
                 settings.IncludeDependencies,
                 settings.Depth);
 
-            var mermaid = MermaidClassDiagramRenderer.Render(model);
+            var mermaid = mermaidRenderer.Render(model);
             Console.WriteLine(mermaid);
 
             return 0;
@@ -117,4 +118,3 @@ public sealed class ClassDiagramCommand : AsyncCommand<ClassDiagramCommand.Setti
         }
     }
 }
-

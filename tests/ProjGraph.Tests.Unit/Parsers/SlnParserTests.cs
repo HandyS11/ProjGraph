@@ -6,6 +6,8 @@ namespace ProjGraph.Tests.Unit.Parsers;
 
 public class SlnParserTests
 {
+    private readonly SlnParser _parser = new();
+
     [Fact]
     public void GetProjectPaths_ShouldExtractPathsFromSln()
     {
@@ -56,7 +58,7 @@ public class SlnParserTests
         File.WriteAllText(tempSln, content);
 
         // Act
-        var paths = SlnParser.GetProjectPaths(tempSln).ToList();
+        var paths = _parser.GetProjectPaths(tempSln).ToList();
 
         // Assert
         paths.Should().HaveCount(3);
@@ -73,7 +75,7 @@ public class SlnParserTests
         var nonExistentPath = temp.GetTempFilePath(".sln");
 
         // Act
-        var paths = SlnParser.GetProjectPaths(nonExistentPath).ToList();
+        var paths = _parser.GetProjectPaths(nonExistentPath).ToList();
 
         // Assert
         paths.Should().BeEmpty();
@@ -113,7 +115,7 @@ public class SlnParserTests
         File.WriteAllText(tempSln, content);
 
         // Act
-        var paths = SlnParser.GetProjectPaths(tempSln).ToList();
+        var paths = _parser.GetProjectPaths(tempSln).ToList();
 
         // Assert
         paths.Should().HaveCount(1);
