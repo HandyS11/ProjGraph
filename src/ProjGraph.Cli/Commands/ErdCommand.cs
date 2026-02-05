@@ -16,7 +16,10 @@ namespace ProjGraph.Cli.Commands;
 /// to configure the path to the DbContext/ModelSnapshot file and the optional name. It processes the input
 /// and generates a Mermaid ERD diagram based on the analyzed Entity Framework model.
 /// </remarks>
-public sealed class ErdCommand(IEfAnalysisService efService, IDiagramRenderer<EfModel> mermaidRenderer)
+public sealed class ErdCommand(
+    IEfAnalysisService efService,
+    IDiagramRenderer<EfModel> mermaidRenderer,
+    IOutputConsole console)
     : AsyncCommand<ErdCommand.Settings>
 {
     /// <summary>
@@ -104,13 +107,13 @@ public sealed class ErdCommand(IEfAnalysisService efService, IDiagramRenderer<Ef
             var model = await AnalyzeModelAsync(targetPath, settings.ContextName, cancellationToken);
 
             var mermaid = mermaidRenderer.Render(model);
-            Console.WriteLine(mermaid);
+            console.WriteLine(mermaid);
 
             return 0;
         }
         catch (Exception ex)
         {
-            AnsiConsole.WriteException(ex);
+            console.WriteError(ex.Message);
             return 1;
         }
     }

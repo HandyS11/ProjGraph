@@ -2,6 +2,7 @@ using FluentAssertions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Application.Services;
 using ProjGraph.Lib.Application.UseCases.EfAnalysis;
+using ProjGraph.Lib.Infrastructure.Analysis;
 using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 using ProjGraph.Lib.Infrastructure.Rendering;
 using ProjGraph.Tests.Unit.Helpers;
@@ -15,12 +16,13 @@ public class EfAnalysisAdvancedTests
 
     private static EfAnalysisService CreateService()
     {
-        var analyzer = new EfModelAnalyzer(new CompilationFactory());
+        var fs = new PhysicalFileSystem();
+        var analyzer = new EfModelAnalyzer(new CompilationFactory(), fs);
         return new EfAnalysisService(
             new AnalyzeContextUseCase(analyzer),
-            new DiscoverContextsUseCase(analyzer),
+            new DiscoverContextsUseCase(analyzer, fs),
             new AnalyzeSnapshotUseCase(analyzer),
-            new DiscoverSnapshotsUseCase(analyzer)
+            new DiscoverSnapshotsUseCase(analyzer, fs)
         );
     }
 

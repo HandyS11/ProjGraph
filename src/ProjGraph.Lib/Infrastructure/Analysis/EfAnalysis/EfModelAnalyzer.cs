@@ -12,7 +12,7 @@ namespace ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 /// <summary>
 /// Infrastructure implementation for advanced Entity Framework model analysis using Roslyn and semantic models.
 /// </summary>
-public class EfModelAnalyzer(ICompilationFactory compilationFactory) : IEfModelAnalyzer
+public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem fileSystem) : IEfModelAnalyzer
 {
     /// <summary>
     /// Discovers all DbContext classes in the provided syntax tree.
@@ -58,7 +58,7 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory) : IEfModelA
     /// <seealso cref="RelationshipAnalyzer.AnalyzeRelationships(EfModel, Dictionary{string, EfEntity}, Compilation)"/>
     public async Task<EfModel> AnalyzeSnapshotAsync(string snapshotPath, string? snapshotName)
     {
-        var code = await File.ReadAllTextAsync(snapshotPath);
+        var code = fileSystem.ReadAllText(snapshotPath);
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
         var root = await syntaxTree.GetRootAsync();
 
@@ -66,7 +66,7 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory) : IEfModelA
         var snapshotClass = DbContextIdentifier.FindSnapshotClass(classDeclarations, snapshotName)
                             ?? throw new InvalidOperationException("ModelSnapshot not found in file");
 
-        var snapshotDirectory = Path.GetDirectoryName(snapshotPath) ?? Directory.GetCurrentDirectory();
+        var snapshotDirectory = fileSystem.GetDirectoryName(snapshotPath) ?? Environment.CurrentDirectory;
 
         var syntaxTrees =
             await BuildSnapshotSyntaxTreesAsync(snapshotPath, snapshotClass, snapshotDirectory, syntaxTree);
@@ -97,7 +97,7 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory) : IEfModelA
     /// <seealso cref="DbContextIdentifier.FindContextClass(IEnumerable{ClassDeclarationSyntax}, string?)"/>
     public async Task<EfModel> AnalyzeContextAsync(string path, string? contextName)
     {
-        var code = await File.ReadAllTextAsync(path);
+        var code = fileSystem.ReadAllText(path);
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
         var root = await syntaxTree.GetRootAsync();
 
@@ -105,7 +105,7 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory) : IEfModelA
         var contextClass = DbContextIdentifier.FindContextClass(classDeclarations, contextName)
                            ?? throw new InvalidOperationException("DbContext not found in file");
 
-        var contextDirectory = Path.GetDirectoryName(path) ?? Directory.GetCurrentDirectory();
+        var contextDirectory = fileSystem.GetDirectoryName(path) ?? Environment.CurrentDirectory;
 
         var syntaxTrees = await BuildSyntaxTreesAsync(path, contextClass, contextDirectory, syntaxTree);
         var compilation = compilationFactory.CreateCompilation(syntaxTrees);

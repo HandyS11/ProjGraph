@@ -6,7 +6,7 @@ namespace ProjGraph.Lib.Application.UseCases.EfAnalysis;
 /// <summary>
 /// Use case for discovering all DbContext classes within a C# file.
 /// </summary>
-public class DiscoverContextsUseCase(IEfModelAnalyzer modelAnalyzer)
+public class DiscoverContextsUseCase(IEfModelAnalyzer modelAnalyzer, IFileSystem fileSystem)
 {
     /// <summary>
     /// Executes the discovery of all DbContext classes within a specified C# file.
@@ -21,7 +21,7 @@ public class DiscoverContextsUseCase(IEfModelAnalyzer modelAnalyzer)
             throw new ArgumentException("Only .cs files are supported", nameof(path));
         }
 
-        var syntaxTree = CSharpSyntaxTree.ParseText(await File.ReadAllTextAsync(path));
+        var syntaxTree = CSharpSyntaxTree.ParseText(fileSystem.ReadAllText(path));
         var root = await syntaxTree.GetRootAsync();
 
         return [.. modelAnalyzer.DiscoverDbContexts(root)];

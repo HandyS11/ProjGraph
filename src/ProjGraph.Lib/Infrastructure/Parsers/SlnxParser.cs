@@ -6,7 +6,7 @@ namespace ProjGraph.Lib.Infrastructure.Parsers;
 /// <summary>
 /// Provides functionality to parse `.slnx` files and extract project paths.
 /// </summary>
-public sealed class SlnxParser : ISlnxParser
+public sealed class SlnxParser(IFileSystem fileSystem) : ISlnxParser
 {
     /// <summary>
     /// Retrieves the paths of all projects in the specified `.slnx` file.
@@ -18,13 +18,13 @@ public sealed class SlnxParser : ISlnxParser
     /// </returns>
     public IEnumerable<string> GetProjectPaths(string slnxPath)
     {
-        if (!File.Exists(slnxPath))
+        if (!fileSystem.FileExists(slnxPath))
         {
             return [];
         }
 
         var doc = XDocument.Load(slnxPath);
-        var solutionDir = Path.GetDirectoryName(slnxPath) ?? "";
+        var solutionDir = fileSystem.GetDirectoryName(slnxPath) ?? "";
 
         return doc.Descendants("Project")
             .Select(x => x.Attribute("Path")?.Value)
@@ -33,7 +33,7 @@ public sealed class SlnxParser : ISlnxParser
             {
                 // Normalize path separators to be platform-appropriate before combining
                 var normalizedPath = path!.Replace('\\', Path.DirectorySeparatorChar);
-                return Path.GetFullPath(Path.Combine(solutionDir, normalizedPath));
+                return fileSystem.GetFullPath(fileSystem.Combine(solutionDir, normalizedPath));
             });
     }
 }

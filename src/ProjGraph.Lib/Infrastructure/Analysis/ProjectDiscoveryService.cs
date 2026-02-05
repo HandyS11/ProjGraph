@@ -6,7 +6,7 @@ namespace ProjGraph.Lib.Infrastructure.Analysis;
 /// <summary>
 /// Infrastructure implementation of project discovery and path resolution.
 /// </summary>
-public class ProjectDiscoveryService(IProjectParser projectParser) : IProjectDiscoveryService
+public class ProjectDiscoveryService(IProjectParser projectParser, IFileSystem fileSystem) : IProjectDiscoveryService
 {
     /// <summary>
     /// Discovers all project files recursively starting from the specified root project path.
@@ -19,7 +19,7 @@ public class ProjectDiscoveryService(IProjectParser projectParser) : IProjectDis
         var discoveredFullPaths = new HashSet<string>();
         var toProcess = new Queue<string>();
 
-        var rootFullPath = Path.GetFullPath(rootProjectPath);
+        var rootFullPath = fileSystem.GetFullPath(rootProjectPath);
         var rootNormalizedPath = NormalizePath(rootFullPath);
         toProcess.Enqueue(rootFullPath);
         discoveredNormalized.Add(rootNormalizedPath);
@@ -29,7 +29,7 @@ public class ProjectDiscoveryService(IProjectParser projectParser) : IProjectDis
         {
             var currentFullPath = toProcess.Dequeue();
 
-            if (!File.Exists(currentFullPath))
+            if (!fileSystem.FileExists(currentFullPath))
             {
                 continue;
             }
@@ -79,10 +79,10 @@ public class ProjectDiscoveryService(IProjectParser projectParser) : IProjectDis
     /// <returns>The fully resolved absolute path of the project reference.</returns>
     public string ResolveProjectReferencePath(string projectPath, string referencePath)
     {
-        var projectDir = Path.GetDirectoryName(projectPath) ?? string.Empty;
+        var projectDir = fileSystem.GetDirectoryName(projectPath) ?? string.Empty;
         var normalizedReferencePath = referencePath.Replace('\\', Path.DirectorySeparatorChar);
-        var combinedPath = Path.Combine(projectDir, normalizedReferencePath);
-        return Path.GetFullPath(combinedPath);
+        var combinedPath = fileSystem.Combine(projectDir, normalizedReferencePath);
+        return fileSystem.GetFullPath(combinedPath);
     }
 
     /// <summary>

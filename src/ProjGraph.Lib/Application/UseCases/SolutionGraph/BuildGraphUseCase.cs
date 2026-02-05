@@ -10,7 +10,8 @@ public class BuildGraphUseCase(
     ISlnParser slnParser,
     ISlnxParser slnxParser,
     IProjectParser projectParser,
-    IProjectDiscoveryService discoveryService)
+    IProjectDiscoveryService discoveryService,
+    IFileSystem fileSystem)
 {
     /// <summary>
     /// Executes the use case to build a solution graph from the specified file path.
@@ -21,7 +22,7 @@ public class BuildGraphUseCase(
     /// <exception cref="ArgumentException">Thrown when the file type is unsupported.</exception>
     public Core.Models.SolutionGraph Execute(string path)
     {
-        if (!File.Exists(path))
+        if (!fileSystem.FileExists(path))
         {
             throw new FileNotFoundException($"The specified file does not exist: {path}", path);
         }
@@ -43,10 +44,10 @@ public class BuildGraphUseCase(
 
         foreach (var projectPath in projectFilePaths)
         {
-            var fullPath = Path.GetFullPath(projectPath);
+            var fullPath = fileSystem.GetFullPath(projectPath);
             var normalizedPath = discoveryService.NormalizePath(fullPath);
 
-            if (!File.Exists(fullPath))
+            if (!fileSystem.FileExists(fullPath))
             {
                 continue;
             }

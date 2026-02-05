@@ -13,9 +13,10 @@ public class GraphServiceTests
 
     private static GraphService CreateService()
     {
+        var fs = new PhysicalFileSystem();
         var projectParser = new ProjectParser();
-        var discoveryService = new ProjectDiscoveryService(projectParser);
-        var useCase = new BuildGraphUseCase(new SlnParser(), new SlnxParser(), projectParser, discoveryService);
+        var discoveryService = new ProjectDiscoveryService(projectParser, fs);
+        var useCase = new BuildGraphUseCase(new SlnParser(fs), new SlnxParser(fs), projectParser, discoveryService, fs);
         return new GraphService(useCase);
     }
 

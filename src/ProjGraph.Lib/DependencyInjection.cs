@@ -27,6 +27,10 @@ public static class DependencyInjection
     /// <returns>The updated <see cref="IServiceCollection"/> with ProjGraph services registered.</returns>
     public static IServiceCollection AddProjGraphLib(this IServiceCollection services)
     {
+        // Infrastructure - General
+        services.AddSingleton<IFileSystem, PhysicalFileSystem>();
+        services.AddSingleton<IOutputConsole, SpectreOutputConsole>();
+
         // Infrastructure - Parsers
         services.AddSingleton<ISlnParser, SlnParser>();
         services.AddSingleton<ISlnxParser, SlnxParser>();

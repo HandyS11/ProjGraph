@@ -19,7 +19,8 @@ namespace ProjGraph.Cli.Commands;
 /// </remarks>
 public sealed class VisualizeCommand(
     IGraphService graphService,
-    IDiagramRenderer<SolutionGraph> mermaidRenderer)
+    IDiagramRenderer<SolutionGraph> mermaidRenderer,
+    IOutputConsole console)
     : AsyncCommand<VisualizeCommand.Settings>
 {
     /// <summary>
@@ -101,13 +102,15 @@ public sealed class VisualizeCommand(
             if (settings.Format.Equals("mermaid", StringComparison.OrdinalIgnoreCase))
             {
                 // For mermaid, we want clean stdout, so all status goes to stderr
-                await Console.Error.WriteLineAsync($"Analyzing {settings.Path}...");
+                console.WriteError($"Analyzing {settings.Path}...");
 
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                Console.WriteLine(mermaidRenderer.Render(graph));
+                console.WriteLine(mermaidRenderer.Render(graph));
             }
             else
             {
+                // We'll keep AnsiConsole.Status for now as it's a CLI UI feature, 
+                // but we use the service for the final render if we refactor it.
                 await AnsiConsole.Status()
                     .Spinner(Spinner.Known.Dots)
                     .StartAsync($"Analyzing [blue]{settings.Path}[/]...", async _ =>
@@ -121,7 +124,7 @@ public sealed class VisualizeCommand(
         }
         catch (Exception ex)
         {
-            AnsiConsole.WriteException(ex);
+            console.WriteError(ex.Message);
             return 1;
         }
     }

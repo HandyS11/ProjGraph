@@ -10,7 +10,10 @@ namespace ProjGraph.Lib.Application.UseCases.ClassAnalysis;
 /// <summary>
 /// Use case for analyzing a C# source file to extract class definitions and their relationships.
 /// </summary>
-public class AnalyzeFileUseCase(ICompilationFactory compilationFactory, ITypeProcessor typeProcessor)
+public class AnalyzeFileUseCase(
+    ICompilationFactory compilationFactory,
+    ITypeProcessor typeProcessor,
+    IFileSystem fileSystem)
 {
     /// <summary>
     /// Executes the analysis of a C# source file to extract class definitions and their relationships.
@@ -27,13 +30,13 @@ public class AnalyzeFileUseCase(ICompilationFactory compilationFactory, ITypePro
         bool includeDependencies = false,
         int maxDepth = 1)
     {
-        if (!File.Exists(filePath))
+        if (!fileSystem.FileExists(filePath))
         {
             throw new FileNotFoundException("Source file not found", filePath);
         }
 
-        var startDir = Path.GetDirectoryName(filePath) ?? Directory.GetCurrentDirectory();
-        var code = await File.ReadAllTextAsync(filePath);
+        var startDir = fileSystem.GetDirectoryName(filePath) ?? Environment.CurrentDirectory;
+        var code = fileSystem.ReadAllText(filePath);
         var syntaxTree = CSharpSyntaxTree.ParseText(code, path: filePath);
 
         var compilation = (CSharpCompilation)compilationFactory.CreateCompilation([syntaxTree]);

@@ -6,7 +6,7 @@ namespace ProjGraph.Lib.Infrastructure.Parsers;
 /// <summary>
 /// Provides functionality to parse solution files and extract project paths.
 /// </summary>
-public sealed class SlnParser : ISlnParser
+public sealed class SlnParser(IFileSystem fileSystem) : ISlnParser
 {
     /// <summary>
     /// Retrieves the paths of all projects in the specified solution file.
@@ -18,7 +18,7 @@ public sealed class SlnParser : ISlnParser
     /// </returns>
     public IEnumerable<string> GetProjectPaths(string slnPath)
     {
-        if (!File.Exists(slnPath))
+        if (!fileSystem.FileExists(slnPath))
         {
             return [];
         }

@@ -14,7 +14,8 @@ namespace ProjGraph.Cli.Commands;
 /// </summary>
 public sealed class ClassDiagramCommand(
     IClassAnalysisService analysisService,
-    IDiagramRenderer<ClassModel> mermaidRenderer)
+    IDiagramRenderer<ClassModel> mermaidRenderer,
+    IOutputConsole console)
     : AsyncCommand<ClassDiagramCommand.Settings>
 {
     /// <summary>
@@ -107,13 +108,13 @@ public sealed class ClassDiagramCommand(
                 settings.Depth);
 
             var mermaid = mermaidRenderer.Render(model);
-            Console.WriteLine(mermaid);
+            console.WriteLine(mermaid);
 
             return 0;
         }
         catch (Exception ex)
         {
-            AnsiConsole.WriteException(ex);
+            console.WriteError(ex.Message);
             return 1;
         }
     }

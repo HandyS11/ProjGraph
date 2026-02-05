@@ -1,4 +1,5 @@
 using FluentAssertions;
+using ProjGraph.Lib.Infrastructure.Analysis;
 using ProjGraph.Lib.Infrastructure.Parsers;
 using ProjGraph.Tests.Unit.Helpers;
 
@@ -6,7 +7,7 @@ namespace ProjGraph.Tests.Unit.Parsers;
 
 public class SlnxParserTests
 {
-    private readonly SlnxParser _parser = new();
+    private readonly SlnxParser _parser = new(new PhysicalFileSystem());
     [Fact]
     public void GetProjectPaths_ShouldExtractPathsFromSlnx()
     {
