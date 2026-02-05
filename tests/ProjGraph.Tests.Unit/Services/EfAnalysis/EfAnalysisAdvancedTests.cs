@@ -1,7 +1,7 @@
 using FluentAssertions;
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Rendering;
-using ProjGraph.Lib.Services.EfAnalysis;
+using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Infrastructure.Rendering;
 using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services.EfAnalysis;

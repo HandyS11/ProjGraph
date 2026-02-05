@@ -1,6 +1,6 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Rendering;
+using ProjGraph.Lib.Infrastructure.Rendering;
 
 namespace ProjGraph.Tests.Unit.Rendering;
 

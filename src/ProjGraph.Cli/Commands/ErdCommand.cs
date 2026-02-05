@@ -1,11 +1,10 @@
+// ReSharper disable ClassNeverInstantiated.Global
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Rendering;
-using ProjGraph.Lib.Services.EfAnalysis;
+using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Infrastructure.Rendering;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
-
-// ReSharper disable ClassNeverInstantiated.Global
 
 namespace ProjGraph.Cli.Commands;
 
@@ -287,3 +286,4 @@ public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
         };
     }
 }
+

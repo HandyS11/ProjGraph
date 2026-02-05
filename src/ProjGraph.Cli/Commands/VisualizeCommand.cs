@@ -1,6 +1,6 @@
 using ProjGraph.Cli.Rendering;
-using ProjGraph.Lib.Rendering;
-using ProjGraph.Lib.Services;
+using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Infrastructure.Rendering;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;

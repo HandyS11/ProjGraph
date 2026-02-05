@@ -1,5 +1,5 @@
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Algorithms;
+using ProjGraph.Lib.Domain.Algorithms;
 using Spectre.Console;
 
 namespace ProjGraph.Cli.Rendering;
@@ -182,3 +182,4 @@ public static class TreeRenderer
         }
     }
 }
+

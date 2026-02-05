@@ -1,6 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Algorithms;
+using ProjGraph.Lib.Domain.Algorithms;
 
 namespace ProjGraph.Tests.Unit.Algorithms;
 

@@ -1,6 +1,6 @@
 using FluentAssertions;
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Services.ClassAnalysis;
+using ProjGraph.Lib.Application.Services;
 using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services.ClassAnalysis;

@@ -1,5 +1,5 @@
 using FluentAssertions;
-using ProjGraph.Lib.Parsers;
+using ProjGraph.Lib.Infrastructure.Parsers;
 using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Parsers;

@@ -1,7 +1,5 @@
 using FluentAssertions;
-using ProjGraph.Lib.Services;
-using ProjGraph.Lib.Services.ClassAnalysis;
-using ProjGraph.Lib.Services.EfAnalysis;
+using ProjGraph.Lib.Application.Services;
 using ProjGraph.Mcp;
 
 namespace ProjGraph.Tests.Integration.Mcp;

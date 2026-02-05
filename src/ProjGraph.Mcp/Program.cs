@@ -2,11 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using ProjGraph.Lib.Interfaces;
-using ProjGraph.Lib.Rendering;
-using ProjGraph.Lib.Services;
-using ProjGraph.Lib.Services.ClassAnalysis;
-using ProjGraph.Lib.Services.EfAnalysis;
+using ProjGraph.Lib.Application.Interfaces;
+using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Infrastructure.Rendering;
 using System.ComponentModel;
 
 namespace ProjGraph.Mcp;
