@@ -10,30 +10,34 @@ public static class EfAnalysisConstants
     /// </summary>
     public static class DataTypes
     {
-        public const string Int = "int";
-        public const string Int32 = "Int32";
-        public const string Int64 = "Int64";
-        public const string String = "string";
-        public const string Bool = "bool";
-        public const string Boolean = "Boolean";
         public const string Guid = "Guid";
-        public const string DateTime = "DateTime";
-        public const string DateTimeOffset = "DateTimeOffset";
-        public const string TimeSpan = "TimeSpan";
-        public const string Decimal = "decimal";
-        public const string Double = "double";
-        public const string Float = "float";
-        public const string Long = "long";
-        public const string Single = "Single";
-        public const string Short = "short";
-        public const string Byte = "byte";
-        public const string SByte = "sbyte";
-        public const string UShort = "ushort";
-        public const string UInt = "uint";
-        public const string UInt32 = "UInt32";
-        public const string ULong = "ulong";
-        public const string UInt64 = "UInt64";
-        public const string Char = "char";
+        public const string Int = "int";
+        public const string String = "string";
+
+        private const string Int32 = "Int32";
+        private const string Int64 = "Int64";
+        private const string Bool = "bool";
+        private const string Boolean = "Boolean";
+        private const string DateTime = "DateTime";
+        private const string DateTimeOffset = "DateTimeOffset";
+        private const string TimeSpan = "TimeSpan";
+        private const string Decimal = "decimal";
+        private const string Double = "double";
+        private const string Float = "float";
+        private const string Long = "long";
+        private const string Single = "Single";
+        private const string Short = "short";
+        private const string Byte = "byte";
+        private const string SByte = "sbyte";
+        private const string UShort = "ushort";
+        private const string UInt = "uint";
+        private const string UInt32 = "UInt32";
+        private const string ULong = "ulong";
+        private const string UInt64 = "UInt64";
+        private const string Char = "char";
+        private const string DateOnly = "DateOnly";
+        private const string TimeOnly = "TimeOnly";
+        private const string Uri = "Uri";
 
         /// <summary>
         /// A set of common .NET value types that are treated as having a default value in EF.
@@ -50,6 +54,9 @@ public static class EfAnalysisConstants
             DateTime,
             DateTimeOffset,
             TimeSpan,
+            DateOnly,
+            TimeOnly,
+            Uri,
             Decimal,
             Double,
             Float,
@@ -64,6 +71,12 @@ public static class EfAnalysisConstants
             UInt64,
             Char
         };
+
+        /// <summary>
+        /// A set of all types treated as primitive by EF Core (ValueTypes + String).
+        /// </summary>
+        public static readonly IReadOnlySet<string> AllPrimitiveTypes =
+            new HashSet<string>(ValueTypes.Concat([String]), StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -89,6 +102,7 @@ public static class EfAnalysisConstants
         public const string HasColumnType = "HasColumnType";
         public const string HasDefaultValue = "HasDefaultValue";
         public const string HasDefaultValueSql = "HasDefaultValueSql";
+
         public const string UsingEntity = "UsingEntity";
 
         // DbContext methods
@@ -132,12 +146,26 @@ public static class EfAnalysisConstants
     /// </summary>
     public static class CollectionTypes
     {
-        public const string ICollection = "ICollection";
-        public const string IList = "IList";
-        public const string List = "List";
-        public const string HashSet = "HashSet";
-        public const string ISet = "ISet";
-        public const string IEnumerable = "IEnumerable";
+        private const string ICollection = "ICollection";
+        private const string IList = "IList";
+        private const string List = "List";
+        private const string HashSet = "HashSet";
+        private const string ISet = "ISet";
+        private const string IEnumerable = "IEnumerable";
+
+        /// <summary>
+        /// A set of common collection types.
+        /// </summary>
+        public static readonly IReadOnlySet<string> SupportedCollections =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ICollection,
+                IList,
+                List,
+                HashSet,
+                ISet,
+                IEnumerable
+            };
     }
 
     /// <summary>

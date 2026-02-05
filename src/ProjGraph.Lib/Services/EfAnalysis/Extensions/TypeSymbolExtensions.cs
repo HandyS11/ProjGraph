@@ -94,9 +94,7 @@ public static class TypeSymbolExtensions
         }
 
         var typeName = type.Name;
-        return typeName is EfAnalysisConstants.DataTypes.String or EfAnalysisConstants.DataTypes.Guid
-            or EfAnalysisConstants.DataTypes.DateTime or EfAnalysisConstants.DataTypes.DateTimeOffset
-            or EfAnalysisConstants.DataTypes.TimeSpan or EfAnalysisConstants.DataTypes.Decimal;
+        return EfAnalysisConstants.DataTypes.AllPrimitiveTypes.Contains(typeName);
     }
 
     /// <summary>
@@ -109,11 +107,7 @@ public static class TypeSymbolExtensions
     public static bool IsCollectionType(this INamedTypeSymbol type)
     {
         var typeName = type.Name;
-        return typeName is EfAnalysisConstants.CollectionTypes.ICollection or EfAnalysisConstants.CollectionTypes.IList
-                   or EfAnalysisConstants.CollectionTypes.List or EfAnalysisConstants.CollectionTypes.HashSet
-                   or EfAnalysisConstants.CollectionTypes.ISet ||
-               type.AllInterfaces.Any(i =>
-                   i.Name is EfAnalysisConstants.CollectionTypes.ICollection
-                       or EfAnalysisConstants.CollectionTypes.IEnumerable);
+        return EfAnalysisConstants.CollectionTypes.SupportedCollections.Contains(typeName) ||
+               type.AllInterfaces.Any(i => EfAnalysisConstants.CollectionTypes.SupportedCollections.Contains(i.Name));
     }
 }
