@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Services.EfAnalysis.Constants;
+using ProjGraph.Lib.Services.EfAnalysis.Extensions;
 using ProjGraph.Lib.Services.EfAnalysis.Patterns;
 using System.Text.RegularExpressions;
 
@@ -148,35 +149,12 @@ public static class FluentApiConfigurationParser
     /// </remarks>
     private static void AddUniqueRelationships(List<EfRelationship> relationships, EfModel model)
     {
-        var existingKeys = model.Relationships.Select(GenerateRelationshipKey).ToHashSet();
+        var existingKeys = model.Relationships.Select(r => r.GenerateKey()).ToHashSet();
 
         var uniqueRelationships = relationships
-            .Where(relationship => existingKeys.Add(GenerateRelationshipKey(relationship)));
+            .Where(relationship => existingKeys.Add(relationship.GenerateKey()));
 
         model.Relationships.AddRange(uniqueRelationships);
-    }
-
-    /// <summary>
-    /// Generates a unique key for a relationship to enable deduplication.
-    /// Uses the same logic as RelationshipAnalyzer to ensure consistency.
-    /// </summary>
-    /// <param name="relationship">The relationship to generate a key for.</param>
-    /// <returns>A unique string key representing the relationship.</returns>
-    private static string GenerateRelationshipKey(EfRelationship relationship)
-    {
-        // For symmetric relationships (1:1, M:M), sort entity names to avoid duplicates
-        if (relationship.Type is EfRelationshipType.OneToOne or EfRelationshipType.ManyToMany)
-        {
-            var entitiesSorted = new[] { relationship.SourceEntity, relationship.TargetEntity }
-                .OrderBy(e => e)
-                .ToArray();
-            return
-                $"{entitiesSorted[0]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{entitiesSorted[1]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.Type}";
-        }
-
-        // For OneToMany, direction matters
-        return
-            $"{relationship.SourceEntity}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.TargetEntity}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.Type}";
     }
 
     /// <summary>

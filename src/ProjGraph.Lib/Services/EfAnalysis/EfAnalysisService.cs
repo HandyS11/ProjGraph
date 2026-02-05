@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Interfaces;
 using ProjGraph.Lib.Services.EfAnalysis.Constants;
+using ProjGraph.Lib.Services.EfAnalysis.Extensions;
 using ProjGraph.Lib.Services.EfAnalysis.Patterns;
 
 namespace ProjGraph.Lib.Services.EfAnalysis;
@@ -411,7 +412,7 @@ public class EfAnalysisService : IEfAnalysisService
 
         // Deduplicate relationships by generating unique keys
         var uniqueRelationships = model.Relationships
-            .GroupBy(GenerateRelationshipKey)
+            .GroupBy(r => r.GenerateKey())
             .Select(g => g.First())
             .ToList();
 
@@ -437,26 +438,6 @@ public class EfAnalysisService : IEfAnalysisService
 
         model.Relationships.Clear();
         model.Relationships.AddRange(finalRelationships);
-    }
-
-    /// <summary>
-    /// Generates a unique key for a relationship to enable deduplication.
-    /// </summary>
-    private static string GenerateRelationshipKey(EfRelationship relationship)
-    {
-        // For symmetric relationships (1:1, M:M), sort entity names to avoid duplicates
-        if (relationship.Type is EfRelationshipType.OneToOne or EfRelationshipType.ManyToMany)
-        {
-            var entitiesSorted = new[] { relationship.SourceEntity, relationship.TargetEntity }
-                .OrderBy(e => e)
-                .ToArray();
-            return
-                $"{entitiesSorted[0]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{entitiesSorted[1]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.Type}";
-        }
-
-        // For OneToMany, direction matters
-        return
-            $"{relationship.SourceEntity}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.TargetEntity}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.Type}";
     }
 
     /// <summary>
