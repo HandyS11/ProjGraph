@@ -11,28 +11,28 @@ public sealed class SlnxParser(IFileSystem fileSystem) : ISlnxParser
     /// <summary>
     /// Retrieves the paths of all projects in the specified `.slnx` file.
     /// </summary>
-    /// <param name="slnxPath">The file path to the `.slnx` file.</param>
+    /// <param name="path">The file path to the `.slnx` file.</param>
     /// <returns>
     /// An enumerable collection of project file paths contained in the `.slnx` file.
     /// If the `.slnx` file does not exist, an empty collection is returned.
     /// </returns>
-    public IEnumerable<string> GetProjectPaths(string slnxPath)
+    public IEnumerable<string> GetProjectPaths(string path)
     {
-        if (!fileSystem.FileExists(slnxPath))
+        if (!fileSystem.FileExists(path))
         {
             return [];
         }
 
-        var doc = XDocument.Load(slnxPath);
-        var solutionDir = fileSystem.GetDirectoryName(slnxPath) ?? "";
+        var doc = XDocument.Load(path);
+        var solutionDir = fileSystem.GetDirectoryName(path) ?? "";
 
         return doc.Descendants("Project")
             .Select(x => x.Attribute("Path")?.Value)
-            .Where(path => path != null)
-            .Select(path =>
+            .Where(p => p != null)
+            .Select(p =>
             {
                 // Normalize path separators to be platform-appropriate before combining
-                var normalizedPath = path!.Replace('\\', Path.DirectorySeparatorChar);
+                var normalizedPath = p!.Replace('\\', Path.DirectorySeparatorChar);
                 return fileSystem.GetFullPath(fileSystem.Combine(solutionDir, normalizedPath));
             });
     }
