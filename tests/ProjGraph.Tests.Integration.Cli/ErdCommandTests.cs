@@ -44,7 +44,7 @@ public class ErdCommandTests
         var contextPath = CliTestHelpers.GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        int result = -1;
+        var result = -1;
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
         {
             result = app.Run(["erd", contextPath, "--context", "MyDbContext"]);
@@ -66,7 +66,7 @@ public class ErdCommandTests
         var contextPath = CliTestHelpers.GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        int result = -1;
+        var result = -1;
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
         {
             result = app.Run(["erd", contextPath]);

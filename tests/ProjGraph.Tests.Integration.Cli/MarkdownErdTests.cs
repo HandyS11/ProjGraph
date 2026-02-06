@@ -15,7 +15,7 @@ public partial class MarkdownErdTests
         var readmePath = CliTestHelpers.GetSamplePath(@"erd\simple-context\README.md");
 
         // Act
-        int result = -1;
+        var result = -1;
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
         {
             result = app.Run(["erd", contextPath]);
