@@ -63,7 +63,7 @@ public sealed class TypeResolver(IServiceProvider provider) : ITypeResolver, IDi
     /// <returns>An instance of the specified type, or null if the type is not registered.</returns>
     public object? Resolve(Type? type)
     {
-        if (type == null)
+        if (type is null)
         {
             return null;
         }
