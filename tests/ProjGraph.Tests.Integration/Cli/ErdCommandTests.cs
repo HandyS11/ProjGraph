@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using ProjGraph.Tests.Integration.Helpers;
 using Spectre.Console.Cli;
 
@@ -157,3 +157,7 @@ public class ErdCommandTests
         }
     }
 }
+
+
+
+

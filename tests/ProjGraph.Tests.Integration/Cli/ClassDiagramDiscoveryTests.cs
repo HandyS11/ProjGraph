@@ -74,3 +74,7 @@ public class ClassDiagramDiscoveryTests : IDisposable
             "Output should contain relationship arrow (association or dependency)");
     }
 }
+
+
+
+

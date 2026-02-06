@@ -43,3 +43,5 @@ public record Project(
     string Framework,
     ProjectType Type
 );
+
+

@@ -49,3 +49,5 @@ public class McpClassDiagramTests
         parameters.Should().ContainSingle(p => p.Name == "depth");
     }
 }
+
+

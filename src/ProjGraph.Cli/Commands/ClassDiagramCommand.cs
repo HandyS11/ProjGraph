@@ -1,5 +1,6 @@
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Application.Interfaces;
+using ProjGraph.Lib.ClassDiagram.Application;
+using ProjGraph.Lib.Core.Abstractions;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -119,3 +120,8 @@ public sealed class ClassDiagramCommand(
         }
     }
 }
+
+
+
+
+

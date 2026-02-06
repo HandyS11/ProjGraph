@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
-    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +14,7 @@
 
   <ItemGroup>
     <Using Include="Xunit"/>
+    <Using Include="FluentAssertions"/>
   </ItemGroup>
 
   <ItemGroup>

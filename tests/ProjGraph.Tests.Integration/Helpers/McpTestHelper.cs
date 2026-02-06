@@ -1,12 +1,16 @@
-using ProjGraph.Lib.Application.Services;
-using ProjGraph.Lib.Application.UseCases.ClassAnalysis;
-using ProjGraph.Lib.Application.UseCases.EfAnalysis;
-using ProjGraph.Lib.Application.UseCases.SolutionGraph;
-using ProjGraph.Lib.Infrastructure.Analysis;
-using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
-using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
-using ProjGraph.Lib.Infrastructure.Parsers;
-using ProjGraph.Lib.Infrastructure.Rendering;
+using ProjGraph.Lib.ClassDiagram.Application;
+using ProjGraph.Lib.ClassDiagram.Application.UseCases;
+using ProjGraph.Lib.ClassDiagram.Infrastructure;
+using ProjGraph.Lib.ClassDiagram.Rendering;
+using ProjGraph.Lib.Core.Infrastructure;
+using ProjGraph.Lib.Core.Parsers;
+using ProjGraph.Lib.EntityFramework.Application;
+using ProjGraph.Lib.EntityFramework.Application.UseCases;
+using ProjGraph.Lib.EntityFramework.Infrastructure;
+using ProjGraph.Lib.EntityFramework.Rendering;
+using ProjGraph.Lib.ProjectGraph.Application;
+using ProjGraph.Lib.ProjectGraph.Application.UseCases;
+using ProjGraph.Lib.ProjectGraph.Rendering;
 using ProjGraph.Mcp;
 
 namespace ProjGraph.Tests.Integration.Helpers;
@@ -41,3 +45,9 @@ public static class McpTestHelper
             new MermaidErdRenderer());
     }
 }
+
+
+
+
+
+

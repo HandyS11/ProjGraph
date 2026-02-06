@@ -1,15 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\ProjGraph.Core\ProjGraph.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Build" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
-    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore"/>
-    <PackageReference Include="Spectre.Console"/>
+    <ProjectReference Include="..\ProjGraph.Lib.ProjectGraph\ProjGraph.Lib.ProjectGraph.csproj"/>
+    <ProjectReference Include="..\ProjGraph.Lib.EntityFramework\ProjGraph.Lib.EntityFramework.csproj"/>
+    <ProjectReference Include="..\ProjGraph.Lib.ClassDiagram\ProjGraph.Lib.ClassDiagram.csproj"/>
   </ItemGroup>
 
 </Project>
