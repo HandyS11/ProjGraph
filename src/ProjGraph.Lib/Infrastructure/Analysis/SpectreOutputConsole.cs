@@ -9,6 +9,14 @@ namespace ProjGraph.Lib.Infrastructure.Analysis;
 public class SpectreOutputConsole : IOutputConsole
 {
     /// <summary>
+    /// Gets an <see cref="IAnsiConsole"/> that writes to the current standard error stream.
+    /// </summary>
+    private static IAnsiConsole Stderr => AnsiConsole.Create(new AnsiConsoleSettings
+    {
+        Out = new AnsiConsoleOutput(Console.Error)
+    });
+
+    /// <summary>
     /// Writes a message to the console without a newline.
     /// </summary>
     /// <param name="message">The message to write.</param>
@@ -27,12 +35,21 @@ public class SpectreOutputConsole : IOutputConsole
     }
 
     /// <summary>
+    /// Writes an informational message to the console.
+    /// </summary>
+    /// <param name="message">The informational message to write.</param>
+    public void WriteInfo(string message)
+    {
+        Stderr.WriteLine(message);
+    }
+
+    /// <summary>
     /// Writes an error message to the console in red color.
     /// </summary>
     /// <param name="message">The error message to write.</param>
     public void WriteError(string message)
     {
-        AnsiConsole.MarkupLine($"[red]Error: {message}[/]");
+        Stderr.MarkupLine($"[red]Error: {message}[/]");
     }
 
     /// <summary>
@@ -41,7 +58,7 @@ public class SpectreOutputConsole : IOutputConsole
     /// <param name="message">The warning message to write.</param>
     public void WriteWarning(string message)
     {
-        AnsiConsole.MarkupLine($"[yellow]Warning: {message}[/]");
+        Stderr.MarkupLine($"[yellow]Warning: {message}[/]");
     }
 
     /// <summary>
@@ -50,7 +67,7 @@ public class SpectreOutputConsole : IOutputConsole
     /// <param name="message">The success message to write.</param>
     public void WriteSuccess(string message)
     {
-        AnsiConsole.MarkupLine($"[green]{message}[/]");
+        Stderr.MarkupLine($"[green]{message}[/]");
     }
 
     /// <summary>

@@ -18,6 +18,12 @@ public interface IOutputConsole
     void WriteLine(string message);
 
     /// <summary>
+    /// Writes an informational message to the console.
+    /// </summary>
+    /// <param name="message">The informational message to write.</param>
+    void WriteInfo(string message);
+
+    /// <summary>
     /// Writes an error message to the console.
     /// </summary>
     /// <param name="message">The error message to write.</param>

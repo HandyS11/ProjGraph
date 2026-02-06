@@ -128,8 +128,8 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
     /// <seealso cref="EntityFileDiscovery.ExtractEntityTypeNames(ClassDeclarationSyntax)"/>
     /// <seealso cref="EntityFileDiscovery.DiscoverEntityFilesAsync(List{string}, HashSet{string}, string)"/>
     /// <seealso cref="EntityFileDiscovery.DiscoverBaseClassFilesAsync(Dictionary{string, string}, string)"/>
-    /// <seealso cref="CreateSyntaxTreesAsync(SyntaxTree, Dictionary{string, string})"/>
-    private static async Task<List<SyntaxTree>> BuildSyntaxTreesAsync(
+    /// <seealso cref="CreateSyntaxTrees(SyntaxTree, Dictionary{string, string})"/>
+    private async Task<List<SyntaxTree>> BuildSyntaxTreesAsync(
         string contextPath,
         ClassDeclarationSyntax contextClass,
         string contextDirectory,
@@ -156,7 +156,7 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
 
         MergeFileDictionaries(entityFiles, baseClassFiles);
 
-        return await CreateSyntaxTreesAsync(contextSyntaxTree, entityFiles);
+        return CreateSyntaxTrees(contextSyntaxTree, entityFiles);
     }
 
     /// <summary>
@@ -268,8 +268,8 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
     /// <seealso cref="ExtractEntityTypeNamesFromSnapshot(ClassDeclarationSyntax)"/>
     /// <seealso cref="EntityFileDiscovery.DiscoverEntityFilesAsync(List{string}, HashSet{string}, string)"/>
     /// <seealso cref="EntityFileDiscovery.DiscoverBaseClassFilesAsync(Dictionary{string, string}, string)"/>
-    /// <seealso cref="CreateSyntaxTreesAsync(SyntaxTree, Dictionary{string, string})"/>
-    private static async Task<List<SyntaxTree>> BuildSnapshotSyntaxTreesAsync(
+    /// <seealso cref="CreateSyntaxTrees(SyntaxTree, Dictionary{string, string})"/>
+    private async Task<List<SyntaxTree>> BuildSnapshotSyntaxTreesAsync(
         string snapshotPath,
         ClassDeclarationSyntax snapshotClass,
         string snapshotDirectory,
@@ -295,7 +295,7 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
 
         MergeFileDictionaries(entityFiles, baseClassFiles);
 
-        return await CreateSyntaxTreesAsync(snapshotSyntaxTree, entityFiles);
+        return CreateSyntaxTrees(snapshotSyntaxTree, entityFiles);
     }
 
     /// <summary>
@@ -352,21 +352,17 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
     }
 
     /// <summary>
-    /// Asynchronously creates a list of syntax trees from a given context syntax tree and a collection of entity files.
+    /// Creates a list of syntax trees from a given context syntax tree and a collection of entity files.
     /// </summary>
     /// <param name="contextTree">The syntax tree representing the context.</param>
     /// <param name="entityFiles">A dictionary containing entity file paths with their corresponding names as keys.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains a list of syntax trees.</returns>
-    private static async Task<List<SyntaxTree>> CreateSyntaxTreesAsync(SyntaxTree contextTree,
+    /// <returns>A list of syntax trees.</returns>
+    private List<SyntaxTree> CreateSyntaxTrees(SyntaxTree contextTree,
         Dictionary<string, string> entityFiles)
     {
         var syntaxTrees = new List<SyntaxTree> { contextTree };
-
-        foreach (var entityFile in entityFiles.Values.Distinct())
-        {
-            var entityCode = await File.ReadAllTextAsync(entityFile);
-            syntaxTrees.Add(CSharpSyntaxTree.ParseText(entityCode));
-        }
+        syntaxTrees.AddRange(entityFiles.Values.Distinct().Select(fileSystem.ReadAllText)
+            .Select(entityCode => CSharpSyntaxTree.ParseText(entityCode)));
 
         return syntaxTrees;
     }

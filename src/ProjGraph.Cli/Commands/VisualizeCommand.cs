@@ -102,7 +102,7 @@ public sealed class VisualizeCommand(
             if (settings.Format.Equals("mermaid", StringComparison.OrdinalIgnoreCase))
             {
                 // For mermaid, we want clean stdout, so all status goes to stderr
-                console.WriteError($"Analyzing {settings.Path}...");
+                console.WriteInfo($"Analyzing {settings.Path}...");
 
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
                 console.WriteLine(mermaidRenderer.Render(graph));

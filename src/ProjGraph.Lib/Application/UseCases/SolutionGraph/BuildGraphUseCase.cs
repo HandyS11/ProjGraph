@@ -42,28 +42,23 @@ public class BuildGraphUseCase(
         var pathToProject = new Dictionary<string, Project>();
         var rawDependencies = new List<(string sourcePath, string targetPath)>();
 
-        foreach (var projectPath in projectFilePaths)
+        var processedPaths = projectFilePaths
+            .Select(fileSystem.GetFullPath)
+            .Where(fileSystem.FileExists)
+            .Select(fp => (FullPath: fp, NormalizedPath: discoveryService.NormalizePath(fp)));
+
+        foreach (var (fullPath, normalizedPath) in processedPaths)
         {
-            var fullPath = fileSystem.GetFullPath(projectPath);
-            var normalizedPath = discoveryService.NormalizePath(fullPath);
-
-            if (!fileSystem.FileExists(fullPath))
-            {
-                continue;
-            }
-
             try
             {
                 var (project, refs) = projectParser.Parse(fullPath);
                 projects.Add(project);
                 pathToProject[normalizedPath] = project;
 
-                rawDependencies.AddRange(from refPath in refs
-                    select discoveryService.ResolveProjectReferencePath(fullPath, refPath)
-                    into absoluteRefPath
-                    select discoveryService.NormalizePath(absoluteRefPath)
-                    into normalizedRefPath
-                    select (normalizedPath, normalizedRefPath));
+                rawDependencies.AddRange(refs
+                    .Select(r => discoveryService.ResolveProjectReferencePath(fullPath, r))
+                    .Select(discoveryService.NormalizePath)
+                    .Select(np => (normalizedPath, np)));
             }
             catch
             {
@@ -71,14 +66,12 @@ public class BuildGraphUseCase(
             }
         }
 
-        foreach (var (sourcePath, targetPath) in rawDependencies)
-        {
-            if (pathToProject.TryGetValue(sourcePath, out var source) &&
-                pathToProject.TryGetValue(targetPath, out var target))
-            {
-                dependencies.Add(new Dependency(source.Id, target.Id, DependencyType.ProjectReference));
-            }
-        }
+        dependencies.AddRange(rawDependencies
+            .Select(d => (
+                Src: pathToProject.GetValueOrDefault(d.sourcePath),
+                Tgt: pathToProject.GetValueOrDefault(d.targetPath)))
+            .Where(x => x is { Src: not null, Tgt: not null })
+            .Select(x => new Dependency(x.Src!.Id, x.Tgt!.Id, DependencyType.ProjectReference)));
 
         return new Core.Models.SolutionGraph(
             Path.GetFileName(path),

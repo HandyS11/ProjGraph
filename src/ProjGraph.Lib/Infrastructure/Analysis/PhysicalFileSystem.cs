@@ -18,16 +18,6 @@ public class PhysicalFileSystem : IFileSystem
     }
 
     /// <summary>
-    /// Determines whether the specified directory exists.
-    /// </summary>
-    /// <param name="path">The path to the directory.</param>
-    /// <returns>True if the directory exists; otherwise, false.</returns>
-    public bool DirectoryExists(string path)
-    {
-        return Directory.Exists(path);
-    }
-
-    /// <summary>
     /// Reads all text from the specified file.
     /// </summary>
     /// <param name="path">The path to the file.</param>
@@ -35,19 +25,6 @@ public class PhysicalFileSystem : IFileSystem
     public string ReadAllText(string path)
     {
         return File.ReadAllText(path);
-    }
-
-    /// <summary>
-    /// Retrieves the names of files in the specified directory that match the search pattern.
-    /// </summary>
-    /// <param name="path">The path to the directory.</param>
-    /// <param name="searchPattern">The search string to match against the names of files in the directory.</param>
-    /// <param name="recursive">Whether to search all subdirectories recursively. Default is false.</param>
-    /// <returns>An array of file names that match the search pattern.</returns>
-    public string[] GetFiles(string path, string searchPattern, bool recursive = false)
-    {
-        return Directory.GetFiles(path, searchPattern,
-            recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
     }
 
     /// <summary>
