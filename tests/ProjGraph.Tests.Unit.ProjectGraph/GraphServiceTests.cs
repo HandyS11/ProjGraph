@@ -2,7 +2,7 @@ using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
 using ProjGraph.Lib.ProjectGraph.Application;
 using ProjGraph.Lib.ProjectGraph.Application.UseCases;
-using Projgraph.Tests.Shared.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
 
 namespace ProjGraph.Tests.Unit.ProjectGraph;
 

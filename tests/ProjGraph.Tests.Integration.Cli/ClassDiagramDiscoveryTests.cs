@@ -1,5 +1,5 @@
 using ProjGraph.Tests.Integration.Cli.Helpers;
-using Projgraph.Tests.Shared.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
 
 namespace ProjGraph.Tests.Integration.Cli;
 

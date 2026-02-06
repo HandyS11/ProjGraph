@@ -2,7 +2,7 @@ using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.EntityFramework.Application;
 using ProjGraph.Lib.EntityFramework.Application.UseCases;
 using ProjGraph.Lib.EntityFramework.Infrastructure;
-using Projgraph.Tests.Shared.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
 
 namespace ProjGraph.Tests.Unit.EntityFramework;
 

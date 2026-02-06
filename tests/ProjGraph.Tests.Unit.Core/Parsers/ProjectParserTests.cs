@@ -1,6 +1,6 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Parsers;
-using Projgraph.Tests.Shared.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
 
 namespace ProjGraph.Tests.Unit.Core.Parsers;
 

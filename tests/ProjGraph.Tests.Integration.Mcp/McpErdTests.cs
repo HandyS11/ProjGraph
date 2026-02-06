@@ -1,6 +1,6 @@
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Integration.Mcp.Helpers;
-using Projgraph.Tests.Shared.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
 
 namespace ProjGraph.Tests.Integration.Mcp;
 

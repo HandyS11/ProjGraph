@@ -15,11 +15,13 @@ public partial class MarkdownErdTests
         var readmePath = CliTestHelpers.GetSamplePath(@"erd\simple-context\README.md");
 
         // Act
+        int result = -1;
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
         {
-            var result = app.Run(["erd", contextPath]);
-            result.Should().Be(0);
+            result = app.Run(["erd", contextPath]);
         });
+
+        result.Should().Be(0);
 
         // Parse README for expected mermaid block
         var readmeContent = File.ReadAllText(readmePath);

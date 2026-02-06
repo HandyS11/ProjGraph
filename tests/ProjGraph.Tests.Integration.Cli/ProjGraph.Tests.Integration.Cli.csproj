@@ -20,7 +20,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ProjGraph.Cli\ProjGraph.Cli.csproj"/>
-    <ProjectReference Include="..\Projgraph.Tests.Shared\Projgraph.Tests.Shared.csproj"/>
+    <ProjectReference Include="..\ProjGraph.Tests.Shared\ProjGraph.Tests.Shared.csproj"/>
   </ItemGroup>
 
 </Project>
+
+

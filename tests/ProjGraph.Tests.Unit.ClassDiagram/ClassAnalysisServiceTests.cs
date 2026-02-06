@@ -3,7 +3,7 @@ using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.ClassDiagram.Application.UseCases;
 using ProjGraph.Lib.ClassDiagram.Infrastructure;
 using ProjGraph.Lib.Core.Infrastructure;
-using Projgraph.Tests.Shared.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
 
 namespace ProjGraph.Tests.Unit.ClassDiagram;
 

@@ -4,7 +4,7 @@ using ProjGraph.Lib.EntityFramework.Application;
 using ProjGraph.Lib.EntityFramework.Application.UseCases;
 using ProjGraph.Lib.EntityFramework.Infrastructure;
 using ProjGraph.Lib.EntityFramework.Rendering;
-using Projgraph.Tests.Shared.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
 
 namespace ProjGraph.Tests.Unit.EntityFramework;
 

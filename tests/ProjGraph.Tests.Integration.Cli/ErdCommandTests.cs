@@ -44,11 +44,13 @@ public class ErdCommandTests
         var contextPath = CliTestHelpers.GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
+        int result = -1;
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
         {
-            var result = app.Run(["erd", contextPath, "--context", "MyDbContext"]);
-            result.Should().Be(0);
+            result = app.Run(["erd", contextPath, "--context", "MyDbContext"]);
         });
+
+        result.Should().Be(0);
 
         // Assert
         capturedOutput.Should().Contain("erDiagram");
@@ -64,11 +66,13 @@ public class ErdCommandTests
         var contextPath = CliTestHelpers.GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
+        int result = -1;
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
         {
-            var result = app.Run(["erd", contextPath]);
-            result.Should().Be(0);
+            result = app.Run(["erd", contextPath]);
         });
+
+        result.Should().Be(0);
 
         // Assert
         // Irrelevant fields should not be present in Book entity

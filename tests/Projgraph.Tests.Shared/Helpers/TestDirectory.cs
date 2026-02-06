@@ -1,4 +1,4 @@
-namespace Projgraph.Tests.Shared.Helpers;
+namespace ProjGraph.Tests.Shared.Helpers;
 
 /// <summary>
 /// A helper class to manage temporary directories for testing.
