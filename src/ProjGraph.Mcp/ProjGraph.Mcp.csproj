@@ -30,12 +30,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ProjGraph.Lib\ProjGraph.Lib.csproj" />
+    <ProjectReference Include="..\ProjGraph.Lib\ProjGraph.Lib.csproj"/>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="ModelContextProtocol"/>
+    <PackageReference Include="Microsoft.Extensions.Hosting"/>
   </ItemGroup>
 
 </Project>

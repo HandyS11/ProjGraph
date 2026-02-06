@@ -178,13 +178,8 @@ public static class TreeRenderer
     {
         if (cyclicProjectIds.Count is not 0)
         {
-            AnsiConsole.MarkupLine("\n[red]⚠ Cycles detected![/] The projects in [red]red[/] are part of a circular dependency.");
+            AnsiConsole.MarkupLine(
+                "\n[red]⚠ Cycles detected![/] The projects in [red]red[/] are part of a circular dependency.");
         }
     }
 }
-
-
-
-
-
-

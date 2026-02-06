@@ -182,8 +182,3 @@ public static class NavigationPropertyAnalyzer
         return false;
     }
 }
-
-
-
-
-

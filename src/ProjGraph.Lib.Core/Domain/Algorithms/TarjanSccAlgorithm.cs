@@ -119,8 +119,3 @@ public static class TarjanSccAlgorithm
         }
     }
 }
-
-
-
-
-

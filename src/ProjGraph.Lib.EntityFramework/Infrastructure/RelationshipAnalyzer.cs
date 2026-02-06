@@ -424,8 +424,3 @@ public static class RelationshipAnalyzer
                fkProperties.All(fk => fk.IsPrimaryKey);
     }
 }
-
-
-
-
-

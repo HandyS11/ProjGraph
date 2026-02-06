@@ -120,8 +120,3 @@ public sealed class ClassDiagramCommand(
         }
     }
 }
-
-
-
-
-

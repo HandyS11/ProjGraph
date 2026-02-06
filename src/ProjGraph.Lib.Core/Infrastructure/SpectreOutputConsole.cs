@@ -79,7 +79,3 @@ public class SpectreOutputConsole : IOutputConsole
         AnsiConsole.MarkupLine(markup);
     }
 }
-
-
-
-

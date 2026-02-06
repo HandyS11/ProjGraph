@@ -47,7 +47,3 @@ public interface IOutputConsole
     /// <param name="markup">The markup content to write.</param>
     void WriteMarkup(string markup);
 }
-
-
-
-

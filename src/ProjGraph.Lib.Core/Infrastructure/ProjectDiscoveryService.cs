@@ -126,7 +126,3 @@ public class ProjectDiscoveryService(IProjectParser projectParser, IFileSystem f
         }
     }
 }
-
-
-
-

@@ -14,7 +14,3 @@ public interface IGraphService
     /// <returns>A <see cref="SolutionGraph"/> representing the structure of the solution or project.</returns>
     SolutionGraph BuildGraph(string path);
 }
-
-
-
-

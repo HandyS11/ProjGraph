@@ -13,7 +13,3 @@ public interface IDiagramRenderer<in TModel>
     /// <returns>A string representation of the diagram.</returns>
     string Render(TModel model);
 }
-
-
-
-

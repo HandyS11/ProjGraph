@@ -55,8 +55,13 @@
     <Project Path="src/ProjGraph.Mcp/ProjGraph.Mcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/ProjGraph.Tests.Unit/ProjGraph.Tests.Unit.csproj" />
-    <Project Path="tests/ProjGraph.Tests.Integration/ProjGraph.Tests.Integration.csproj" />
     <Project Path="tests/ProjGraph.Tests.Contract/ProjGraph.Tests.Contract.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Integration.Cli/ProjGraph.Tests.Integration.Cli.csproj"/>
+    <Project Path="tests/ProjGraph.Tests.Integration.Mcp/ProjGraph.Tests.Integration.Mcp.csproj"/>
+    <Project Path="tests/Projgraph.Tests.Shared/Projgraph.Tests.Shared.csproj"/>
+    <Project Path="tests/ProjGraph.Tests.Unit.ClassDiagram/ProjGraph.Tests.Unit.ClassDiagram.csproj"/>
+    <Project Path="tests/ProjGraph.Tests.Unit.Core/ProjGraph.Tests.Unit.Core.csproj"/>
+    <Project Path="tests/ProjGraph.Tests.Unit.EntityFramework/ProjGraph.Tests.Unit.EntityFramework.csproj"/>
+    <Project Path="tests/ProjGraph.Tests.Unit.ProjectGraph/ProjGraph.Tests.Unit.ProjectGraph.csproj"/>
   </Folder>
 </Solution>

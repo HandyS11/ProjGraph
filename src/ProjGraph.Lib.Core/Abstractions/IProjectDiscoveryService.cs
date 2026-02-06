@@ -27,7 +27,3 @@ public interface IProjectDiscoveryService
     /// <returns>The absolute path to the referenced project.</returns>
     string ResolveProjectReferencePath(string projectPath, string referencePath);
 }
-
-
-
-

@@ -111,8 +111,3 @@ public static class TypeSymbolExtensions
                type.AllInterfaces.Any(i => EfAnalysisConstants.CollectionTypes.SupportedCollections.Contains(i.Name));
     }
 }
-
-
-
-
-

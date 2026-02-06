@@ -68,8 +68,3 @@ public static class ModelSnapshotParser
         return snapshotType.Name.Replace("ModelSnapshot", "");
     }
 }
-
-
-
-
-

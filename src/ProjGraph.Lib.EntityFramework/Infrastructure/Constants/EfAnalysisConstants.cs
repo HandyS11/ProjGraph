@@ -218,7 +218,3 @@ public static class EfAnalysisConstants
         public const string NumericArgumentPattern = @"\((\d+)\)";
     }
 }
-
-
-
-

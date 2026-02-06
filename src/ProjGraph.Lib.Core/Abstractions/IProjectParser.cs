@@ -14,7 +14,3 @@ public interface IProjectParser
     /// <returns>A tuple containing the parsed <see cref="Project"/> and a collection of its project references.</returns>
     (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath);
 }
-
-
-
-

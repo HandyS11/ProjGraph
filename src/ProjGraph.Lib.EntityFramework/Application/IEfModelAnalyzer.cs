@@ -38,6 +38,3 @@ public interface IEfModelAnalyzer
     /// <returns>A task that represents the asynchronous operation. The task result contains the analyzed Entity Framework model.</returns>
     Task<EfModel> AnalyzeContextAsync(string path, string? contextName);
 }
-
-
-

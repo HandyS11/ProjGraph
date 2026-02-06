@@ -13,5 +13,3 @@ public record SolutionGraph(
     IReadOnlyList<Project> Projects,
     IReadOnlyList<Dependency> Dependencies
 );
-
-

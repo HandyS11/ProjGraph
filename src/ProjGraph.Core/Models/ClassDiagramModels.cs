@@ -94,5 +94,3 @@ public record ClassModel(
     List<TypeDefinition> Types,
     List<Relationship> Relationships
 );
-
-

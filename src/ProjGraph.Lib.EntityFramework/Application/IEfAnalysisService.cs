@@ -37,6 +37,3 @@ public interface IEfAnalysisService
     /// <returns>A task that represents the asynchronous operation. The task result contains the analyzed Entity Framework model.</returns>
     Task<EfModel> AnalyzeSnapshotAsync(string path, string? snapshotName = null);
 }
-
-
-

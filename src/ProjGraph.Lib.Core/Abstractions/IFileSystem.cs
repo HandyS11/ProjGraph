@@ -40,7 +40,3 @@ public interface IFileSystem
     /// <returns>The combined path.</returns>
     string Combine(params string[] paths);
 }
-
-
-
-

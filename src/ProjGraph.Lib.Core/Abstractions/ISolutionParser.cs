@@ -12,7 +12,3 @@ public interface ISolutionParser
     /// <returns>An enumerable collection of project file paths contained in the solution.</returns>
     IEnumerable<string> GetProjectPaths(string path);
 }
-
-
-
-

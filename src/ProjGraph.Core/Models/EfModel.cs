@@ -154,5 +154,3 @@ public enum EfRelationshipType
     /// </summary>
     ManyToMany = 2
 }
-
-

@@ -368,7 +368,3 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
         return syntaxTrees;
     }
 }
-
-
-
-

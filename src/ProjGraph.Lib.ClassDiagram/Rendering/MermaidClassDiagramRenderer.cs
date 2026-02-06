@@ -208,9 +208,3 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
             .Replace(' ', '_');
     }
 }
-
-
-
-
-
-

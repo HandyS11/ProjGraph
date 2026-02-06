@@ -27,8 +27,3 @@ public class DiscoverContextsUseCase(IEfModelAnalyzer modelAnalyzer, IFileSystem
         return [.. modelAnalyzer.DiscoverDbContexts(root)];
     }
 }
-
-
-
-
-

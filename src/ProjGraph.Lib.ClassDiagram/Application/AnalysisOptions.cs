@@ -20,8 +20,3 @@ public sealed class AnalysisOptions
     /// </summary>
     public required bool IncludeDependencies { get; init; }
 }
-
-
-
-
-

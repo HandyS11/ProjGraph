@@ -43,8 +43,11 @@ public sealed class ProjectParser : IProjectParser
             : ProjectType.Library;
 
         if (name.Contains("Test", StringComparison.OrdinalIgnoreCase) ||
-            root.Properties.Any(p => p.Name == "IsTestProject" && p.Value.Equals("true", StringComparison.OrdinalIgnoreCase)))
+            root.Properties.Any(p =>
+                p.Name == "IsTestProject" && p.Value.Equals("true", StringComparison.OrdinalIgnoreCase)))
+        {
             type = ProjectType.Test;
+        }
 
         var id = Guid.NewGuid();
         var project = new Project(id, name, projectPath, relativePath, framework, type);
@@ -57,8 +60,3 @@ public sealed class ProjectParser : IProjectParser
         return (project, projectReferences);
     }
 }
-
-
-
-
-

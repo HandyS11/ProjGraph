@@ -58,8 +58,3 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
         return name.Replace(".", "_").Replace("-", "_").Replace(" ", "_");
     }
 }
-
-
-
-
-

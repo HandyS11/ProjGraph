@@ -19,9 +19,3 @@ public class ClassAnalysisService(AnalyzeFileUseCase analyzeFileUseCase) : IClas
         return await analyzeFileUseCase.ExecuteAsync(filePath, includeInheritance, includeDependencies, maxDepth);
     }
 }
-
-
-
-
-
-

@@ -27,8 +27,3 @@ public class DiscoverSnapshotsUseCase(IEfModelAnalyzer modelAnalyzer, IFileSyste
         return [.. modelAnalyzer.DiscoverModelSnapshots(root)];
     }
 }
-
-
-
-
-

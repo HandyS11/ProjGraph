@@ -99,5 +99,3 @@ public class McpErdContractTests
         parameters[1].Name.Should().Be("contextName");
     }
 }
-
-

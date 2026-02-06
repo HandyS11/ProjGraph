@@ -30,8 +30,3 @@ public sealed class SlnParser(IFileSystem fileSystem) : ISlnParser
             .Select(p => p.AbsolutePath);
     }
 }
-
-
-
-
-

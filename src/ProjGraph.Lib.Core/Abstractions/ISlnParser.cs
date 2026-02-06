@@ -4,7 +4,3 @@ namespace ProjGraph.Lib.Core.Abstractions;
 /// Specific interface for .sln solution parser.
 /// </summary>
 public interface ISlnParser : ISolutionParser;
-
-
-
-

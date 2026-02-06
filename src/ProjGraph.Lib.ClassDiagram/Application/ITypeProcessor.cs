@@ -15,8 +15,3 @@ public interface ITypeProcessor
         AnalysisContext context,
         AnalysisOptions options);
 }
-
-
-
-
-

@@ -17,6 +17,7 @@ public static class WorkspaceTypeDiscovery
     {
         "bin", "obj", ".git", "node_modules"
     };
+
     /// <summary>
     /// Finds the file containing the definition of a specific type within a given directory or its subdirectories.
     /// The method first attempts to search in common subdirectories for better performance, and if not found,
@@ -80,7 +81,8 @@ public static class WorkspaceTypeDiscovery
     private static async Task<string?> SearchDirectoryRecursiveAsync(string directory, string typeName)
     {
         // Search files in the current directory
-        foreach (var file in Directory.EnumerateFiles(directory, "*.cs", new EnumerationOptions { IgnoreInaccessible = true }))
+        foreach (var file in Directory.EnumerateFiles(directory, "*.cs",
+                     new EnumerationOptions { IgnoreInaccessible = true }))
         {
             // Simple string check first for performance
             var content = await File.ReadAllTextAsync(file);
@@ -107,7 +109,8 @@ public static class WorkspaceTypeDiscovery
         }
 
         // Recursively search subdirectories, skipping excluded directories
-        foreach (var subDir in Directory.EnumerateDirectories(directory, "*", new EnumerationOptions { IgnoreInaccessible = true }))
+        foreach (var subDir in Directory.EnumerateDirectories(directory, "*",
+                     new EnumerationOptions { IgnoreInaccessible = true }))
         {
             var dirName = Path.GetFileName(subDir);
             if (ExcludedDirectories.Contains(dirName))
@@ -163,8 +166,3 @@ public static class WorkspaceTypeDiscovery
         return null;
     }
 }
-
-
-
-
-

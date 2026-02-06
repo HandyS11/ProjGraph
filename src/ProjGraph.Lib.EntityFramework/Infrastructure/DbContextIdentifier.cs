@@ -66,8 +66,3 @@ public static class DbContextIdentifier
             (snapshotName is null && IsModelSnapshot(c)) || c.Identifier.Text == snapshotName);
     }
 }
-
-
-
-
-

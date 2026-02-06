@@ -213,8 +213,3 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
             .Replace("]", "");
     }
 }
-
-
-
-
-

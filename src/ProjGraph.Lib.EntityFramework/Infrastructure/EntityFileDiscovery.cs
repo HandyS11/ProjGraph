@@ -522,8 +522,3 @@ public static class EntityFileDiscovery
         return dirName is "bin" or "obj" or ".git" or "node_modules";
     }
 }
-
-
-
-
-

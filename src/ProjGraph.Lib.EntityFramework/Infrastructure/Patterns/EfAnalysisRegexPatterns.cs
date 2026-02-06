@@ -153,8 +153,3 @@ public static partial class EfAnalysisRegexPatterns
 
     #endregion
 }
-
-
-
-
-

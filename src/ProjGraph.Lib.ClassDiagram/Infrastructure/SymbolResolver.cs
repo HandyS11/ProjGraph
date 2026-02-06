@@ -112,8 +112,3 @@ internal static class SymbolResolver
         context.AnalyzedTypeFullNames.Add(fullName);
     }
 }
-
-
-
-
-

@@ -111,8 +111,3 @@ internal static class TypeFilter
         return wellKnownTypes.Contains(typeName);
     }
 }
-
-
-
-
-

@@ -21,8 +21,3 @@ public interface IClassAnalysisService
         bool includeDependencies = false,
         int maxDepth = 1);
 }
-
-
-
-
-

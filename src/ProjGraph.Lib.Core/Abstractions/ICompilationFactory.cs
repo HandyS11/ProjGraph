@@ -14,5 +14,3 @@ public interface ICompilationFactory
     /// <returns>A Roslyn compilation object.</returns>
     Compilation CreateCompilation(IEnumerable<SyntaxTree> syntaxTrees);
 }
-
-
