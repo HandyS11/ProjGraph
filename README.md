@@ -100,7 +100,7 @@ projgraph erd ./Data/MyDbContext.cs
 # Generate ERD from ModelSnapshot (leveraging migrations)
 projgraph erd ./Migrations/MyDbContextModelSnapshot.cs
 
-```bash
+# Output to Markdown for documentation
 projgraph erd ./Data/MyDbContext.cs > docs/database-schema.md
 ```
 
@@ -110,8 +110,8 @@ projgraph erd ./Data/MyDbContext.cs > docs/database-schema.md
 # Generate diagram for a class and its inheritance and dependencies
 projgraph classdiagram ./Models/Admin.cs -i -d
 
-# Control discovery depth (default: 3)
-projgraph classdiagram ./Models/Admin.cs --depth 5
+# Control discovery depth (default: 1)
+projgraph classdiagram ./Models/Admin.cs -i -d --depth 5
 ```
 
 ### With AI Assistants
