@@ -27,4 +27,3 @@ public record Dependency(
     Guid TargetId,
     DependencyType Type
 );
-

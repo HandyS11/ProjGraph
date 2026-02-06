@@ -1,6 +1,7 @@
 using ProjGraph.Cli.Rendering;
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Application.Interfaces;
+using ProjGraph.Lib.Core.Abstractions;
+using ProjGraph.Lib.ProjectGraph.Application;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;

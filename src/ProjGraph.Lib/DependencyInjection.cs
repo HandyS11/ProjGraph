@@ -1,15 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
-using ProjGraph.Core.Models;
-using ProjGraph.Lib.Application.Interfaces;
-using ProjGraph.Lib.Application.Services;
-using ProjGraph.Lib.Application.UseCases.ClassAnalysis;
-using ProjGraph.Lib.Application.UseCases.EfAnalysis;
-using ProjGraph.Lib.Application.UseCases.SolutionGraph;
-using ProjGraph.Lib.Infrastructure.Analysis;
-using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
-using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
-using ProjGraph.Lib.Infrastructure.Parsers;
-using ProjGraph.Lib.Infrastructure.Rendering;
+using ProjGraph.Lib.ClassDiagram;
+using ProjGraph.Lib.Core;
+using ProjGraph.Lib.EntityFramework;
+using ProjGraph.Lib.ProjectGraph;
 
 namespace ProjGraph.Lib;
 
@@ -27,38 +20,17 @@ public static class DependencyInjection
     /// <returns>The updated <see cref="IServiceCollection"/> with ProjGraph services registered.</returns>
     public static IServiceCollection AddProjGraphLib(this IServiceCollection services)
     {
-        // Infrastructure - General
-        services.AddSingleton<IFileSystem, PhysicalFileSystem>();
-        services.AddSingleton<IOutputConsole, SpectreOutputConsole>();
+        // Core services
+        services.AddProjGraphCore();
 
-        // Infrastructure - Parsers
-        services.AddSingleton<ISlnParser, SlnParser>();
-        services.AddSingleton<ISlnxParser, SlnxParser>();
-        services.AddSingleton<IProjectParser, ProjectParser>();
+        // ProjectGraph services
+        services.AddProjGraphProjectGraph();
 
-        // Infrastructure - Technical Details
-        services.AddSingleton<ICompilationFactory, CompilationFactory>();
-        services.AddSingleton<ITypeProcessor, TypeProcessor>();
-        services.AddSingleton<IProjectDiscoveryService, ProjectDiscoveryService>();
-        services.AddSingleton<IEfModelAnalyzer, EfModelAnalyzer>();
+        // EntityFramework services
+        services.AddProjGraphEntityFramework();
 
-        // Infrastructure - Renderers
-        services.AddSingleton<IDiagramRenderer<SolutionGraph>, MermaidGraphRenderer>();
-        services.AddSingleton<IDiagramRenderer<ClassModel>, MermaidClassDiagramRenderer>();
-        services.AddSingleton<IDiagramRenderer<EfModel>, MermaidErdRenderer>();
-
-        // Application - Use Cases
-        services.AddSingleton<BuildGraphUseCase>();
-        services.AddSingleton<AnalyzeFileUseCase>();
-        services.AddSingleton<AnalyzeContextUseCase>();
-        services.AddSingleton<DiscoverContextsUseCase>();
-        services.AddSingleton<AnalyzeSnapshotUseCase>();
-        services.AddSingleton<DiscoverSnapshotsUseCase>();
-
-        // Application - Services (Public API)
-        services.AddSingleton<IGraphService, GraphService>();
-        services.AddSingleton<IEfAnalysisService, EfAnalysisService>();
-        services.AddSingleton<IClassAnalysisService, ClassAnalysisService>();
+        // ClassDiagram services
+        services.AddProjGraphClassDiagram();
 
         return services;
     }
