@@ -19,8 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\ProjGraph.Core\ProjGraph.Core.csproj" />
-    <ProjectReference Include="..\..\src\ProjGraph.Lib\ProjGraph.Lib.csproj" />
     <ProjectReference Include="..\..\src\ProjGraph.Cli\ProjGraph.Cli.csproj" />
     <ProjectReference Include="..\..\src\ProjGraph.Mcp\ProjGraph.Mcp.csproj" />
   </ItemGroup>

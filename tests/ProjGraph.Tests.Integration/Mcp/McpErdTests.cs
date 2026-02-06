@@ -1,7 +1,4 @@
 using FluentAssertions;
-using ProjGraph.Lib.Services;
-using ProjGraph.Lib.Services.ClassAnalysis;
-using ProjGraph.Lib.Services.EfAnalysis;
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Integration.Helpers;
 
@@ -58,10 +55,7 @@ public sealed class McpErdTests : IDisposable
 
     private static ProjGraphTools CreateTools()
     {
-        var graphService = new GraphService();
-        var efService = new EfAnalysisService();
-        var classService = new ClassAnalysisService();
-        return new ProjGraphTools(graphService, efService, classService);
+        return McpTestHelper.CreateTools();
     }
 
     #region Simple In-Memory DbContext Tests
@@ -266,3 +260,6 @@ public sealed class McpErdTests : IDisposable
         }
     }
 }
+
+
+

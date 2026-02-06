@@ -2,11 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using ProjGraph.Lib.Interfaces;
-using ProjGraph.Lib.Rendering;
-using ProjGraph.Lib.Services;
-using ProjGraph.Lib.Services.ClassAnalysis;
-using ProjGraph.Lib.Services.EfAnalysis;
+using ProjGraph.Core.Models;
+using ProjGraph.Lib;
+using ProjGraph.Lib.Application.Interfaces;
 using System.ComponentModel;
 
 namespace ProjGraph.Mcp;
@@ -24,9 +22,9 @@ public static class Program
             .WithStdioServerTransport()
             .WithTools<ProjGraphTools>();
 
-        builder.Services.AddSingleton<IGraphService, GraphService>();
-        builder.Services.AddSingleton<IEfAnalysisService, EfAnalysisService>();
-        builder.Services.AddSingleton<IClassAnalysisService, ClassAnalysisService>();
+        // Register Library services
+        builder.Services.AddProjGraphLib();
+
         builder.Services.AddSingleton<ProjGraphTools>();
 
         var host = builder.Build();
@@ -38,7 +36,10 @@ public static class Program
 public class ProjGraphTools(
     IGraphService graphService,
     IEfAnalysisService efService,
-    IClassAnalysisService classService)
+    IClassAnalysisService classService,
+    IDiagramRenderer<SolutionGraph> graphRenderer,
+    IDiagramRenderer<ClassModel> classRenderer,
+    IDiagramRenderer<EfModel> erdRenderer)
 {
     [McpServerTool]
     [Description(
@@ -58,7 +59,7 @@ public class ProjGraphTools(
         try
         {
             var model = await classService.AnalyzeFileAsync(filePath, includeInheritance, includeDependencies, depth);
-            return MermaidClassDiagramRenderer.Render(model);
+            return classRenderer.Render(model);
         }
         catch (Exception ex)
         {
@@ -75,7 +76,7 @@ public class ProjGraphTools(
         try
         {
             var graph = graphService.BuildGraph(path);
-            return MermaidGraphRenderer.Render(graph);
+            return graphRenderer.Render(graph);
         }
         catch (Exception ex)
         {
@@ -97,7 +98,7 @@ public class ProjGraphTools(
         try
         {
             var model = await efService.AnalyzeContextAsync(path, contextName);
-            return MermaidErdRenderer.Render(model);
+            return erdRenderer.Render(model);
         }
         catch (Exception ex)
         {

@@ -1,4 +1,7 @@
-﻿using ProjGraph.Cli.Commands;
+﻿using Microsoft.Extensions.DependencyInjection;
+using ProjGraph.Cli.Commands;
+using ProjGraph.Cli.Infrastructure;
+using ProjGraph.Lib;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.Text;
@@ -26,7 +29,11 @@ public static class CliTestHelpers
 
     public static CommandApp CreateApp()
     {
-        var app = new CommandApp();
+        var services = new ServiceCollection();
+        services.AddProjGraphLib();
+
+        var registrar = new TypeRegistrar(services);
+        var app = new CommandApp(registrar);
         app.Configure(config =>
         {
             config.PropagateExceptions();
@@ -35,26 +42,6 @@ public static class CliTestHelpers
             config.AddCommand<ClassDiagramCommand>("classdiagram");
         });
         return app;
-    }
-
-    public static async Task<(int ExitCode, string Output)> RunCommandAsync(params string[] args)
-    {
-        var app = CreateApp();
-        var output = new StringBuilder();
-        await using var writer = new StringWriter(output);
-
-        var originalOut = Console.Out;
-        Console.SetOut(writer);
-
-        try
-        {
-            var exitCode = await app.RunAsync(args);
-            return (exitCode, output.ToString());
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
     }
 
     public static string CaptureConsoleOutput(Action action)

@@ -1,5 +1,5 @@
-using ProjGraph.Lib.Rendering;
-using ProjGraph.Lib.Services.ClassAnalysis;
+using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Interfaces;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -12,7 +12,11 @@ namespace ProjGraph.Cli.Commands;
 /// Represents a command that generates a class diagram from a specified .cs file.
 /// Inherits from <see cref="AsyncCommand{TSettings}"/> with <see cref="ClassDiagramCommand.Settings"/> as the settings type.
 /// </summary>
-public sealed class ClassDiagramCommand : AsyncCommand<ClassDiagramCommand.Settings>
+public sealed class ClassDiagramCommand(
+    IClassAnalysisService analysisService,
+    IDiagramRenderer<ClassModel> mermaidRenderer,
+    IOutputConsole console)
+    : AsyncCommand<ClassDiagramCommand.Settings>
 {
     /// <summary>
     /// Represents the settings for the ClassDiagramCommand.
@@ -97,22 +101,20 @@ public sealed class ClassDiagramCommand : AsyncCommand<ClassDiagramCommand.Setti
     {
         try
         {
-            var analysisService = new ClassAnalysisService();
-
             var model = await analysisService.AnalyzeFileAsync(
                 settings.Path,
                 settings.IncludeInheritance,
                 settings.IncludeDependencies,
                 settings.Depth);
 
-            var mermaid = MermaidClassDiagramRenderer.Render(model);
-            Console.WriteLine(mermaid);
+            var mermaid = mermaidRenderer.Render(model);
+            console.WriteLine(mermaid);
 
             return 0;
         }
         catch (Exception ex)
         {
-            AnsiConsole.WriteException(ex);
+            console.WriteError(ex.Message);
             return 1;
         }
     }

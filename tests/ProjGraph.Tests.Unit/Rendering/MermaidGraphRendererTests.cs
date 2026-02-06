@@ -1,11 +1,12 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Rendering;
+using ProjGraph.Lib.Infrastructure.Rendering;
 
 namespace ProjGraph.Tests.Unit.Rendering;
 
 public class MermaidGraphRendererTests
 {
+    private readonly MermaidGraphRenderer _renderer = new();
     [Fact]
     public void Render_ShouldGenerateValidMermaidSyntax()
     {
@@ -24,7 +25,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, dependencies);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("```mermaid");
@@ -48,7 +49,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, []);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("ConsoleApp (Exe)");
@@ -68,7 +69,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, []);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("UnitTests (Test)");
@@ -88,7 +89,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, []);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("Library[\"Library\"]");
@@ -103,7 +104,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("EmptySolution", "EmptySolution.sln", [], []);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("```mermaid");
@@ -126,7 +127,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, []);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("My_Project_Name");
@@ -148,7 +149,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, []);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("My_Project_Name");
@@ -179,7 +180,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, dependencies);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("A --> B");
@@ -208,7 +209,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, dependencies);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("A --> B");
@@ -238,7 +239,7 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, dependencies);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.Should().Contain("A --> B");
@@ -252,9 +253,10 @@ public class MermaidGraphRendererTests
         var graph = new SolutionGraph("Test", "Test.sln", [], []);
 
         // Act
-        var result = MermaidGraphRenderer.Render(graph);
+        var result = _renderer.Render(graph);
 
         // Assert
         result.TrimEnd().Should().EndWith("```");
     }
 }
+

@@ -1,16 +1,29 @@
 using FluentAssertions;
-using ProjGraph.Lib.Services;
+using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Application.UseCases.SolutionGraph;
+using ProjGraph.Lib.Infrastructure.Analysis;
+using ProjGraph.Lib.Infrastructure.Parsers;
 using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services;
 
 public class GraphServiceTests
 {
+    private readonly GraphService _graphService = CreateService();
+
+    private static GraphService CreateService()
+    {
+        var fs = new PhysicalFileSystem();
+        var projectParser = new ProjectParser();
+        var discoveryService = new ProjectDiscoveryService(projectParser, fs);
+        var useCase = new BuildGraphUseCase(new SlnParser(fs), new SlnxParser(fs), projectParser, discoveryService, fs);
+        return new GraphService(useCase);
+    }
+
     [Fact]
     public void BuildGraph_FromCsproj_ShouldDiscoverAllDependencies()
     {
         // Arrange
-        var graphService = new GraphService();
         var projectAPath = Path.Combine(
             Directory.GetCurrentDirectory(),
             "..", "..", "..", "..", "..",
@@ -25,7 +38,7 @@ public class GraphServiceTests
         }
 
         // Act
-        var graph = graphService.BuildGraph(normalizedPath);
+        var graph = _graphService.BuildGraph(normalizedPath);
 
         // Assert
         graph.Should().NotBeNull();
@@ -52,12 +65,11 @@ public class GraphServiceTests
     public void BuildGraph_ShouldThrowForNonExistentFile()
     {
         // Arrange
-        var graphService = new GraphService();
         using var temp = new TestDirectory();
         var nonExistentPath = temp.GetTempFilePath(".sln");
 
         // Act & Assert
-        var act = () => graphService.BuildGraph(nonExistentPath);
+        var act = () => _graphService.BuildGraph(nonExistentPath);
         act.Should().Throw<FileNotFoundException>();
     }
 
@@ -65,12 +77,11 @@ public class GraphServiceTests
     public void BuildGraph_ShouldThrowForUnsupportedFileType()
     {
         // Arrange
-        var graphService = new GraphService();
         using var temp = new TestDirectory();
         var tempFile = temp.CreateFile("test.txt", "test content");
 
         // Act & Assert
-        var act = () => graphService.BuildGraph(tempFile);
+        var act = () => _graphService.BuildGraph(tempFile);
         act.Should().Throw<ArgumentException>()
             .WithMessage("*Unsupported file type*");
     }
@@ -79,7 +90,6 @@ public class GraphServiceTests
     public void BuildGraph_FromSlnx_ShouldHandleEmptySolution()
     {
         // Arrange
-        var graphService = new GraphService();
         using var temp = new TestDirectory();
         const string content = """
                                <Solution>
@@ -89,7 +99,7 @@ public class GraphServiceTests
         var tempSlnx = temp.CreateFile("empty.slnx", content);
 
         // Act
-        var graph = graphService.BuildGraph(tempSlnx);
+        var graph = _graphService.BuildGraph(tempSlnx);
 
         // Assert
         graph.Should().NotBeNull();
@@ -101,7 +111,7 @@ public class GraphServiceTests
     public void BuildGraph_ShouldSkipNonExistentProjectFiles()
     {
         // Arrange
-        var graphService = new GraphService();
+
         using var temp = new TestDirectory();
         const string content = """
                                <Solution>
@@ -112,7 +122,7 @@ public class GraphServiceTests
         var tempSlnx = temp.CreateFile("missing_projects.slnx", content);
 
         // Act
-        var graph = graphService.BuildGraph(tempSlnx);
+        var graph = _graphService.BuildGraph(tempSlnx);
 
         // Assert
         graph.Should().NotBeNull();
@@ -123,7 +133,7 @@ public class GraphServiceTests
     public void BuildGraph_ShouldSetCorrectGraphName()
     {
         // Arrange
-        var graphService = new GraphService();
+
         using var temp = new TestDirectory();
         const string content = """
                                <Solution>
@@ -133,7 +143,7 @@ public class GraphServiceTests
         var tempSlnx = temp.CreateFile("MySolution.slnx", content);
 
         // Act
-        var graph = graphService.BuildGraph(tempSlnx);
+        var graph = _graphService.BuildGraph(tempSlnx);
 
         // Assert
         graph.Name.Should().Be("MySolution.slnx");
@@ -144,7 +154,7 @@ public class GraphServiceTests
     public void BuildGraph_ShouldHandleProjectsWithoutDependencies()
     {
         // Arrange
-        var graphService = new GraphService();
+
         using var temp = new TestDirectory();
 
         const string projectContent = """
@@ -165,7 +175,7 @@ public class GraphServiceTests
         var slnxPath = temp.CreateFile("Solution.slnx", slnxContent);
 
         // Act
-        var graph = graphService.BuildGraph(slnxPath);
+        var graph = _graphService.BuildGraph(slnxPath);
 
         // Assert
         graph.Projects.Should().HaveCount(1);

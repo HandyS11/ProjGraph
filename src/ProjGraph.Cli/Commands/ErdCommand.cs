@@ -1,6 +1,5 @@
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Rendering;
-using ProjGraph.Lib.Services.EfAnalysis;
+using ProjGraph.Lib.Application.Interfaces;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -17,7 +16,11 @@ namespace ProjGraph.Cli.Commands;
 /// to configure the path to the DbContext/ModelSnapshot file and the optional name. It processes the input
 /// and generates a Mermaid ERD diagram based on the analyzed Entity Framework model.
 /// </remarks>
-public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
+public sealed class ErdCommand(
+    IEfAnalysisService efService,
+    IDiagramRenderer<EfModel> mermaidRenderer,
+    IOutputConsole console)
+    : AsyncCommand<ErdCommand.Settings>
 {
     /// <summary>
     /// Represents the settings for the `ErdCommand`.
@@ -101,17 +104,16 @@ public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
                 return 1;
             }
 
-            var efService = new EfAnalysisService();
-            var model = await AnalyzeModelAsync(efService, targetPath, settings.ContextName, cancellationToken);
+            var model = await AnalyzeModelAsync(targetPath, settings.ContextName, cancellationToken);
 
-            var mermaid = MermaidErdRenderer.Render(model);
-            Console.WriteLine(mermaid);
+            var mermaid = mermaidRenderer.Render(model);
+            console.WriteLine(mermaid);
 
             return 0;
         }
         catch (Exception ex)
         {
-            AnsiConsole.WriteException(ex);
+            console.WriteError(ex.Message);
             return 1;
         }
     }
@@ -185,35 +187,31 @@ public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
     /// <summary>
     /// Analyzes the Entity Framework model from the specified file.
     /// </summary>
-    /// <param name="efService">The EF analysis service.</param>
     /// <param name="targetPath">The path to the file to analyze.</param>
     /// <param name="contextName">The optional context or snapshot name.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The analyzed EF model.</returns>
-    private static async Task<EfModel> AnalyzeModelAsync(
-        EfAnalysisService efService,
+    private async Task<EfModel> AnalyzeModelAsync(
         string targetPath,
         string? contextName,
         CancellationToken cancellationToken)
     {
         if (targetPath.EndsWith("ModelSnapshot.cs", StringComparison.OrdinalIgnoreCase))
         {
-            return await AnalyzeSnapshotAsync(efService, targetPath, contextName, cancellationToken);
+            return await AnalyzeSnapshotAsync(targetPath, contextName, cancellationToken);
         }
 
-        return await AnalyzeContextAsync(efService, targetPath, contextName, cancellationToken);
+        return await AnalyzeContextAsync(targetPath, contextName, cancellationToken);
     }
 
     /// <summary>
     /// Analyzes a ModelSnapshot file.
     /// </summary>
-    /// <param name="efService">The EF analysis service.</param>
     /// <param name="targetPath">The path to the snapshot file.</param>
     /// <param name="contextName">The optional snapshot name.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The analyzed EF model.</returns>
-    private static async Task<EfModel> AnalyzeSnapshotAsync(
-        EfAnalysisService efService,
+    private async Task<EfModel> AnalyzeSnapshotAsync(
         string targetPath,
         string? contextName,
         CancellationToken cancellationToken)
@@ -232,13 +230,11 @@ public sealed class ErdCommand : AsyncCommand<ErdCommand.Settings>
     /// <summary>
     /// Analyzes a DbContext file.
     /// </summary>
-    /// <param name="efService">The EF analysis service.</param>
     /// <param name="targetPath">The path to the context file.</param>
     /// <param name="contextName">The optional context name.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The analyzed EF model.</returns>
-    private static async Task<EfModel> AnalyzeContextAsync(
-        EfAnalysisService efService,
+    private async Task<EfModel> AnalyzeContextAsync(
         string targetPath,
         string? contextName,
         CancellationToken cancellationToken)

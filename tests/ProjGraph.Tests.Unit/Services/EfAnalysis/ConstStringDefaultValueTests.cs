@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.EntityFrameworkCore;
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Services.EfAnalysis;
+using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 
 namespace ProjGraph.Tests.Unit.Services.EfAnalysis;
 

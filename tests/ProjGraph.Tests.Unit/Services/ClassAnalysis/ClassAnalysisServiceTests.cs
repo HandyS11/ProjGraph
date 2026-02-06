@@ -1,6 +1,10 @@
 using FluentAssertions;
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.Services.ClassAnalysis;
+using ProjGraph.Lib.Application.Services;
+using ProjGraph.Lib.Application.UseCases.ClassAnalysis;
+using ProjGraph.Lib.Infrastructure.Analysis;
+using ProjGraph.Lib.Infrastructure.Analysis.ClassAnalysis;
+using ProjGraph.Lib.Infrastructure.Analysis.EfAnalysis;
 using ProjGraph.Tests.Unit.Helpers;
 
 namespace ProjGraph.Tests.Unit.Services.ClassAnalysis;
@@ -9,11 +13,13 @@ public sealed class ClassAnalysisServiceTests : IDisposable
 {
     private readonly TestDirectory _temp = new();
     private readonly string _tempFile;
-    private readonly ClassAnalysisService _service = new();
+    private readonly ClassAnalysisService _service;
 
     public ClassAnalysisServiceTests()
     {
         _tempFile = Path.Combine(_temp.DirectoryPath, "temp.cs");
+        _service = new ClassAnalysisService(new AnalyzeFileUseCase(new CompilationFactory(), new TypeProcessor(),
+            new PhysicalFileSystem()));
     }
 
     public void Dispose()

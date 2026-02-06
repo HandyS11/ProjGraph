@@ -1,6 +1,6 @@
 using ProjGraph.Cli.Rendering;
-using ProjGraph.Lib.Rendering;
-using ProjGraph.Lib.Services;
+using ProjGraph.Core.Models;
+using ProjGraph.Lib.Application.Interfaces;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -17,7 +17,11 @@ namespace ProjGraph.Cli.Commands;
 /// to configure the path to the solution or project file and the desired output format. It processes the input
 /// and renders the structure in the specified format (tree or mermaid).
 /// </remarks>
-public sealed class VisualizeCommand : AsyncCommand<VisualizeCommand.Settings>
+public sealed class VisualizeCommand(
+    IGraphService graphService,
+    IDiagramRenderer<SolutionGraph> mermaidRenderer,
+    IOutputConsole console)
+    : AsyncCommand<VisualizeCommand.Settings>
 {
     /// <summary>
     /// Represents the settings for the `VisualizeCommand`.
@@ -98,19 +102,19 @@ public sealed class VisualizeCommand : AsyncCommand<VisualizeCommand.Settings>
             if (settings.Format.Equals("mermaid", StringComparison.OrdinalIgnoreCase))
             {
                 // For mermaid, we want clean stdout, so all status goes to stderr
-                await Console.Error.WriteLineAsync($"Analyzing {settings.Path}...");
+                console.WriteInfo($"Analyzing {settings.Path}...");
 
-                var graphService = new GraphService();
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                Console.WriteLine(MermaidGraphRenderer.Render(graph));
+                console.WriteLine(mermaidRenderer.Render(graph));
             }
             else
             {
+                // We'll keep AnsiConsole.Status for now as it's a CLI UI feature, 
+                // but we use the service for the final render if we refactor it.
                 await AnsiConsole.Status()
                     .Spinner(Spinner.Known.Dots)
                     .StartAsync($"Analyzing [blue]{settings.Path}[/]...", async _ =>
                     {
-                        var graphService = new GraphService();
                         var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
                         TreeRenderer.Render(graph);
                     });
@@ -120,7 +124,7 @@ public sealed class VisualizeCommand : AsyncCommand<VisualizeCommand.Settings>
         }
         catch (Exception ex)
         {
-            AnsiConsole.WriteException(ex);
+            console.WriteError(ex.Message);
             return 1;
         }
     }

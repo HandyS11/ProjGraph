@@ -1,4 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
 using ProjGraph.Cli.Commands;
+using ProjGraph.Cli.Infrastructure;
+using ProjGraph.Lib;
 using Spectre.Console.Cli;
 
 namespace ProjGraph.Cli;
@@ -7,7 +10,13 @@ public static class Program
 {
     public static int Main(string[] args)
     {
-        var app = new CommandApp();
+        var services = new ServiceCollection();
+
+        // Register Library services
+        services.AddProjGraphLib();
+
+        var registrar = new TypeRegistrar(services);
+        var app = new CommandApp(registrar);
 
         app.Configure(config =>
         {
