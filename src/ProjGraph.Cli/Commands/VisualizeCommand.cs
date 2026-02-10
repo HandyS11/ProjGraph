@@ -24,17 +24,6 @@ public sealed class VisualizeCommand(
     IOutputConsole console)
     : AsyncCommand<VisualizeCommand.Settings>
 {
-    private IDiagramRenderer<SolutionGraph> GetRenderer(string format)
-    {
-        return format.ToLowerInvariant() switch
-        {
-            "mermaid" => renderers.OfType<MermaidGraphRenderer>().First(),
-            "tree" => renderers.OfType<TreeGraphRenderer>().First(),
-            "flat" => renderers.OfType<FlatGraphRenderer>().First(),
-            _ => throw new ArgumentException($"Unsupported format: {format}")
-        };
-    }
-
     /// <summary>
     /// Represents the settings for the `VisualizeCommand`.
     /// </summary>
@@ -146,5 +135,26 @@ public sealed class VisualizeCommand(
             console.WriteError(ex.Message);
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Retrieves the appropriate diagram renderer based on the specified format.
+    /// </summary>
+    /// <param name="format">The desired output format (e.g., "flat", "tree", "mermaid").</param>
+    /// <returns>
+    /// An instance of <see cref="IDiagramRenderer{T}"/> that matches the specified format.
+    /// </returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when an unsupported format is specified.
+    /// </exception>
+    private IDiagramRenderer<SolutionGraph> GetRenderer(string format)
+    {
+        return format.ToLowerInvariant() switch
+        {
+            "mermaid" => renderers.OfType<MermaidGraphRenderer>().First(),
+            "tree" => renderers.OfType<TreeGraphRenderer>().First(),
+            "flat" => renderers.OfType<FlatGraphRenderer>().First(),
+            _ => throw new ArgumentException($"Unsupported format: {format}")
+        };
     }
 }
