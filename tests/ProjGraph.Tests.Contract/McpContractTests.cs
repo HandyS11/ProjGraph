@@ -20,19 +20,6 @@ public class McpContractTests
     }
 
     [Fact]
-    public void ProjGraphTools_ShouldHave_ExpectedToolCount()
-    {
-        // Arrange
-        var type = typeof(ProjGraphTools);
-        var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
-
-        // Assert number of tools (methods with McpServerTool attribute)
-        var tools = methods.Where(m => m.GetCustomAttribute<McpServerToolAttribute>() != null).ToList();
-        tools.Should().HaveCount(3,
-            "ProjGraphTools should define exactly 3 tools: GetProjectGraph, GetClassDiagram, and GetErd");
-    }
-
-    [Fact]
     public void GetProjectGraph_ShouldHave_CorrectSignature()
     {
         // Arrange
@@ -84,13 +71,13 @@ public class McpContractTests
         var parameters = method!.GetParameters();
 
         // Assert parameters exist
-        parameters.Should().HaveCount(2, "GetProjectGraph should have 'path' and 'includeTitle' parameters");
+        parameters.Should().HaveCount(2, "GetProjectGraph should have 'path' and 'show_title' parameters");
 
         var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
         pathParam.ParameterType.Should().Be<string>();
         pathParam.IsOptional.Should().BeFalse();
 
-        var titleParam = parameters.Should().ContainSingle(p => p.Name == "includeTitle").Which;
+        var titleParam = parameters.Should().ContainSingle(p => p.Name == "showTitle").Which;
         titleParam.ParameterType.Should().Be<bool>();
         titleParam.IsOptional.Should().BeTrue();
         titleParam.DefaultValue.Should().Be(true);

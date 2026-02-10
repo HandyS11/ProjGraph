@@ -96,4 +96,4 @@ As a developer, I want to control the depth of the discovery so the diagram does
   - `includeInheritance`: (boolean) Whether to search the workspace for base classes and interfaces.
   - `includeDependencies`: (boolean) Whether to search for and include classes used by the target types.
   - `depth`: (integer) How many levels of relationships to follow (default: 1).
-  - `includeTitle`: (boolean, optional) Whether to include the title in the diagram (default: true).
+  - `show_title`: (boolean, optional) Whether to include the title in the diagram (default: true).

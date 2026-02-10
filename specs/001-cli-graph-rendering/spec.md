@@ -78,7 +78,7 @@ As a modern .NET developer, I want the tool to support the new XML-based `.slnx`
 - **Description**: Analyzes a .NET solution or project file and returns the dependency graph as a set of nodes and edges.
 - **Parameters**:
   - `path`: (string) The absolute path to the .sln, .slnx, or .csproj file.
-  - `includeTitle`: (boolean, optional) Whether to include the title in the diagram (default: true).
+  - `show_title`: (boolean, optional) Whether to include the title in the diagram (default: true).
   - `includePackages`: (boolean) (Out of scope for initial version) Whether to include NuGet package dependencies in the graph.
 
 ## Success Criteria *(mandatory)*

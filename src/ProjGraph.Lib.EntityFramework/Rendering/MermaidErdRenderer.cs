@@ -11,23 +11,19 @@ namespace ProjGraph.Lib.EntityFramework.Rendering;
 public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 {
     /// <summary>
-    /// Gets or sets a value indicating whether to include the title in the rendered output.
-    /// </summary>
-    public bool IncludeTitle { get; set; } = true;
-
-    /// <summary>
     /// Renders a Mermaid ERD diagram from the given Entity Framework model.
     /// </summary>
     /// <param name="model">The EF model containing entities and relationships to be rendered.</param>
+    /// <param name="options">The options for rendering the diagram.</param>
     /// <returns>
     /// A string representing the ERD in Mermaid syntax, which can be used to visualize the model.
     /// </returns>
-    public string Render(EfModel model)
+    public string Render(EfModel model, DiagramOptions? options = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
 
-        if (IncludeTitle && !string.IsNullOrWhiteSpace(model.ContextName))
+        if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(model.ContextName))
         {
             sb.AppendLine("---");
             sb.AppendLine($"title: {model.ContextName}");

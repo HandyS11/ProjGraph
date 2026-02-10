@@ -59,7 +59,7 @@ public class McpClassDiagramTests
         depthParam.IsOptional.Should().BeTrue();
         depthParam.DefaultValue.Should().Be(1);
 
-        var titleParam = parameters.Should().ContainSingle(p => p.Name == "includeTitle").Which;
+        var titleParam = parameters.Should().ContainSingle(p => p.Name == "showTitle").Which;
         titleParam.ParameterType.Should().Be<bool>();
         titleParam.IsOptional.Should().BeTrue();
         titleParam.DefaultValue.Should().Be(true);

@@ -1,6 +1,5 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Application;
-using ProjGraph.Lib.ClassDiagram.Rendering;
 using ProjGraph.Lib.Core.Abstractions;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -63,10 +62,10 @@ public sealed class ClassDiagramCommand(
         /// <summary>
         /// Gets or sets a value indicating whether to include the title in the rendered output.
         /// </summary>
-        [CommandOption("--title")]
+        [CommandOption("--show-title <true|false>")]
         [Description("Include the diagram title (default true)")]
         [DefaultValue(true)]
-        public bool IncludeTitle { get; init; } = true;
+        public bool ShowTitle { get; init; } = true;
 
         /// <summary>
         /// Validates the settings provided by the user.
@@ -117,12 +116,7 @@ public sealed class ClassDiagramCommand(
                 settings.IncludeDependencies,
                 settings.Depth);
 
-            if (mermaidRenderer is MermaidClassDiagramRenderer mermaid)
-            {
-                mermaid.IncludeTitle = settings.IncludeTitle;
-            }
-
-            var mermaidOutput = mermaidRenderer.Render(model);
+            var mermaidOutput = mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle));
             console.WriteLine(mermaidOutput);
 
             return 0;

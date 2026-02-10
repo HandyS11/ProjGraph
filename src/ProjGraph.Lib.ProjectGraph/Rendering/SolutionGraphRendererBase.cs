@@ -14,11 +14,6 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     protected readonly StringWriter _writer;
 
     /// <summary>
-    /// Gets or sets a value indicating whether to include the title in the rendered output.
-    /// </summary>
-    public bool IncludeTitle { get; set; } = true;
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="SolutionGraphRendererBase"/> class.
     /// </summary>
     protected SolutionGraphRendererBase()
@@ -41,16 +36,18 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     /// Renders the specified <see cref="SolutionGraph"/> to a string representation.
     /// </summary>
     /// <param name="graph">The solution graph to render.</param>
+    /// <param name="options">The options for rendering the diagram.</param>
     /// <returns>A string representation of the rendered graph.</returns>
-    public abstract string Render(SolutionGraph graph);
+    public abstract string Render(SolutionGraph graph, DiagramOptions? options = null);
 
     /// <summary>
     /// Renders the header section of the solution graph visualization.
     /// </summary>
     /// <param name="graph">The solution graph to render the header for.</param>
-    protected void RenderHeader(SolutionGraph graph)
+    /// <param name="options">The options for rendering the diagram.</param>
+    protected void RenderHeader(SolutionGraph graph, DiagramOptions? options = null)
     {
-        if (IncludeTitle)
+        if (options?.ShowTitle ?? true)
         {
             var graphName = Markup.Escape(graph.Name.Trim());
             _console.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });

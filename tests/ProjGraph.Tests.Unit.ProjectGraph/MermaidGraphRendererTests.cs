@@ -1,4 +1,5 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.ProjectGraph.Rendering;
 
 namespace ProjGraph.Tests.Unit.ProjectGraph;
@@ -99,7 +100,7 @@ public class MermaidGraphRendererTests
     }
 
     [Fact]
-    public void Render_ShouldIncludeTitleFromSolutionName()
+    public void Render_ShouldShowTitleFromSolutionName()
     {
         // Arrange
         var graph = new SolutionGraph("MySolution", "MySolution.sln", [], []);
@@ -113,14 +114,13 @@ public class MermaidGraphRendererTests
     }
 
     [Fact]
-    public void Render_ShouldNotIncludeTitle_WhenIncludeTitleIsFalse()
+    public void Render_ShouldNotShowTitle_WhenShowTitleIsFalse()
     {
         // Arrange
         var graph = new SolutionGraph("MySolution", "MySolution.sln", [], []);
-        _renderer.IncludeTitle = false;
 
         // Act
-        var result = _renderer.Render(graph);
+        var result = _renderer.Render(graph, new DiagramOptions(false));
 
         // Assert
         result.Should().NotContain("---");

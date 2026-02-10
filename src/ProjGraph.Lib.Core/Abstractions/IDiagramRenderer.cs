@@ -10,6 +10,7 @@ public interface IDiagramRenderer<in TModel>
     /// Renders the specified model into a string representation.
     /// </summary>
     /// <param name="model">The model to render.</param>
+    /// <param name="options">The options for rendering the diagram.</param>
     /// <returns>A string representation of the diagram.</returns>
-    string Render(TModel model);
+    string Render(TModel model, DiagramOptions? options = null);
 }

@@ -56,10 +56,10 @@ public sealed class VisualizeCommand(
         /// <summary>
         /// Gets or sets a value indicating whether to include the title in the rendered output.
         /// </summary>
-        [CommandOption("--title")]
+        [CommandOption("--show-title <true|false>")]
         [Description("Include the diagram title (default true)")]
         [DefaultValue(true)]
-        public bool IncludeTitle { get; init; } = true;
+        public bool ShowTitle { get; init; } = true;
 
         /// <summary>
         /// Validates the settings provided for the command.
@@ -119,7 +119,7 @@ public sealed class VisualizeCommand(
                 console.WriteInfo($"Analyzing {settings.Path}...");
 
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                console.WriteLine(GetRenderer(settings.Format, settings.IncludeTitle).Render(graph));
+                console.WriteLine(GetRenderer(settings.Format).Render(graph, new DiagramOptions(settings.ShowTitle)));
             }
             else
             {
@@ -138,7 +138,7 @@ public sealed class VisualizeCommand(
                     return 0;
                 }
 
-                console.WriteLine(GetRenderer(settings.Format, settings.IncludeTitle).Render(graph));
+                console.WriteLine(GetRenderer(settings.Format).Render(graph, new DiagramOptions(settings.ShowTitle)));
             }
 
             return 0;
@@ -154,32 +154,20 @@ public sealed class VisualizeCommand(
     /// Retrieves the appropriate diagram renderer based on the specified format.
     /// </summary>
     /// <param name="format">The desired output format (e.g., "flat", "tree", "mermaid").</param>
-    /// <param name="includeTitle">A boolean indicating whether to include the title in the rendered output.</param>
     /// <returns>
     /// An instance of <see cref="IDiagramRenderer{T}"/> that matches the specified format.
     /// </returns>
     /// <exception cref="ArgumentException">
     /// Thrown when an unsupported format is specified.
     /// </exception>
-    private IDiagramRenderer<SolutionGraph> GetRenderer(string format, bool includeTitle)
+    private IDiagramRenderer<SolutionGraph> GetRenderer(string format)
     {
-        var renderer = format.ToLowerInvariant() switch
+        return format.ToLowerInvariant() switch
         {
             FormatMermaid => renderers.OfType<MermaidGraphRenderer>().First(),
-            FormatTree => (IDiagramRenderer<SolutionGraph>)renderers.OfType<TreeGraphRenderer>().First(),
+            FormatTree => renderers.OfType<TreeGraphRenderer>().First(),
             FormatFlat => renderers.OfType<FlatGraphRenderer>().First(),
             _ => throw new ArgumentException($"Unsupported format: {format}")
         };
-
-        if (renderer is MermaidGraphRenderer mermaid)
-        {
-            mermaid.IncludeTitle = includeTitle;
-        }
-        else if (renderer is SolutionGraphRendererBase baseRenderer)
-        {
-            baseRenderer.IncludeTitle = includeTitle;
-        }
-
-        return renderer;
     }
 }

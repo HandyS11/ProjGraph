@@ -82,7 +82,7 @@ As an AI Assistant, I want to retrieve a Mermaid ERD of the project's data model
 - **Parameters**:
   - `path`: (string) Absolute path to the DbContext .cs file.
   - `contextName`: (string, optional) Specific DbContext class name to use if multiple are present.
-  - `includeTitle`: (boolean, optional) Whether to include the title in the diagram (default: true).
+  - `show_title`: (boolean, optional) Whether to include the title in the diagram (default: true).
 
 ## Success Criteria *(mandatory)*
 

@@ -94,7 +94,7 @@ public class McpErdContractTests
         var parameters = method!.GetParameters();
 
         // Assert parameters exist
-        parameters.Should().HaveCount(3, "GetErd should have 3 parameters: path, contextName, and includeTitle");
+        parameters.Should().HaveCount(3, "GetErd should have 3 parameters: path, contextName, and show_title");
 
         var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
         pathParam.ParameterType.Should().Be<string>();
@@ -105,7 +105,7 @@ public class McpErdContractTests
         contextParam.IsOptional.Should().BeTrue();
         contextParam.DefaultValue.Should().BeNull();
 
-        var titleParam = parameters.Should().ContainSingle(p => p.Name == "includeTitle").Which;
+        var titleParam = parameters.Should().ContainSingle(p => p.Name == "showTitle").Which;
         titleParam.ParameterType.Should().Be<bool>();
         titleParam.IsOptional.Should().BeTrue();
         titleParam.DefaultValue.Should().Be(true);

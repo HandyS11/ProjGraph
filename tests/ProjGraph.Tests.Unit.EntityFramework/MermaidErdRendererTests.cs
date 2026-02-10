@@ -1,4 +1,5 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Rendering;
 
 namespace ProjGraph.Tests.Unit.EntityFramework;
@@ -52,7 +53,7 @@ public class MermaidErdRendererTests
     }
 
     [Fact]
-    public void Render_ShouldIncludeTitle()
+    public void Render_ShouldShowTitle()
     {
         // Arrange
         var model = new EfModel { ContextName = "MyContext", Entities = [] };
@@ -66,14 +67,13 @@ public class MermaidErdRendererTests
     }
 
     [Fact]
-    public void Render_ShouldNotIncludeTitle_WhenIncludeTitleIsFalse()
+    public void Render_ShouldNotShowTitle_WhenShowTitleIsFalse()
     {
         // Arrange
         var model = new EfModel { ContextName = "MyContext", Entities = [] };
-        _renderer.IncludeTitle = false;
 
         // Act
-        var result = _renderer.Render(model);
+        var result = _renderer.Render(model, new DiagramOptions(false));
 
         // Assert
         result.Should().NotContain("---");

@@ -23,14 +23,14 @@ projgraph visualize ./MySolution.sln
 projgraph visualize ./MySolution.slnx --format mermaid > graph.mmd
 
 # Mermaid diagram without title header
-projgraph visualize ./MySolution.slnx --format mermaid --title false
+projgraph visualize ./MySolution.slnx --format mermaid --show-title false
 ```
 
 **Settings**:
 
 - `<PATH>`: Path to `.sln`, `.slnx`, or `.csproj` file.
 - `-f|--format`: Output format (`flat`, `tree`, `mermaid`). Default: `mermaid`.
-- `--title <true|false>`: Include diagram title. Default: `true`.
+- `--show-title <true|false>`: Include diagram title. Default: `true`.
 
 **Supports**: `.sln`, `.slnx`, `.csproj`
 
@@ -57,14 +57,14 @@ projgraph erd ./Migrations/MyDbContextModelSnapshot.cs
 projgraph erd ./Data/MyDbContext.cs > database-schema.md
 
 # Generate without title header
-projgraph erd ./Data/MyDbContext.cs --title false
+projgraph erd ./Data/MyDbContext.cs --show-title false
 ```
 
 **Settings**:
 
 - `[path]`: Optional path to `.cs` file. Searches current directory if not specified.
 - `-c|--context <NAME>`: Optional context/snapshot name.
-- `--title <true|false>`: Include diagram title. Default: `true`.
+- `--show-title <true|false>`: Include diagram title. Default: `true`.
 
 **Features**:
 
@@ -105,7 +105,7 @@ projgraph classdiagram ./Models/Admin.cs
 projgraph classdiagram ./Models/Admin.cs --depth 5
 
 # Generate without title header
-projgraph classdiagram ./Models/Admin.cs --title false
+projgraph classdiagram ./Models/Admin.cs --show-title false
 ```
 
 **Settings**:
@@ -114,7 +114,7 @@ projgraph classdiagram ./Models/Admin.cs --title false
 - `-i|--inheritance`: Include base classes/interfaces. Default: `false`.
 - `-d|--dependencies`: Include dependent types. Default: `false`.
 - `--depth <INT>`: Max discovery depth. Default: `1`.
-- `--title <true|false>`: Include diagram title. Default: `true`.
+- `--show-title <true|false>`: Include diagram title. Default: `true`.
 
 **Features**:
 

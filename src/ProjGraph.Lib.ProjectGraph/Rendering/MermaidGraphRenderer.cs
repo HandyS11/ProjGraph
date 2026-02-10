@@ -10,21 +10,17 @@ namespace ProjGraph.Lib.ProjectGraph.Rendering;
 public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
 {
     /// <summary>
-    /// Gets or sets a value indicating whether to include the title in the rendered output.
-    /// </summary>
-    public bool IncludeTitle { get; set; } = true;
-
-    /// <summary>
     /// Renders a solution graph into a Mermaid.js graph definition.
     /// </summary>
     /// <param name="graph">The solution graph to render.</param>
+    /// <param name="options">The options for rendering the diagram.</param>
     /// <returns>A string containing the Mermaid.js graph definition.</returns>
-    public string Render(SolutionGraph graph)
+    public string Render(SolutionGraph graph, DiagramOptions? options = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
 
-        if (IncludeTitle && !string.IsNullOrWhiteSpace(graph.Name))
+        if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(graph.Name))
         {
             sb.AppendLine("---");
             sb.AppendLine($"title: {graph.Name}");
