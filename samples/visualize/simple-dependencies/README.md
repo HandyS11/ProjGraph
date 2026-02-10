@@ -14,7 +14,7 @@ projgraph visualize A/A.csproj
 
 **Output:**
 
-```
+```bash
 Projects
 ├── 📦 A
 │   └── → B

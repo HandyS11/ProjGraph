@@ -88,6 +88,9 @@ projgraph visualize ./MySolution.sln
 
 # Mermaid format for documentation
 projgraph visualize ./MySolution.slnx --format mermaid > docs/dependencies.mmd
+
+# Mermaid format without title header
+projgraph visualize ./MySolution.slnx --format mermaid --title false
 ```
 
 ### Generate Database Diagrams

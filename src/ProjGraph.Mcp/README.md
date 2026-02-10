@@ -16,6 +16,7 @@ Analyzes a solution or project file and returns the dependency graph as a Mermai
 **Parameters:**
 
 - `path` (string): Absolute path to `.sln`, `.slnx`, or `.csproj` file
+- `includeTitle` (boolean, optional): Whether to include the title in the diagram (default: true)
 
 **Returns:** Mermaid graph diagram code
 
@@ -35,6 +36,7 @@ Generates a Mermaid Entity Relationship Diagram from an EF Core `DbContext` or `
 
 - `path` (string): Absolute path to `.cs` file containing a `DbContext` or `ModelSnapshot`
 - `contextName` (string, optional): Specific class name if multiple exist in the file
+- `includeTitle` (boolean, optional): Whether to include the title in the diagram (default: true)
 
 **Returns:** Mermaid ERD diagram code
 
@@ -68,6 +70,7 @@ related types in the workspace.
 - `includeDependencies` (boolean, optional): Whether to search for and include other classes used as properties or
   fields (default: false)
 - `depth` (number, optional): How many levels of relationships to follow (default: 1)
+- `includeTitle` (boolean, optional): Whether to include the title in the diagram (default: true)
 
 **Returns:** Mermaid class diagram code
 
