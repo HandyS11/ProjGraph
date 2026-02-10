@@ -18,9 +18,17 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
+
+        if (!string.IsNullOrEmpty(graph.Name))
+        {
+            sb.AppendLine("---");
+            sb.AppendLine($"title: {graph.Name}");
+            sb.AppendLine("---");
+        }
+
         sb.AppendLine("graph TD");
 
-        foreach (var project in graph.Projects)
+        foreach (var project in graph.Projects.OrderBy(p => p.Name))
         {
             var typeLabel = project.Type switch
             {
@@ -32,15 +40,19 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
             sb.AppendLine($"    {safeId}[\"{project.Name}{typeLabel}\"]");
         }
 
-        foreach (var dep in graph.Dependencies)
-        {
-            var source = graph.Projects.FirstOrDefault(p => p.Id == dep.SourceId);
-            var target = graph.Projects.FirstOrDefault(p => p.Id == dep.TargetId);
-
-            if (source != null && target != null)
+        var sortedDependencies = graph.Dependencies
+            .Select(d => new
             {
-                sb.AppendLine($"    {SanitizeId(source.Name)} --> {SanitizeId(target.Name)}");
-            }
+                Source = graph.Projects.FirstOrDefault(p => p.Id == d.SourceId),
+                Target = graph.Projects.FirstOrDefault(p => p.Id == d.TargetId)
+            })
+            .Where(d => d.Source != null && d.Target != null)
+            .OrderBy(d => d.Source!.Name)
+            .ThenBy(d => d.Target!.Name);
+
+        foreach (var dep in sortedDependencies)
+        {
+            sb.AppendLine($"    {SanitizeId(dep.Source!.Name)} --> {SanitizeId(dep.Target!.Name)}");
         }
 
         sb.AppendLine("```");

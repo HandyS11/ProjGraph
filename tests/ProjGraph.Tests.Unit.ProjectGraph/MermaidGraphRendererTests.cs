@@ -99,6 +99,20 @@ public class MermaidGraphRendererTests
     }
 
     [Fact]
+    public void Render_ShouldIncludeTitleFromSolutionName()
+    {
+        // Arrange
+        var graph = new SolutionGraph("MySolution", "MySolution.sln", [], []);
+
+        // Act
+        var result = _renderer.Render(graph);
+
+        // Assert
+        result.Should().Contain("---");
+        result.Should().Contain("title: MySolution");
+    }
+
+    [Fact]
     public void Render_ShouldHandleEmptyGraph()
     {
         // Arrange
@@ -258,5 +272,48 @@ public class MermaidGraphRendererTests
 
         // Assert
         result.TrimEnd().Should().EndWith("```");
+    }
+
+    [Fact]
+    public void Render_ShouldOrderProjectsAndDependenciesByName()
+    {
+        // Arrange
+        var guidA = Guid.NewGuid();
+        var guidB = Guid.NewGuid();
+        var guidC = Guid.NewGuid();
+
+        var projects = new List<Project>
+        {
+            new(guidC, "ProjectC", "C.csproj", "C.csproj", "net10.0", ProjectType.Library),
+            new(guidA, "ProjectA", "A.csproj", "A.csproj", "net10.0", ProjectType.Library),
+            new(guidB, "ProjectB", "B.csproj", "B.csproj", "net10.0", ProjectType.Library)
+        };
+
+        var dependencies = new List<Dependency>
+        {
+            new(guidB, guidC, DependencyType.ProjectReference), // B -> C
+            new(guidA, guidB, DependencyType.ProjectReference), // A -> B
+            new(guidA, guidC, DependencyType.ProjectReference) // A -> C
+        };
+
+        var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, dependencies);
+
+        // Act
+        var result = _renderer.Render(graph);
+
+        // Assert
+        var lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        // Projects should be ordered A, B, C
+        var projectLines = lines.Where(l => l.Contains("[")).ToList();
+        projectLines[0].Should().Contain("ProjectA");
+        projectLines[1].Should().Contain("ProjectB");
+        projectLines[2].Should().Contain("ProjectC");
+
+        // Dependencies should be ordered A->B, A->C, B->C
+        var dependencyLines = lines.Where(l => l.Contains("-->")).ToList();
+        dependencyLines[0].Should().Contain("ProjectA --> ProjectB");
+        dependencyLines[1].Should().Contain("ProjectA --> ProjectC");
+        dependencyLines[2].Should().Contain("ProjectB --> ProjectC");
     }
 }

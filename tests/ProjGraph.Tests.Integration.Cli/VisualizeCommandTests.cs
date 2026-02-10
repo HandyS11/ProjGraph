@@ -77,6 +77,27 @@ public class VisualizeCommandTests
     }
 
     [Fact]
+    public void VisualizeCommand_SimpleDependencies_FlatFormat_ShouldShowList()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var slnxPath = CliTestHelpers.GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+        {
+            var result = app.Run(["visualize", slnxPath, "--format", "flat"]);
+            result.Should().Be(0);
+        });
+
+        // Assert
+        capturedOutput.Should().Contain("Projects");
+        capturedOutput.Should().Contain("📦 A");
+        capturedOutput.Should().Contain("→ B");
+        capturedOutput.Should().Contain("📦 B");
+    }
+
+    [Fact]
     public void VisualizeCommand_SimpleDependencies_TreeFormat_ShouldShowHierarchy()
     {
         // Arrange
@@ -91,18 +112,14 @@ public class VisualizeCommandTests
         });
 
         // Assert
-        capturedOutput.Should().Contain("Projects");
-        capturedOutput.Should().Contain("📦 A");
-        capturedOutput.Should().Contain("→ B");
-        capturedOutput.Should().Contain("📦 B");
-        capturedOutput.Should().Contain("→ C");
-        capturedOutput.Should().Contain("→ D");
-        capturedOutput.Should().Contain("📦 C");
-        capturedOutput.Should().Contain("📦 D");
+        capturedOutput.Should().Contain("A");
+        capturedOutput.Should().Contain("B");
+        capturedOutput.Should().Contain("C");
+        capturedOutput.Should().Contain("D");
     }
 
     [Fact]
-    public void VisualizeCommand_DefaultFormat_ShouldUseTree()
+    public void VisualizeCommand_DefaultFormat_ShouldUseMermaid()
     {
         // Arrange
         var app = CliTestHelpers.CreateApp();
@@ -115,9 +132,8 @@ public class VisualizeCommandTests
             result.Should().Be(0);
         });
 
-        // Assert - tree format is default
-        capturedOutput.Should().Contain("Projects");
-        capturedOutput.Should().Contain("📦");
+        // Assert - mermaid format is default
+        capturedOutput.Should().Contain("graph TD");
     }
 
     [Fact]

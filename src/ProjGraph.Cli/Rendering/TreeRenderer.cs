@@ -14,12 +14,12 @@ namespace ProjGraph.Cli.Rendering;
 public static class TreeRenderer
 {
     /// <summary>
-    /// Renders the solution graph by displaying its header, projects, dependencies, and any detected cyclic dependencies.
+    /// Renders the solution graph as a flat list of projects and their direct dependencies.
     /// </summary>
     /// <param name="graph">
     /// The solution graph containing the projects and dependencies to be rendered.
     /// </param>
-    public static void Render(SolutionGraph graph)
+    public static void RenderFlat(SolutionGraph graph)
     {
         RenderHeader(graph);
 
@@ -44,6 +44,123 @@ public static class TreeRenderer
         }
 
         RenderCycleWarning(cyclicProjectIds);
+    }
+
+    /// <summary>
+    /// Renders the solution graph as a real tree structure, starting from root projects.
+    /// </summary>
+    /// <param name="graph">
+    /// The solution graph containing the projects and dependencies to be rendered.
+    /// </param>
+    public static void RenderTree(SolutionGraph graph)
+    {
+        RenderHeader(graph);
+
+        // Identify incoming dependency counts to find roots
+        var incomingCounts = graph.Projects.ToDictionary(p => p.Id, _ => 0);
+        foreach (var dep in graph.Dependencies)
+        {
+            if (incomingCounts.TryGetValue(dep.TargetId, out var value))
+            {
+                incomingCounts[dep.TargetId] = ++value;
+            }
+        }
+
+        var cycles = TarjanSccAlgorithm.FindStronglyConnectedComponents(graph);
+        var cyclicProjectIds = cycles
+            .Where(c => c.Count > 1)
+            .SelectMany(c => c)
+            .ToHashSet();
+
+        var globalVisited = new HashSet<Guid>();
+
+        // 1. Print the Solution Name as the main header
+        AnsiConsole.MarkupLine($"[bold blue]{Markup.Escape(graph.Name.Trim())}[/]");
+
+        // 2. Identify "Root" projects: projects with 0 incoming dependencies
+        var rootProjects = graph.Projects
+            .Where(p => incomingCounts[p.Id] == 0)
+            .OrderBy(p => p.Type)
+            .ThenBy(p => p.Name)
+            .ToList();
+
+        // 3. Render each root branch as a separate tree to allow for true blank lines between them
+        foreach (var project in rootProjects)
+        {
+            AnsiConsole.WriteLine(); // Spacing line between branches
+            var rootLabel = GetProjectMarkup(project, cyclicProjectIds);
+            var tree = new Tree(rootLabel);
+
+            AddChildrenRecursive(tree, project, graph, [], globalVisited, cyclicProjectIds);
+            AnsiConsole.Write(tree);
+        }
+
+        // 4. Add remaining projects (those not reachable from roots, e.g. purely cyclic clusters)
+        var remainingProjects = graph.Projects
+            .Where(p => !globalVisited.Contains(p.Id))
+            .OrderBy(p => p.Name)
+            .ToList();
+
+        foreach (var project in remainingProjects.Where(project => !globalVisited.Contains(project.Id)))
+        {
+            AnsiConsole.WriteLine();
+            var rootLabel = GetProjectMarkup(project, cyclicProjectIds);
+            var tree = new Tree(rootLabel);
+
+            AddChildrenRecursive(tree, project, graph, [], globalVisited, cyclicProjectIds);
+            AnsiConsole.Write(tree);
+        }
+
+        RenderCycleWarning(cyclicProjectIds);
+    }
+
+    private static void AddChildrenRecursive(
+        IHasTreeNodes parent,
+        Project project,
+        SolutionGraph graph,
+        HashSet<Guid> currentPath,
+        HashSet<Guid> globalVisited,
+        HashSet<Guid> cyclicProjectIds)
+    {
+        globalVisited.Add(project.Id);
+        currentPath.Add(project.Id);
+
+        var dependencies = graph.Dependencies
+            .Where(d => d.SourceId == project.Id)
+            .Select(d => graph.Projects.FirstOrDefault(p => p.Id == d.TargetId))
+            .Where(p => p != null)
+            .OrderBy(p => p!.Name)
+            .ToList();
+
+        foreach (var dep in dependencies)
+        {
+            var isCycle = currentPath.Contains(dep!.Id);
+            var typeIcon = GetProjectTypeIcon(dep.Type);
+            var isCyclicProject = cyclicProjectIds.Contains(dep.Id);
+            var projectName = Markup.Escape(dep.Name.Trim());
+
+            if (isCycle)
+            {
+                parent.AddNode($"{typeIcon} [red]{projectName}[/] [italic red](cycle detected)[/]");
+                continue;
+            }
+
+            var color = isCyclicProject ? "red" : "green";
+            var label = $"{typeIcon} [{color}]{projectName}[/]";
+            var node = parent.AddNode(label);
+
+            AddChildrenRecursive(node, dep, graph, currentPath, globalVisited, cyclicProjectIds);
+        }
+
+        currentPath.Remove(project.Id);
+    }
+
+    private static string GetProjectMarkup(Project project, HashSet<Guid> cyclicProjectIds)
+    {
+        var typeIcon = GetProjectTypeIcon(project.Type);
+        var color = cyclicProjectIds.Contains(project.Id) ? "red" : "green";
+        var projectName = Markup.Escape(project.Name.Trim());
+        return $"{typeIcon} [{color}]{projectName}[/]";
     }
 
     /// <summary>

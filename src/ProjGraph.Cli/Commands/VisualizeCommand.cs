@@ -42,16 +42,16 @@ public sealed class VisualizeCommand(
 
         /// <summary>
         /// Gets or sets the output format for the visualization.
-        /// Supported formats are "tree" and "mermaid".
+        /// Supported formats are "flat", "tree", and "mermaid".
         /// </summary>
         [CommandOption("-f|--format")]
-        [Description("The output format (tree, mermaid)")]
-        [DefaultValue("tree")]
-        public string Format { get; init; } = "tree";
+        [Description("The output format (flat, tree, mermaid)")]
+        [DefaultValue("mermaid")]
+        public string Format { get; init; } = "mermaid";
 
         /// <summary>
         /// Validates the settings provided for the command.
-        /// Ensures that the specified path exists, is valid, and that the format is either "tree" or "mermaid".
+        /// Ensures that the specified path exists, is valid, and that the format is "flat", "tree" or "mermaid".
         /// </summary>
         /// <returns>
         /// A <see cref="ValidationResult"/> indicating whether the settings are valid.
@@ -68,9 +68,9 @@ public sealed class VisualizeCommand(
                 return ValidationResult.Error($"File not found: {Path}");
             }
 
-            if (Format != "tree" && Format != "mermaid")
+            if (Format != "flat" && Format != "tree" && Format != "mermaid")
             {
-                return ValidationResult.Error("Format must be 'tree' or 'mermaid'");
+                return ValidationResult.Error("Format must be 'flat', 'tree' or 'mermaid'");
             }
 
             return ValidationResult.Success();
@@ -79,7 +79,7 @@ public sealed class VisualizeCommand(
 
     /// <summary>
     /// Executes the command asynchronously, analyzing the specified solution or project file and rendering its structure
-    /// in the specified format (tree or mermaid).
+    /// in the specified format (flat, tree or mermaid).
     /// </summary>
     /// <param name="context">
     /// The command context containing information about the execution environment.
@@ -112,13 +112,27 @@ public sealed class VisualizeCommand(
             {
                 // We'll keep AnsiConsole.Status for now as it's a CLI UI feature, 
                 // but we use the service for the final render if we refactor it.
+                SolutionGraph? graph = null;
                 await AnsiConsole.Status()
                     .Spinner(Spinner.Known.Dots)
                     .StartAsync($"Analyzing [blue]{settings.Path}[/]...", async _ =>
                     {
-                        var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                        TreeRenderer.Render(graph);
+                        graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
                     });
+
+                if (graph is null)
+                {
+                    return 0;
+                }
+
+                if (settings.Format.Equals("flat", StringComparison.OrdinalIgnoreCase))
+                {
+                    TreeRenderer.RenderFlat(graph);
+                }
+                else
+                {
+                    TreeRenderer.RenderTree(graph);
+                }
             }
 
             return 0;
