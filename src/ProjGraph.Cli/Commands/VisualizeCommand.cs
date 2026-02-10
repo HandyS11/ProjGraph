@@ -1,7 +1,7 @@
-using ProjGraph.Cli.Rendering;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.ProjectGraph.Application;
+using ProjGraph.Lib.ProjectGraph.Rendering;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -20,10 +20,21 @@ namespace ProjGraph.Cli.Commands;
 /// </remarks>
 public sealed class VisualizeCommand(
     IGraphService graphService,
-    IDiagramRenderer<SolutionGraph> mermaidRenderer,
+    IEnumerable<IDiagramRenderer<SolutionGraph>> renderers,
     IOutputConsole console)
     : AsyncCommand<VisualizeCommand.Settings>
 {
+    private IDiagramRenderer<SolutionGraph> GetRenderer(string format)
+    {
+        return format.ToLowerInvariant() switch
+        {
+            "mermaid" => renderers.OfType<MermaidGraphRenderer>().First(),
+            "tree" => renderers.OfType<TreeGraphRenderer>().First(),
+            "flat" => renderers.OfType<FlatGraphRenderer>().First(),
+            _ => throw new ArgumentException($"Unsupported format: {format}")
+        };
+    }
+
     /// <summary>
     /// Represents the settings for the `VisualizeCommand`.
     /// </summary>
@@ -106,7 +117,7 @@ public sealed class VisualizeCommand(
                 console.WriteInfo($"Analyzing {settings.Path}...");
 
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                console.WriteLine(mermaidRenderer.Render(graph));
+                console.WriteLine(GetRenderer(settings.Format).Render(graph));
             }
             else
             {
@@ -125,14 +136,7 @@ public sealed class VisualizeCommand(
                     return 0;
                 }
 
-                if (settings.Format.Equals("flat", StringComparison.OrdinalIgnoreCase))
-                {
-                    TreeRenderer.RenderFlat(graph);
-                }
-                else
-                {
-                    TreeRenderer.RenderTree(graph);
-                }
+                console.WriteLine(GetRenderer(settings.Format).Render(graph));
             }
 
             return 0;

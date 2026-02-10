@@ -19,7 +19,16 @@ public static class DependencyInjection
     {
         services.AddSingleton<BuildGraphUseCase>();
         services.AddSingleton<IGraphService, GraphService>();
-        services.AddSingleton<IDiagramRenderer<SolutionGraph>, MermaidGraphRenderer>();
+
+        // Renderers
+        services.AddSingleton<TreeGraphRenderer>();
+        services.AddSingleton<FlatGraphRenderer>();
+        services.AddSingleton<MermaidGraphRenderer>();
+
+        // Register as interface for collection injection
+        services.AddSingleton<IDiagramRenderer<SolutionGraph>>(sp => sp.GetRequiredService<TreeGraphRenderer>());
+        services.AddSingleton<IDiagramRenderer<SolutionGraph>>(sp => sp.GetRequiredService<FlatGraphRenderer>());
+        services.AddSingleton<IDiagramRenderer<SolutionGraph>>(sp => sp.GetRequiredService<MermaidGraphRenderer>());
 
         return services;
     }
