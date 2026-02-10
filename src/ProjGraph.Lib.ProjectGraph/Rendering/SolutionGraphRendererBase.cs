@@ -21,7 +21,9 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
         _writer = new StringWriter();
         _console = AnsiConsole.Create(new AnsiConsoleSettings
         {
-            Ansi = AnsiSupport.Detect, ColorSystem = ColorSystemSupport.Detect, Out = new AnsiConsoleOutput(_writer)
+            Ansi = AnsiConsole.Console.Profile.Capabilities.Ansi ? AnsiSupport.Yes : AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.Detect,
+            Out = new AnsiConsoleOutput(_writer)
         });
     }
 

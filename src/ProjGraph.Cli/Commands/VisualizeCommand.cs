@@ -16,7 +16,7 @@ namespace ProjGraph.Cli.Commands;
 /// <remarks>
 /// The <see cref="VisualizeCommand"/> class is an asynchronous command that uses the <see cref="Settings"/> class
 /// to configure the path to the solution or project file and the desired output format. It processes the input
-/// and renders the structure in the specified format (tree or mermaid).
+/// and renders the structure in the specified format (flat, tree or mermaid).
 /// </remarks>
 public sealed class VisualizeCommand(
     IGraphService graphService,
@@ -47,7 +47,7 @@ public sealed class VisualizeCommand(
         [CommandOption("-f|--format")]
         [Description("The output format (flat, tree, mermaid)")]
         [DefaultValue("mermaid")]
-        public string Format { get; init; } = "mermaid";
+        public string Format { get; private set; } = "mermaid";
 
         /// <summary>
         /// Validates the settings provided for the command.
@@ -68,6 +68,7 @@ public sealed class VisualizeCommand(
                 return ValidationResult.Error($"File not found: {Path}");
             }
 
+            Format = Format.ToLowerInvariant();
             if (Format != "flat" && Format != "tree" && Format != "mermaid")
             {
                 return ValidationResult.Error("Format must be 'flat', 'tree' or 'mermaid'");

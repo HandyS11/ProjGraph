@@ -13,6 +13,7 @@ public class SpectreOutputConsole : IOutputConsole
     /// </summary>
     private static IAnsiConsole Stderr => AnsiConsole.Create(new AnsiConsoleSettings
     {
+        Ansi = AnsiConsole.Console.Profile.Capabilities.Ansi ? AnsiSupport.Yes : AnsiSupport.No,
         Out = new AnsiConsoleOutput(Console.Error)
     });
 
