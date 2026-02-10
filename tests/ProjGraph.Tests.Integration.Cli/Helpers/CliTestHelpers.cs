@@ -61,10 +61,13 @@ public static class CliTestHelpers
             {
                 Ansi = AnsiSupport.No, // Disable ANSI codes for cleaner test output
                 ColorSystem = ColorSystemSupport.NoColors,
-                Out = new AnsiConsoleOutput(writer)
+                Out = new AnsiConsoleOutput(writer),
+                Interactive = InteractionSupport.No
             };
 
             var console = AnsiConsole.Create(settings);
+            console.Profile.Capabilities.Unicode = true;
+            console.Profile.Width = 200;
             AnsiConsole.Console = console;
 
             action();

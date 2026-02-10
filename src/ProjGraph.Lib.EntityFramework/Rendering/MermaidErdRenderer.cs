@@ -22,7 +22,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
 
-        if (!string.IsNullOrEmpty(model.ContextName))
+        if (!string.IsNullOrWhiteSpace(model.ContextName))
         {
             sb.AppendLine("---");
             sb.AppendLine($"title: {model.ContextName}");

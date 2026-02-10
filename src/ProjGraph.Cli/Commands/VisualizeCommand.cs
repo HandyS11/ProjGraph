@@ -1,7 +1,7 @@
-using ProjGraph.Cli.Rendering;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.ProjectGraph.Application;
+using ProjGraph.Lib.ProjectGraph.Rendering;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -16,11 +16,11 @@ namespace ProjGraph.Cli.Commands;
 /// <remarks>
 /// The <see cref="VisualizeCommand"/> class is an asynchronous command that uses the <see cref="Settings"/> class
 /// to configure the path to the solution or project file and the desired output format. It processes the input
-/// and renders the structure in the specified format (tree or mermaid).
+/// and renders the structure in the specified format (flat, tree or mermaid).
 /// </remarks>
 public sealed class VisualizeCommand(
     IGraphService graphService,
-    IDiagramRenderer<SolutionGraph> mermaidRenderer,
+    IEnumerable<IDiagramRenderer<SolutionGraph>> renderers,
     IOutputConsole console)
     : AsyncCommand<VisualizeCommand.Settings>
 {
@@ -42,16 +42,16 @@ public sealed class VisualizeCommand(
 
         /// <summary>
         /// Gets or sets the output format for the visualization.
-        /// Supported formats are "tree" and "mermaid".
+        /// Supported formats are "flat", "tree", and "mermaid".
         /// </summary>
         [CommandOption("-f|--format")]
-        [Description("The output format (tree, mermaid)")]
-        [DefaultValue("tree")]
-        public string Format { get; init; } = "tree";
+        [Description("The output format (flat, tree, mermaid)")]
+        [DefaultValue("mermaid")]
+        public string Format { get; private set; } = "mermaid";
 
         /// <summary>
         /// Validates the settings provided for the command.
-        /// Ensures that the specified path exists, is valid, and that the format is either "tree" or "mermaid".
+        /// Ensures that the specified path exists, is valid, and that the format is "flat", "tree" or "mermaid".
         /// </summary>
         /// <returns>
         /// A <see cref="ValidationResult"/> indicating whether the settings are valid.
@@ -68,9 +68,10 @@ public sealed class VisualizeCommand(
                 return ValidationResult.Error($"File not found: {Path}");
             }
 
-            if (Format != "tree" && Format != "mermaid")
+            Format = Format.ToLowerInvariant();
+            if (Format != "flat" && Format != "tree" && Format != "mermaid")
             {
-                return ValidationResult.Error("Format must be 'tree' or 'mermaid'");
+                return ValidationResult.Error("Format must be 'flat', 'tree' or 'mermaid'");
             }
 
             return ValidationResult.Success();
@@ -79,7 +80,7 @@ public sealed class VisualizeCommand(
 
     /// <summary>
     /// Executes the command asynchronously, analyzing the specified solution or project file and rendering its structure
-    /// in the specified format (tree or mermaid).
+    /// in the specified format (flat, tree or mermaid).
     /// </summary>
     /// <param name="context">
     /// The command context containing information about the execution environment.
@@ -106,19 +107,26 @@ public sealed class VisualizeCommand(
                 console.WriteInfo($"Analyzing {settings.Path}...");
 
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                console.WriteLine(mermaidRenderer.Render(graph));
+                console.WriteLine(GetRenderer(settings.Format).Render(graph));
             }
             else
             {
                 // We'll keep AnsiConsole.Status for now as it's a CLI UI feature, 
                 // but we use the service for the final render if we refactor it.
+                SolutionGraph? graph = null;
                 await AnsiConsole.Status()
                     .Spinner(Spinner.Known.Dots)
                     .StartAsync($"Analyzing [blue]{settings.Path}[/]...", async _ =>
                     {
-                        var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                        TreeRenderer.Render(graph);
+                        graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
                     });
+
+                if (graph is null)
+                {
+                    return 0;
+                }
+
+                console.WriteLine(GetRenderer(settings.Format).Render(graph));
             }
 
             return 0;
@@ -128,5 +136,26 @@ public sealed class VisualizeCommand(
             console.WriteError(ex.Message);
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Retrieves the appropriate diagram renderer based on the specified format.
+    /// </summary>
+    /// <param name="format">The desired output format (e.g., "flat", "tree", "mermaid").</param>
+    /// <returns>
+    /// An instance of <see cref="IDiagramRenderer{T}"/> that matches the specified format.
+    /// </returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when an unsupported format is specified.
+    /// </exception>
+    private IDiagramRenderer<SolutionGraph> GetRenderer(string format)
+    {
+        return format.ToLowerInvariant() switch
+        {
+            "mermaid" => renderers.OfType<MermaidGraphRenderer>().First(),
+            "tree" => renderers.OfType<TreeGraphRenderer>().First(),
+            "flat" => renderers.OfType<FlatGraphRenderer>().First(),
+            _ => throw new ArgumentException($"Unsupported format: {format}")
+        };
     }
 }

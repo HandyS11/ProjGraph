@@ -19,7 +19,7 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
 
-        if (!string.IsNullOrEmpty(model.Title))
+        if (!string.IsNullOrWhiteSpace(model.Title))
         {
             sb.AppendLine("---");
             sb.AppendLine($"title: {model.Title}");

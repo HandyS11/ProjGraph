@@ -11,10 +11,22 @@ public class SpectreOutputConsole : IOutputConsole
     /// <summary>
     /// Gets an <see cref="IAnsiConsole"/> that writes to the current standard error stream.
     /// </summary>
-    private static IAnsiConsole Stderr => AnsiConsole.Create(new AnsiConsoleSettings
+    private static IAnsiConsole Stderr
     {
-        Out = new AnsiConsoleOutput(Console.Error)
-    });
+        get
+        {
+            var globalConsole = AnsiConsole.Console;
+            var console = AnsiConsole.Create(new AnsiConsoleSettings
+            {
+                Ansi = globalConsole.Profile.Capabilities.Ansi ? AnsiSupport.Yes : AnsiSupport.No,
+                ColorSystem = ColorSystemSupport.Detect,
+                Out = new AnsiConsoleOutput(Console.Error)
+            });
+            console.Profile.Capabilities.Unicode = globalConsole.Profile.Capabilities.Unicode;
+            console.Profile.Width = globalConsole.Profile.Width;
+            return console;
+        }
+    }
 
     /// <summary>
     /// Writes a message to the console without a newline.
