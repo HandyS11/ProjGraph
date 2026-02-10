@@ -19,7 +19,7 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
 
-        if (!string.IsNullOrEmpty(graph.Name))
+        if (!string.IsNullOrWhiteSpace(graph.Name))
         {
             sb.AppendLine("---");
             sb.AppendLine($"title: {graph.Name}");

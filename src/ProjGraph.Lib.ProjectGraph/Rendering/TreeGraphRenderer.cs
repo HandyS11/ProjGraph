@@ -26,12 +26,9 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
 
         // Identify incoming dependency counts to find roots
         var incomingCounts = graph.Projects.ToDictionary(p => p.Id, _ => 0);
-        foreach (var dep in graph.Dependencies)
+        foreach (var dep in graph.Dependencies.Where(d => incomingCounts.ContainsKey(d.TargetId)))
         {
-            if (incomingCounts.TryGetValue(dep.TargetId, out var value))
-            {
-                incomingCounts[dep.TargetId] = ++value;
-            }
+            incomingCounts[dep.TargetId]++;
         }
 
         var cyclicProjectIds = GetCyclicProjectIds(graph);
