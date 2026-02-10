@@ -19,12 +19,17 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     protected SolutionGraphRendererBase()
     {
         _writer = new StringWriter();
+        var globalConsole = AnsiConsole.Console;
         _console = AnsiConsole.Create(new AnsiConsoleSettings
         {
-            Ansi = AnsiConsole.Console.Profile.Capabilities.Ansi ? AnsiSupport.Yes : AnsiSupport.No,
+            Ansi = globalConsole.Profile.Capabilities.Ansi ? AnsiSupport.Yes : AnsiSupport.No,
             ColorSystem = ColorSystemSupport.Detect,
             Out = new AnsiConsoleOutput(_writer)
         });
+
+        // Inherit capabilities from the global console (like Unicode support)
+        _console.Profile.Capabilities.Unicode = globalConsole.Profile.Capabilities.Unicode;
+        _console.Profile.Width = globalConsole.Profile.Width;
     }
 
     /// <summary>

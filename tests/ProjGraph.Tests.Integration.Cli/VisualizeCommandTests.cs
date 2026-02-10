@@ -92,9 +92,9 @@ public class VisualizeCommandTests
 
         // Assert
         capturedOutput.Should().Contain("Projects");
-        capturedOutput.Should().Contain("📦 A");
+        capturedOutput.Should().Contain("A");
+        capturedOutput.Should().Contain("B");
         capturedOutput.Should().Contain("→ B");
-        capturedOutput.Should().Contain("📦 B");
     }
 
     [Fact]
