@@ -24,6 +24,10 @@ public sealed class VisualizeCommand(
     IOutputConsole console)
     : AsyncCommand<VisualizeCommand.Settings>
 {
+    private const string FormatMermaid = "mermaid";
+    private const string FormatTree = "tree";
+    private const string FormatFlat = "flat";
+
     /// <summary>
     /// Represents the settings for the `VisualizeCommand`.
     /// </summary>
@@ -50,6 +54,14 @@ public sealed class VisualizeCommand(
         public string Format { get; private set; } = "mermaid";
 
         /// <summary>
+        /// Gets or sets a value indicating whether to include the title in the rendered output.
+        /// </summary>
+        [CommandOption("--title")]
+        [Description("Include the diagram title (default true)")]
+        [DefaultValue(true)]
+        public bool IncludeTitle { get; init; } = true;
+
+        /// <summary>
         /// Validates the settings provided for the command.
         /// Ensures that the specified path exists, is valid, and that the format is "flat", "tree" or "mermaid".
         /// </summary>
@@ -69,7 +81,7 @@ public sealed class VisualizeCommand(
             }
 
             Format = Format.ToLowerInvariant();
-            if (Format != "flat" && Format != "tree" && Format != "mermaid")
+            if (Format != FormatFlat && Format != FormatTree && Format != FormatMermaid)
             {
                 return ValidationResult.Error("Format must be 'flat', 'tree' or 'mermaid'");
             }
@@ -101,13 +113,13 @@ public sealed class VisualizeCommand(
     {
         try
         {
-            if (settings.Format.Equals("mermaid", StringComparison.OrdinalIgnoreCase))
+            if (settings.Format.Equals(FormatMermaid, StringComparison.OrdinalIgnoreCase))
             {
                 // For mermaid, we want clean stdout, so all status goes to stderr
                 console.WriteInfo($"Analyzing {settings.Path}...");
 
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                console.WriteLine(GetRenderer(settings.Format).Render(graph));
+                console.WriteLine(GetRenderer(settings.Format, settings.IncludeTitle).Render(graph));
             }
             else
             {
@@ -126,7 +138,7 @@ public sealed class VisualizeCommand(
                     return 0;
                 }
 
-                console.WriteLine(GetRenderer(settings.Format).Render(graph));
+                console.WriteLine(GetRenderer(settings.Format, settings.IncludeTitle).Render(graph));
             }
 
             return 0;
@@ -142,20 +154,32 @@ public sealed class VisualizeCommand(
     /// Retrieves the appropriate diagram renderer based on the specified format.
     /// </summary>
     /// <param name="format">The desired output format (e.g., "flat", "tree", "mermaid").</param>
+    /// <param name="includeTitle">A boolean indicating whether to include the title in the rendered output.</param>
     /// <returns>
     /// An instance of <see cref="IDiagramRenderer{T}"/> that matches the specified format.
     /// </returns>
     /// <exception cref="ArgumentException">
     /// Thrown when an unsupported format is specified.
     /// </exception>
-    private IDiagramRenderer<SolutionGraph> GetRenderer(string format)
+    private IDiagramRenderer<SolutionGraph> GetRenderer(string format, bool includeTitle)
     {
-        return format.ToLowerInvariant() switch
+        var renderer = format.ToLowerInvariant() switch
         {
-            "mermaid" => renderers.OfType<MermaidGraphRenderer>().First(),
-            "tree" => renderers.OfType<TreeGraphRenderer>().First(),
-            "flat" => renderers.OfType<FlatGraphRenderer>().First(),
+            FormatMermaid => renderers.OfType<MermaidGraphRenderer>().First(),
+            FormatTree => (IDiagramRenderer<SolutionGraph>)renderers.OfType<TreeGraphRenderer>().First(),
+            FormatFlat => renderers.OfType<FlatGraphRenderer>().First(),
             _ => throw new ArgumentException($"Unsupported format: {format}")
         };
+
+        if (renderer is MermaidGraphRenderer mermaid)
+        {
+            mermaid.IncludeTitle = includeTitle;
+        }
+        else if (renderer is SolutionGraphRendererBase baseRenderer)
+        {
+            baseRenderer.IncludeTitle = includeTitle;
+        }
+
+        return renderer;
     }
 }

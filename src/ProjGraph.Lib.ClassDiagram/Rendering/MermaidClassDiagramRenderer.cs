@@ -10,6 +10,11 @@ namespace ProjGraph.Lib.ClassDiagram.Rendering;
 public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
 {
     /// <summary>
+    /// Gets or sets a value indicating whether to include the title in the rendered output.
+    /// </summary>
+    public bool IncludeTitle { get; set; } = true;
+
+    /// <summary>
     /// Renders a ClassModel as a Mermaid class diagram.
     /// </summary>
     /// <param name="model">The ClassModel containing the types, relationships, and an optional title to be rendered.</param>
@@ -19,7 +24,7 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
 
-        if (!string.IsNullOrWhiteSpace(model.Title))
+        if (IncludeTitle && !string.IsNullOrWhiteSpace(model.Title))
         {
             sb.AppendLine("---");
             sb.AppendLine($"title: {model.Title}");

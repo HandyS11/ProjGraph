@@ -1,6 +1,7 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
+using ProjGraph.Lib.EntityFramework.Rendering;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -48,6 +49,14 @@ public sealed class ErdCommand(
         [CommandOption("-c|--context")]
         [Description("The name of the DbContext or ModelSnapshot to analyze (optional)")]
         public string? ContextName { get; init; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to include the title in the rendered output.
+        /// </summary>
+        [CommandOption("--title")]
+        [Description("Include the diagram title (default true)")]
+        [DefaultValue(true)]
+        public bool IncludeTitle { get; init; } = true;
 
         /// <summary>
         /// Validates the settings provided for the command.
@@ -107,8 +116,13 @@ public sealed class ErdCommand(
 
             var model = await AnalyzeModelAsync(targetPath, settings.ContextName, cancellationToken);
 
-            var mermaid = mermaidRenderer.Render(model);
-            console.WriteLine(mermaid);
+            if (mermaidRenderer is MermaidErdRenderer mermaid)
+            {
+                mermaid.IncludeTitle = settings.IncludeTitle;
+            }
+
+            var mermaidOutput = mermaidRenderer.Render(model);
+            console.WriteLine(mermaidOutput);
 
             return 0;
         }

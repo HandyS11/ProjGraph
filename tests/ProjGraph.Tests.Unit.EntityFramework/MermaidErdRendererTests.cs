@@ -52,6 +52,35 @@ public class MermaidErdRendererTests
     }
 
     [Fact]
+    public void Render_ShouldIncludeTitle()
+    {
+        // Arrange
+        var model = new EfModel { ContextName = "MyContext", Entities = [] };
+
+        // Act
+        var result = _renderer.Render(model);
+
+        // Assert
+        result.Should().Contain("---");
+        result.Should().Contain("title: MyContext");
+    }
+
+    [Fact]
+    public void Render_ShouldNotIncludeTitle_WhenIncludeTitleIsFalse()
+    {
+        // Arrange
+        var model = new EfModel { ContextName = "MyContext", Entities = [] };
+        _renderer.IncludeTitle = false;
+
+        // Act
+        var result = _renderer.Render(model);
+
+        // Assert
+        result.Should().NotContain("---");
+        result.Should().NotContain("title: MyContext");
+    }
+
+    [Fact]
     public void Render_ShouldMarkPrimaryKeys()
     {
         // Arrange

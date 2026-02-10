@@ -28,7 +28,7 @@ public class McpClassDiagramTests
         // Assert method has Description attribute
         var descAttr = method.GetCustomAttribute<DescriptionAttribute>();
         descAttr.Should().NotBeNull();
-        descAttr!.Description.Should().Contain("class diagram");
+        descAttr.Description.Should().Contain("class diagram");
     }
 
     [Fact]
@@ -44,8 +44,24 @@ public class McpClassDiagramTests
         pathParam.GetCustomAttribute<DescriptionAttribute>().Should().NotBeNull();
 
         // Check optional flags
-        parameters.Should().ContainSingle(p => p.Name == "includeInheritance");
-        parameters.Should().ContainSingle(p => p.Name == "includeDependencies");
-        parameters.Should().ContainSingle(p => p.Name == "depth");
+        var inheritanceParam = parameters.Should().ContainSingle(p => p.Name == "includeInheritance").Which;
+        inheritanceParam.ParameterType.Should().Be<bool>();
+        inheritanceParam.IsOptional.Should().BeTrue();
+        inheritanceParam.DefaultValue.Should().Be(false);
+
+        var dependenciesParam = parameters.Should().ContainSingle(p => p.Name == "includeDependencies").Which;
+        dependenciesParam.ParameterType.Should().Be<bool>();
+        dependenciesParam.IsOptional.Should().BeTrue();
+        dependenciesParam.DefaultValue.Should().Be(false);
+
+        var depthParam = parameters.Should().ContainSingle(p => p.Name == "depth").Which;
+        depthParam.ParameterType.Should().Be<int>();
+        depthParam.IsOptional.Should().BeTrue();
+        depthParam.DefaultValue.Should().Be(1);
+
+        var titleParam = parameters.Should().ContainSingle(p => p.Name == "includeTitle").Which;
+        titleParam.ParameterType.Should().Be<bool>();
+        titleParam.IsOptional.Should().BeTrue();
+        titleParam.DefaultValue.Should().Be(true);
     }
 }

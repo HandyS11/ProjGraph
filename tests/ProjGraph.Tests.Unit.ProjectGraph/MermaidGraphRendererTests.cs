@@ -113,6 +113,21 @@ public class MermaidGraphRendererTests
     }
 
     [Fact]
+    public void Render_ShouldNotIncludeTitle_WhenIncludeTitleIsFalse()
+    {
+        // Arrange
+        var graph = new SolutionGraph("MySolution", "MySolution.sln", [], []);
+        _renderer.IncludeTitle = false;
+
+        // Act
+        var result = _renderer.Render(graph);
+
+        // Assert
+        result.Should().NotContain("---");
+        result.Should().NotContain("title: MySolution");
+    }
+
+    [Fact]
     public void Render_ShouldHandleEmptyGraph()
     {
         // Arrange
@@ -305,7 +320,7 @@ public class MermaidGraphRendererTests
         var lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         // Projects should be ordered A, B, C
-        var projectLines = lines.Where(l => l.Contains("[")).ToList();
+        var projectLines = lines.Where(l => l.Contains('[')).ToList();
         projectLines[0].Should().Contain("ProjectA");
         projectLines[1].Should().Contain("ProjectB");
         projectLines[2].Should().Contain("ProjectC");

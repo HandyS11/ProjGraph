@@ -5,9 +5,12 @@ using ModelContextProtocol.Server;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib;
 using ProjGraph.Lib.ClassDiagram.Application;
+using ProjGraph.Lib.ClassDiagram.Rendering;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
+using ProjGraph.Lib.EntityFramework.Rendering;
 using ProjGraph.Lib.ProjectGraph.Application;
+using ProjGraph.Lib.ProjectGraph.Rendering;
 using System.ComponentModel;
 
 namespace ProjGraph.Mcp;
@@ -57,11 +60,19 @@ public class ProjGraphTools(
         [Description("Whether to search for and include other classes used as properties or fields.")]
         bool includeDependencies = false,
         [Description("How many levels of relationships to follow (default: 1).")]
-        int depth = 1)
+        int depth = 1,
+        [Description("Whether to include the title in the diagram (default: true).")]
+        bool includeTitle = true)
     {
         try
         {
             var model = await classService.AnalyzeFileAsync(filePath, includeInheritance, includeDependencies, depth);
+
+            if (classRenderer is MermaidClassDiagramRenderer mermaid)
+            {
+                mermaid.IncludeTitle = includeTitle;
+            }
+
             return classRenderer.Render(model);
         }
         catch (Exception ex)
@@ -74,11 +85,23 @@ public class ProjGraphTools(
     [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
     public string GetProjectGraph(
         [Description("Absolute path to the project or solution file.")]
-        string path)
+        string path,
+        [Description("Whether to include the title in the diagram (default: true).")]
+        bool includeTitle = true)
     {
         try
         {
             var graph = graphService.BuildGraph(path);
+
+            if (graphRenderer is MermaidGraphRenderer mermaid)
+            {
+                mermaid.IncludeTitle = includeTitle;
+            }
+            else if (graphRenderer is SolutionGraphRendererBase baseRenderer)
+            {
+                baseRenderer.IncludeTitle = includeTitle;
+            }
+
             return graphRenderer.Render(graph);
         }
         catch (Exception ex)
@@ -96,11 +119,19 @@ public class ProjGraphTools(
         [Description("Absolute path to the DbContext .cs file.")]
         string path,
         [Description("Specific DbContext class name to use if multiple are present.")]
-        string? contextName = null)
+        string? contextName = null,
+        [Description("Whether to include the title in the diagram (default: true).")]
+        bool includeTitle = true)
     {
         try
         {
             var model = await efService.AnalyzeContextAsync(path, contextName);
+
+            if (erdRenderer is MermaidErdRenderer mermaid)
+            {
+                mermaid.IncludeTitle = includeTitle;
+            }
+
             return erdRenderer.Render(model);
         }
         catch (Exception ex)

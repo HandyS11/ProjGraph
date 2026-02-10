@@ -14,6 +14,11 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     protected readonly StringWriter _writer;
 
     /// <summary>
+    /// Gets or sets a value indicating whether to include the title in the rendered output.
+    /// </summary>
+    public bool IncludeTitle { get; set; } = true;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="SolutionGraphRendererBase"/> class.
     /// </summary>
     protected SolutionGraphRendererBase()
@@ -45,8 +50,12 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     /// <param name="graph">The solution graph to render the header for.</param>
     protected void RenderHeader(SolutionGraph graph)
     {
-        var graphName = Markup.Escape(graph.Name.Trim());
-        _console.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });
+        if (IncludeTitle)
+        {
+            var graphName = Markup.Escape(graph.Name.Trim());
+            _console.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });
+        }
+        
         _console.MarkupLine("[bold blue]Projects[/]");
     }
 
@@ -86,9 +95,11 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     protected static HashSet<Guid> GetCyclicProjectIds(SolutionGraph graph)
     {
         var cycles = TarjanSccAlgorithm.FindStronglyConnectedComponents(graph);
-        return cycles
+        return
+        [
+            .. cycles
             .Where(c => c.Count > 1)
             .SelectMany(c => c)
-            .ToHashSet();
+        ];
     }
 }

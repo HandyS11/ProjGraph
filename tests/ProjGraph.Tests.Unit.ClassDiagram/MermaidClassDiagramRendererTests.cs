@@ -47,6 +47,27 @@ public class MermaidClassDiagramRendererTests
     }
 
     [Fact]
+    public void Render_WithTitle_ShouldIncludeTitle()
+    {
+        var model = new ClassModel("MyTitle", [], []);
+        var result = _renderer.Render(model);
+
+        result.Should().Contain("---");
+        result.Should().Contain("title: MyTitle");
+    }
+
+    [Fact]
+    public void Render_WithTitleAndIncludeTitleFalse_ShouldNotIncludeTitle()
+    {
+        var model = new ClassModel("MyTitle", [], []);
+        _renderer.IncludeTitle = false;
+        var result = _renderer.Render(model);
+
+        result.Should().NotContain("---");
+        result.Should().NotContain("title: MyTitle");
+    }
+
+    [Fact]
     public void Render_WithInheritance_ReturnsCorrectMermaid()
     {
         var model = new ClassModel(null, [
