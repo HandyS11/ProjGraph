@@ -21,7 +21,16 @@ projgraph visualize ./MySolution.sln
 
 # Mermaid diagram
 projgraph visualize ./MySolution.slnx --format mermaid > graph.mmd
+
+# Mermaid diagram without title header
+projgraph visualize ./MySolution.slnx --format mermaid --show-title false
 ```
+
+**Settings**:
+
+- `<PATH>`: Path to `.sln`, `.slnx`, or `.csproj` file.
+- `-f|--format`: Output format (`flat`, `tree`, `mermaid`). Default: `mermaid`.
+- `--show-title <true|false>`: Include diagram title. Default: `true`.
 
 **Supports**: `.sln`, `.slnx`, `.csproj`
 
@@ -46,7 +55,16 @@ projgraph erd ./Migrations/MyDbContextModelSnapshot.cs
 
 # Save to file
 projgraph erd ./Data/MyDbContext.cs > database-schema.md
+
+# Generate without title header
+projgraph erd ./Data/MyDbContext.cs --show-title false
 ```
+
+**Settings**:
+
+- `[path]`: Optional path to `.cs` file. Searches current directory if not specified.
+- `-c|--context <NAME>`: Optional context/snapshot name.
+- `--show-title <true|false>`: Include diagram title. Default: `true`.
 
 **Features**:
 
@@ -83,9 +101,20 @@ Generate Mermaid Class Diagram for a specific class and its hierarchy.
 # Analyze a specific class and discover its base types and dependencies
 projgraph classdiagram ./Models/Admin.cs
 
-# Specify depth of discovery (default: 3)
+# Specify depth of discovery (default: 1)
 projgraph classdiagram ./Models/Admin.cs --depth 5
+
+# Generate without title header
+projgraph classdiagram ./Models/Admin.cs --show-title false
 ```
+
+**Settings**:
+
+- `<path>`: Path to the `.cs` file.
+- `-i|--inheritance`: Include base classes/interfaces. Default: `false`.
+- `-d|--dependencies`: Include dependent types. Default: `false`.
+- `--depth <INT>`: Max discovery depth. Default: `1`.
+- `--show-title <true|false>`: Include diagram title. Default: `true`.
 
 **Features**:
 

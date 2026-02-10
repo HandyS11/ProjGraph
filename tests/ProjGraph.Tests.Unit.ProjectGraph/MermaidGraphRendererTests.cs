@@ -1,4 +1,5 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.ProjectGraph.Rendering;
 
 namespace ProjGraph.Tests.Unit.ProjectGraph;
@@ -99,7 +100,7 @@ public class MermaidGraphRendererTests
     }
 
     [Fact]
-    public void Render_ShouldIncludeTitleFromSolutionName()
+    public void Render_ShouldShowTitleFromSolutionName()
     {
         // Arrange
         var graph = new SolutionGraph("MySolution", "MySolution.sln", [], []);
@@ -110,6 +111,20 @@ public class MermaidGraphRendererTests
         // Assert
         result.Should().Contain("---");
         result.Should().Contain("title: MySolution");
+    }
+
+    [Fact]
+    public void Render_ShouldNotShowTitle_WhenShowTitleIsFalse()
+    {
+        // Arrange
+        var graph = new SolutionGraph("MySolution", "MySolution.sln", [], []);
+
+        // Act
+        var result = _renderer.Render(graph, new DiagramOptions(false));
+
+        // Assert
+        result.Should().NotContain("---");
+        result.Should().NotContain("title: MySolution");
     }
 
     [Fact]
@@ -305,7 +320,7 @@ public class MermaidGraphRendererTests
         var lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         // Projects should be ordered A, B, C
-        var projectLines = lines.Where(l => l.Contains("[")).ToList();
+        var projectLines = lines.Where(l => l.Contains('[')).ToList();
         projectLines[0].Should().Contain("ProjectA");
         projectLines[1].Should().Contain("ProjectB");
         projectLines[2].Should().Contain("ProjectC");

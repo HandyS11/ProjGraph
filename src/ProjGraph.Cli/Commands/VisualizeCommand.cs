@@ -24,6 +24,10 @@ public sealed class VisualizeCommand(
     IOutputConsole console)
     : AsyncCommand<VisualizeCommand.Settings>
 {
+    private const string FormatMermaid = "mermaid";
+    private const string FormatTree = "tree";
+    private const string FormatFlat = "flat";
+
     /// <summary>
     /// Represents the settings for the `VisualizeCommand`.
     /// </summary>
@@ -50,6 +54,14 @@ public sealed class VisualizeCommand(
         public string Format { get; private set; } = "mermaid";
 
         /// <summary>
+        /// Gets or sets a value indicating whether to include the title in the rendered output.
+        /// </summary>
+        [CommandOption("--show-title <true|false>")]
+        [Description("Include the diagram title (default true)")]
+        [DefaultValue(true)]
+        public bool ShowTitle { get; init; } = true;
+
+        /// <summary>
         /// Validates the settings provided for the command.
         /// Ensures that the specified path exists, is valid, and that the format is "flat", "tree" or "mermaid".
         /// </summary>
@@ -69,7 +81,7 @@ public sealed class VisualizeCommand(
             }
 
             Format = Format.ToLowerInvariant();
-            if (Format != "flat" && Format != "tree" && Format != "mermaid")
+            if (Format != FormatFlat && Format != FormatTree && Format != FormatMermaid)
             {
                 return ValidationResult.Error("Format must be 'flat', 'tree' or 'mermaid'");
             }
@@ -101,13 +113,13 @@ public sealed class VisualizeCommand(
     {
         try
         {
-            if (settings.Format.Equals("mermaid", StringComparison.OrdinalIgnoreCase))
+            if (settings.Format.Equals(FormatMermaid, StringComparison.OrdinalIgnoreCase))
             {
                 // For mermaid, we want clean stdout, so all status goes to stderr
                 console.WriteInfo($"Analyzing {settings.Path}...");
 
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                console.WriteLine(GetRenderer(settings.Format).Render(graph));
+                console.WriteLine(GetRenderer(settings.Format).Render(graph, new DiagramOptions(settings.ShowTitle)));
             }
             else
             {
@@ -126,7 +138,7 @@ public sealed class VisualizeCommand(
                     return 0;
                 }
 
-                console.WriteLine(GetRenderer(settings.Format).Render(graph));
+                console.WriteLine(GetRenderer(settings.Format).Render(graph, new DiagramOptions(settings.ShowTitle)));
             }
 
             return 0;
@@ -152,9 +164,9 @@ public sealed class VisualizeCommand(
     {
         return format.ToLowerInvariant() switch
         {
-            "mermaid" => renderers.OfType<MermaidGraphRenderer>().First(),
-            "tree" => renderers.OfType<TreeGraphRenderer>().First(),
-            "flat" => renderers.OfType<FlatGraphRenderer>().First(),
+            FormatMermaid => renderers.OfType<MermaidGraphRenderer>().First(),
+            FormatTree => renderers.OfType<TreeGraphRenderer>().First(),
+            FormatFlat => renderers.OfType<FlatGraphRenderer>().First(),
             _ => throw new ArgumentException($"Unsupported format: {format}")
         };
     }

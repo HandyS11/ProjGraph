@@ -13,13 +13,14 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
     /// Renders a ClassModel as a Mermaid class diagram.
     /// </summary>
     /// <param name="model">The ClassModel containing the types, relationships, and an optional title to be rendered.</param>
+    /// <param name="options">The options for rendering the diagram.</param>
     /// <returns>A string representation of the Mermaid class diagram.</returns>
-    public string Render(ClassModel model)
+    public string Render(ClassModel model, DiagramOptions? options = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("```mermaid");
 
-        if (!string.IsNullOrWhiteSpace(model.Title))
+        if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(model.Title))
         {
             sb.AppendLine("---");
             sb.AppendLine($"title: {model.Title}");

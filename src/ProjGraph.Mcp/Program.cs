@@ -57,12 +57,15 @@ public class ProjGraphTools(
         [Description("Whether to search for and include other classes used as properties or fields.")]
         bool includeDependencies = false,
         [Description("How many levels of relationships to follow (default: 1).")]
-        int depth = 1)
+        int depth = 1,
+        [Description("Whether to include the title in the diagram (default: true).")]
+        bool showTitle = true)
     {
         try
         {
             var model = await classService.AnalyzeFileAsync(filePath, includeInheritance, includeDependencies, depth);
-            return classRenderer.Render(model);
+
+            return classRenderer.Render(model, new DiagramOptions(showTitle));
         }
         catch (Exception ex)
         {
@@ -74,12 +77,15 @@ public class ProjGraphTools(
     [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
     public string GetProjectGraph(
         [Description("Absolute path to the project or solution file.")]
-        string path)
+        string path,
+        [Description("Whether to include the title in the diagram (default: true).")]
+        bool showTitle = true)
     {
         try
         {
             var graph = graphService.BuildGraph(path);
-            return graphRenderer.Render(graph);
+
+            return graphRenderer.Render(graph, new DiagramOptions(showTitle));
         }
         catch (Exception ex)
         {
@@ -96,12 +102,15 @@ public class ProjGraphTools(
         [Description("Absolute path to the DbContext .cs file.")]
         string path,
         [Description("Specific DbContext class name to use if multiple are present.")]
-        string? contextName = null)
+        string? contextName = null,
+        [Description("Whether to include the title in the diagram (default: true).")]
+        bool showTitle = true)
     {
         try
         {
             var model = await efService.AnalyzeContextAsync(path, contextName);
-            return erdRenderer.Render(model);
+
+            return erdRenderer.Render(model, new DiagramOptions(showTitle));
         }
         catch (Exception ex)
         {

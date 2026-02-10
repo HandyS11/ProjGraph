@@ -60,6 +60,14 @@ public sealed class ClassDiagramCommand(
         public int Depth { get; init; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to include the title in the rendered output.
+        /// </summary>
+        [CommandOption("--show-title <true|false>")]
+        [Description("Include the diagram title (default true)")]
+        [DefaultValue(true)]
+        public bool ShowTitle { get; init; } = true;
+
+        /// <summary>
         /// Validates the settings provided by the user.
         /// Ensures the file path is valid, exists, and points to a .cs file.
         /// </summary>
@@ -108,8 +116,8 @@ public sealed class ClassDiagramCommand(
                 settings.IncludeDependencies,
                 settings.Depth);
 
-            var mermaid = mermaidRenderer.Render(model);
-            console.WriteLine(mermaid);
+            var mermaidOutput = mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle));
+            console.WriteLine(mermaidOutput);
 
             return 0;
         }

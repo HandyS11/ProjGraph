@@ -1,5 +1,6 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Rendering;
+using ProjGraph.Lib.Core.Abstractions;
 
 namespace ProjGraph.Tests.Unit.ClassDiagram;
 
@@ -44,6 +45,26 @@ public class MermaidClassDiagramRendererTests
         result.Should().Contain("#Save() void");
         result.Should().Contain("+List~string~ Tags");
         result.Should().Contain("+Dictionary~string, string~ Metadata");
+    }
+
+    [Fact]
+    public void Render_WithShowTitle_ShouldShowTitle()
+    {
+        var model = new ClassModel("MyTitle", [], []);
+        var result = _renderer.Render(model);
+
+        result.Should().Contain("---");
+        result.Should().Contain("title: MyTitle");
+    }
+
+    [Fact]
+    public void Render_WithShowTitleFalse_ShouldNotShowTitle()
+    {
+        var model = new ClassModel("MyTitle", [], []);
+        var result = _renderer.Render(model, new DiagramOptions(false));
+
+        result.Should().NotContain("---");
+        result.Should().NotContain("title: MyTitle");
     }
 
     [Fact]

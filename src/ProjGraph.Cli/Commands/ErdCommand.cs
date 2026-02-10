@@ -50,6 +50,14 @@ public sealed class ErdCommand(
         public string? ContextName { get; init; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to include the title in the rendered output.
+        /// </summary>
+        [CommandOption("--show-title <true|false>")]
+        [Description("Include the diagram title (default true)")]
+        [DefaultValue(true)]
+        public bool ShowTitle { get; init; } = true;
+
+        /// <summary>
         /// Validates the settings provided for the command.
         /// Ensures that the specified path exists, is a .cs file, or is left empty to search the current directory.
         /// </summary>
@@ -107,8 +115,8 @@ public sealed class ErdCommand(
 
             var model = await AnalyzeModelAsync(targetPath, settings.ContextName, cancellationToken);
 
-            var mermaid = mermaidRenderer.Render(model);
-            console.WriteLine(mermaid);
+            var mermaidOutput = mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle));
+            console.WriteLine(mermaidOutput);
 
             return 0;
         }

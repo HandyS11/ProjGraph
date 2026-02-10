@@ -1,4 +1,5 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
 using Spectre.Console;
 
 namespace ProjGraph.Lib.ProjectGraph.Rendering;
@@ -12,17 +13,18 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
     /// Renders a <see cref="SolutionGraph"/> as a flat list of projects and their direct dependencies.
     /// </summary>
     /// <param name="graph">The <see cref="SolutionGraph"/> to render.</param>
+    /// <param name="options">The options for rendering the diagram.</param>
     /// <returns>A string representation of the solution graph rendered as a flat list.</returns>
     /// <remarks>
     /// This method renders each project in sorted order (by type and name) followed by its direct dependencies.
     /// Projects involved in cyclic dependencies are highlighted in red. Cycle detection is performed using the 
     /// <see cref="SolutionGraphRendererBase.GetCyclicProjectIds"/> method.
     /// </remarks>
-    public override string Render(SolutionGraph graph)
+    public override string Render(SolutionGraph graph, DiagramOptions? options = null)
     {
         _writer.GetStringBuilder().Clear();
 
-        RenderHeader(graph);
+        RenderHeader(graph, options);
 
         var cyclicProjectIds = GetCyclicProjectIds(graph);
 

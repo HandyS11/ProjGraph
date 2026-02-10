@@ -36,17 +36,23 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     /// Renders the specified <see cref="SolutionGraph"/> to a string representation.
     /// </summary>
     /// <param name="graph">The solution graph to render.</param>
+    /// <param name="options">The options for rendering the diagram.</param>
     /// <returns>A string representation of the rendered graph.</returns>
-    public abstract string Render(SolutionGraph graph);
+    public abstract string Render(SolutionGraph graph, DiagramOptions? options = null);
 
     /// <summary>
     /// Renders the header section of the solution graph visualization.
     /// </summary>
     /// <param name="graph">The solution graph to render the header for.</param>
-    protected void RenderHeader(SolutionGraph graph)
+    /// <param name="options">The options for rendering the diagram.</param>
+    protected void RenderHeader(SolutionGraph graph, DiagramOptions? options = null)
     {
-        var graphName = Markup.Escape(graph.Name.Trim());
-        _console.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });
+        if (options?.ShowTitle ?? true)
+        {
+            var graphName = Markup.Escape(graph.Name.Trim());
+            _console.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });
+        }
+        
         _console.MarkupLine("[bold blue]Projects[/]");
     }
 
@@ -86,9 +92,11 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     protected static HashSet<Guid> GetCyclicProjectIds(SolutionGraph graph)
     {
         var cycles = TarjanSccAlgorithm.FindStronglyConnectedComponents(graph);
-        return cycles
+        return
+        [
+            .. cycles
             .Where(c => c.Count > 1)
             .SelectMany(c => c)
-            .ToHashSet();
+        ];
     }
 }

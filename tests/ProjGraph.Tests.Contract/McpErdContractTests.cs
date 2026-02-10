@@ -86,16 +86,28 @@ public class McpErdContractTests
     }
 
     [Fact]
-    public void GetErd_ShouldHave_ExactlyTwoParameters()
+    public void GetErd_ShouldHave_Parameters()
     {
         // Arrange
         var type = typeof(ProjGraphTools);
         var method = type.GetMethod("GetErd");
         var parameters = method!.GetParameters();
 
-        // Assert exactly two parameters exist (path required, contextName optional)
-        parameters.Should().HaveCount(2, "GetErd should have exactly 2 parameters: path and contextName");
-        parameters[0].Name.Should().Be("path");
-        parameters[1].Name.Should().Be("contextName");
+        // Assert parameters exist
+        parameters.Should().HaveCount(3, "GetErd should have 3 parameters: path, contextName, and show_title");
+
+        var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
+        pathParam.ParameterType.Should().Be<string>();
+        pathParam.IsOptional.Should().BeFalse();
+
+        var contextParam = parameters.Should().ContainSingle(p => p.Name == "contextName").Which;
+        contextParam.ParameterType.Should().Be<string>();
+        contextParam.IsOptional.Should().BeTrue();
+        contextParam.DefaultValue.Should().BeNull();
+
+        var titleParam = parameters.Should().ContainSingle(p => p.Name == "showTitle").Which;
+        titleParam.ParameterType.Should().Be<bool>();
+        titleParam.IsOptional.Should().BeTrue();
+        titleParam.DefaultValue.Should().Be(true);
     }
 }

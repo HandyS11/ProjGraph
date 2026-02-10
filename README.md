@@ -87,8 +87,7 @@ dotnet run --project src/ProjGraph.Mcp
 projgraph visualize ./MySolution.sln
 
 # Mermaid format for documentation
-projgraph visualize ./MySolution.slnx --format mermaid > docs/dependencies.mmd
-```
+projgraph visualize ./MySolution.slnx --format mermaid > docs/dependencies.mmd```
 
 ### Generate Database Diagrams
 
