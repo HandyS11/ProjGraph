@@ -158,17 +158,17 @@ public sealed class McpClassDiagramTests : IDisposable
     }
 
     [Fact]
-    public async Task GetClassDiagram_NonExistentFile_ShouldReturnError()
+    public async Task GetClassDiagram_NonExistentFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
         var nonExistentPath = Path.Combine(Path.GetTempPath(), "this", "path", "does", "not", "exist.cs");
 
         // Act
-        var result = await tools.GetClassDiagram(nonExistentPath);
+        var act = async () => await tools.GetClassDiagram(nonExistentPath);
 
         // Assert
-        result.Should().StartWith("Error");
+        await act.Should().ThrowAsync<Exception>();
     }
 
     #endregion

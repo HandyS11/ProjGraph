@@ -85,31 +85,31 @@ public class McpIntegrationTests
     }
 
     [Fact]
-    public void GetProjectGraph_NonExistentFile_ShouldReturnError()
+    public void GetProjectGraph_NonExistentFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
         var nonExistentPath = Path.Combine(Path.GetTempPath(), "this", "path", "does", "not", "exist.slnx");
 
         // Act
-        var result = tools.GetProjectGraph(nonExistentPath);
+        var act = () => tools.GetProjectGraph(nonExistentPath);
 
         // Assert
-        result.Should().StartWith("Error");
+        act.Should().Throw<Exception>();
     }
 
     [Fact]
-    public void GetProjectGraph_InvalidFile_ShouldReturnError()
+    public void GetProjectGraph_InvalidFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
         var invalidPath = GetRootPath("README.md"); // Not a solution/project file
 
         // Act
-        var result = tools.GetProjectGraph(invalidPath);
+        var act = () => tools.GetProjectGraph(invalidPath);
 
         // Assert
-        result.Should().StartWith("Error");
+        act.Should().Throw<Exception>();
     }
 
     private static string GetSamplePath(string relativePath)

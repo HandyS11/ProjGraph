@@ -202,21 +202,21 @@ public sealed class McpErdTests : IDisposable
     #region Error Handling
 
     [Fact]
-    public async Task GetErd_NonExistentFile_ShouldReturnError()
+    public async Task GetErd_NonExistentFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
         var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".cs");
 
         // Act
-        var result = await tools.GetErd(nonExistentPath);
+        var act = async () => await tools.GetErd(nonExistentPath);
 
         // Assert
-        result.Should().StartWith("Error");
+        await act.Should().ThrowAsync<Exception>();
     }
 
     [Fact]
-    public async Task GetErd_InvalidCsFile_ShouldReturnError()
+    public async Task GetErd_InvalidCsFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
@@ -224,14 +224,14 @@ public sealed class McpErdTests : IDisposable
         await File.WriteAllTextAsync(invalidFile, "public class NotADbContext { }");
 
         // Act
-        var result = await tools.GetErd(invalidFile);
+        var act = async () => await tools.GetErd(invalidFile);
 
         // Assert
-        result.Should().StartWith("Error");
+        await act.Should().ThrowAsync<Exception>();
     }
 
     [Fact]
-    public async Task GetErd_NonCsFile_ShouldReturnError()
+    public async Task GetErd_NonCsFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
@@ -239,10 +239,10 @@ public sealed class McpErdTests : IDisposable
         await File.WriteAllTextAsync(nonCsFile, "Not a C# file");
 
         // Act
-        var result = await tools.GetErd(nonCsFile);
+        var act = async () => await tools.GetErd(nonCsFile);
 
         // Assert
-        result.Should().StartWith("Error");
+        await act.Should().ThrowAsync<Exception>();
     }
 
     #endregion

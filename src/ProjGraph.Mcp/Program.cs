@@ -9,6 +9,7 @@ using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
 using ProjGraph.Lib.ProjectGraph.Application;
 using System.ComponentModel;
+using System.Reflection;
 
 namespace ProjGraph.Mcp;
 
@@ -16,11 +17,15 @@ public static class Program
 {
     public static async Task Main(string[] args)
     {
+        var version = typeof(Program).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion ?? "0.0.0";
+
         var builder = Host.CreateApplicationBuilder(args);
 
         builder.Services.AddMcpServer(options =>
             {
-                options.ServerInfo = new Implementation { Name = "ProjGraph", Version = "1.0.0" };
+                options.ServerInfo = new Implementation { Name = "ProjGraph", Version = version };
             })
             .WithStdioServerTransport()
             .WithTools<ProjGraphTools>();
@@ -61,16 +66,9 @@ public class ProjGraphTools(
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true)
     {
-        try
-        {
-            var model = await classService.AnalyzeFileAsync(filePath, includeInheritance, includeDependencies, depth);
+        var model = await classService.AnalyzeFileAsync(filePath, includeInheritance, includeDependencies, depth);
 
-            return classRenderer.Render(model, new DiagramOptions(showTitle));
-        }
-        catch (Exception ex)
-        {
-            return $"Error generating class diagram: {ex.Message}";
-        }
+        return classRenderer.Render(model, new DiagramOptions(showTitle));
     }
 
     [McpServerTool]
@@ -81,16 +79,9 @@ public class ProjGraphTools(
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true)
     {
-        try
-        {
-            var graph = graphService.BuildGraph(path);
+        var graph = graphService.BuildGraph(path);
 
-            return graphRenderer.Render(graph, new DiagramOptions(showTitle));
-        }
-        catch (Exception ex)
-        {
-            return $"Error analyzing project: {ex.Message}";
-        }
+        return graphRenderer.Render(graph, new DiagramOptions(showTitle));
     }
 
     [McpServerTool]
@@ -106,15 +97,8 @@ public class ProjGraphTools(
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true)
     {
-        try
-        {
-            var model = await efService.AnalyzeContextAsync(path, contextName);
+        var model = await efService.AnalyzeContextAsync(path, contextName);
 
-            return erdRenderer.Render(model, new DiagramOptions(showTitle));
-        }
-        catch (Exception ex)
-        {
-            return $"Error generating ERD: {ex.Message}";
-        }
+        return erdRenderer.Render(model, new DiagramOptions(showTitle));
     }
 }
