@@ -56,7 +56,9 @@ public class AnalyzeFileUseCase(
 
         var options = new AnalysisOptions
         {
-            MaxDepth = maxDepth, IncludeInheritance = includeInheritance, IncludeDependencies = includeDependencies
+            MaxDepth = maxDepth,
+            IncludeInheritance = includeInheritance,
+            IncludeDependencies = includeDependencies
         };
 
         var typesToAnalyze = new Queue<(INamedTypeSymbol Symbol, int Depth)>();

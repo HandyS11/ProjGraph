@@ -117,7 +117,9 @@ internal static class FluentApiParsingUtilities
 
             property = new EfProperty
             {
-                Name = propName, Type = detectedType, IsValueType = IsValueTypeString(detectedType)
+                Name = propName,
+                Type = detectedType,
+                IsValueType = IsValueTypeString(detectedType)
             };
             entity.Properties.Add(property);
         }

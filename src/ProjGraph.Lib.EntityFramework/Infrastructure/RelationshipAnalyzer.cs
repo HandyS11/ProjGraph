@@ -137,7 +137,10 @@ public static class RelationshipAnalyzer
 
         return new EfRelationship
         {
-            SourceEntity = src, TargetEntity = tgt, Type = relType, IsRequired = !prop.Type.IsNullable()
+            SourceEntity = src,
+            TargetEntity = tgt,
+            Type = relType,
+            IsRequired = !prop.Type.IsNullable()
         };
     }
 
