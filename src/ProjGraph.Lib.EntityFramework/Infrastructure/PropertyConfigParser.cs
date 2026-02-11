@@ -52,7 +52,17 @@ internal static class PropertyConfigParser
             }
             else if (currentProperty != null)
             {
-                ApplyPropertyConfiguration(currentProperty, methodName, args, compilation);
+                var updated = ApplyPropertyConfiguration(currentProperty, methodName, args, compilation);
+                if (!ReferenceEquals(updated, currentProperty))
+                {
+                    var index = entity.Properties.IndexOf(currentProperty);
+                    if (index >= 0)
+                    {
+                        entity.Properties[index] = updated;
+                    }
+
+                    currentProperty = updated;
+                }
             }
         }
     }
@@ -64,11 +74,15 @@ internal static class PropertyConfigParser
     /// <param name="args">The HasKey method arguments.</param>
     private static void ApplyKeyConfiguration(EfEntity entity, string args)
     {
-        var propNames = FluentApiParsingUtilities.ExtractPropertyNamesFromArgs(args);
-        foreach (var prop in propNames.Select(propName =>
-                     FluentApiParsingUtilities.GetOrCreateProperty(entity, propName, "")))
+        foreach (var propName in FluentApiParsingUtilities.ExtractPropertyNamesFromArgs(args))
         {
-            prop.IsPrimaryKey = true;
+            var prop = FluentApiParsingUtilities.GetOrCreateProperty(entity, propName, "");
+            var updated = EfPropertyFactory.CopyWith(prop, isPrimaryKey: true);
+            var index = entity.Properties.IndexOf(prop);
+            if (index >= 0)
+            {
+                entity.Properties[index] = updated;
+            }
         }
     }
 
@@ -107,50 +121,40 @@ internal static class PropertyConfigParser
     /// <param name="configMethod">The configuration method name.</param>
     /// <param name="configArg">The configuration argument value.</param>
     /// <param name="compilation">The Roslyn compilation for symbol resolution.</param>
-    private static void ApplyPropertyConfiguration(EfProperty property, string configMethod, string configArg,
+    private static EfProperty ApplyPropertyConfiguration(EfProperty property, string configMethod, string configArg,
         Compilation compilation)
     {
-        switch (configMethod)
+        return configMethod switch
         {
-            case EfAnalysisConstants.EfMethods.IsRequired:
-                ApplyIsRequiredConfiguration(property, configArg);
-                break;
-            case EfAnalysisConstants.EfMethods.HasMaxLength:
-                ApplyMaxLengthConfiguration(property, configArg);
-                break;
-            case EfAnalysisConstants.EfMethods.HasPrecision:
-                ApplyPrecisionConfiguration(property, configArg);
-                break;
-            case EfAnalysisConstants.EfMethods.HasColumnType:
-                ApplyColumnTypeConfiguration(property, configArg);
-                break;
-            case EfAnalysisConstants.EfMethods.HasDefaultValue:
-                DefaultValueResolver.ApplyDefaultValueConfiguration(property, configArg, compilation);
-                break;
-            case EfAnalysisConstants.EfMethods.HasDefaultValueSql:
-                DefaultValueResolver.ApplyDefaultValueSqlConfiguration(property, configArg);
-                break;
-        }
+            EfAnalysisConstants.EfMethods.IsRequired => ApplyIsRequiredConfiguration(property, configArg),
+            EfAnalysisConstants.EfMethods.HasMaxLength => ApplyMaxLengthConfiguration(property, configArg),
+            EfAnalysisConstants.EfMethods.HasPrecision => ApplyPrecisionConfiguration(property, configArg),
+            EfAnalysisConstants.EfMethods.HasColumnType => ApplyColumnTypeConfiguration(property, configArg),
+            EfAnalysisConstants.EfMethods.HasDefaultValue => DefaultValueResolver.CreateWithDefaultValue(property,
+                configArg, compilation),
+            EfAnalysisConstants.EfMethods.HasDefaultValueSql => DefaultValueResolver.CreateWithDefaultValueSql(
+                property, configArg),
+            _ => property
+        };
     }
 
-    private static void ApplyIsRequiredConfiguration(EfProperty property, string configArg)
+    private static EfProperty ApplyIsRequiredConfiguration(EfProperty property, string configArg)
     {
         var isRequired = string.IsNullOrEmpty(configArg) ||
                          configArg.Equals("true", StringComparison.OrdinalIgnoreCase);
-        property.IsRequired = isRequired;
-
-        if (isRequired)
-        {
-            property.IsExplicitlyRequired = true;
-        }
+        return EfPropertyFactory.CopyWith(property,
+            isRequired: isRequired,
+            isExplicitlyRequired: isRequired || property.IsExplicitlyRequired);
     }
 
-    private static void ApplyMaxLengthConfiguration(EfProperty property, string configArg)
+    private static EfProperty ApplyMaxLengthConfiguration(EfProperty property, string configArg)
     {
         if (int.TryParse(configArg, out var maxLen))
         {
-            property.MaxLength = maxLen;
+            return EfPropertyFactory.CopyWith(property, maxLength: maxLen);
         }
+
+        return property;
     }
 
     /// <summary>
@@ -158,37 +162,41 @@ internal static class PropertyConfigParser
     /// </summary>
     /// <param name="property">The property to configure.</param>
     /// <param name="configArg">The column type argument.</param>
-    private static void ApplyColumnTypeConfiguration(EfProperty property, string configArg)
+    private static EfProperty ApplyColumnTypeConfiguration(EfProperty property, string configArg)
     {
         if (property.MaxLength is not null)
         {
-            return;
+            return property;
         }
 
         var match = EfAnalysisRegexPatterns.NumberInParensRegex().Match(configArg);
         if (match.Success && int.TryParse(match.Groups[1].Value, out var len))
         {
-            property.MaxLength = len;
+            return EfPropertyFactory.CopyWith(property, maxLength: len);
         }
+
+        return property;
     }
 
     /// <summary>
-    /// Configures the precision and scale of a given property.
+    /// Creates a new property with the specified precision and scale.
     /// </summary>
-    /// <param name="property">The property to configure.</param>
+    /// <param name="property">The source property.</param>
     /// <param name="configArg">The precision/scale argument string.</param>
-    private static void ApplyPrecisionConfiguration(EfProperty property, string configArg)
+    private static EfProperty ApplyPrecisionConfiguration(EfProperty property, string configArg)
     {
         var precisionArgs = configArg.Split(',');
         if (precisionArgs.Length < 1 || !int.TryParse(precisionArgs[0].Trim(), out var precision))
         {
-            return;
+            return property;
         }
 
-        property.Precision = precision;
-        if (precisionArgs.Length >= 2 && int.TryParse(precisionArgs[1].Trim(), out var scale))
+        int? scale = null;
+        if (precisionArgs.Length >= 2 && int.TryParse(precisionArgs[1].Trim(), out var s))
         {
-            property.Scale = scale;
+            scale = s;
         }
+
+        return EfPropertyFactory.CopyWith(property, precision: precision, scale: scale ?? property.Scale);
     }
 }

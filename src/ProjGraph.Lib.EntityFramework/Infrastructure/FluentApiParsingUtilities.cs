@@ -123,8 +123,16 @@ internal static class FluentApiParsingUtilities
         }
         else if (!string.IsNullOrEmpty(type))
         {
-            property.Type = type;
-            property.IsValueType = IsValueTypeString(type);
+            var updated = EfPropertyFactory.CopyWith(property,
+                type,
+                isValueType: IsValueTypeString(type));
+            var index = entity.Properties.IndexOf(property);
+            if (index >= 0)
+            {
+                entity.Properties[index] = updated;
+            }
+
+            property = updated;
         }
 
         return property;

@@ -8,19 +8,19 @@ namespace ProjGraph.Core.Models;
 public class EfModel
 {
     /// <summary>
-    /// Gets or sets the name of the Entity Framework context.
+    /// Gets or initializes the name of the Entity Framework context.
     /// </summary>
-    public string ContextName { get; set; } = string.Empty;
+    public string ContextName { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the collection of entities in the model.
+    /// Gets or initializes the collection of entities in the model.
     /// </summary>
-    public Collection<EfEntity> Entities { get; set; } = [];
+    public Collection<EfEntity> Entities { get; init; } = [];
 
     /// <summary>
-    /// Gets or sets the collection of relationships between entities in the model.
+    /// Gets or initializes the collection of relationships between entities in the model.
     /// </summary>
-    public Collection<EfRelationship> Relationships { get; set; } = [];
+    public Collection<EfRelationship> Relationships { get; init; } = [];
 }
 
 /// <summary>
@@ -29,24 +29,24 @@ public class EfModel
 public class EfEntity
 {
     /// <summary>
-    /// Gets or sets the name of the entity.
+    /// Gets or initializes the name of the entity.
     /// </summary>
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the collection of properties associated with the entity.
+    /// Gets or initializes the collection of properties associated with the entity.
     /// </summary>
-    public Collection<EfProperty> Properties { get; set; } = [];
+    public Collection<EfProperty> Properties { get; init; } = [];
 
     /// <summary>
-    /// Gets or sets a value indicating whether the entity is a join entity.
+    /// Gets or initializes a value indicating whether the entity is a join entity.
     /// </summary>
-    public bool IsJoinEntity { get; set; }
+    public bool IsJoinEntity { get; init; }
 
     /// <summary>
-    /// Gets or sets the name of the database table associated with the entity.
+    /// Gets or initializes the name of the database table associated with the entity.
     /// </summary>
-    public string TableName { get; set; } = string.Empty;
+    public string TableName { get; init; } = string.Empty;
 }
 
 /// <summary>
@@ -55,59 +55,59 @@ public class EfEntity
 public class EfProperty
 {
     /// <summary>
-    /// Gets or sets the name of the property.
+    /// Gets or initializes the name of the property.
     /// </summary>
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the data type of the property.
+    /// Gets or initializes the data type of the property.
     /// </summary>
-    public string Type { get; set; } = string.Empty;
+    public string Type { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets a value indicating whether the property is a primary key.
+    /// Gets or initializes a value indicating whether the property is a primary key.
     /// </summary>
-    public bool IsPrimaryKey { get; set; }
+    public bool IsPrimaryKey { get; init; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the property is a foreign key.
+    /// Gets or initializes a value indicating whether the property is a foreign key.
     /// </summary>
-    public bool IsForeignKey { get; set; }
+    public bool IsForeignKey { get; init; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the property is required.
+    /// Gets or initializes a value indicating whether the property is required.
     /// </summary>
-    public bool IsRequired { get; set; }
+    public bool IsRequired { get; init; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the property is a value type.
+    /// Gets or initializes a value indicating whether the property is a value type.
     /// </summary>
-    public bool IsValueType { get; set; }
+    public bool IsValueType { get; init; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the property was explicitly marked as required.
+    /// Gets or initializes a value indicating whether the property was explicitly marked as required.
     /// </summary>
-    public bool IsExplicitlyRequired { get; set; }
+    public bool IsExplicitlyRequired { get; init; }
 
     /// <summary>
-    /// Gets or sets the maximum length of the property value, if applicable.
+    /// Gets or initializes the maximum length of the property value, if applicable.
     /// </summary>
-    public int? MaxLength { get; set; }
+    public int? MaxLength { get; init; }
 
     /// <summary>
-    /// Gets or sets the precision of the property value, if applicable.
+    /// Gets or initializes the precision of the property value, if applicable.
     /// </summary>
-    public int? Precision { get; set; }
+    public int? Precision { get; init; }
 
     /// <summary>
-    /// Gets or sets the scale of the property value, if applicable.
+    /// Gets or initializes the scale of the property value, if applicable.
     /// </summary>
-    public int? Scale { get; set; }
+    public int? Scale { get; init; }
 
     /// <summary>
-    /// Gets or sets the default value of the property, if any.
+    /// Gets or initializes the default value of the property, if any.
     /// </summary>
-    public string? DefaultValue { get; set; }
+    public string? DefaultValue { get; init; }
 }
 
 /// <summary>
@@ -116,24 +116,24 @@ public class EfProperty
 public class EfRelationship
 {
     /// <summary>
-    /// Gets or sets the name of the source entity in the relationship.
+    /// Gets or initializes the name of the source entity in the relationship.
     /// </summary>
-    public string SourceEntity { get; set; } = string.Empty;
+    public string SourceEntity { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the name of the target entity in the relationship.
+    /// Gets or initializes the name of the target entity in the relationship.
     /// </summary>
-    public string TargetEntity { get; set; } = string.Empty;
+    public string TargetEntity { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the type of the relationship (e.g., One-to-One, One-to-Many, Many-to-Many).
+    /// Gets or initializes the type of the relationship (e.g., One-to-One, One-to-Many, Many-to-Many).
     /// </summary>
-    public EfRelationshipType Type { get; set; }
+    public EfRelationshipType Type { get; init; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the relationship is required.
+    /// Gets or initializes a value indicating whether the relationship is required.
     /// </summary>
-    public bool IsRequired { get; set; }
+    public bool IsRequired { get; init; }
 }
 
 /// <summary>

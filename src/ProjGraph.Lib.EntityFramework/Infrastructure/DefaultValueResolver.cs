@@ -9,24 +9,26 @@ namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 internal static class DefaultValueResolver
 {
     /// <summary>
-    /// Configures the DefaultValue property based on the configuration argument.
+    /// Creates a new <see cref="EfProperty"/> with the DefaultValue set based on the configuration argument.
     /// </summary>
-    /// <param name="property">The EF property to configure.</param>
+    /// <param name="property">The source EF property.</param>
     /// <param name="configArg">The configuration argument value.</param>
     /// <param name="compilation">The Roslyn compilation for resolving constants.</param>
-    public static void ApplyDefaultValueConfiguration(EfProperty property, string configArg, Compilation compilation)
+    /// <returns>A new <see cref="EfProperty"/> with the resolved default value.</returns>
+    public static EfProperty CreateWithDefaultValue(EfProperty property, string configArg, Compilation compilation)
     {
-        property.DefaultValue = ParseDefaultValue(configArg, compilation);
+        return EfPropertyFactory.CopyWith(property, defaultValue: ParseDefaultValue(configArg, compilation));
     }
 
     /// <summary>
-    /// Configures the DefaultValue property from SQL based on the configuration argument.
+    /// Creates a new <see cref="EfProperty"/> with the DefaultValue set from SQL based on the configuration argument.
     /// </summary>
-    /// <param name="property">The EF property to configure.</param>
+    /// <param name="property">The source EF property.</param>
     /// <param name="configArg">The SQL default value argument.</param>
-    public static void ApplyDefaultValueSqlConfiguration(EfProperty property, string configArg)
+    /// <returns>A new <see cref="EfProperty"/> with the SQL default value.</returns>
+    public static EfProperty CreateWithDefaultValueSql(EfProperty property, string configArg)
     {
-        property.DefaultValue = configArg.Trim('\"', '\'', ' ');
+        return EfPropertyFactory.CopyWith(property, defaultValue: configArg.Trim('\"', '\'', ' '));
     }
 
     /// <summary>

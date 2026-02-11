@@ -438,7 +438,8 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
             };
 
             // Process files in the current directory
-            foreach (var file in Directory.EnumerateFiles(currentDir, "*.cs", options))
+            foreach (var file in Directory.EnumerateFiles(currentDir, EfAnalysisConstants.FilePatterns.CSharpFiles,
+                         options))
             {
                 var fileName = Path.GetFileNameWithoutExtension(file);
                 if (!baseClassNames.Contains(fileName))

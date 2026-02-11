@@ -237,10 +237,15 @@ internal static class RelationshipConfigParser
     /// <param name="propertyNames">The names of properties to mark as foreign keys.</param>
     private static void MarkPropertiesAsForeignKeys(EfEntity entity, List<string> propertyNames)
     {
-        foreach (var prop in propertyNames.Select(propName =>
-                     FluentApiParsingUtilities.GetOrCreateProperty(entity, propName, "")))
+        foreach (var propName in propertyNames)
         {
-            prop.IsForeignKey = true;
+            var prop = FluentApiParsingUtilities.GetOrCreateProperty(entity, propName, "");
+            var updated = EfPropertyFactory.CopyWith(prop, isForeignKey: true);
+            var index = entity.Properties.IndexOf(prop);
+            if (index >= 0)
+            {
+                entity.Properties[index] = updated;
+            }
         }
     }
 

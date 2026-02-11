@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
@@ -59,7 +60,7 @@ public class EfModelAnalyzer(
     /// <param name="snapshotPath">The file path to the ModelSnapshot class.</param>
     /// <param name="snapshotName">Optional name of the specific snapshot to analyze. If null, the first snapshot found is used.</param>
     /// <returns>A <see cref="Task{TResult}"/> that resolves to an <see cref="EfModel"/> containing entities and relationships.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when ModelSnapshot is not found in the file or semantic symbol cannot be resolved.</exception>
+    /// <exception cref="AnalysisException">Thrown when ModelSnapshot is not found in the file or semantic symbol cannot be resolved.</exception>
     /// <seealso cref="BuildSnapshotSyntaxTreesAsync(string, ClassDeclarationSyntax, string, SyntaxTree)"/>
     /// <seealso cref="ModelSnapshotParser.Parse(ClassDeclarationSyntax, INamedTypeSymbol, Compilation)"/>
     /// <seealso cref="RelationshipAnalyzer.AnalyzeRelationships(EfModel, Dictionary{string, EfEntity}, Compilation)"/>
@@ -71,7 +72,7 @@ public class EfModelAnalyzer(
 
         var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
         var snapshotClass = DbContextIdentifier.FindSnapshotClass(classDeclarations, snapshotName)
-                            ?? throw new InvalidOperationException("ModelSnapshot not found in file");
+                            ?? throw new AnalysisException("ModelSnapshot not found in file");
 
         var snapshotDirectory = fileSystem.GetDirectoryName(snapshotPath) ?? Environment.CurrentDirectory;
 
@@ -81,7 +82,7 @@ public class EfModelAnalyzer(
 
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
         var snapshotType = semanticModel.GetDeclaredSymbol(snapshotClass)
-                           ?? throw new InvalidOperationException("Could not get semantic symbol for snapshot");
+                           ?? throw new AnalysisException("Could not get semantic symbol for snapshot");
 
         var model = ModelSnapshotParser.Parse(snapshotClass, snapshotType, compilation);
 
@@ -98,7 +99,7 @@ public class EfModelAnalyzer(
     /// <param name="path">The file path to the DbContext class.</param>
     /// <param name="contextName">Optional name of the specific context to analyze. If null, the first context found is used.</param>
     /// <returns>A <see cref="Task{TResult}"/> that resolves to an <see cref="EfModel"/> containing entities and relationships.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when DbContext is not found in the file or semantic symbol cannot be resolved.</exception>
+    /// <exception cref="AnalysisException">Thrown when DbContext is not found in the file or semantic symbol cannot be resolved.</exception>
     /// <seealso cref="BuildSyntaxTreesAsync(string, ClassDeclarationSyntax, string, SyntaxTree)"/>
     /// <seealso cref="BuildEfModel(INamedTypeSymbol, Compilation)"/>
     /// <seealso cref="DbContextIdentifier.FindContextClass(IEnumerable{ClassDeclarationSyntax}, string?)"/>
@@ -110,7 +111,7 @@ public class EfModelAnalyzer(
 
         var classDeclarations = root.DescendantNodes().OfType<ClassDeclarationSyntax>();
         var contextClass = DbContextIdentifier.FindContextClass(classDeclarations, contextName)
-                           ?? throw new InvalidOperationException("DbContext not found in file");
+                           ?? throw new AnalysisException("DbContext not found in file");
 
         var contextDirectory = fileSystem.GetDirectoryName(path) ?? Environment.CurrentDirectory;
 
@@ -119,7 +120,7 @@ public class EfModelAnalyzer(
 
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
         var contextType = semanticModel.GetDeclaredSymbol(contextClass)
-                          ?? throw new InvalidOperationException("Could not get semantic symbol for context");
+                          ?? throw new AnalysisException("Could not get semantic symbol for context");
 
         return BuildEfModel(contextType, compilation);
     }

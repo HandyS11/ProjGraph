@@ -18,10 +18,7 @@ public class DiscoverSnapshotsUseCase(IEfModelAnalyzer modelAnalyzer, IFileSyste
     /// <exception cref="ArgumentException">Thrown when the provided file path is not a .cs file.</exception>
     public async Task<List<string>> ExecuteAsync(string path)
     {
-        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException("Only .cs files are supported", nameof(path));
-        }
+        FilePathGuard.RequireCsFile(path);
 
         var syntaxTree = CSharpSyntaxTree.ParseText(
 #pragma warning disable CA1849, S6966

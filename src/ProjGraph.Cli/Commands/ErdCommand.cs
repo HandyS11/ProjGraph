@@ -1,3 +1,4 @@
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
@@ -80,7 +81,7 @@ internal sealed class ErdCommand(
                 return ValidationResult.Error($"File not found: {Path}");
             }
 
-            if (!Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            if (!Path.EndsWith(FilePathGuard.CSharpExtension, StringComparison.OrdinalIgnoreCase))
             {
                 return ValidationResult.Error($"Only .cs files are supported. Got: {Path}");
             }
@@ -148,9 +149,10 @@ internal sealed class ErdCommand(
             return providedPath;
         }
 
-        var files = Directory.GetFiles(Directory.GetCurrentDirectory(), "*DbContext.cs",
+        var files = Directory.GetFiles(Directory.GetCurrentDirectory(), $"*DbContext{FilePathGuard.CSharpExtension}",
                 SearchOption.AllDirectories)
-            .Concat(Directory.GetFiles(Directory.GetCurrentDirectory(), "*ModelSnapshot.cs",
+            .Concat(Directory.GetFiles(Directory.GetCurrentDirectory(),
+                $"*ModelSnapshot{FilePathGuard.CSharpExtension}",
                 SearchOption.AllDirectories))
             .ToList();
 
@@ -215,7 +217,7 @@ internal sealed class ErdCommand(
         string? contextName,
         CancellationToken cancellationToken)
     {
-        if (targetPath.EndsWith("ModelSnapshot.cs", StringComparison.OrdinalIgnoreCase))
+        if (targetPath.EndsWith($"ModelSnapshot{FilePathGuard.CSharpExtension}", StringComparison.OrdinalIgnoreCase))
         {
             return await AnalyzeSnapshotAsync(targetPath, contextName, cancellationToken);
         }
@@ -281,7 +283,7 @@ internal sealed class ErdCommand(
     /// <param name="console">The output console for user interaction.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The selected item name.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when no items are found in the list.</exception>
+    /// <exception cref="AnalysisException">Thrown when no items are found in the list.</exception>
     private static async Task<string> SelectItemAsync(
         List<string> items,
         string? providedName,
@@ -297,7 +299,7 @@ internal sealed class ErdCommand(
 
         return items.Count switch
         {
-            0 => throw new InvalidOperationException(notFoundMessage),
+            0 => throw new AnalysisException(notFoundMessage),
             > 1 => await console.PromptSelectionAsync(promptTitle, items, cancellationToken),
             _ => items[0]
         };

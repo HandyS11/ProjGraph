@@ -1,3 +1,5 @@
+using ProjGraph.Lib.Core.Abstractions;
+
 namespace ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
 
 /// <summary>
@@ -13,7 +15,6 @@ public static class EfAnalysisConstants
         public const string Guid = "Guid";
         public const string Int = "int";
         public const string StringTypeName = "string";
-
         private const string Int32 = "Int32";
         private const string Int64 = "Int64";
         private const string Bool = "bool";
@@ -195,8 +196,7 @@ public static class EfAnalysisConstants
     /// </summary>
     internal static class FilePatterns
     {
-        public const string CSharpFiles = "*.cs";
-        public const string CSharpExtension = ".cs";
+        public const string CSharpFiles = FilePathGuard.CSharpFilesPattern;
     }
 
     /// <summary>

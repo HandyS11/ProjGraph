@@ -88,7 +88,7 @@ internal sealed class ClassDiagramCommand(
                 return ValidationResult.Error($"File not found: {Path}");
             }
 
-            if (!Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            if (!Path.EndsWith(FilePathGuard.CSharpExtension, StringComparison.OrdinalIgnoreCase))
             {
                 return ValidationResult.Error($"Only .cs files are supported. Got: {Path}");
             }

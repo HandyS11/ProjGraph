@@ -7,14 +7,14 @@ namespace ProjGraph.Tests.Integration.Mcp;
 public class McpProjectGraphTests
 {
     [Fact]
-    public void GetProjectGraph_SimpleDependencies_Slnx_ShouldReturnValidMermaid()
+    public async Task GetProjectGraph_SimpleDependencies_Slnx_ShouldReturnValidMermaid()
     {
         // Arrange
         var tools = CreateTools();
         var slnxPath = GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
 
         // Act
-        var result = tools.GetProjectGraph(slnxPath);
+        var result = await tools.GetProjectGraphAsync(slnxPath);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -29,14 +29,14 @@ public class McpProjectGraphTests
     }
 
     [Fact]
-    public void GetProjectGraph_SimpleDependencies_SingleProject_ShouldDiscoverAllDependencies()
+    public async Task GetProjectGraph_SimpleDependencies_SingleProject_ShouldDiscoverAllDependencies()
     {
         // Arrange
         var tools = CreateTools();
         var projPath = GetSamplePath(@"visualize\simple-dependencies\A\A.csproj");
 
         // Act
-        var result = tools.GetProjectGraph(projPath);
+        var result = await tools.GetProjectGraphAsync(projPath);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -49,14 +49,14 @@ public class McpProjectGraphTests
     }
 
     [Fact]
-    public void GetProjectGraph_ProjGraphSolution_Slnx_ShouldReturnValidMermaid()
+    public async Task GetProjectGraph_ProjGraphSolution_Slnx_ShouldReturnValidMermaid()
     {
         // Arrange
         var tools = CreateTools();
         var slnxPath = GetRootPath("ProjGraph.slnx");
 
         // Act
-        var result = tools.GetProjectGraph(slnxPath);
+        var result = await tools.GetProjectGraphAsync(slnxPath);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -70,14 +70,14 @@ public class McpProjectGraphTests
     }
 
     [Fact]
-    public void GetProjectGraph_SimpleDependencies_ShouldShowCorrectRelationships()
+    public async Task GetProjectGraph_SimpleDependencies_ShouldShowCorrectRelationships()
     {
         // Arrange
         var tools = CreateTools();
         var slnxPath = GetSamplePath("visualize/simple-dependencies/simple-dependencies.slnx");
 
         // Act
-        var result = tools.GetProjectGraph(slnxPath);
+        var result = await tools.GetProjectGraphAsync(slnxPath);
 
         // Assert
         result.Should().Contain("A --> B");
@@ -86,31 +86,31 @@ public class McpProjectGraphTests
     }
 
     [Fact]
-    public void GetProjectGraph_NonExistentFile_ShouldThrow()
+    public async Task GetProjectGraph_NonExistentFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
         var nonExistentPath = Path.Combine(Path.GetTempPath(), "this", "path", "does", "not", "exist.slnx");
 
         // Act
-        var act = () => tools.GetProjectGraph(nonExistentPath);
+        var act = async () => await tools.GetProjectGraphAsync(nonExistentPath);
 
         // Assert
-        act.Should().Throw<Exception>();
+        await act.Should().ThrowAsync<Exception>();
     }
 
     [Fact]
-    public void GetProjectGraph_InvalidFile_ShouldThrow()
+    public async Task GetProjectGraph_InvalidFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
         var invalidPath = GetRootPath("README.md"); // Not a solution/project file
 
         // Act
-        var act = () => tools.GetProjectGraph(invalidPath);
+        var act = async () => await tools.GetProjectGraphAsync(invalidPath);
 
         // Assert
-        act.Should().Throw<Exception>();
+        await act.Should().ThrowAsync<Exception>();
     }
 
     private static string GetSamplePath(string relativePath)

@@ -25,29 +25,15 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     public string Render(EfModel model, DiagramOptions? options = null)
     {
         var sb = new StringBuilder();
-        var wrapFence = options?.WrapInMarkdownFence ?? true;
 
-        if (wrapFence)
-        {
-            sb.AppendLine("```mermaid");
-        }
-
-        if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(model.ContextName))
-        {
-            sb.AppendLine("---")
-                .AppendLine(CultureInfo.InvariantCulture, $"title: {model.ContextName}")
-                .AppendLine("---");
-        }
+        MermaidFenceHelper.AppendFenceStart(sb, options, model.ContextName);
 
         sb.AppendLine("erDiagram");
 
         RenderEntities(model, sb);
         RenderRelationships(model, sb);
 
-        if (wrapFence)
-        {
-            sb.AppendLine("```");
-        }
+        MermaidFenceHelper.AppendFenceEnd(sb, options);
 
         return sb.ToString();
     }

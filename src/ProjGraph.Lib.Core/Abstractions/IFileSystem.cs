@@ -49,39 +49,8 @@ public interface IFileSystem
     Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a directory exists at the specified path.
-    /// </summary>
-    /// <param name="path">The path to the directory.</param>
-    /// <returns>True if the directory exists, otherwise false.</returns>
-    bool DirectoryExists(string path);
-
-    /// <summary>
-    /// Enumerates files matching a search pattern in the specified directory.
-    /// </summary>
-    /// <param name="path">The directory to search.</param>
-    /// <param name="searchPattern">The search pattern (e.g., "*.cs").</param>
-    /// <param name="searchOption">Whether to search subdirectories.</param>
-    /// <returns>An enumerable of file paths matching the pattern.</returns>
-    IEnumerable<string> EnumerateFiles(string path, string searchPattern,
-        SearchOption searchOption = SearchOption.TopDirectoryOnly);
-
-    /// <summary>
-    /// Enumerates subdirectories in the specified directory.
-    /// </summary>
-    /// <param name="path">The directory to search.</param>
-    /// <returns>An enumerable of subdirectory paths.</returns>
-    IEnumerable<string> EnumerateDirectories(string path);
-
-    /// <summary>
     /// Gets the current working directory of the application.
     /// </summary>
     /// <returns>The current directory path.</returns>
     string GetCurrentDirectory();
-
-    /// <summary>
-    /// Gets the parent directory of the specified path.
-    /// </summary>
-    /// <param name="path">The path for which to find the parent.</param>
-    /// <returns>The parent directory path, or null if no parent exists.</returns>
-    string? GetParentDirectory(string path);
 }

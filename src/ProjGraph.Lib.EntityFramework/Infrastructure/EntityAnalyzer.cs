@@ -50,7 +50,6 @@ public static class EntityAnalyzer
                 }
 
                 var efProperty = CreateEfProperty(prop, type, currentType, primaryKeyNames);
-                ExtractPropertyConstraints(prop, efProperty);
                 entity.Properties.Add(efProperty);
             }
 
@@ -280,15 +279,57 @@ public static class EntityAnalyzer
         INamedTypeSymbol currentType,
         HashSet<string> primaryKeyNames)
     {
+        var isPrimaryKey = IsPrimaryKey(prop.Name, entityType.Name, currentType.Name, primaryKeyNames);
+        var isRequired = !prop.Type.IsNullable() || prop.IsRequired;
+        var isExplicitlyRequired = prop.IsRequired;
+        int? maxLength = null;
+        int? precision = null;
+        int? scale = null;
+
+        foreach (var attribute in prop.GetAttributes())
+        {
+            switch (attribute.AttributeClass?.Name)
+            {
+                case EfAnalysisConstants.EfAttributes.KeyAttribute:
+                case EfAnalysisConstants.EfAttributes.Key:
+                    isPrimaryKey = true;
+                    break;
+
+                case EfAnalysisConstants.EfAttributes.RequiredAttribute:
+                    isRequired = true;
+                    isExplicitlyRequired = true;
+                    break;
+
+                case EfAnalysisConstants.EfAttributes.MaxLengthAttribute:
+                case EfAnalysisConstants.EfAttributes.StringLengthAttribute:
+                    if (attribute.ConstructorArguments.Length > 0 &&
+                        attribute.ConstructorArguments[0].Value is int ml)
+                    {
+                        maxLength = ml;
+                    }
+
+                    break;
+
+                case EfAnalysisConstants.EfAttributes.ColumnAttribute:
+                    var (p, s) = ExtractColumnTypeNameValues(attribute);
+                    precision = p ?? precision;
+                    scale = s ?? scale;
+                    break;
+            }
+        }
+
         return new EfProperty
         {
             Name = prop.Name,
             Type = prop.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
-            IsPrimaryKey = IsPrimaryKey(prop.Name, entityType.Name, currentType.Name, primaryKeyNames),
+            IsPrimaryKey = isPrimaryKey,
             IsForeignKey = false,
-            IsRequired = !prop.Type.IsNullable() || prop.IsRequired,
-            IsExplicitlyRequired = prop.IsRequired,
-            IsValueType = prop.Type.IsEfValueType()
+            IsRequired = isRequired,
+            IsExplicitlyRequired = isExplicitlyRequired,
+            IsValueType = prop.Type.IsEfValueType(),
+            MaxLength = maxLength,
+            Precision = precision,
+            Scale = scale
         };
     }
 
@@ -345,82 +386,13 @@ public static class EntityAnalyzer
     }
 
     /// <summary>
-    /// Extracts constraints from the attributes of a given property symbol and applies them to the specified <see cref="EfProperty"/>.
-    /// </summary>
-    /// <param name="prop">The property symbol whose attributes will be analyzed.</param>
-    /// <param name="efProperty">The <see cref="EfProperty"/> to which the extracted constraints will be applied.</param>
-    /// <remarks>
-    /// This method iterates through all attributes of the provided property symbol and applies the corresponding
-    /// constraints to the <paramref name="efProperty"/> by invoking the <see cref="ApplyAttributeConstraint"/> method.
-    /// </remarks>
-    private static void ExtractPropertyConstraints(IPropertySymbol prop, EfProperty efProperty)
-    {
-        foreach (var attribute in prop.GetAttributes())
-        {
-            ApplyAttributeConstraint(attribute, efProperty);
-        }
-    }
-
-    /// <summary>
-    /// Applies constraints to the specified <see cref="EfProperty"/> based on the provided attribute data.
-    /// </summary>
-    /// <param name="attribute">The attribute data containing metadata about the property.</param>
-    /// <param name="efProperty">The <see cref="EfProperty"/> to which the constraints will be applied.</param>
-    /// <remarks>
-    /// This method processes specific attribute types and applies their constraints to the <paramref name="efProperty"/>:
-    /// <list type="bullet">
-    /// <item>
-    /// <description><c>RequiredAttribute</c>: Marks the property as required.</description>
-    /// </item>
-    /// <item>
-    /// <description><c>MaxLengthAttribute</c> or <c>StringLengthAttribute</c>: Sets the maximum length of the property if specified.</description>
-    /// </item>
-    /// <item>
-    /// <description><c>ColumnAttribute</c>: Extracts precision and scale constraints from the "TypeName" argument and applies them to the property.</description>
-    /// </item>
-    /// </list>
-    /// </remarks>
-    private static void ApplyAttributeConstraint(AttributeData attribute, EfProperty efProperty)
-    {
-        switch (attribute.AttributeClass?.Name)
-        {
-            case EfAnalysisConstants.EfAttributes.KeyAttribute:
-            case EfAnalysisConstants.EfAttributes.Key:
-                efProperty.IsPrimaryKey = true;
-                break;
-
-            case EfAnalysisConstants.EfAttributes.RequiredAttribute:
-                efProperty.IsRequired = true;
-                efProperty.IsExplicitlyRequired = true;
-                break;
-
-            case EfAnalysisConstants.EfAttributes.MaxLengthAttribute:
-            case EfAnalysisConstants.EfAttributes.StringLengthAttribute:
-                if (attribute.ConstructorArguments.Length > 0 &&
-                    attribute.ConstructorArguments[0].Value is int maxLength)
-                {
-                    efProperty.MaxLength = maxLength;
-                }
-
-                break;
-
-            case EfAnalysisConstants.EfAttributes.ColumnAttribute:
-                ExtractColumnTypeNameConstraints(attribute, efProperty);
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Extracts precision and scale constraints from the "TypeName" argument of a "ColumnAttribute" and applies them to the specified <see cref="EfProperty"/>.
+    /// Extracts precision and scale values from the "TypeName" argument of a "ColumnAttribute".
     /// </summary>
     /// <param name="attribute">The attribute data containing the "TypeName" argument.</param>
-    /// <param name="efProperty">The <see cref="EfProperty"/> to which the constraints will be applied.</param>
-    /// <remarks>
-    /// This method uses a regular expression to parse the "TypeName" argument of the attribute. If the argument matches
-    /// the pattern for a decimal type with precision and scale (e.g., "decimal(10, 2)"), the precision and scale values
-    /// are extracted and assigned to the corresponding properties of the <paramref name="efProperty"/>.
-    /// </remarks>
-    private static void ExtractColumnTypeNameConstraints(AttributeData attribute, EfProperty efProperty)
+    /// <returns>
+    /// A tuple containing the precision and scale values, or <c>(null, null)</c> if not found.
+    /// </returns>
+    private static (int? Precision, int? Scale) ExtractColumnTypeNameValues(AttributeData attribute)
     {
         foreach (var namedArg in attribute.NamedArguments)
         {
@@ -435,8 +407,10 @@ public static class EntityAnalyzer
                 continue;
             }
 
-            efProperty.Precision = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-            efProperty.Scale = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+            return (int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture),
+                int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture));
         }
+
+        return (null, null);
     }
 }

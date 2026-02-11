@@ -59,7 +59,7 @@ public sealed class McpErdTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetErd(_tempFile);
+        var result = await tools.GetErdAsync(_tempFile);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -76,7 +76,7 @@ public sealed class McpErdTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetErd(_tempFile);
+        var result = await tools.GetErdAsync(_tempFile);
 
         // Assert
         result.Should().Contain("int Id");
@@ -92,7 +92,7 @@ public sealed class McpErdTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetErd(_tempFile);
+        var result = await tools.GetErdAsync(_tempFile);
 
         // Assert
         result.Should().Contain("Blog ||--o{ Post");
@@ -106,7 +106,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath);
+        var result = await tools.GetErdAsync(contextPath);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -126,7 +126,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath);
+        var result = await tools.GetErdAsync(contextPath);
 
         // Assert
         result.Should().Contain("int Id PK");
@@ -144,7 +144,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath);
+        var result = await tools.GetErdAsync(contextPath);
 
         // Assert
         result.Should().Contain("||--o{"); // One-to-Many notation
@@ -160,7 +160,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath, "MyDbContext");
+        var result = await tools.GetErdAsync(contextPath, "MyDbContext");
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -177,7 +177,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath("erd/simple-context/EntityFramework/MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath);
+        var result = await tools.GetErdAsync(contextPath);
 
         // Assert
         result.Should().Contain("FK");
@@ -193,7 +193,7 @@ public sealed class McpErdTests : IDisposable
         var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".cs");
 
         // Act
-        var act = async () => await tools.GetErd(nonExistentPath);
+        var act = async () => await tools.GetErdAsync(nonExistentPath);
 
         // Assert
         await act.Should().ThrowAsync<Exception>();
@@ -208,7 +208,7 @@ public sealed class McpErdTests : IDisposable
         await File.WriteAllTextAsync(invalidFile, "public class NotADbContext { }");
 
         // Act
-        var act = async () => await tools.GetErd(invalidFile);
+        var act = async () => await tools.GetErdAsync(invalidFile);
 
         // Assert
         await act.Should().ThrowAsync<Exception>();
@@ -223,7 +223,7 @@ public sealed class McpErdTests : IDisposable
         await File.WriteAllTextAsync(nonCsFile, "Not a C# file");
 
         // Act
-        var act = async () => await tools.GetErd(nonCsFile);
+        var act = async () => await tools.GetErdAsync(nonCsFile);
 
         // Assert
         await act.Should().ThrowAsync<Exception>();

@@ -22,19 +22,8 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
     public string Render(ClassModel model, DiagramOptions? options = null)
     {
         var sb = new StringBuilder();
-        var wrapFence = options?.WrapInMarkdownFence ?? true;
 
-        if (wrapFence)
-        {
-            sb.AppendLine("```mermaid");
-        }
-
-        if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(model.Title))
-        {
-            sb.AppendLine("---")
-                .AppendLine(CultureInfo.InvariantCulture, $"title: {model.Title}")
-                .AppendLine("---");
-        }
+        MermaidFenceHelper.AppendFenceStart(sb, options, model.Title);
 
         sb.AppendLine("classDiagram");
 
@@ -48,10 +37,7 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
             RenderRelationship(sb, relationship);
         }
 
-        if (wrapFence)
-        {
-            sb.AppendLine("```");
-        }
+        MermaidFenceHelper.AppendFenceEnd(sb, options);
 
         return sb.ToString();
     }

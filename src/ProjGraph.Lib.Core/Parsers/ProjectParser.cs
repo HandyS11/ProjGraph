@@ -1,4 +1,5 @@
 using Microsoft.Build.Construction;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using System.Security.Cryptography;
@@ -27,11 +28,11 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
     /// </item>
     /// </list>
     /// </returns>
-    /// <exception cref="InvalidOperationException">Thrown when the project file cannot be parsed.</exception>
+    /// <exception cref="ParsingException">Thrown when the project file cannot be parsed.</exception>
     public (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath)
     {
         var root = ProjectRootElement.Open(projectPath)
-                   ?? throw new InvalidOperationException($"Failed to parse project file: {projectPath}");
+                   ?? throw new ParsingException($"Failed to parse project file: {projectPath}");
 
         var name = Path.GetFileNameWithoutExtension(projectPath);
         var relativePath = Path.GetRelativePath(fileSystem.GetCurrentDirectory(), projectPath);

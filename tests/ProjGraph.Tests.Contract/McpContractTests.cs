@@ -17,4 +17,19 @@ public class McpContractTests
         var classAttr = type.GetCustomAttribute<McpServerToolTypeAttribute>();
         classAttr.Should().NotBeNull("ProjGraphTools class should be marked with McpServerToolType attribute");
     }
+
+    [Theory]
+    [InlineData("GetProjectGraphAsync")]
+    [InlineData("GetClassDiagramAsync")]
+    [InlineData("GetErdAsync")]
+    public void ProjGraphTools_ShouldExpose_ExpectedToolMethods(string methodName)
+    {
+        var type = typeof(ProjGraphTools);
+        var method = type.GetMethod(methodName);
+
+        method.Should().NotBeNull($"Tool method '{methodName}' should exist — renaming breaks the MCP API contract");
+
+        var toolAttr = method.GetCustomAttribute<McpServerToolAttribute>();
+        toolAttr.Should().NotBeNull($"'{methodName}' must have [McpServerTool] attribute");
+    }
 }

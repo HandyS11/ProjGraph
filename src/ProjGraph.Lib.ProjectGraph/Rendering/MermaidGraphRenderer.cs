@@ -22,17 +22,8 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
     public string Render(SolutionGraph model, DiagramOptions? options = null)
     {
         var sb = new StringBuilder();
-        var wrapFence = options?.WrapInMarkdownFence ?? true;
 
-        if (wrapFence)
-            sb.AppendLine("```mermaid");
-
-        if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(model.Name))
-        {
-            sb.AppendLine("---")
-                .AppendLine(CultureInfo.InvariantCulture, $"title: {model.Name}")
-                .AppendLine("---");
-        }
+        MermaidFenceHelper.AppendFenceStart(sb, options, model.Name);
 
         sb.AppendLine("graph TD");
 
@@ -64,8 +55,7 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
                 $"    {SanitizeId(dep.Source!.Name)} --> {SanitizeId(dep.Target!.Name)}");
         }
 
-        if (wrapFence)
-            sb.AppendLine("```");
+        MermaidFenceHelper.AppendFenceEnd(sb, options);
 
         return sb.ToString();
     }

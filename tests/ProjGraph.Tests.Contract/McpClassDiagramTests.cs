@@ -13,10 +13,10 @@ public class McpClassDiagramTests
     {
         // Arrange
         var type = typeof(ProjGraphTools);
-        var method = type.GetMethod("GetClassDiagram");
+        var method = type.GetMethod("GetClassDiagramAsync");
 
         // Assert method exists
-        method.Should().NotBeNull("GetClassDiagram method should exist");
+        method.Should().NotBeNull("GetClassDiagramAsync method should exist");
 
         // Assert return type is Task<string> (async method)
         method.ReturnType.Should().Be<Task<string>>("GetClassDiagram should return Task<string> (async)");
@@ -35,7 +35,7 @@ public class McpClassDiagramTests
     public void GetClassDiagram_ShouldHave_RequiredParameters()
     {
         // Arrange
-        var method = typeof(ProjGraphTools).GetMethod("GetClassDiagram");
+        var method = typeof(ProjGraphTools).GetMethod("GetClassDiagramAsync");
         var parameters = method!.GetParameters();
 
         // Check filePath parameter

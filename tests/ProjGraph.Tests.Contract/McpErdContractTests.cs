@@ -13,10 +13,10 @@ public class McpErdContractTests
     {
         // Arrange
         var type = typeof(ProjGraphTools);
-        var method = type.GetMethod("GetErd");
+        var method = type.GetMethod("GetErdAsync");
 
         // Assert method exists
-        method.Should().NotBeNull("GetErd method should exist");
+        method.Should().NotBeNull("GetErdAsync method should exist");
 
         // Assert return type is Task<string> (async method)
         method.ReturnType.Should().Be<Task<string>>("GetErd should return Task<string> (async)");
@@ -39,7 +39,7 @@ public class McpErdContractTests
     {
         // Arrange
         var type = typeof(ProjGraphTools);
-        var method = type.GetMethod("GetErd");
+        var method = type.GetMethod("GetErdAsync");
         var parameters = method!.GetParameters();
 
         // Assert 'path' parameter exists with correct type
@@ -58,7 +58,7 @@ public class McpErdContractTests
     {
         // Arrange
         var type = typeof(ProjGraphTools);
-        var method = type.GetMethod("GetErd");
+        var method = type.GetMethod("GetErdAsync");
         var parameters = method!.GetParameters();
 
         // Assert 'contextName' parameter exists and is optional (nullable string)
@@ -80,7 +80,7 @@ public class McpErdContractTests
     {
         // Arrange
         var type = typeof(ProjGraphTools);
-        var method = type.GetMethod("GetErd");
+        var method = type.GetMethod("GetErdAsync");
         var parameters = method!.GetParameters();
 
         // Assert parameters exist (path, contextName, showTitle, cancellationToken)

@@ -2,12 +2,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib;
 using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
 using ProjGraph.Lib.ProjectGraph.Application;
+using ProjGraph.Lib.ProjectGraph.Rendering;
 using System.ComponentModel;
 using System.Reflection;
 
@@ -42,21 +44,18 @@ internal static class Program
 }
 
 [McpServerToolType]
-#pragma warning disable CA1812 // Instantiated via DI
 internal sealed class ProjGraphTools(
     IGraphService graphService,
     IEfAnalysisService efService,
     IClassAnalysisService classService,
-    IDiagramRenderer<SolutionGraph> graphRenderer,
+    MermaidGraphRenderer graphRenderer,
     IDiagramRenderer<ClassModel> classRenderer,
     IDiagramRenderer<EfModel> erdRenderer)
 {
-    [McpServerTool]
+    [McpServerTool(Name = "GetClassDiagram")]
     [Description(
         "Generates a Mermaid class diagram for the types defined in a specific C# file, with options to discover inheritance and related types in the workspace.")]
-#pragma warning disable IDE1006, VSTHRD200
-    public async Task<string> GetClassDiagram(
-#pragma warning restore IDE1006, VSTHRD200
+    public async Task<string> GetClassDiagramAsync(
         [Description("Absolute path to the .cs file to analyze.")]
         string filePath,
         [Description("Whether to search the workspace for base classes and interfaces.")]
@@ -67,10 +66,9 @@ internal sealed class ProjGraphTools(
         int depth = 1,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
-#pragma warning disable RCS1163
         CancellationToken cancellationToken = default)
-#pragma warning restore RCS1163
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
         if (!File.Exists(filePath))
@@ -78,27 +76,23 @@ internal sealed class ProjGraphTools(
             throw new FileNotFoundException($"File not found: {filePath}", filePath);
         }
 
-        if (!filePath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException($"Only .cs files are supported. Got: {filePath}", nameof(filePath));
-        }
+        FilePathGuard.RequireCsFile(filePath, nameof(filePath));
 
         var model = await classService.AnalyzeFileAsync(filePath, includeInheritance, includeDependencies, depth);
 
         return classRenderer.Render(model, new DiagramOptions(showTitle));
     }
 
-    [McpServerTool]
+    [McpServerTool(Name = "GetProjectGraph")]
     [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
-    public string GetProjectGraph(
+    public Task<string> GetProjectGraphAsync(
         [Description("Absolute path to the project or solution file.")]
         string path,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
-#pragma warning disable RCS1163
         CancellationToken cancellationToken = default)
-#pragma warning restore RCS1163
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
         if (!File.Exists(path))
@@ -115,25 +109,22 @@ internal sealed class ProjGraphTools(
 
         var graph = graphService.BuildGraph(path);
 
-        return graphRenderer.Render(graph, new DiagramOptions(showTitle));
+        return Task.FromResult(graphRenderer.Render(graph, new DiagramOptions(showTitle)));
     }
 
-    [McpServerTool]
+    [McpServerTool(Name = "GetErd")]
     [Description(
         "Generates a Mermaid Entity Relationship Diagram (ERD) from an Entity Framework Core DbContext or ModelSnapshot file, including entities, properties, relationships, constraints, and inherited properties from base classes.")]
-#pragma warning disable IDE1006, VSTHRD200
-    public async Task<string> GetErd(
-#pragma warning restore IDE1006, VSTHRD200
+    public async Task<string> GetErdAsync(
         [Description("Absolute path to a .cs file containing a DbContext or ModelSnapshot.")]
         string path,
         [Description("Specific DbContext or ModelSnapshot class name to use if multiple are present.")]
         string? contextName = null,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
-#pragma warning disable RCS1163
         CancellationToken cancellationToken = default)
-#pragma warning restore RCS1163
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
         if (!File.Exists(path))
@@ -141,14 +132,11 @@ internal sealed class ProjGraphTools(
             throw new FileNotFoundException($"File not found: {path}", path);
         }
 
-        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException($"Only .cs files are supported. Got: {path}", nameof(path));
-        }
+        FilePathGuard.RequireCsFile(path);
 
         EfModel model;
 
-        if (path.EndsWith("ModelSnapshot.cs", StringComparison.OrdinalIgnoreCase))
+        if (path.EndsWith($"ModelSnapshot{FilePathGuard.CSharpExtension}", StringComparison.OrdinalIgnoreCase))
         {
             var snapshots = await efService.DiscoverSnapshotsAsync(path);
 
@@ -156,9 +144,9 @@ internal sealed class ProjGraphTools(
                 ? contextName
                 : snapshots.Count switch
                 {
-                    0 => throw new InvalidOperationException($"No ModelSnapshot found in '{path}'."),
+                    0 => throw new AnalysisException($"No ModelSnapshot found in '{path}'."),
                     1 => snapshots[0],
-                    _ => throw new InvalidOperationException(
+                    _ => throw new AnalysisException(
                         $"Multiple ModelSnapshots found in '{path}': {string.Join(", ", snapshots)}. Specify one using the contextName parameter.")
                 };
 

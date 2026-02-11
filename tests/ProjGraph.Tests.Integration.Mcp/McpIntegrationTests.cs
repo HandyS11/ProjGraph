@@ -9,11 +9,11 @@ public class McpIntegrationTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void GetProjectGraph_NullOrEmptyPath_ShouldThrowArgumentException(string? path)
+    public async Task GetProjectGraph_NullOrEmptyPath_ShouldThrowArgumentException(string? path)
     {
         var tools = CreateTools();
-        var act = () => tools.GetProjectGraph(path!);
-        act.Should().Throw<ArgumentException>();
+        var act = async () => await tools.GetProjectGraphAsync(path!);
+        await act.Should().ThrowAsync<ArgumentException>();
     }
 
     [Theory]
@@ -23,7 +23,7 @@ public class McpIntegrationTests
     public async Task GetClassDiagram_NullOrEmptyPath_ShouldThrowArgumentException(string? path)
     {
         var tools = CreateTools();
-        var act = () => tools.GetClassDiagram(path!);
+        var act = async () => await tools.GetClassDiagramAsync(path!);
         await act.Should().ThrowAsync<ArgumentException>();
     }
 
@@ -34,7 +34,7 @@ public class McpIntegrationTests
     public async Task GetErd_NullOrEmptyPath_ShouldThrowArgumentException(string? path)
     {
         var tools = CreateTools();
-        var act = () => tools.GetErd(path!);
+        var act = async () => await tools.GetErdAsync(path!);
         await act.Should().ThrowAsync<ArgumentException>();
     }
 

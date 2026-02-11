@@ -13,13 +13,13 @@ public class McpProjectGraphContractTests
     {
         // Arrange
         var type = typeof(ProjGraphTools);
-        var method = type.GetMethod("GetProjectGraph");
+        var method = type.GetMethod("GetProjectGraphAsync");
 
         // Assert method exists
-        method.Should().NotBeNull("GetProjectGraph method should exist");
+        method.Should().NotBeNull("GetProjectGraphAsync method should exist");
 
-        // Assert return type is string
-        method.ReturnType.Should().Be<string>("GetProjectGraph should return a string");
+        // Assert return type is Task<string>
+        method.ReturnType.Should().Be<Task<string>>("GetProjectGraph should return a Task<string>");
 
         // Assert method has McpServerTool attribute
         var toolAttr = method.GetCustomAttribute<McpServerToolAttribute>();
@@ -37,7 +37,7 @@ public class McpProjectGraphContractTests
     {
         // Arrange
         var type = typeof(ProjGraphTools);
-        var method = type.GetMethod("GetProjectGraph");
+        var method = type.GetMethod("GetProjectGraphAsync");
         var parameters = method!.GetParameters();
 
         // Assert 'path' parameter exists with correct type
@@ -56,7 +56,7 @@ public class McpProjectGraphContractTests
     {
         // Arrange
         var type = typeof(ProjGraphTools);
-        var method = type.GetMethod("GetProjectGraph");
+        var method = type.GetMethod("GetProjectGraphAsync");
         var parameters = method!.GetParameters();
 
         // Assert parameters exist (path, showTitle, cancellationToken)

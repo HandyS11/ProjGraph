@@ -148,7 +148,7 @@ public class SlnxParserTests
 
         // Assert
         paths.Should().HaveCount(2);
-        paths.All(p => Path.IsPathRooted(p)).Should().BeTrue();
+        paths.All(Path.IsPathRooted).Should().BeTrue();
     }
 
     [Fact]

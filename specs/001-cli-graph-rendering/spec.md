@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-cli-graph-rendering`
 **Created**: 2026-01-13
-**Status**: Draft
+**Status**: Complete
 **Input**: User description: "I am building a .net tool nammed projgraph. It is able to draw some graph in the CLI based on the dependencies of some .net project. Based on a .sln, .slnx or even a .csproj. There is also a mcp tool that do the same thing to be more compliant with other tools. This tool is code using a clean archi pattern and ensure code quality."
 
 ## User Scenarios & Testing *(mandatory)*

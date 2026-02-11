@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Lib.ClassDiagram.Application;
+using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Core.Infrastructure;
 
 namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
@@ -75,7 +76,7 @@ internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
     private static async Task<string?> SearchDirectoryRecursiveAsync(string directory, string typeName)
     {
         // Search files in the current directory
-        foreach (var file in Directory.EnumerateFiles(directory, "*.cs",
+        foreach (var file in Directory.EnumerateFiles(directory, FilePathGuard.CSharpFilesPattern,
                      new EnumerationOptions { IgnoreInaccessible = true }))
         {
             // Simple string check first for performance
