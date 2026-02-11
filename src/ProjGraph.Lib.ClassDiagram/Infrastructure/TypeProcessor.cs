@@ -7,6 +7,7 @@ namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 /// <summary>
 /// Provides methods for processing type queues and handling related types during analysis.
 /// </summary>
+/// <param name="symbolResolver">The symbol resolver for resolving related type symbols.</param>
 public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcessor
 {
     /// <summary>
@@ -28,6 +29,9 @@ public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcess
     /// <summary>
     /// Internal implementation of processing the type queue.
     /// </summary>
+    /// <param name="typesToAnalyze">The queue of type symbols and their depths to analyze.</param>
+    /// <param name="context">The analysis context.</param>
+    /// <param name="options">The analysis options controlling the behavior.</param>
     private async Task ProcessTypeQueueInternalAsync(
         Queue<(INamedTypeSymbol Symbol, int Depth)> typesToAnalyze,
         AnalysisContext context,

@@ -8,11 +8,11 @@ public static class EfAnalysisConstants
     /// <summary>
     /// Contains constant values for .NET type names.
     /// </summary>
-    public static class DataTypes
+    internal static class DataTypes
     {
         public const string Guid = "Guid";
         public const string Int = "int";
-        public const string String = "string";
+        public const string StringTypeName = "string";
 
         private const string Int32 = "Int32";
         private const string Int64 = "Int64";
@@ -76,21 +76,25 @@ public static class EfAnalysisConstants
         /// A set of all types treated as primitive by EF Core (ValueTypes + String).
         /// </summary>
         public static readonly IReadOnlySet<string> AllPrimitiveTypes =
-            new HashSet<string>(ValueTypes.Concat([String]), StringComparer.OrdinalIgnoreCase);
+            new HashSet<string>(ValueTypes.Concat([StringTypeName]), StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
     /// Contains constant values for Entity Framework method names.
     /// </summary>
-    public static class EfMethods
+    internal static class EfMethods
     {
-        // Relationship methods
+        /// <summary>
+        /// Relationship methods.
+        /// </summary>
         public const string HasOne = "HasOne";
         public const string HasMany = "HasMany";
         public const string WithOne = "WithOne";
         public const string WithMany = "WithMany";
 
-        // Configuration methods
+        /// <summary>
+        /// Configuration methods.
+        /// </summary>
         public const string Entity = "Entity";
         public const string ToTable = "ToTable";
         public const string Property = "Property";
@@ -105,7 +109,9 @@ public static class EfAnalysisConstants
 
         public const string UsingEntity = "UsingEntity";
 
-        // DbContext methods
+        /// <summary>
+        /// DbContext methods.
+        /// </summary>
         public const string OnModelCreating = "OnModelCreating";
         public const string BuildModel = "BuildModel";
     }
@@ -113,7 +119,7 @@ public static class EfAnalysisConstants
     /// <summary>
     /// Contains constant values for Entity Framework attribute names.
     /// </summary>
-    public static class EfAttributes
+    internal static class EfAttributes
     {
         public const string KeyAttribute = "KeyAttribute";
         public const string Key = "Key";
@@ -129,7 +135,7 @@ public static class EfAnalysisConstants
     /// <summary>
     /// Contains constant values for common property and method names.
     /// </summary>
-    public static class CommonNames
+    internal static class CommonNames
     {
         public const string Id = "Id";
         public const string TypeName = "TypeName";
@@ -144,7 +150,7 @@ public static class EfAnalysisConstants
     /// <summary>
     /// Contains constant values for collection type names.
     /// </summary>
-    public static class CollectionTypes
+    internal static class CollectionTypes
     {
         private const string ICollection = "ICollection";
         private const string IList = "IList";
@@ -171,7 +177,7 @@ public static class EfAnalysisConstants
     /// <summary>
     /// Contains constant values for string suffixes and patterns.
     /// </summary>
-    public static class Suffixes
+    internal static class Suffixes
     {
         public const string IdSuffix = "Id";
     }
@@ -179,7 +185,7 @@ public static class EfAnalysisConstants
     /// <summary>
     /// Contains constant values for relationship type keys and delimiters.
     /// </summary>
-    public static class RelationshipKeys
+    internal static class RelationshipKeys
     {
         public const string Delimiter = "-";
     }
@@ -187,7 +193,7 @@ public static class EfAnalysisConstants
     /// <summary>
     /// Contains constant values for file patterns and extensions.
     /// </summary>
-    public static class FilePatterns
+    internal static class FilePatterns
     {
         public const string CSharpFiles = "*.cs";
         public const string CSharpExtension = ".cs";
@@ -196,7 +202,7 @@ public static class EfAnalysisConstants
     /// <summary>
     /// Contains constant values for SQL type patterns and formats.
     /// </summary>
-    public static class SqlTypePatterns
+    internal static class SqlTypePatterns
     {
         public const string DecimalPattern = @"decimal\((\d+),\s*(\d+)\)";
     }
@@ -204,7 +210,7 @@ public static class EfAnalysisConstants
     /// <summary>
     /// Contains constant values for regex patterns used in Fluent API parsing.
     /// </summary>
-    public static class FluentApiPatterns
+    internal static class FluentApiPatterns
     {
         public const string EntityPattern = """Entity(?:<([^>]+)>|\("([^"]+)"(?:,\s*[^)]+)?\))""";
         public const string EntitySplitPattern = @"\.Entity(?=[<(])";

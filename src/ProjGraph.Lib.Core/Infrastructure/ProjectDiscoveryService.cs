@@ -6,7 +6,11 @@ namespace ProjGraph.Lib.Core.Infrastructure;
 /// <summary>
 /// Infrastructure implementation of project discovery and path resolution.
 /// </summary>
-public class ProjectDiscoveryService(
+/// <param name="projectParser">The parser used for extracting project references.</param>
+/// <param name="fileSystem">The file system abstraction for file operations.</param>
+/// <param name="console">The output console for user-facing messages.</param>
+/// <param name="logger">The logger for diagnostic messages.</param>
+public partial class ProjectDiscoveryService(
     IProjectParser projectParser,
     IFileSystem fileSystem,
     IOutputConsole console,
@@ -57,9 +61,9 @@ public class ProjectDiscoveryService(
                     toProcess.Enqueue(absoluteRefPath);
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is IOException or InvalidOperationException)
             {
-                logger.LogWarning(ex, "Failed to parse project '{ProjectFile}'", Path.GetFileName(currentFullPath));
+                LogProjectParseFailure(logger, ex, Path.GetFileName(currentFullPath));
                 console.WriteWarning($"Failed to parse project '{Path.GetFileName(currentFullPath)}': {ex.Message}");
             }
         }
@@ -128,7 +132,10 @@ public class ProjectDiscoveryService(
         /// <returns>A hash code based on the normalized, lowercase representation of the path.</returns>
         public int GetHashCode(string obj)
         {
-            return obj.Replace('\\', '/').ToLowerInvariant().GetHashCode();
+            return obj.Replace('\\', '/').GetHashCode(StringComparison.OrdinalIgnoreCase);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse project '{ProjectFile}'")]
+    private static partial void LogProjectParseFailure(ILogger logger, Exception ex, string projectFile);
 }

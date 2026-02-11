@@ -55,17 +55,12 @@ public static class TypeSymbolExtensions
 
         // Fallback for unresolved types or types where semantic info is incomplete
         var typeString = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat).TrimEnd('?');
-        if (typeString.Contains('.'))
+        if (typeString.Contains('.', StringComparison.Ordinal))
         {
             typeString = typeString[(typeString.LastIndexOf('.') + 1)..];
         }
 
-        if (EfAnalysisConstants.DataTypes.ValueTypes.Contains(typeString))
-        {
-            return true;
-        }
-
-        return false;
+        return EfAnalysisConstants.DataTypes.ValueTypes.Contains(typeString);
     }
 
     /// <summary>

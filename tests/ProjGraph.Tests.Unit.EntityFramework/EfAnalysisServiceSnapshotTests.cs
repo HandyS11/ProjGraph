@@ -146,7 +146,7 @@ public class EfAnalysisServiceSnapshotTests
 
         // Assert
         model.Relationships.Should().ContainSingle();
-        var rel = model.Relationships.First();
+        var rel = model.Relationships[0];
         rel.SourceEntity.Should().Be("Blog"); // Because it's OneToMany from Blog to Post
         rel.TargetEntity.Should().Be("Post");
         rel.Type.Should().Be(EfRelationshipType.OneToMany);

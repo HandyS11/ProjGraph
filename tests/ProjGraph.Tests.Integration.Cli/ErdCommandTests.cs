@@ -46,9 +46,7 @@ public class ErdCommandTests
         // Act
         var result = -1;
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
-        {
-            result = app.Run(["erd", contextPath, "--context", "MyDbContext"]);
-        });
+            result = app.Run(["erd", contextPath, "--context", "MyDbContext"]));
 
         result.Should().Be(0);
 
@@ -68,9 +66,7 @@ public class ErdCommandTests
         // Act
         var result = -1;
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
-        {
-            result = app.Run(["erd", contextPath]);
-        });
+            result = app.Run(["erd", contextPath]));
 
         result.Should().Be(0);
 
@@ -138,9 +134,7 @@ public class ErdCommandTests
             // Act
             var resultCode = 0;
             var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
-            {
-                resultCode = app.Run(["erd", csFile]);
-            });
+                resultCode = app.Run(["erd", csFile]));
 
             // Assert
             resultCode.Should().Be(1);

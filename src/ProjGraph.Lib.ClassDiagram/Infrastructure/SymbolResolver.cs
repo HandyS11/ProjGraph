@@ -9,6 +9,7 @@ namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 /// <summary>
 /// Provides methods for resolving type symbols and loading their definitions from source files.
 /// </summary>
+/// <param name="workspaceTypeDiscovery">The workspace type discovery service.</param>
 internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscovery) : ISymbolResolver
 {
     /// <summary>
@@ -47,7 +48,7 @@ internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscov
     /// <param name="foundFile">The file path where the related symbol is defined.</param>
     /// <param name="context">The <see cref="AnalysisContext"/> containing the current state of the analysis.</param>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains the resolved <see cref="INamedTypeSymbol"/> 
+    /// A task that represents the asynchronous operation. The task result contains the resolved <see cref="INamedTypeSymbol"/>
     /// if found, or the original <paramref name="relatedSymbol"/> if the symbol could not be resolved.
     /// </returns>
     private static async Task<INamedTypeSymbol?> LoadAndResolveSymbolAsync(

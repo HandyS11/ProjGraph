@@ -29,8 +29,7 @@ internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
         var root = WorkspaceRootResolver.FindWorkspaceRoot(startDirectory) ?? startDirectory;
 
         // Common file patterns to search first (optimistic)
-        var commonDirs = new[] { "Models", "Entities", "Services", "Interfaces", "Common", "Data", "Internal" };
-        foreach (var dirName in commonDirs)
+        foreach (var dirName in new[] { "Models", "Entities", "Services", "Interfaces", "Common", "Data", "Internal" })
         {
             var path = Path.Combine(root, dirName);
             if (!Directory.Exists(path))
@@ -59,7 +58,7 @@ internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
     /// <returns>
     /// The full path of the file containing the type definition if found; otherwise, null.
     /// </returns>
-    private async Task<string?> SearchDirectoryForTypeAsync(string directory, string typeName)
+    private static async Task<string?> SearchDirectoryForTypeAsync(string directory, string typeName)
     {
         return await SearchDirectoryRecursiveAsync(directory, typeName);
     }
@@ -73,7 +72,7 @@ internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
     /// <returns>
     /// The full path of the file containing the type definition if found; otherwise, null.
     /// </returns>
-    private async Task<string?> SearchDirectoryRecursiveAsync(string directory, string typeName)
+    private static async Task<string?> SearchDirectoryRecursiveAsync(string directory, string typeName)
     {
         // Search files in the current directory
         foreach (var file in Directory.EnumerateFiles(directory, "*.cs",
@@ -81,11 +80,11 @@ internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
         {
             // Simple string check first for performance
             var content = await File.ReadAllTextAsync(file);
-            if (!content.Contains($"class {typeName}") &&
-                !content.Contains($"interface {typeName}") &&
-                !content.Contains($"struct {typeName}") &&
-                !content.Contains($"enum {typeName}") &&
-                !content.Contains($"record {typeName}"))
+            if (!content.Contains($"class {typeName}", StringComparison.Ordinal) &&
+                !content.Contains($"interface {typeName}", StringComparison.Ordinal) &&
+                !content.Contains($"struct {typeName}", StringComparison.Ordinal) &&
+                !content.Contains($"enum {typeName}", StringComparison.Ordinal) &&
+                !content.Contains($"record {typeName}", StringComparison.Ordinal))
             {
                 continue;
             }

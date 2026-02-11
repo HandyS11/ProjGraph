@@ -1,5 +1,7 @@
 <Solution>
-  <Folder Name="/samples/"/>
+  <Folder Name="/samples/">
+    <File Path="samples/Directory.Build.props"/>
+  </Folder>
   <Folder Name="/samples/classdiagram/"/>
   <Folder Name="/samples/classdiagram/complex-hierarchy/">
     <Project Path="samples/classdiagram/complex-hierarchy/ComplexHierarchy.csproj"/>

@@ -8,40 +8,47 @@ namespace ProjGraph.Lib.ProjectGraph.Rendering;
 /// <summary>
 /// Base class for rendering solution graphs with ANSI console support.
 /// </summary>
-public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph>
+public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph>, IDisposable
 {
     /// <inheritdoc />
     public abstract string Format { get; }
 
-    protected readonly IAnsiConsole _console;
-    protected readonly StringWriter _writer;
+    /// <summary>
+    /// Gets the ANSI console used for rendering output.
+    /// </summary>
+    protected IAnsiConsole RenderConsole { get; }
+
+    /// <summary>
+    /// Gets the string writer that captures rendered output.
+    /// </summary>
+    protected StringWriter OutputWriter { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SolutionGraphRendererBase"/> class.
     /// </summary>
     protected SolutionGraphRendererBase()
     {
-        _writer = new StringWriter();
+        OutputWriter = new StringWriter();
         var globalConsole = AnsiConsole.Console;
-        _console = AnsiConsole.Create(new AnsiConsoleSettings
+        RenderConsole = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = globalConsole.Profile.Capabilities.Ansi ? AnsiSupport.Yes : AnsiSupport.No,
             ColorSystem = ColorSystemSupport.Detect,
-            Out = new AnsiConsoleOutput(_writer)
+            Out = new AnsiConsoleOutput(OutputWriter)
         });
 
         // Inherit capabilities from the global console (like Unicode support)
-        _console.Profile.Capabilities.Unicode = globalConsole.Profile.Capabilities.Unicode;
-        _console.Profile.Width = globalConsole.Profile.Width;
+        RenderConsole.Profile.Capabilities.Unicode = globalConsole.Profile.Capabilities.Unicode;
+        RenderConsole.Profile.Width = globalConsole.Profile.Width;
     }
 
     /// <summary>
     /// Renders the specified <see cref="SolutionGraph"/> to a string representation.
     /// </summary>
-    /// <param name="graph">The solution graph to render.</param>
+    /// <param name="model">The solution graph to render.</param>
     /// <param name="options">The options for rendering the diagram.</param>
     /// <returns>A string representation of the rendered graph.</returns>
-    public abstract string Render(SolutionGraph graph, DiagramOptions? options = null);
+    public abstract string Render(SolutionGraph model, DiagramOptions? options = null);
 
     /// <summary>
     /// Renders the header section of the solution graph visualization.
@@ -53,10 +60,10 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
         if (options?.ShowTitle ?? true)
         {
             var graphName = Markup.Escape(graph.Name.Trim());
-            _console.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });
+            RenderConsole.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });
         }
-        
-        _console.MarkupLine("[bold blue]Projects[/]");
+
+        RenderConsole.MarkupLine("[bold blue]Projects[/]");
     }
 
     /// <summary>
@@ -82,7 +89,7 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     {
         if (cyclicProjectIds.Count is not 0)
         {
-            _console.MarkupLine(
+            RenderConsole.MarkupLine(
                 "\n[red]⚠ Cycles detected![/] The projects in [red]red[/] are part of a circular dependency.");
         }
     }
@@ -101,5 +108,24 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
             .Where(c => c.Count > 1)
             .SelectMany(c => c)
         ];
+    }
+
+    /// <summary>
+    /// Releases the resources used by the <see cref="SolutionGraphRendererBase"/>.
+    /// </summary>
+    /// <param name="disposing">A value indicating whether managed resources should be disposed.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            OutputWriter.Dispose();
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

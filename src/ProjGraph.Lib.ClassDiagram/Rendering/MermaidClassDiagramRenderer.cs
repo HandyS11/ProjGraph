@@ -1,5 +1,6 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
+using System.Globalization;
 using System.Text;
 
 namespace ProjGraph.Lib.ClassDiagram.Rendering;
@@ -30,9 +31,9 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
 
         if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(model.Title))
         {
-            sb.AppendLine("---");
-            sb.AppendLine($"title: {model.Title}");
-            sb.AppendLine("---");
+            sb.AppendLine("---")
+                .AppendLine(CultureInfo.InvariantCulture, $"title: {model.Title}")
+                .AppendLine("---");
         }
 
         sb.AppendLine("classDiagram");
@@ -66,32 +67,33 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
         var displayName = type.Name;
 
         // Use generics syntax supported by Mermaid (~T~)
-        if (displayName.Contains('<'))
+        if (displayName.Contains('<', StringComparison.Ordinal))
         {
             displayName = displayName.Replace('<', '~').Replace('>', '~');
         }
 
-        sb.AppendLine($"    class {sanitizedName} [\"{displayName}\"]");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"    class {sanitizedName} [\"{displayName}\"]");
 
         // Render stereotypes
         // For interfaces, only render the interface stereotype (they are inherently abstract)
         // Mermaid can only display one stereotype, so prioritize the type kind over abstract
         if (type is { IsAbstract: true, Kind: TypeKind.Class })
         {
-            sb.AppendLine($"    <<abstract>> {sanitizedName}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"    <<abstract>> {sanitizedName}");
         }
 
         if (type.Kind != TypeKind.Class)
         {
-            sb.AppendLine($"    <<{type.Kind.ToString().ToLower()}>> {sanitizedName}");
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"    <<{type.Kind.ToString().ToLowerInvariant()}>> {sanitizedName}");
         }
 
-        if (type.Members.Count <= 0)
+        if (type.Members.Count == 0)
         {
             return;
         }
 
-        sb.AppendLine($"    class {sanitizedName} {{");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"    class {sanitizedName} {{");
         foreach (var member in type.Members)
         {
             RenderMember(sb, member);
@@ -116,16 +118,16 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
                 ? string.Join(", ",
                     member.Parameters.Select(p => $"{p.Type.Replace('<', '~').Replace('>', '~')} {p.Name}"))
                 : "";
-            sb.AppendLine($"        {visibility}{member.Name}({parameters}) {type}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"        {visibility}{member.Name}({parameters}) {type}");
         }
         else if (string.IsNullOrEmpty(type))
         {
             // For enum fields, only show the name without type
-            sb.AppendLine($"        {visibility}{member.Name}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"        {visibility}{member.Name}");
         }
         else
         {
-            sb.AppendLine($"        {visibility}{type} {member.Name}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"        {visibility}{type} {member.Name}");
         }
     }
 
@@ -177,7 +179,7 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
             }
         }
 
-        sb.AppendLine($"    {relationshipStr}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"    {relationshipStr}");
     }
 
     /// <summary>

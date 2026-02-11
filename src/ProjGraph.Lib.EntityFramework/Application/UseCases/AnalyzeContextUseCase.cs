@@ -5,6 +5,7 @@ namespace ProjGraph.Lib.EntityFramework.Application.UseCases;
 /// <summary>
 /// Use case for analyzing a specified DbContext class.
 /// </summary>
+/// <param name="modelAnalyzer">The EF model analyzer used for context analysis.</param>
 public class AnalyzeContextUseCase(IEfModelAnalyzer modelAnalyzer)
 {
     /// <summary>

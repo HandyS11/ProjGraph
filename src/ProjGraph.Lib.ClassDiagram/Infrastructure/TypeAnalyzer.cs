@@ -49,18 +49,16 @@ internal static class TypeAnalyzer
                         MemberKind.Field));
                     break;
                 case IMethodSymbol { MethodKind: MethodKind.Ordinary } method:
-                    {
-                        var parameters = method.Parameters
-                            .Select(p => new ParameterDefinition(p.Name, p.Type.ToDisplayString(ShortNameFormat)))
-                            .ToList();
-                        members.Add(new MemberDefinition(
-                            method.Name,
-                            method.ReturnType.ToDisplayString(ShortNameFormat),
-                            MapAccessibility(method.DeclaredAccessibility),
-                            MemberKind.Method,
-                            parameters));
-                        break;
-                    }
+                    var parameters = method.Parameters
+                        .Select(p => new ParameterDefinition(p.Name, p.Type.ToDisplayString(ShortNameFormat)))
+                        .ToList();
+                    members.Add(new MemberDefinition(
+                        method.Name,
+                        method.ReturnType.ToDisplayString(ShortNameFormat),
+                        MapAccessibility(method.DeclaredAccessibility),
+                        MemberKind.Method,
+                        parameters));
+                    break;
             }
         }
 
@@ -85,7 +83,7 @@ internal static class TypeAnalyzer
         var fullyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
         // Remove the leading "global::" prefix if present
-        if (fullyQualifiedName.StartsWith("global::"))
+        if (fullyQualifiedName.StartsWith("global::", StringComparison.Ordinal))
         {
             fullyQualifiedName = fullyQualifiedName[8..];
         }

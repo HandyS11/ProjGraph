@@ -15,36 +15,36 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
     /// <summary>
     /// Renders a <see cref="SolutionGraph"/> as a tree structure, displaying project dependencies hierarchically.
     /// </summary>
-    /// <param name="graph">The <see cref="SolutionGraph"/> to render.</param>
+    /// <param name="model">The <see cref="SolutionGraph"/> to render.</param>
     /// <param name="options">The options for rendering the diagram.</param>
     /// <returns>A string representation of the solution graph rendered as a tree.</returns>
     /// <remarks>
     /// This method identifies root projects (those with no incoming dependencies) and renders each as a separate tree branch.
-    /// Projects involved in cyclic dependencies are highlighted in red, and cycle detection is performed using the 
+    /// Projects involved in cyclic dependencies are highlighted in red, and cycle detection is performed using the
     /// <see cref="SolutionGraphRendererBase.GetCyclicProjectIds"/> method.
     /// </remarks>
-    public override string Render(SolutionGraph graph, DiagramOptions? options = null)
+    public override string Render(SolutionGraph model, DiagramOptions? options = null)
     {
-        _writer.GetStringBuilder().Clear();
+        OutputWriter.GetStringBuilder().Clear();
 
-        RenderHeader(graph, options);
+        RenderHeader(model, options);
 
         // Identify incoming dependency counts to find roots
-        var incomingCounts = graph.Projects.ToDictionary(p => p.Id, _ => 0);
-        foreach (var dep in graph.Dependencies.Where(d => incomingCounts.ContainsKey(d.TargetId)))
+        var incomingCounts = model.Projects.ToDictionary(p => p.Id, _ => 0);
+        foreach (var dep in model.Dependencies.Where(d => incomingCounts.ContainsKey(d.TargetId)))
         {
             incomingCounts[dep.TargetId]++;
         }
 
-        var cyclicProjectIds = GetCyclicProjectIds(graph);
+        var cyclicProjectIds = GetCyclicProjectIds(model);
 
         var globalVisited = new HashSet<Guid>();
 
         // 1. Print the Solution Name as the main header
-        _console.MarkupLine($"[bold blue]{Markup.Escape(graph.Name.Trim())}[/]");
+        RenderConsole.MarkupLine($"[bold blue]{Markup.Escape(model.Name.Trim())}[/]");
 
         // 2. Identify "Root" projects: projects with 0 incoming dependencies
-        var rootProjects = graph.Projects
+        var rootProjects = model.Projects
             .Where(p => incomingCounts[p.Id] == 0)
             .OrderBy(p => p.Type)
             .ThenBy(p => p.Name)
@@ -53,33 +53,33 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
         // 3. Render each root branch as a separate tree
         foreach (var project in rootProjects)
         {
-            _console.WriteLine(); // Spacing line between branches
+            RenderConsole.WriteLine(); // Spacing line between branches
             var rootLabel = GetProjectMarkup(project, cyclicProjectIds);
             var tree = new Tree(rootLabel);
 
-            AddChildrenRecursive(tree, project, graph, [], globalVisited, cyclicProjectIds);
-            _console.Write(tree);
+            AddChildrenRecursive(tree, project, model, [], globalVisited, cyclicProjectIds);
+            RenderConsole.Write(tree);
         }
 
         // 4. Add remaining projects (those not reachable from roots)
-        var remainingProjects = graph.Projects
+        var remainingProjects = model.Projects
             .Where(p => !globalVisited.Contains(p.Id))
             .OrderBy(p => p.Name)
             .ToList();
 
         foreach (var project in remainingProjects.Where(project => !globalVisited.Contains(project.Id)))
         {
-            _console.WriteLine();
+            RenderConsole.WriteLine();
             var rootLabel = GetProjectMarkup(project, cyclicProjectIds);
             var tree = new Tree(rootLabel);
 
-            AddChildrenRecursive(tree, project, graph, [], globalVisited, cyclicProjectIds);
-            _console.Write(tree);
+            AddChildrenRecursive(tree, project, model, [], globalVisited, cyclicProjectIds);
+            RenderConsole.Write(tree);
         }
 
         RenderCycleWarning(cyclicProjectIds);
 
-        return _writer.ToString();
+        return OutputWriter.ToString();
     }
 
     /// <summary>
@@ -92,7 +92,7 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
     /// <param name="globalVisited">A <see cref="HashSet{T}"/> tracking all visited <see cref="Project"/> IDs to avoid duplicate rendering.</param>
     /// <param name="cyclicProjectIds">A <see cref="HashSet{T}"/> of <see cref="Guid"/>s representing projects involved in cycles.</param>
     /// <remarks>
-    /// This method uses depth-first traversal to build the tree structure. It detects cycles by checking if a dependency 
+    /// This method uses depth-first traversal to build the tree structure. It detects cycles by checking if a dependency
     /// is already in the <paramref name="currentPath"/> and marks cycle edges with red color and "(cycle detected)" label.
     /// Cyclic projects are colored differently from normal dependencies using the <see cref="SolutionGraphRendererBase.GetProjectTypeIcon"/> method.
     /// </remarks>

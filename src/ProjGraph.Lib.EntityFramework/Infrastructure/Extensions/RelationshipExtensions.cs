@@ -22,7 +22,7 @@ public static class RelationshipExtensions
         if (relationship.Type is EfRelationshipType.OneToOne or EfRelationshipType.ManyToMany)
         {
             var entitiesSorted = new[] { relationship.SourceEntity, relationship.TargetEntity }
-                .OrderBy(e => e)
+                .Order()
                 .ToArray();
             return
                 $"{entitiesSorted[0]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{entitiesSorted[1]}{EfAnalysisConstants.RelationshipKeys.Delimiter}{relationship.Type}";

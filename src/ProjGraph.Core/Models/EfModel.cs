@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace ProjGraph.Core.Models;
 
 /// <summary>
@@ -11,14 +13,14 @@ public class EfModel
     public string ContextName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the list of entities in the model.
+    /// Gets or sets the collection of entities in the model.
     /// </summary>
-    public List<EfEntity> Entities { get; set; } = [];
+    public Collection<EfEntity> Entities { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets the list of relationships between entities in the model.
+    /// Gets or sets the collection of relationships between entities in the model.
     /// </summary>
-    public List<EfRelationship> Relationships { get; set; } = [];
+    public Collection<EfRelationship> Relationships { get; set; } = [];
 }
 
 /// <summary>
@@ -32,9 +34,9 @@ public class EfEntity
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the list of properties associated with the entity.
+    /// Gets or sets the collection of properties associated with the entity.
     /// </summary>
-    public List<EfProperty> Properties { get; set; } = [];
+    public Collection<EfProperty> Properties { get; set; } = [];
 
     /// <summary>
     /// Gets or sets a value indicating whether the entity is a join entity.

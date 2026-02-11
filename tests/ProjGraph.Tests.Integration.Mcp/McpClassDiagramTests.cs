@@ -121,7 +121,6 @@ public sealed class McpClassDiagramTests : IDisposable
         return McpTestHelper.CreateTools();
     }
 
-    #region Basic Class Diagram Tests
 
     [Fact]
     public async Task GetClassDiagram_SimpleClasses_ShouldReturnValidMermaid()
@@ -171,9 +170,6 @@ public sealed class McpClassDiagramTests : IDisposable
         await act.Should().ThrowAsync<Exception>();
     }
 
-    #endregion
-
-    #region Inheritance Tests
 
     [Fact]
     public async Task GetClassDiagram_WithInheritance_ShouldShowBaseClasses()
@@ -224,9 +220,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().NotContain("<|--");
     }
 
-    #endregion
-
-    #region Dependencies Tests
 
     [Fact]
     public async Task GetClassDiagram_WithDependencies_ShouldShowRelatedClasses()
@@ -261,9 +254,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().NotContain("-->");
     }
 
-    #endregion
-
-    #region Depth Tests
 
     [Fact]
     public async Task GetClassDiagram_WithDepth1_ShouldLimitRelationshipDepth()
@@ -298,9 +288,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().Contain("class TestNamespace_Order");
     }
 
-    #endregion
-
-    #region Real Project Tests
 
     [Fact]
     public async Task GetClassDiagram_RealProject_CoreModels_ShouldGenerateDiagram()
@@ -323,9 +310,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().Contain("classDiagram");
     }
 
-    #endregion
-
-    #region Parameter Combination Tests
 
     [Fact]
     public async Task GetClassDiagram_AllOptionsEnabled_ShouldWorkCorrectly()
@@ -365,8 +349,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().Contain("class TestNamespace_User");
         result.Should().Contain("class TestNamespace_Admin");
     }
-
-    #endregion
 
     private static string GetProjectPath(string relativePath)
     {

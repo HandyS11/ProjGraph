@@ -52,8 +52,6 @@ public sealed class McpErdTests : IDisposable
         return McpTestHelper.CreateTools();
     }
 
-    #region Simple In-Memory DbContext Tests
-
     [Fact]
     public async Task GetErd_SimpleDbContext_ShouldReturnValidMermaid()
     {
@@ -99,10 +97,6 @@ public sealed class McpErdTests : IDisposable
         // Assert
         result.Should().Contain("Blog ||--o{ Post");
     }
-
-    #endregion
-
-    #region Sample Project Tests
 
     [Fact]
     public async Task GetErd_SimpleContext_ShouldGenerateCompleteErDiagram()
@@ -191,10 +185,6 @@ public sealed class McpErdTests : IDisposable
         result.Should().Contain("int BookId FK");
     }
 
-    #endregion
-
-    #region Error Handling
-
     [Fact]
     public async Task GetErd_NonExistentFile_ShouldThrow()
     {
@@ -238,8 +228,6 @@ public sealed class McpErdTests : IDisposable
         // Assert
         await act.Should().ThrowAsync<Exception>();
     }
-
-    #endregion
 
     public void Dispose()
     {

@@ -29,6 +29,7 @@ public sealed class CompilationFactory : ICompilationFactory
     /// <summary>
     /// Creates a new Roslyn <see cref="CSharpCompilation"/> object.
     /// </summary>
+    /// <param name="syntaxTrees">The syntax trees to compile.</param>
     private static CSharpCompilation CreateCSharpCompilation(IEnumerable<SyntaxTree> syntaxTrees)
     {
         var references = BuildMetadataReferences();
@@ -82,7 +83,7 @@ public sealed class CompilationFactory : ICompilationFactory
         {
             references.Add(MetadataReference.CreateFromFile(Assembly.Load(assemblyName).Location));
         }
-        catch
+        catch (FileNotFoundException)
         {
             // Not critical if not found
         }
@@ -93,8 +94,8 @@ public sealed class CompilationFactory : ICompilationFactory
     /// </summary>
     /// <param name="references">The list of metadata references to which the Data Annotations reference will be added.</param>
     /// <remarks>
-    /// This method first tries to load the "System.ComponentModel.Annotations" assembly. 
-    /// If it fails, it attempts to load the "System.ComponentModel.DataAnnotations" assembly instead. 
+    /// This method first tries to load the "System.ComponentModel.Annotations" assembly.
+    /// If it fails, it attempts to load the "System.ComponentModel.DataAnnotations" assembly instead.
     /// If both attempts fail, the method fails silently as the reference is not critical.
     /// </remarks>
     private static void TryAddDataAnnotationsReference(List<MetadataReference> references)
@@ -105,7 +106,7 @@ public sealed class CompilationFactory : ICompilationFactory
                 MetadataReference.CreateFromFile(
                     Assembly.Load("System.ComponentModel.Annotations").Location));
         }
-        catch
+        catch (FileNotFoundException)
         {
             try
             {
@@ -113,7 +114,7 @@ public sealed class CompilationFactory : ICompilationFactory
                     MetadataReference.CreateFromFile(
                         Assembly.Load("System.ComponentModel.DataAnnotations").Location));
             }
-            catch
+            catch (FileNotFoundException)
             {
                 // Not critical if not found
             }
@@ -136,7 +137,7 @@ public sealed class CompilationFactory : ICompilationFactory
                 references.Add(MetadataReference.CreateFromFile(efCoreAssembly.Location));
             }
         }
-        catch
+        catch (FileNotFoundException)
         {
             // Not critical if not found
         }

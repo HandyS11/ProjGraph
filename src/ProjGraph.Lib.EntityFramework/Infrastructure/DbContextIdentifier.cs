@@ -17,7 +17,8 @@ public static class DbContextIdentifier
     /// </returns>
     public static bool IsDbContext(ClassDeclarationSyntax @class)
     {
-        return @class.BaseList?.Types.Any(t => t.ToString().Contains(EfAnalysisConstants.CommonNames.DbContext)) ??
+        return @class.BaseList?.Types.Any(t =>
+                   t.ToString().Contains(EfAnalysisConstants.CommonNames.DbContext, StringComparison.Ordinal)) ??
                false;
     }
 
@@ -30,7 +31,8 @@ public static class DbContextIdentifier
     /// </returns>
     public static bool IsModelSnapshot(ClassDeclarationSyntax @class)
     {
-        return @class.BaseList?.Types.Any(t => t.ToString().Contains(EfAnalysisConstants.CommonNames.ModelSnapshot)) ??
+        return @class.BaseList?.Types.Any(t =>
+                   t.ToString().Contains(EfAnalysisConstants.CommonNames.ModelSnapshot, StringComparison.Ordinal)) ??
                false;
     }
 

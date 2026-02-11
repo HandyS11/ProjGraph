@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using ProjGraph.Core.Models;
+using System.Collections.ObjectModel;
 
 namespace ProjGraph.Lib.ClassDiagram.Application;
 
@@ -18,12 +19,12 @@ public sealed class AnalysisContext
     /// <summary>
     /// A list of type definitions discovered during the analysis.
     /// </summary>
-    public required List<TypeDefinition> Types { get; init; }
+    public required Collection<TypeDefinition> Types { get; init; }
 
     /// <summary>
     /// A list of relationships between the analyzed types.
     /// </summary>
-    public required List<Relationship> Relationships { get; init; }
+    public required Collection<Relationship> Relationships { get; init; }
 
     /// <summary>
     /// The Roslyn CSharpCompilation object used for semantic analysis.
@@ -34,6 +35,8 @@ public sealed class AnalysisContext
     /// Adds syntax trees to the compilation, returning the updated compilation.
     /// This is the only way to mutate the compilation after construction.
     /// </summary>
+    /// <param name="trees">The syntax trees to add to the compilation.</param>
+    /// <returns>The updated <see cref="CSharpCompilation"/>.</returns>
     public CSharpCompilation AddSyntaxTrees(params SyntaxTree[] trees)
     {
         Compilation = Compilation.AddSyntaxTrees(trees);

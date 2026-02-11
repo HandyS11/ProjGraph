@@ -147,8 +147,8 @@ public static class RelationshipAnalyzer
     {
         var potentialNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            $"{navigationName}{EfAnalysisConstants.Suffixes.IdSuffix}",
-            $"{targetEntityName}{EfAnalysisConstants.Suffixes.IdSuffix}"
+            navigationName + EfAnalysisConstants.Suffixes.IdSuffix,
+            targetEntityName + EfAnalysisConstants.Suffixes.IdSuffix
         };
 
         foreach (var prop in entity.Properties.Where(prop => potentialNames.Contains(prop.Name)))
@@ -262,9 +262,9 @@ public static class RelationshipAnalyzer
             model.Relationships.Remove(m2m);
 
             var entitiesSorted = new[] { m2m.SourceEntity, m2m.TargetEntity }
-                .OrderBy(e => e)
+                .Order()
                 .ToArray();
-            var joinTableName = $"{entitiesSorted[0]}{entitiesSorted[1]}";
+            var joinTableName = entitiesSorted[0] + entitiesSorted[1];
 
             var sourceEntity = model.Entities.FirstOrDefault(e => e.Name == m2m.SourceEntity);
             var targetEntity = model.Entities.FirstOrDefault(e => e.Name == m2m.TargetEntity);
@@ -315,7 +315,7 @@ public static class RelationshipAnalyzer
             [
                 new EfProperty
                 {
-                    Name = $"{m2m.SourceEntity}{EfAnalysisConstants.Suffixes.IdSuffix}",
+                    Name = m2m.SourceEntity + EfAnalysisConstants.Suffixes.IdSuffix,
                     Type = sourcePkType,
                     IsPrimaryKey = true,
                     IsForeignKey = true,
@@ -323,7 +323,7 @@ public static class RelationshipAnalyzer
                 },
                 new EfProperty
                 {
-                    Name = $"{m2m.TargetEntity}{EfAnalysisConstants.Suffixes.IdSuffix}",
+                    Name = m2m.TargetEntity + EfAnalysisConstants.Suffixes.IdSuffix,
                     Type = targetPkType,
                     IsPrimaryKey = true,
                     IsForeignKey = true,

@@ -9,6 +9,7 @@ namespace ProjGraph.Lib.Core.Parsers;
 /// <summary>
 /// Provides functionality to parse project files and extract project details and references.
 /// </summary>
+/// <param name="fileSystem">The file system abstraction for file operations.</param>
 public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
 {
     /// <summary>
@@ -66,6 +67,8 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
     /// Generates a deterministic GUID from the normalized absolute path of the project file.
     /// Parsing the same project twice will always yield the same ID.
     /// </summary>
+    /// <param name="projectPath">The file path of the project.</param>
+    /// <returns>A deterministic <see cref="Guid"/> derived from the normalized path.</returns>
     private static Guid GenerateDeterministicId(string projectPath)
     {
         var normalizedPath = Path.GetFullPath(projectPath)

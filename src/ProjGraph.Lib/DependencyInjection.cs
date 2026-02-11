@@ -10,7 +10,7 @@ namespace ProjGraph.Lib;
 /// Provides extension methods for registering services and dependencies
 /// required by the ProjGraph library.
 /// </summary>
-public static class DependencyInjection
+public static class ServiceRegistration
 {
     /// <summary>
     /// Adds the ProjGraph library services and dependencies to the specified

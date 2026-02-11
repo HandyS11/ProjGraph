@@ -6,6 +6,7 @@ namespace ProjGraph.Lib.ProjectGraph.Application;
 /// <summary>
 /// Service responsible for building a solution graph from a given file path.
 /// </summary>
+/// <param name="buildGraphUseCase">The use case for building solution graphs.</param>
 public class GraphService(BuildGraphUseCase buildGraphUseCase) : IGraphService
 {
     /// <inheritdoc />

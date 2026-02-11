@@ -131,9 +131,6 @@ public class SpectreOutputConsole : IOutputConsole
     {
         await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
-            .StartAsync(statusMessage, async _ =>
-            {
-                await action();
-            });
+            .StartAsync(statusMessage, async _ => await action());
     }
 }

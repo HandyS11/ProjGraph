@@ -10,11 +10,13 @@ namespace ProjGraph.Lib.ProjectGraph;
 /// <summary>
 /// Provides extension methods for registering ProjectGraph services.
 /// </summary>
-public static class DependencyInjection
+public static class ServiceRegistration
 {
     /// <summary>
     /// Adds ProjectGraph specific services to the service collection.
     /// </summary>
+    /// <param name="services">The service collection to add services to.</param>
+    /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddProjGraphProjectGraph(this IServiceCollection services)
     {
         services.AddSingleton<BuildGraphUseCase>();

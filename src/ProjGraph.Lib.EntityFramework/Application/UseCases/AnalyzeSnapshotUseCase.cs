@@ -5,6 +5,7 @@ namespace ProjGraph.Lib.EntityFramework.Application.UseCases;
 /// <summary>
 /// Use case for analyzing an Entity Framework ModelSnapshot.
 /// </summary>
+/// <param name="modelAnalyzer">The EF model analyzer used for snapshot analysis.</param>
 public class AnalyzeSnapshotUseCase(IEfModelAnalyzer modelAnalyzer)
 {
     /// <summary>

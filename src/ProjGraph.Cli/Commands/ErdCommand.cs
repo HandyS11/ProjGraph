@@ -6,6 +6,7 @@ using Spectre.Console.Cli;
 using System.ComponentModel;
 
 // ReSharper disable ClassNeverInstantiated.Global
+#pragma warning disable CA1812 // Types are instantiated by Spectre.Console DI via reflection
 
 namespace ProjGraph.Cli.Commands;
 
@@ -17,7 +18,10 @@ namespace ProjGraph.Cli.Commands;
 /// to configure the path to the DbContext/ModelSnapshot file and the optional name. It processes the input
 /// and generates a Mermaid ERD diagram based on the analyzed Entity Framework model.
 /// </remarks>
-public sealed class ErdCommand(
+/// <param name="efService">The Entity Framework analysis service for discovering and analyzing contexts and snapshots.</param>
+/// <param name="mermaidRenderer">The diagram renderer for producing Mermaid ERD output.</param>
+/// <param name="console">The output console for writing results and errors.</param>
+internal sealed class ErdCommand(
     IEfAnalysisService efService,
     IDiagramRenderer<EfModel> mermaidRenderer,
     IOutputConsole console)
@@ -30,7 +34,7 @@ public sealed class ErdCommand(
     /// This class contains the configuration options for the `ErdCommand`, including the path to the input file
     /// and the optional context/snapshot name. It also provides validation for the input settings.
     /// </remarks>
-    public sealed class Settings : CommandSettings
+    internal sealed class Settings : CommandSettings
     {
         /// <summary>
         /// Gets or sets the path to a .cs file containing a DbContext or ModelSnapshot.
@@ -120,7 +124,9 @@ public sealed class ErdCommand(
 
             return 0;
         }
+#pragma warning disable CA1031 // Do not catch general exception type — CLI handler intentionally catches all for user-friendly display
         catch (Exception ex)
+#pragma warning restore CA1031
         {
             console.WriteError(ex.Message);
             return 1;
@@ -275,6 +281,7 @@ public sealed class ErdCommand(
     /// <param name="console">The output console for user interaction.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The selected item name.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no items are found in the list.</exception>
     private static async Task<string> SelectItemAsync(
         List<string> items,
         string? providedName,

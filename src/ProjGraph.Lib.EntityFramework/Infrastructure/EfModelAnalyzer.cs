@@ -13,6 +13,9 @@ namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 /// <summary>
 /// Infrastructure implementation for advanced Entity Framework model analysis using Roslyn and semantic models.
 /// </summary>
+/// <param name="compilationFactory">The factory for creating Roslyn compilations.</param>
+/// <param name="fileSystem">The file system abstraction for reading source files.</param>
+/// <param name="entityFileDiscovery">The service for discovering entity-related source files.</param>
 public class EfModelAnalyzer(
     ICompilationFactory compilationFactory,
     IFileSystem fileSystem,
@@ -130,7 +133,7 @@ public class EfModelAnalyzer(
     /// <param name="contextSyntaxTree">The <see cref="SyntaxTree"/> of the DbContext file.</param>
     /// <returns>A <see cref="Task{TResult}"/> that resolves to a list of <see cref="SyntaxTree"/> objects.</returns>
     /// <seealso cref="entityFileDiscovery.ExtractEntityTypeNames(ClassDeclarationSyntax)"/>
-    /// <seealso cref="entityFileDiscovery.DiscoverEntityFilesAsync(List{string}, HashSet{string}, string)"/>
+    /// <seealso cref="entityFileDiscovery.DiscoverEntityFilesAsync(IReadOnlyList{string}, HashSet{string}, string)"/>
     /// <seealso cref="entityFileDiscovery.DiscoverBaseClassFilesAsync(Dictionary{string, string}, string)"/>
     /// <seealso cref="CreateSyntaxTrees(SyntaxTree, Dictionary{string, string})"/>
     private async Task<List<SyntaxTree>> BuildSyntaxTreesAsync(
@@ -178,7 +181,11 @@ public class EfModelAnalyzer(
         var model = new EfModel { ContextName = contextType.Name };
         var entities = DiscoverEntitiesFromDbSets(contextType);
 
-        model.Entities.AddRange(entities.Values);
+        foreach (var entity in entities.Values)
+        {
+            model.Entities.Add(entity);
+        }
+
         FluentApiConfigurationParser.ApplyFluentApiConstraints(contextType, entities, model, compilation);
         RelationshipAnalyzer.AnalyzeRelationships(model, entities, compilation);
 
@@ -204,7 +211,10 @@ public class EfModelAnalyzer(
             .Select(g => g.First())
             .ToList();
         model.Entities.Clear();
-        model.Entities.AddRange(uniqueEntities);
+        foreach (var entity in uniqueEntities)
+        {
+            model.Entities.Add(entity);
+        }
 
         var uniqueRelationships = model.Relationships
             .GroupBy(r => r.GenerateKey())
@@ -226,7 +236,10 @@ public class EfModelAnalyzer(
             .ToList();
 
         model.Relationships.Clear();
-        model.Relationships.AddRange(finalRelationships);
+        foreach (var relationship in finalRelationships)
+        {
+            model.Relationships.Add(relationship);
+        }
     }
 
     /// <summary>
@@ -270,7 +283,7 @@ public class EfModelAnalyzer(
     /// <param name="snapshotSyntaxTree">The <see cref="SyntaxTree"/> of the ModelSnapshot file.</param>
     /// <returns>A <see cref="Task{TResult}"/> that resolves to a list of <see cref="SyntaxTree"/> objects.</returns>
     /// <seealso cref="ExtractEntityTypeNamesFromSnapshot(ClassDeclarationSyntax)"/>
-    /// <seealso cref="entityFileDiscovery.DiscoverEntityFilesAsync(List{string}, HashSet{string}, string)"/>
+    /// <seealso cref="entityFileDiscovery.DiscoverEntityFilesAsync(IReadOnlyList{string}, HashSet{string}, string)"/>
     /// <seealso cref="entityFileDiscovery.DiscoverBaseClassFilesAsync(Dictionary{string, string}, string)"/>
     /// <seealso cref="CreateSyntaxTrees(SyntaxTree, Dictionary{string, string})"/>
     private async Task<List<SyntaxTree>> BuildSnapshotSyntaxTreesAsync(
@@ -329,7 +342,7 @@ public class EfModelAnalyzer(
         var shortNames = entityMatches
             .Select(match => match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value)
             .Where(fullName => !string.IsNullOrEmpty(fullName))
-            .Select(fullName => fullName.Contains('.') ? fullName.Split('.')[^1] : fullName);
+            .Select(fullName => fullName.Contains('.', StringComparison.Ordinal) ? fullName.Split('.')[^1] : fullName);
 
         foreach (var shortName in shortNames)
         {

@@ -116,11 +116,11 @@ internal static class RelationshipAnalyzer
 
         // Detect if this is a collection type
         var isCollection = namedType.IsGenericType &&
-                           (namedType.Name.Contains("List") ||
-                            namedType.Name.Contains("Collection") ||
-                            namedType.Name.Contains("IEnumerable") ||
-                            namedType.Name.Contains("Array") ||
-                            namedType.Name.Contains("Set"));
+                           (namedType.Name.Contains("List", StringComparison.Ordinal) ||
+                            namedType.Name.Contains("Collection", StringComparison.Ordinal) ||
+                            namedType.Name.Contains("IEnumerable", StringComparison.Ordinal) ||
+                            namedType.Name.Contains("Array", StringComparison.Ordinal) ||
+                            namedType.Name.Contains("Set", StringComparison.Ordinal));
 
         var cardinality = isCollection ? "*" : "1";
 

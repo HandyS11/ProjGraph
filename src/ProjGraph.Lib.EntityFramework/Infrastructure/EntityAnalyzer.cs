@@ -5,12 +5,13 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Extensions;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Patterns;
+using System.Globalization;
 
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
 /// <summary>
-/// Provides methods for analyzing entity type symbols and extracting metadata such as properties, 
-/// primary keys, and constraints. This class is implemented as a partial class to allow for 
+/// Provides methods for analyzing entity type symbols and extracting metadata such as properties,
+/// primary keys, and constraints. This class is implemented as a partial class to allow for
 /// extension in other files.
 /// </summary>
 public static class EntityAnalyzer
@@ -241,12 +242,10 @@ public static class EntityAnalyzer
             {
                 Expression: IdentifierNameSyntax { Identifier.Text: EfAnalysisConstants.CommonNames.Nameof }
             } invocation:
-                {
                     var args = invocation.ArgumentList.Arguments;
                     if (args.Count > 0)
                     {
-                        var argExpr = args[0].Expression;
-                        switch (argExpr)
+                        switch (args[0].Expression)
                         {
                             case MemberAccessExpressionSyntax ma:
                                 return ma.Name.Identifier.Text;
@@ -256,7 +255,6 @@ public static class EntityAnalyzer
                     }
 
                     break;
-                }
             case LiteralExpressionSyntax literal when
                 literal.IsKind(SyntaxKind.StringLiteralExpression):
                 return literal.Token.ValueText;
@@ -282,13 +280,11 @@ public static class EntityAnalyzer
         INamedTypeSymbol currentType,
         HashSet<string> primaryKeyNames)
     {
-        var isPrimaryKey = IsPrimaryKey(prop.Name, entityType.Name, currentType.Name, primaryKeyNames);
-
         return new EfProperty
         {
             Name = prop.Name,
             Type = prop.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
-            IsPrimaryKey = isPrimaryKey,
+            IsPrimaryKey = IsPrimaryKey(prop.Name, entityType.Name, currentType.Name, primaryKeyNames),
             IsForeignKey = false,
             IsRequired = !prop.Type.IsNullable() || prop.IsRequired,
             IsExplicitlyRequired = prop.IsRequired,
@@ -339,9 +335,9 @@ public static class EntityAnalyzer
         // 3. Property named "{EntityName}Id" pattern
         if (propName.EndsWith(EfAnalysisConstants.CommonNames.Id, StringComparison.OrdinalIgnoreCase))
         {
-            return propName.Equals($"{entityTypeName}{EfAnalysisConstants.CommonNames.Id}",
+            return propName.Equals(entityTypeName + EfAnalysisConstants.CommonNames.Id,
                        StringComparison.OrdinalIgnoreCase) ||
-                   propName.Equals($"{currentTypeName}{EfAnalysisConstants.CommonNames.Id}",
+                   propName.Equals(currentTypeName + EfAnalysisConstants.CommonNames.Id,
                        StringComparison.OrdinalIgnoreCase);
         }
 
@@ -386,9 +382,7 @@ public static class EntityAnalyzer
     /// </remarks>
     private static void ApplyAttributeConstraint(AttributeData attribute, EfProperty efProperty)
     {
-        var attrName = attribute.AttributeClass?.Name;
-
-        switch (attrName)
+        switch (attribute.AttributeClass?.Name)
         {
             case EfAnalysisConstants.EfAttributes.KeyAttribute:
             case EfAnalysisConstants.EfAttributes.Key:
@@ -441,8 +435,8 @@ public static class EntityAnalyzer
                 continue;
             }
 
-            efProperty.Precision = int.Parse(match.Groups[1].Value);
-            efProperty.Scale = int.Parse(match.Groups[2].Value);
+            efProperty.Precision = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+            efProperty.Scale = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
         }
     }
 }

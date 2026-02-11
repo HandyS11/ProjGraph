@@ -13,7 +13,7 @@ using System.Reflection;
 
 namespace ProjGraph.Mcp;
 
-public static class Program
+internal static class Program
 {
     public static async Task Main(string[] args)
     {
@@ -24,9 +24,7 @@ public static class Program
         var builder = Host.CreateApplicationBuilder(args);
 
         builder.Services.AddMcpServer(options =>
-            {
-                options.ServerInfo = new Implementation { Name = "ProjGraph", Version = version };
-            })
+                options.ServerInfo = new Implementation { Name = "ProjGraph", Version = version })
             .WithStdioServerTransport()
             .WithTools<ProjGraphTools>();
 
@@ -44,7 +42,8 @@ public static class Program
 }
 
 [McpServerToolType]
-public class ProjGraphTools(
+#pragma warning disable CA1812 // Instantiated via DI
+internal sealed class ProjGraphTools(
     IGraphService graphService,
     IEfAnalysisService efService,
     IClassAnalysisService classService,
@@ -55,9 +54,9 @@ public class ProjGraphTools(
     [McpServerTool]
     [Description(
         "Generates a Mermaid class diagram for the types defined in a specific C# file, with options to discover inheritance and related types in the workspace.")]
-#pragma warning disable IDE1006
+#pragma warning disable IDE1006, VSTHRD200
     public async Task<string> GetClassDiagram(
-#pragma warning restore IDE1006
+#pragma warning restore IDE1006, VSTHRD200
         [Description("Absolute path to the .cs file to analyze.")]
         string filePath,
         [Description("Whether to search the workspace for base classes and interfaces.")]
@@ -68,7 +67,9 @@ public class ProjGraphTools(
         int depth = 1,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
+#pragma warning disable RCS1163
         CancellationToken cancellationToken = default)
+#pragma warning restore RCS1163
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
@@ -94,7 +95,9 @@ public class ProjGraphTools(
         string path,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
+#pragma warning disable RCS1163
         CancellationToken cancellationToken = default)
+#pragma warning restore RCS1163
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
@@ -118,16 +121,18 @@ public class ProjGraphTools(
     [McpServerTool]
     [Description(
         "Generates a Mermaid Entity Relationship Diagram (ERD) from an Entity Framework Core DbContext or ModelSnapshot file, including entities, properties, relationships, constraints, and inherited properties from base classes.")]
-#pragma warning disable IDE1006
+#pragma warning disable IDE1006, VSTHRD200
     public async Task<string> GetErd(
-#pragma warning restore IDE1006
+#pragma warning restore IDE1006, VSTHRD200
         [Description("Absolute path to a .cs file containing a DbContext or ModelSnapshot.")]
         string path,
         [Description("Specific DbContext or ModelSnapshot class name to use if multiple are present.")]
         string? contextName = null,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
+#pragma warning disable RCS1163
         CancellationToken cancellationToken = default)
+#pragma warning restore RCS1163
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 

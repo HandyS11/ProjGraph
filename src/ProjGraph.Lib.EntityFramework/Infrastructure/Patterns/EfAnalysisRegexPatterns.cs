@@ -151,5 +151,5 @@ public static partial class EfAnalysisRegexPatterns
     [GeneratedRegex(EfAnalysisConstants.SqlTypePatterns.DecimalPattern)]
     public static partial Regex DecimalPrecisionRegex();
 
-    #endregion
+    #endregion SQL Type Patterns
 }

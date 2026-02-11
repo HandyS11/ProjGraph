@@ -40,7 +40,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// the resulting dictionary with matching entity type names and their file paths.
     /// </remarks>
     public async Task<Dictionary<string, string>> DiscoverEntityFilesAsync(
-        List<string> searchDirectories,
+        IReadOnlyList<string> searchDirectories,
         HashSet<string> entityTypeNames,
         string contextFilePath)
     {
@@ -105,7 +105,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// Since the parent directory scan is recursive, it will naturally include the context directory
     /// and all siblings through the recursive search.
     /// </remarks>
-    public List<string> BuildSearchDirectories(
+    public IReadOnlyList<string> BuildSearchDirectories(
         string contextDirectory)
     {
         var searchDirectories = new List<string> { contextDirectory };
@@ -181,7 +181,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// Any access errors encountered during directory traversal are ignored.
     /// Directories like bin, obj, .git, and node_modules are skipped during traversal for performance.
     /// </remarks>
-    private async Task SearchDirectoryForEntitiesAsync(
+    private static async Task SearchDirectoryForEntitiesAsync(
         string searchDir,
         HashSet<string> entityTypeNames,
         string normalizedContextPath,
@@ -205,7 +205,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// contain build artifacts or dependencies (bin, obj, .git, node_modules), improving performance
     /// for large projects.
     /// </remarks>
-    private async Task SearchDirectoryRecursiveAsync(
+    private static async Task SearchDirectoryRecursiveAsync(
         string currentDir,
         HashSet<string> entityTypeNames,
         string normalizedContextPath,
@@ -242,7 +242,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
                 await SearchDirectoryRecursiveAsync(subDir, entityTypeNames, normalizedContextPath, entityFiles);
             }
         }
-        catch
+        catch (IOException)
         {
             // Ignore access errors for directories we can't read
         }
@@ -263,7 +263,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// It then searches for class declarations that match the provided entity type names and adds their file paths
     /// to the dictionary if they are not already present.
     /// </remarks>
-    private async Task ProcessSourceFileAsync(
+    private static async Task ProcessSourceFileAsync(
         string filePath,
         HashSet<string> entityTypeNames,
         Dictionary<string, string> entityFiles)
@@ -322,8 +322,8 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// <param name="root">The root <see cref="SyntaxNode"/> of the syntax tree to analyze.</param>
     /// <param name="baseClassNames">A <see cref="HashSet{T}"/> to store the extracted base class names.</param>
     /// <remarks>
-    /// This method traverses the syntax tree to find all class declarations with a base list. 
-    /// It then extracts the names of the base types using the <see cref="ExtractBaseTypeName"/> method 
+    /// This method traverses the syntax tree to find all class declarations with a base list.
+    /// It then extracts the names of the base types using the <see cref="ExtractBaseTypeName"/> method
     /// and filters them using the <see cref="IsValidBaseClassName"/> method before adding them to the set.
     /// </remarks>
     public void ExtractBaseClassNamesFromSyntax(SyntaxNode root, HashSet<string> baseClassNames)
@@ -347,12 +347,12 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// A string representing the name of the base type. If the base type includes generic parameters,
     /// the generic part is removed from the name.
     /// </returns>
-    private string ExtractBaseTypeName(BaseTypeSyntax baseType)
+    private static string ExtractBaseTypeName(BaseTypeSyntax baseType)
     {
         var baseTypeName = baseType.Type.ToString();
-        if (baseTypeName.Contains('<'))
+        if (baseTypeName.Contains('<', StringComparison.Ordinal))
         {
-            baseTypeName = baseTypeName[..baseTypeName.IndexOf('<')];
+            baseTypeName = baseTypeName[..baseTypeName.IndexOf('<', StringComparison.Ordinal)];
         }
 
         return baseTypeName;
@@ -370,7 +370,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// A valid base class name is one that does not start with 'I' followed by an uppercase letter (indicating an interface),
     /// and is not equal to "DbContext" (case-insensitive).
     /// </remarks>
-    private bool IsValidBaseClassName(string baseTypeName)
+    private static bool IsValidBaseClassName(string baseTypeName)
     {
         // Skip interfaces (start with 'I' followed by uppercase)
         var isInterface = baseTypeName.StartsWith('I') &&
@@ -384,7 +384,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// Searches for base class files within the specified solution root directory based on the provided base class names.
     /// </summary>
     /// <param name="baseClassNames">A set of base class names to search for.</param>
-    /// <param name="solutionRoot">The root directory of the solution to search within.</param>
+    /// <param name="searchDirectory">The directory to search within.</param>
     /// <returns>
     /// A dictionary where the keys are base class names and the values are the corresponding file paths
     /// if the files are found; otherwise, the dictionary will be empty.
@@ -395,10 +395,10 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// </remarks>
     public Dictionary<string, string> SearchForBaseClassFiles(
         HashSet<string> baseClassNames,
-        DirectoryInfo solutionRoot)
+        DirectoryInfo searchDirectory)
     {
         var baseClassFiles = new Dictionary<string, string>();
-        SearchForBaseClassFilesRecursive(solutionRoot.FullName, baseClassNames, baseClassFiles, 0, MaxSearchDepth);
+        SearchForBaseClassFilesRecursive(searchDirectory.FullName, baseClassNames, baseClassFiles, 0, MaxSearchDepth);
         return baseClassFiles;
     }
 
@@ -418,7 +418,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// contain build artifacts or dependencies (bin, obj, .git, node_modules), improving performance
     /// for large projects.
     /// </remarks>
-    private void SearchForBaseClassFilesRecursive(
+    private static void SearchForBaseClassFilesRecursive(
         string currentDir,
         HashSet<string> baseClassNames,
         Dictionary<string, string> baseClassFiles,
@@ -471,7 +471,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
                 }
             }
         }
-        catch
+        catch (IOException)
         {
             // Ignore access errors
         }

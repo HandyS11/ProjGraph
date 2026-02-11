@@ -13,11 +13,11 @@ using ProjGraph.Lib.ProjectGraph.Application;
 using ProjGraph.Lib.ProjectGraph.Application.UseCases;
 using ProjGraph.Lib.ProjectGraph.Rendering;
 using ProjGraph.Mcp;
-using ProjGraph.Tests.Shared.Helpers;
+using NullOutputConsole = ProjGraph.Tests.Shared.Helpers.NullOutputConsole;
 
 namespace ProjGraph.Tests.Integration.Mcp.Helpers;
 
-public static class McpTestHelper
+internal static class McpTestHelper
 {
     public static ProjGraphTools CreateTools()
     {

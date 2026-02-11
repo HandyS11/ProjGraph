@@ -15,7 +15,7 @@ namespace ProjGraph.Tests.Contract;
 /// </summary>
 public class DiWiringTests
 {
-    private readonly IServiceProvider _provider;
+    private readonly ServiceProvider _provider;
 
     public DiWiringTests()
     {

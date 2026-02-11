@@ -16,7 +16,7 @@ internal static class FluentApiParsingUtilities
     /// <returns>The extracted type, or empty string if no generic type is found.</returns>
     public static string ExtractGenericType(string methodName)
     {
-        if (methodName.Contains('<') && methodName.Contains('>'))
+        if (methodName.Contains('<', StringComparison.Ordinal) && methodName.Contains('>', StringComparison.Ordinal))
         {
             return methodName.Split('<')[1].Split('>')[0];
         }
@@ -27,12 +27,13 @@ internal static class FluentApiParsingUtilities
     /// <summary>
     /// Extracts property names from method arguments, handling both lambdas and string literals.
     /// </summary>
+    /// <param name="args">The method arguments string to parse.</param>
     public static List<string> ExtractPropertyNamesFromArgs(string args)
     {
         var result = new List<string>();
 
         // Handle lambda: e => new { e.P1, e.P2 } or e => e.P1
-        if (args.Contains("=>"))
+        if (args.Contains("=>", StringComparison.Ordinal))
         {
             var matches = EfAnalysisRegexPatterns.MethodChainRegex().Matches(args);
             result.AddRange(matches.Select(match => match.Groups[1].Value));
@@ -62,6 +63,7 @@ internal static class FluentApiParsingUtilities
     /// <summary>
     /// Extracts the target entity name from method arguments.
     /// </summary>
+    /// <param name="args">The method arguments string to extract from.</param>
     public static string? ExtractTargetName(string args)
     {
         // First try string literals (common in ModelSnapshots)
@@ -69,7 +71,7 @@ internal static class FluentApiParsingUtilities
         if (stringMatches.Count > 0)
         {
             var name = stringMatches[0].Groups[1].Value;
-            if (name.Contains('.'))
+            if (name.Contains('.', StringComparison.Ordinal))
             {
                 name = name.Split('.')[^1];
             }
@@ -78,7 +80,7 @@ internal static class FluentApiParsingUtilities
         }
 
         // Try lambda expression: e => e.NavigationProperty (common in DbContext fluent API)
-        if (!args.Contains("=>"))
+        if (!args.Contains("=>", StringComparison.Ordinal))
         {
             return null;
         }
@@ -110,7 +112,7 @@ internal static class FluentApiParsingUtilities
                 detectedType =
                     propName.EndsWith(EfAnalysisConstants.Suffixes.IdSuffix, StringComparison.OrdinalIgnoreCase)
                         ? EfAnalysisConstants.DataTypes.Guid
-                        : EfAnalysisConstants.DataTypes.String;
+                        : EfAnalysisConstants.DataTypes.StringTypeName;
             }
 
             property = new EfProperty
@@ -131,10 +133,11 @@ internal static class FluentApiParsingUtilities
     /// <summary>
     /// Determines whether a type name represents a value type.
     /// </summary>
+    /// <param name="type">The type name to check.</param>
     public static bool IsValueTypeString(string type)
     {
         var typeName = type.TrimEnd('?');
-        if (typeName.Contains('.'))
+        if (typeName.Contains('.', StringComparison.Ordinal))
         {
             typeName = typeName[(typeName.LastIndexOf('.') + 1)..];
         }

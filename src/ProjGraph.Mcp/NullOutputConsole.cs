@@ -6,8 +6,11 @@ namespace ProjGraph.Mcp;
 /// A no-op implementation of IOutputConsole for the MCP server.
 /// Prevents ANSI markup from being written to stdout, which is used
 /// for JSON-RPC transport in the MCP protocol.
+/// Instantiated by the DI container.
 /// </summary>
+#pragma warning disable CA1812 // Instantiated via DI
 internal sealed class NullOutputConsole : IOutputConsole
+#pragma warning restore CA1812
 {
     public void Write(string message) { }
     public void WriteLine(string message) { }

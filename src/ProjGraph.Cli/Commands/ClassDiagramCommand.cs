@@ -6,6 +6,7 @@ using Spectre.Console.Cli;
 using System.ComponentModel;
 
 // ReSharper disable ClassNeverInstantiated.Global
+#pragma warning disable CA1812 // Types are instantiated by Spectre.Console DI via reflection
 
 namespace ProjGraph.Cli.Commands;
 
@@ -13,7 +14,10 @@ namespace ProjGraph.Cli.Commands;
 /// Represents a command that generates a class diagram from a specified .cs file.
 /// Inherits from <see cref="AsyncCommand{TSettings}"/> with <see cref="ClassDiagramCommand.Settings"/> as the settings type.
 /// </summary>
-public sealed class ClassDiagramCommand(
+/// <param name="analysisService">The class analysis service used to analyze C# files.</param>
+/// <param name="mermaidRenderer">The diagram renderer for producing Mermaid class diagram output.</param>
+/// <param name="console">The output console for writing results and errors.</param>
+internal sealed class ClassDiagramCommand(
     IClassAnalysisService analysisService,
     IDiagramRenderer<ClassModel> mermaidRenderer,
     IOutputConsole console)
@@ -22,7 +26,7 @@ public sealed class ClassDiagramCommand(
     /// <summary>
     /// Represents the settings for the ClassDiagramCommand.
     /// </summary>
-    public sealed class Settings : CommandSettings
+    internal sealed class Settings : CommandSettings
     {
         /// <summary>
         /// Gets or sets the path to the .cs file to analyze.
@@ -121,7 +125,9 @@ public sealed class ClassDiagramCommand(
 
             return 0;
         }
+#pragma warning disable CA1031 // Do not catch general exception type — CLI handler intentionally catches all for user-friendly display
         catch (Exception ex)
+#pragma warning restore CA1031
         {
             console.WriteError(ex.Message);
             return 1;

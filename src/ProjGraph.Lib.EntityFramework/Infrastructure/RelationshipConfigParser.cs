@@ -14,15 +14,17 @@ internal static class RelationshipConfigParser
     /// <summary>
     /// Parses shadow relationships from a given configuration section and adds them to the provided list.
     /// </summary>
+    /// <param name="configSection">The configuration section text to parse.</param>
+    /// <param name="entityName">The name of the source entity.</param>
+    /// <param name="entities">The dictionary of entities in the model.</param>
+    /// <param name="shadowRelationships">The list to add discovered shadow relationships to.</param>
     public static void ParseShadowRelationships(
         string configSection,
         string entityName,
         Dictionary<string, EfEntity> entities,
         List<EfRelationship> shadowRelationships)
     {
-        var shadowMatches = EfAnalysisRegexPatterns.ShadowRelationshipRegex().Matches(configSection);
-
-        foreach (Match shadowMatch in shadowMatches)
+        foreach (Match shadowMatch in EfAnalysisRegexPatterns.ShadowRelationshipRegex().Matches(configSection))
         {
             if (FluentApiParsingUtilities.IsInsideUsingEntityBlock(configSection, shadowMatch.Index))
             {
@@ -46,6 +48,11 @@ internal static class RelationshipConfigParser
     /// <summary>
     /// Parses explicit relationships (e.g., HasOne, HasMany) from a given configuration section.
     /// </summary>
+    /// <param name="configSection">The configuration section text to parse.</param>
+    /// <param name="entityName">The name of the source entity.</param>
+    /// <param name="entities">The dictionary of entities in the model.</param>
+    /// <param name="relationships">The list to add discovered relationships to.</param>
+    /// <param name="compilation">The Roslyn compilation for symbol resolution.</param>
     public static void ParseExplicitRelationships(
         string configSection,
         string entityName,
@@ -66,8 +73,8 @@ internal static class RelationshipConfigParser
             var methodName = match.Groups[1].Value;
             var args = match.Groups[2].Value;
 
-            if (!methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne) &&
-                !methodName.StartsWith(EfAnalysisConstants.EfMethods.HasMany))
+            if (!methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne, StringComparison.Ordinal) &&
+                !methodName.StartsWith(EfAnalysisConstants.EfMethods.HasMany, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -86,6 +93,13 @@ internal static class RelationshipConfigParser
     /// <summary>
     /// Attempts to create a relationship from method call information.
     /// </summary>
+    /// <param name="matches">The collection of regex matches.</param>
+    /// <param name="startIndex">The index of the current match.</param>
+    /// <param name="methodName">The method name (HasOne/HasMany).</param>
+    /// <param name="args">The method arguments.</param>
+    /// <param name="entityName">The source entity name.</param>
+    /// <param name="entities">The dictionary of entities.</param>
+    /// <param name="compilation">The Roslyn compilation.</param>
     private static EfRelationship? TryCreateRelationship(
         MatchCollection matches,
         int startIndex,
@@ -130,6 +144,10 @@ internal static class RelationshipConfigParser
     /// <summary>
     /// Resolves a navigation property name to its target entity type.
     /// </summary>
+    /// <param name="sourceEntityName">The source entity name.</param>
+    /// <param name="navigationPropertyName">The navigation property name to resolve.</param>
+    /// <param name="entities">The dictionary of entities.</param>
+    /// <param name="compilation">The Roslyn compilation.</param>
     private static string? ResolveNavigationPropertyToEntityType(
         string sourceEntityName,
         string navigationPropertyName,
@@ -160,6 +178,12 @@ internal static class RelationshipConfigParser
     /// <summary>
     /// Applies foreign key configuration to the appropriate entity.
     /// </summary>
+    /// <param name="matches">The collection of regex matches.</param>
+    /// <param name="startIndex">The index of the current match.</param>
+    /// <param name="methodName">The method name.</param>
+    /// <param name="sourceEntityName">The source entity name.</param>
+    /// <param name="targetEntityName">The target entity name.</param>
+    /// <param name="entities">The dictionary of entities.</param>
     private static void ApplyForeignKeyConfiguration(
         MatchCollection matches,
         int startIndex,
@@ -186,6 +210,10 @@ internal static class RelationshipConfigParser
     /// <summary>
     /// Determines which entity is the dependent entity (holds the foreign key).
     /// </summary>
+    /// <param name="methodName">The method name.</param>
+    /// <param name="sourceEntityName">The source entity name.</param>
+    /// <param name="targetEntityName">The target entity name.</param>
+    /// <param name="fkEntityNameOverride">Optional entity name override from HasForeignKey generic type.</param>
     private static string DetermineDependentEntity(
         string methodName,
         string sourceEntityName,
@@ -197,12 +225,16 @@ internal static class RelationshipConfigParser
             return fkEntityNameOverride;
         }
 
-        return methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne) ? sourceEntityName : targetEntityName;
+        return methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne, StringComparison.Ordinal)
+            ? sourceEntityName
+            : targetEntityName;
     }
 
     /// <summary>
     /// Marks the specified properties as foreign keys in the entity.
     /// </summary>
+    /// <param name="entity">The entity containing the properties.</param>
+    /// <param name="propertyNames">The names of properties to mark as foreign keys.</param>
     private static void MarkPropertiesAsForeignKeys(EfEntity entity, List<string> propertyNames)
     {
         foreach (var prop in propertyNames.Select(propName =>
@@ -232,6 +264,8 @@ internal static class RelationshipConfigParser
     /// <summary>
     /// Finds the corresponding HasForeignKey method call following a HasOne or HasMany call.
     /// </summary>
+    /// <param name="matches">The collection of regex matches.</param>
+    /// <param name="startIndex">The starting index to search from.</param>
     private static (string? EntityNameOverride, List<string> PropertyNames) FindForeignKeyInfo(
         MatchCollection matches,
         int startIndex)
@@ -239,12 +273,12 @@ internal static class RelationshipConfigParser
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
             var nextMethodMatch = matches[j].Groups[1].Value;
-            if (!nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasForeignKey))
+            if (!nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasForeignKey, StringComparison.Ordinal))
             {
-                if (nextMethodMatch.Contains(EfAnalysisConstants.EfMethods.Entity) ||
-                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasOne) ||
-                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasMany) ||
-                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.ToTable))
+                if (nextMethodMatch.Contains(EfAnalysisConstants.EfMethods.Entity, StringComparison.Ordinal) ||
+                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasOne, StringComparison.Ordinal) ||
+                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasMany, StringComparison.Ordinal) ||
+                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.ToTable, StringComparison.Ordinal))
                 {
                     break;
                 }
@@ -263,13 +297,15 @@ internal static class RelationshipConfigParser
     /// <summary>
     /// Finds the corresponding WithOne or WithMany method call following a HasOne or HasMany call.
     /// </summary>
+    /// <param name="matches">The collection of regex matches.</param>
+    /// <param name="startIndex">The starting index to search from.</param>
     private static string? FindWithMethodInfo(MatchCollection matches, int startIndex)
     {
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
             var nextMethod = matches[j].Groups[1].Value;
-            if (nextMethod.StartsWith(EfAnalysisConstants.EfMethods.WithOne) ||
-                nextMethod.StartsWith(EfAnalysisConstants.EfMethods.WithMany))
+            if (nextMethod.StartsWith(EfAnalysisConstants.EfMethods.WithOne, StringComparison.Ordinal) ||
+                nextMethod.StartsWith(EfAnalysisConstants.EfMethods.WithMany, StringComparison.Ordinal))
             {
                 return nextMethod;
             }
@@ -281,6 +317,11 @@ internal static class RelationshipConfigParser
     /// <summary>
     /// Creates an EfRelationship from has/with method combination.
     /// </summary>
+    /// <param name="sourceEntity">The source entity name.</param>
+    /// <param name="targetEntity">The target entity name.</param>
+    /// <param name="hasMethod">The Has method name (HasOne/HasMany).</param>
+    /// <param name="withMethod">The With method name (WithOne/WithMany).</param>
+    /// <param name="isRequired">Whether the relationship is required.</param>
     public static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
         string withMethod, bool isRequired = false)
     {

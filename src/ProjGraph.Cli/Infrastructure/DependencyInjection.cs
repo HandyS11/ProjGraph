@@ -8,7 +8,7 @@ namespace ProjGraph.Cli.Infrastructure;
 /// with Spectre.Console.Cli. This class is responsible for registering services and building a type resolver.
 /// </summary>
 /// <param name="builder">The IServiceCollection used to register services.</param>
-public sealed class TypeRegistrar(IServiceCollection builder) : ITypeRegistrar
+internal sealed class TypeRegistrar(IServiceCollection builder) : ITypeRegistrar
 {
     /// <summary>
     /// Builds and returns an instance of ITypeResolver using the registered services.
@@ -54,7 +54,7 @@ public sealed class TypeRegistrar(IServiceCollection builder) : ITypeRegistrar
 /// A custom implementation of the ITypeResolver interface for resolving types using a service provider.
 /// </summary>
 /// <param name="provider">The IServiceProvider used to resolve services.</param>
-public sealed class TypeResolver(IServiceProvider provider) : ITypeResolver, IDisposable
+internal sealed class TypeResolver(IServiceProvider provider) : ITypeResolver, IDisposable
 {
     /// <summary>
     /// Resolves an instance of the specified type from the service provider.

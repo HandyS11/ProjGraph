@@ -10,11 +10,13 @@ namespace ProjGraph.Lib.Core;
 /// <summary>
 /// Provides extension methods for registering Core ProjGraph services.
 /// </summary>
-public static class DependencyInjection
+public static class CoreServiceRegistration
 {
     /// <summary>
     /// Adds core ProjGraph services to the service collection.
     /// </summary>
+    /// <param name="services">The service collection to register services into.</param>
+    /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddProjGraphCore(this IServiceCollection services)
     {
         // Logging - default to NullLogger (consumers can override with real logging)

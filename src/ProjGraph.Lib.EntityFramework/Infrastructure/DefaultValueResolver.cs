@@ -11,6 +11,9 @@ internal static class DefaultValueResolver
     /// <summary>
     /// Configures the DefaultValue property based on the configuration argument.
     /// </summary>
+    /// <param name="property">The EF property to configure.</param>
+    /// <param name="configArg">The configuration argument value.</param>
+    /// <param name="compilation">The Roslyn compilation for resolving constants.</param>
     public static void ApplyDefaultValueConfiguration(EfProperty property, string configArg, Compilation compilation)
     {
         property.DefaultValue = ParseDefaultValue(configArg, compilation);
@@ -19,6 +22,8 @@ internal static class DefaultValueResolver
     /// <summary>
     /// Configures the DefaultValue property from SQL based on the configuration argument.
     /// </summary>
+    /// <param name="property">The EF property to configure.</param>
+    /// <param name="configArg">The SQL default value argument.</param>
     public static void ApplyDefaultValueSqlConfiguration(EfProperty property, string configArg)
     {
         property.DefaultValue = configArg.Trim('\"', '\'', ' ');
@@ -27,6 +32,8 @@ internal static class DefaultValueResolver
     /// <summary>
     /// Parses the default value from a configuration argument, resolving constant or enum values if possible.
     /// </summary>
+    /// <param name="configArg">The configuration argument to parse.</param>
+    /// <param name="compilation">The Roslyn compilation for resolving constants.</param>
     private static string ParseDefaultValue(string configArg, Compilation compilation)
     {
         var trimmedArg = configArg.Trim();
@@ -46,7 +53,7 @@ internal static class DefaultValueResolver
             return resolvedValue;
         }
 
-        if (!val.Contains('.'))
+        if (!val.Contains('.', StringComparison.Ordinal))
         {
             return val;
         }
@@ -64,20 +71,24 @@ internal static class DefaultValueResolver
     /// <summary>
     /// Attempts to resolve a constant or enum value from an expression string using the provided compilation.
     /// </summary>
+    /// <param name="expression">The expression string to resolve.</param>
+    /// <param name="compilation">The Roslyn compilation to search for symbols.</param>
     private static string? ResolveConstantValue(string expression, Compilation compilation)
     {
         var cleaned = expression.Trim();
         // Remove casts like (string) or (int?)
-        if (cleaned.StartsWith('(') && cleaned.Contains(')') && cleaned.LastIndexOf(')') < cleaned.Length - 1)
+        if (cleaned.StartsWith('(') && cleaned.Contains(')', StringComparison.Ordinal) &&
+            cleaned.LastIndexOf(')') < cleaned.Length - 1)
         {
             var afterCast = cleaned[(cleaned.LastIndexOf(')') + 1)..].Trim();
-            if (!string.IsNullOrEmpty(afterCast) && !afterCast.Contains(' '))
+            if (!string.IsNullOrEmpty(afterCast) && !afterCast.Contains(' ', StringComparison.Ordinal))
             {
                 cleaned = afterCast;
             }
         }
 
-        if (string.IsNullOrEmpty(cleaned) || cleaned.Contains('(') || cleaned.Contains(' '))
+        if (string.IsNullOrEmpty(cleaned) || cleaned.Contains('(', StringComparison.Ordinal) ||
+            cleaned.Contains(' ', StringComparison.Ordinal))
         {
             return null;
         }

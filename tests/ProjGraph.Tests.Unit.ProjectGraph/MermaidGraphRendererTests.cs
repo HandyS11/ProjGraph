@@ -273,7 +273,7 @@ public class MermaidGraphRendererTests
 
         // Assert
         result.Should().Contain("A --> B");
-        result.Split('\n').Count(line => line.Contains("-->")).Should().Be(1);
+        result.Split('\n').Count(line => line.Contains("-->", StringComparison.Ordinal)).Should().Be(1);
     }
 
     [Fact]
@@ -320,13 +320,13 @@ public class MermaidGraphRendererTests
         var lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         // Projects should be ordered A, B, C
-        var projectLines = lines.Where(l => l.Contains('[')).ToList();
+        var projectLines = lines.Where(l => l.Contains('[', StringComparison.Ordinal)).ToList();
         projectLines[0].Should().Contain("ProjectA");
         projectLines[1].Should().Contain("ProjectB");
         projectLines[2].Should().Contain("ProjectC");
 
         // Dependencies should be ordered A->B, A->C, B->C
-        var dependencyLines = lines.Where(l => l.Contains("-->")).ToList();
+        var dependencyLines = lines.Where(l => l.Contains("-->", StringComparison.Ordinal)).ToList();
         dependencyLines[0].Should().Contain("ProjectA --> ProjectB");
         dependencyLines[1].Should().Contain("ProjectA --> ProjectC");
         dependencyLines[2].Should().Contain("ProjectB --> ProjectC");

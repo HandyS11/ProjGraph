@@ -83,7 +83,8 @@ internal static class TypeFilter
         var ns = type.ContainingNamespace?.ToDisplayString();
 
         // Check if it's in a system namespace
-        if (ns != null && (ns.StartsWith("System") || ns.StartsWith("Microsoft.Extensions")))
+        if (ns != null && (ns.StartsWith("System", StringComparison.Ordinal) ||
+                           ns.StartsWith("Microsoft.Extensions", StringComparison.Ordinal)))
         {
             return true;
         }

@@ -1,5 +1,6 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
+using System.Globalization;
 using System.Text;
 
 namespace ProjGraph.Lib.EntityFramework.Rendering;
@@ -33,9 +34,9 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 
         if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(model.ContextName))
         {
-            sb.AppendLine("---");
-            sb.AppendLine($"title: {model.ContextName}");
-            sb.AppendLine("---");
+            sb.AppendLine("---")
+                .AppendLine(CultureInfo.InvariantCulture, $"title: {model.ContextName}")
+                .AppendLine("---");
         }
 
         sb.AppendLine("erDiagram");
@@ -58,11 +59,9 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     /// <param name="sb">The StringBuilder to append the rendered output to.</param>
     private static void RenderEntities(EfModel model, StringBuilder sb)
     {
-        var sortedEntities = model.Entities.OrderBy(e => e.Name);
-
-        foreach (var entity in sortedEntities)
+        foreach (var entity in model.Entities.OrderBy(e => e.Name))
         {
-            sb.AppendLine($"  {entity.Name} {{");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  {entity.Name} {{");
 
             var orderedProperties = entity.Properties
                 .OrderByDescending(p => p.IsPrimaryKey)
@@ -71,7 +70,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 
             foreach (var propertyLine in orderedProperties.Select(RenderProperty))
             {
-                sb.AppendLine($"    {propertyLine}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"    {propertyLine}");
             }
 
             sb.AppendLine("  }");
@@ -137,7 +136,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
             var sourceEntity = rel.SourceEntity.Trim();
             var targetEntity = rel.TargetEntity.Trim();
 
-            sb.AppendLine($"  {sourceEntity} {relSyntax} {targetEntity} : \"\"");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  {sourceEntity} {relSyntax} {targetEntity} : \"\"");
         }
     }
 
@@ -211,7 +210,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     }
 
     /// <summary>
-    /// Sanitizes a given type name for use in Mermaid diagrams by removing or replacing 
+    /// Sanitizes a given type name for use in Mermaid diagrams by removing or replacing
     /// characters that are not supported in Mermaid syntax.
     /// </summary>
     /// <param name="type">The original type name to be sanitized.</param>
@@ -219,10 +218,10 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     private static string SanitizeTypeForMermaid(string type)
     {
         return type
-            .Replace("?", "") // Remove nullable markers
-            .Replace("<", "~") // Replace generic brackets
-            .Replace(">", "~")
-            .Replace("[", "") // Remove array brackets
-            .Replace("]", "");
+            .Replace("?", "", StringComparison.Ordinal) // Remove nullable markers
+            .Replace("<", "~", StringComparison.Ordinal) // Replace generic brackets
+            .Replace(">", "~", StringComparison.Ordinal)
+            .Replace("[", "", StringComparison.Ordinal) // Remove array brackets
+            .Replace("]", "", StringComparison.Ordinal);
     }
 }

@@ -6,6 +6,7 @@ using Spectre.Console.Cli;
 using System.ComponentModel;
 
 // ReSharper disable ClassNeverInstantiated.Global
+#pragma warning disable CA1812 // Types are instantiated by Spectre.Console DI via reflection
 
 namespace ProjGraph.Cli.Commands;
 
@@ -17,7 +18,10 @@ namespace ProjGraph.Cli.Commands;
 /// to configure the path to the solution or project file and the desired output format. It processes the input
 /// and renders the structure in the specified format (flat, tree or mermaid).
 /// </remarks>
-public sealed class VisualizeCommand(
+/// <param name="graphService">The graph service used to build the dependency graph.</param>
+/// <param name="renderers">The collection of diagram renderers for different output formats.</param>
+/// <param name="console">The output console for writing results and errors.</param>
+internal sealed class VisualizeCommand(
     IGraphService graphService,
     IEnumerable<IDiagramRenderer<SolutionGraph>> renderers,
     IOutputConsole console)
@@ -34,7 +38,7 @@ public sealed class VisualizeCommand(
     /// This class contains the configuration options for the `VisualizeCommand`, including the path to the solution or project file
     /// and the desired output format. It also provides validation for the input settings.
     /// </remarks>
-    public sealed class Settings : CommandSettings
+    internal sealed class Settings : CommandSettings
     {
         /// <summary>
         /// Gets or sets the path to the .sln, .slnx, or .csproj file to be analyzed.
@@ -128,10 +132,9 @@ public sealed class VisualizeCommand(
             else
             {
                 SolutionGraph? graph = null;
-                await console.RunWithStatusAsync($"Analyzing [blue]{settings.Path}[/]...", async () =>
-                {
-                    graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                }, cancellationToken);
+                await console.RunWithStatusAsync($"Analyzing [blue]{settings.Path}[/]...",
+                    async () => graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken),
+                    cancellationToken);
 
                 if (graph is null)
                 {
@@ -144,7 +147,9 @@ public sealed class VisualizeCommand(
 
             return 0;
         }
+#pragma warning disable CA1031 // Do not catch general exception type — CLI handler intentionally catches all for user-friendly display
         catch (Exception ex)
+#pragma warning restore CA1031
         {
             console.WriteError(ex.Message);
             return 1;

@@ -17,9 +17,7 @@ public partial class MarkdownErdTests
         // Act
         var result = -1;
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
-        {
-            result = app.Run(["erd", contextPath]);
-        });
+            result = app.Run(["erd", contextPath]));
 
         result.Should().Be(0);
 

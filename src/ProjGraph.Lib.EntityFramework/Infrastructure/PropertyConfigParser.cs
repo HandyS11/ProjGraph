@@ -13,6 +13,9 @@ internal static class PropertyConfigParser
     /// <summary>
     /// Parses property configurations from a given configuration section and applies them to the specified entity.
     /// </summary>
+    /// <param name="configSection">The configuration section text to parse.</param>
+    /// <param name="entity">The entity to apply configurations to.</param>
+    /// <param name="compilation">The Roslyn compilation for symbol resolution.</param>
     public static void ParsePropertyConfigurations(string configSection, EfEntity entity, Compilation compilation)
     {
         EfProperty? currentProperty = null;
@@ -31,14 +34,14 @@ internal static class PropertyConfigParser
             var args = groups[2].Value;
 
             if (methodName == EfAnalysisConstants.EfMethods.Property ||
-                methodName.StartsWith(EfAnalysisConstants.EfMethods.Property + "<"))
+                methodName.StartsWith(EfAnalysisConstants.EfMethods.Property + "<", StringComparison.Ordinal))
             {
                 currentProperty = ProcessPropertyDeclaration(entity, methodName, args);
             }
             else if (methodName == EfAnalysisConstants.EfMethods.HasKey ||
                      methodName == EfAnalysisConstants.EfMethods.ToTable ||
-                     methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne) ||
-                     methodName.StartsWith(EfAnalysisConstants.EfMethods.HasMany))
+                     methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne, StringComparison.Ordinal) ||
+                     methodName.StartsWith(EfAnalysisConstants.EfMethods.HasMany, StringComparison.Ordinal))
             {
                 if (methodName == EfAnalysisConstants.EfMethods.HasKey)
                 {
@@ -57,6 +60,8 @@ internal static class PropertyConfigParser
     /// <summary>
     /// Applies primary key configuration to the entity.
     /// </summary>
+    /// <param name="entity">The entity to configure.</param>
+    /// <param name="args">The HasKey method arguments.</param>
     private static void ApplyKeyConfiguration(EfEntity entity, string args)
     {
         var propNames = FluentApiParsingUtilities.ExtractPropertyNamesFromArgs(args);
@@ -70,6 +75,9 @@ internal static class PropertyConfigParser
     /// <summary>
     /// Processes a Property declaration and returns or creates the corresponding EfProperty.
     /// </summary>
+    /// <param name="entity">The entity containing the property.</param>
+    /// <param name="methodName">The Property method name (may contain generic type).</param>
+    /// <param name="args">The method arguments.</param>
     private static EfProperty? ProcessPropertyDeclaration(EfEntity entity, string methodName, string args)
     {
         var propName = ExtractPropertyName(args);
@@ -85,6 +93,7 @@ internal static class PropertyConfigParser
     /// <summary>
     /// Extracts the property name from method arguments.
     /// </summary>
+    /// <param name="args">The method arguments string.</param>
     private static string ExtractPropertyName(string args)
     {
         var lambdaMatch = EfAnalysisRegexPatterns.PropertyLambdaRegex().Match(args);
@@ -94,6 +103,10 @@ internal static class PropertyConfigParser
     /// <summary>
     /// Applies a specific configuration to a given property based on the provided configuration method.
     /// </summary>
+    /// <param name="property">The property to configure.</param>
+    /// <param name="configMethod">The configuration method name.</param>
+    /// <param name="configArg">The configuration argument value.</param>
+    /// <param name="compilation">The Roslyn compilation for symbol resolution.</param>
     private static void ApplyPropertyConfiguration(EfProperty property, string configMethod, string configArg,
         Compilation compilation)
     {
@@ -143,6 +156,8 @@ internal static class PropertyConfigParser
     /// <summary>
     /// Configures the column type for a property, inferring max length from column type definition if needed.
     /// </summary>
+    /// <param name="property">The property to configure.</param>
+    /// <param name="configArg">The column type argument.</param>
     private static void ApplyColumnTypeConfiguration(EfProperty property, string configArg)
     {
         if (property.MaxLength is not null)
@@ -160,6 +175,8 @@ internal static class PropertyConfigParser
     /// <summary>
     /// Configures the precision and scale of a given property.
     /// </summary>
+    /// <param name="property">The property to configure.</param>
+    /// <param name="configArg">The precision/scale argument string.</param>
     private static void ApplyPrecisionConfiguration(EfProperty property, string configArg)
     {
         var precisionArgs = configArg.Split(',');

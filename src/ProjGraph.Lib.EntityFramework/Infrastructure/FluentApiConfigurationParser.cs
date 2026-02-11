@@ -18,6 +18,10 @@ public static class FluentApiConfigurationParser
     /// Applies Fluent API constraints to the specified Entity Framework model by parsing the "OnModelCreating" method
     /// of the provided context type and processing each entity configuration section.
     /// </summary>
+    /// <param name="contextType">The named type symbol of the DbContext class.</param>
+    /// <param name="entities">The dictionary of entities in the model.</param>
+    /// <param name="model">The EF model to apply constraints to.</param>
+    /// <param name="compilation">The Roslyn compilation for symbol resolution.</param>
     public static void ApplyFluentApiConstraints(
         INamedTypeSymbol contextType,
         Dictionary<string, EfEntity> entities,
@@ -37,6 +41,10 @@ public static class FluentApiConfigurationParser
     /// Applies Fluent API constraints from a specific method (e.g., OnModelCreating or BuildModel)
     /// to the specified Entity Framework model.
     /// </summary>
+    /// <param name="methodSyntax">The method declaration syntax to parse.</param>
+    /// <param name="entities">The dictionary of entities in the model.</param>
+    /// <param name="model">The EF model to apply constraints to.</param>
+    /// <param name="compilation">The Roslyn compilation for symbol resolution.</param>
     public static void ApplyConstraintsFromMethod(
         MethodDeclarationSyntax methodSyntax,
         Dictionary<string, EfEntity> entities,
@@ -95,7 +103,10 @@ public static class FluentApiConfigurationParser
         var uniqueRelationships = relationships
             .Where(relationship => existingKeys.Add(relationship.GenerateKey()));
 
-        model.Relationships.AddRange(uniqueRelationships);
+        foreach (var relationship in uniqueRelationships)
+        {
+            model.Relationships.Add(relationship);
+        }
     }
 
     private static List<EfRelationship> ParseEntityConfiguration(
@@ -119,7 +130,7 @@ public static class FluentApiConfigurationParser
         }
 
         // Simplify name if it contains namespace
-        if (entityName.Contains('.'))
+        if (entityName.Contains('.', StringComparison.Ordinal))
         {
             entityName = entityName.Split('.')[^1];
         }
