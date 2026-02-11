@@ -41,6 +41,9 @@
     <File Path="README.md"/>
     <File Path="SECURITY.md"/>
   </Folder>
+  <Folder Name="/Solution Items/.githooks/">
+    <File Path=".githooks/pre-commit"/>
+  </Folder>
   <Folder Name="/Solution Items/.github/">
     <File Path=".github/dependabot.yml"/>
   </Folder>

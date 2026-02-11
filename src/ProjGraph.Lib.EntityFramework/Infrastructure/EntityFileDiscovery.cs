@@ -216,10 +216,14 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
             // Process files in the current directory
             var options = new EnumerationOptions
             {
-                RecurseSubdirectories = false, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.System
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.System
             };
 
-            foreach (var csFile in Directory.EnumerateFiles(currentDir, EfAnalysisConstants.FilePatterns.CSharpFiles,
+            foreach (var csFile in Directory.EnumerateFiles(
+                         currentDir,
+                         EfAnalysisConstants.FilePatterns.CSharpFiles,
                          options))
             {
                 var fullPath = Path.GetFullPath(csFile);
@@ -434,11 +438,15 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
         {
             var options = new EnumerationOptions
             {
-                RecurseSubdirectories = false, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.System
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.System
             };
 
             // Process files in the current directory
-            foreach (var file in Directory.EnumerateFiles(currentDir, EfAnalysisConstants.FilePatterns.CSharpFiles,
+            foreach (var file in Directory.EnumerateFiles(
+                         currentDir,
+                         EfAnalysisConstants.FilePatterns.CSharpFiles,
                          options))
             {
                 var fileName = Path.GetFileNameWithoutExtension(file);
