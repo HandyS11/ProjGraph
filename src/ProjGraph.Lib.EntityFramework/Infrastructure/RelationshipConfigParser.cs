@@ -240,7 +240,10 @@ internal static class RelationshipConfigParser
         foreach (var propName in propertyNames)
         {
             var prop = FluentApiParsingUtilities.GetOrCreateProperty(entity, propName, "");
-            var updated = EfPropertyFactory.CopyWith(prop, isForeignKey: true);
+            var updated = EfPropertyFactory.CopyWith(prop, new EfPropertyOverrides
+            {
+                IsForeignKey = true
+            });
             var index = entity.Properties.IndexOf(prop);
             if (index >= 0)
             {

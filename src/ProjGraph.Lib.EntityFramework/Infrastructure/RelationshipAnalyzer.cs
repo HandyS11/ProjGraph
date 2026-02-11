@@ -156,7 +156,10 @@ public static class RelationshipAnalyzer
         {
             if (potentialNames.Contains(entity.Properties[i].Name))
             {
-                entity.Properties[i] = EfPropertyFactory.CopyWith(entity.Properties[i], isForeignKey: true);
+                entity.Properties[i] = EfPropertyFactory.CopyWith(entity.Properties[i], new EfPropertyOverrides
+                {
+                    IsForeignKey = true
+                });
             }
         }
     }

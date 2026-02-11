@@ -163,34 +163,29 @@ public static class FluentApiConfigurationParser
 
         // Parse table mapping
         var tableMatch = EfAnalysisRegexPatterns.ToTableRegex().Match(configSection);
-        if (tableMatch.Success)
+        if (!tableMatch.Success)
         {
-            var updatedEntity = new EfEntity
-            {
-                Name = entity.Name,
-                Properties = entity.Properties,
-                IsJoinEntity = entity.IsJoinEntity,
-                TableName = tableMatch.Groups[1].Value
-            };
-
-            // Replace in model entities
-            var entityIndex = -1;
-            for (var i = 0; i < model.Entities.Count; i++)
-            {
-                if (model.Entities[i].Name == entity.Name)
-                {
-                    entityIndex = i;
-                    break;
-                }
-            }
-
-            if (entityIndex >= 0)
-            {
-                model.Entities[entityIndex] = updatedEntity;
-            }
-
-            entities[entityName] = updatedEntity;
+            return shadowRelationships;
         }
+
+        var updatedEntity = new EfEntity
+        {
+            Name = entity.Name,
+            Properties = entity.Properties,
+            IsJoinEntity = entity.IsJoinEntity,
+            TableName = tableMatch.Groups[1].Value
+        };
+
+        // Replace in model entities
+        var entityIndex = model.Entities.IndexOf(
+            model.Entities.FirstOrDefault(e => e.Name == entity.Name)!);
+
+        if (entityIndex >= 0)
+        {
+            model.Entities[entityIndex] = updatedEntity;
+        }
+
+        entities[entityName] = updatedEntity;
 
         return shadowRelationships;
     }

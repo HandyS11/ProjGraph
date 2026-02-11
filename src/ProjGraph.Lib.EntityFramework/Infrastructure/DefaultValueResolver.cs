@@ -17,7 +17,10 @@ internal static class DefaultValueResolver
     /// <returns>A new <see cref="EfProperty"/> with the resolved default value.</returns>
     public static EfProperty CreateWithDefaultValue(EfProperty property, string configArg, Compilation compilation)
     {
-        return EfPropertyFactory.CopyWith(property, defaultValue: ParseDefaultValue(configArg, compilation));
+        return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+        {
+            DefaultValue = ParseDefaultValue(configArg, compilation)
+        });
     }
 
     /// <summary>
@@ -28,7 +31,10 @@ internal static class DefaultValueResolver
     /// <returns>A new <see cref="EfProperty"/> with the SQL default value.</returns>
     public static EfProperty CreateWithDefaultValueSql(EfProperty property, string configArg)
     {
-        return EfPropertyFactory.CopyWith(property, defaultValue: configArg.Trim('\"', '\'', ' '));
+        return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+        {
+            DefaultValue = configArg.Trim('"', '\'', ' ')
+        });
     }
 
     /// <summary>

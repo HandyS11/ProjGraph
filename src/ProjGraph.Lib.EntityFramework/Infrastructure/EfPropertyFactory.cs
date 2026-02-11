@@ -11,45 +11,25 @@ internal static class EfPropertyFactory
 {
     /// <summary>
     /// Creates a copy of the given <see cref="EfProperty"/> with the specified values overridden.
-    /// Any parameter left as <c>null</c> will retain the value from the source property.
+    /// Any property left as <c>null</c> in <paramref name="overrides"/> will retain the value from the source property.
     /// </summary>
     /// <param name="source">The source property to copy values from.</param>
-    /// <param name="type">Override for the Type property.</param>
-    /// <param name="isPrimaryKey">Override for the IsPrimaryKey property.</param>
-    /// <param name="isForeignKey">Override for the IsForeignKey property.</param>
-    /// <param name="isRequired">Override for the IsRequired property.</param>
-    /// <param name="isValueType">Override for the IsValueType property.</param>
-    /// <param name="isExplicitlyRequired">Override for the IsExplicitlyRequired property.</param>
-    /// <param name="maxLength">Override for the MaxLength property.</param>
-    /// <param name="precision">Override for the Precision property.</param>
-    /// <param name="scale">Override for the Scale property.</param>
-    /// <param name="defaultValue">Override for the DefaultValue property.</param>
-    public static EfProperty CopyWith(
-        EfProperty source,
-        string? type = null,
-        bool? isPrimaryKey = null,
-        bool? isForeignKey = null,
-        bool? isRequired = null,
-        bool? isValueType = null,
-        bool? isExplicitlyRequired = null,
-        int? maxLength = null,
-        int? precision = null,
-        int? scale = null,
-        string? defaultValue = null)
+    /// <param name="overrides">The set of property overrides to apply.</param>
+    public static EfProperty CopyWith(EfProperty source, EfPropertyOverrides overrides)
     {
         return new EfProperty
         {
             Name = source.Name,
-            Type = type ?? source.Type,
-            IsPrimaryKey = isPrimaryKey ?? source.IsPrimaryKey,
-            IsForeignKey = isForeignKey ?? source.IsForeignKey,
-            IsRequired = isRequired ?? source.IsRequired,
-            IsValueType = isValueType ?? source.IsValueType,
-            IsExplicitlyRequired = isExplicitlyRequired ?? source.IsExplicitlyRequired,
-            MaxLength = maxLength ?? source.MaxLength,
-            Precision = precision ?? source.Precision,
-            Scale = scale ?? source.Scale,
-            DefaultValue = defaultValue ?? source.DefaultValue
+            Type = overrides.Type ?? source.Type,
+            IsPrimaryKey = overrides.IsPrimaryKey ?? source.IsPrimaryKey,
+            IsForeignKey = overrides.IsForeignKey ?? source.IsForeignKey,
+            IsRequired = overrides.IsRequired ?? source.IsRequired,
+            IsValueType = overrides.IsValueType ?? source.IsValueType,
+            IsExplicitlyRequired = overrides.IsExplicitlyRequired ?? source.IsExplicitlyRequired,
+            MaxLength = overrides.MaxLength ?? source.MaxLength,
+            Precision = overrides.Precision ?? source.Precision,
+            Scale = overrides.Scale ?? source.Scale,
+            DefaultValue = overrides.DefaultValue ?? source.DefaultValue
         };
     }
 }

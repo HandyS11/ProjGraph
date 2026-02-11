@@ -33,37 +33,48 @@ internal static class PropertyConfigParser
             var methodName = groups[1].Value;
             var args = groups[2].Value;
 
-            if (methodName == EfAnalysisConstants.EfMethods.Property ||
+            if (methodName is EfAnalysisConstants.EfMethods.Property ||
                 methodName.StartsWith(EfAnalysisConstants.EfMethods.Property + "<", StringComparison.Ordinal))
             {
                 currentProperty = ProcessPropertyDeclaration(entity, methodName, args);
             }
-            else if (methodName == EfAnalysisConstants.EfMethods.HasKey ||
-                     methodName == EfAnalysisConstants.EfMethods.ToTable ||
+            else if (methodName is EfAnalysisConstants.EfMethods.HasKey)
+            {
+                ApplyKeyConfiguration(entity, args);
+                currentProperty = null;
+            }
+            else if (methodName is EfAnalysisConstants.EfMethods.ToTable ||
                      methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne, StringComparison.Ordinal) ||
                      methodName.StartsWith(EfAnalysisConstants.EfMethods.HasMany, StringComparison.Ordinal))
             {
-                if (methodName == EfAnalysisConstants.EfMethods.HasKey)
-                {
-                    ApplyKeyConfiguration(entity, args);
-                }
-
                 currentProperty = null;
             }
-            else if (currentProperty != null)
+            else if (currentProperty is not null)
             {
                 var updated = ApplyPropertyConfiguration(currentProperty, methodName, args, compilation);
-                if (!ReferenceEquals(updated, currentProperty))
+                if (ReferenceEquals(updated, currentProperty))
                 {
-                    var index = entity.Properties.IndexOf(currentProperty);
-                    if (index >= 0)
-                    {
-                        entity.Properties[index] = updated;
-                    }
-
-                    currentProperty = updated;
+                    continue;
                 }
+
+                ReplaceProperty(entity, currentProperty, updated);
+                currentProperty = updated;
             }
+        }
+    }
+
+    /// <summary>
+    /// Replaces an existing property in the entity's property list with an updated instance.
+    /// </summary>
+    /// <param name="entity">The entity whose property list to update.</param>
+    /// <param name="original">The original property to find and replace.</param>
+    /// <param name="replacement">The new property instance to insert in place of the original.</param>
+    private static void ReplaceProperty(EfEntity entity, EfProperty original, EfProperty replacement)
+    {
+        var index = entity.Properties.IndexOf(original);
+        if (index >= 0)
+        {
+            entity.Properties[index] = replacement;
         }
     }
 
@@ -77,7 +88,10 @@ internal static class PropertyConfigParser
         foreach (var propName in FluentApiParsingUtilities.ExtractPropertyNamesFromArgs(args))
         {
             var prop = FluentApiParsingUtilities.GetOrCreateProperty(entity, propName, "");
-            var updated = EfPropertyFactory.CopyWith(prop, isPrimaryKey: true);
+            var updated = EfPropertyFactory.CopyWith(prop, new EfPropertyOverrides
+            {
+                IsPrimaryKey = true
+            });
             var index = entity.Properties.IndexOf(prop);
             if (index >= 0)
             {
@@ -142,16 +156,21 @@ internal static class PropertyConfigParser
     {
         var isRequired = string.IsNullOrEmpty(configArg) ||
                          configArg.Equals("true", StringComparison.OrdinalIgnoreCase);
-        return EfPropertyFactory.CopyWith(property,
-            isRequired: isRequired,
-            isExplicitlyRequired: isRequired || property.IsExplicitlyRequired);
+        return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+        {
+            IsRequired = isRequired,
+            IsExplicitlyRequired = isRequired || property.IsExplicitlyRequired
+        });
     }
 
     private static EfProperty ApplyMaxLengthConfiguration(EfProperty property, string configArg)
     {
         if (int.TryParse(configArg, out var maxLen))
         {
-            return EfPropertyFactory.CopyWith(property, maxLength: maxLen);
+            return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+            {
+                MaxLength = maxLen
+            });
         }
 
         return property;
@@ -172,7 +191,10 @@ internal static class PropertyConfigParser
         var match = EfAnalysisRegexPatterns.NumberInParensRegex().Match(configArg);
         if (match.Success && int.TryParse(match.Groups[1].Value, out var len))
         {
-            return EfPropertyFactory.CopyWith(property, maxLength: len);
+            return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+            {
+                MaxLength = len
+            });
         }
 
         return property;
@@ -197,6 +219,10 @@ internal static class PropertyConfigParser
             scale = s;
         }
 
-        return EfPropertyFactory.CopyWith(property, precision: precision, scale: scale ?? property.Scale);
+        return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+        {
+            Precision = precision,
+            Scale = scale ?? property.Scale
+        });
     }
 }

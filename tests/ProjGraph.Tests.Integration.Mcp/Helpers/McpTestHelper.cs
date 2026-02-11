@@ -3,6 +3,7 @@ using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.ClassDiagram.Application.UseCases;
 using ProjGraph.Lib.ClassDiagram.Infrastructure;
 using ProjGraph.Lib.ClassDiagram.Rendering;
+using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
 using ProjGraph.Lib.EntityFramework.Application;
@@ -13,7 +14,6 @@ using ProjGraph.Lib.ProjectGraph.Application;
 using ProjGraph.Lib.ProjectGraph.Application.UseCases;
 using ProjGraph.Lib.ProjectGraph.Rendering;
 using ProjGraph.Mcp;
-using NullOutputConsole = ProjGraph.Tests.Shared.Helpers.NullOutputConsole;
 
 namespace ProjGraph.Tests.Integration.Mcp.Helpers;
 
