@@ -10,6 +10,9 @@ namespace ProjGraph.Lib.ProjectGraph.Rendering;
 /// </summary>
 public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph>
 {
+    /// <inheritdoc />
+    public abstract string Format { get; }
+
     protected readonly IAnsiConsole _console;
     protected readonly StringWriter _writer;
 

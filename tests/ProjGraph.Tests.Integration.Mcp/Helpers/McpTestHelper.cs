@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.ClassDiagram.Application.UseCases;
 using ProjGraph.Lib.ClassDiagram.Infrastructure;
@@ -26,12 +27,17 @@ public static class McpTestHelper
         var slnxParser = new SlnxParser(fs);
         var projectParser = new ProjectParser(fs);
         var graphService = new GraphService(new BuildGraphUseCase(slnParser, slnxParser, projectParser,
-            new ProjectDiscoveryService(projectParser, fs, console), fs, console));
+            new ProjectDiscoveryService(projectParser, fs, console,
+                NullLogger<ProjectDiscoveryService>.Instance), fs, console,
+            NullLogger<BuildGraphUseCase>.Instance));
 
         var compilationFactory = new CompilationFactory();
-        var typeProcessor = new TypeProcessor();
+        var workspaceTypeDiscovery = new WorkspaceTypeDiscovery();
+        var symbolResolver = new SymbolResolver(workspaceTypeDiscovery);
+        var typeProcessor = new TypeProcessor(symbolResolver);
 
-        var analyzer = new EfModelAnalyzer(compilationFactory, fs);
+        var entityFileDiscovery = new EntityFileDiscovery();
+        var analyzer = new EfModelAnalyzer(compilationFactory, fs, entityFileDiscovery);
         var efService = new EfAnalysisService(new AnalyzeContextUseCase(analyzer),
             new DiscoverContextsUseCase(analyzer, fs),
             new AnalyzeSnapshotUseCase(analyzer),

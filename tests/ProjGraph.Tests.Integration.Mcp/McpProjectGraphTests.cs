@@ -1,0 +1,130 @@
+using ProjGraph.Mcp;
+using ProjGraph.Tests.Integration.Mcp.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
+
+namespace ProjGraph.Tests.Integration.Mcp;
+
+public class McpProjectGraphTests
+{
+    [Fact]
+    public void GetProjectGraph_SimpleDependencies_Slnx_ShouldReturnValidMermaid()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var slnxPath = GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
+
+        // Act
+        var result = tools.GetProjectGraph(slnxPath);
+
+        // Assert
+        result.Should().NotStartWith("Error");
+        result.Should().StartWith("```mermaid");
+        result.Should().Contain("graph TD");
+        result.Should().Contain("A");
+        result.Should().Contain("B");
+        result.Should().Contain("C");
+        result.Should().Contain("D");
+        result.Should().Contain("-->");
+        result.Trim().Should().EndWith("```");
+    }
+
+    [Fact]
+    public void GetProjectGraph_SimpleDependencies_SingleProject_ShouldDiscoverAllDependencies()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var projPath = GetSamplePath(@"visualize\simple-dependencies\A\A.csproj");
+
+        // Act
+        var result = tools.GetProjectGraph(projPath);
+
+        // Assert
+        result.Should().NotStartWith("Error");
+        result.Should().StartWith("```mermaid");
+        result.Should().Contain("graph TD");
+        result.Should().Contain("A");
+        result.Should().Contain("B");
+        result.Should().Contain("-->");
+        result.Trim().Should().EndWith("```");
+    }
+
+    [Fact]
+    public void GetProjectGraph_ProjGraphSolution_Slnx_ShouldReturnValidMermaid()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var slnxPath = GetRootPath("ProjGraph.slnx");
+
+        // Act
+        var result = tools.GetProjectGraph(slnxPath);
+
+        // Assert
+        result.Should().NotStartWith("Error");
+        result.Should().StartWith("```mermaid");
+        result.Should().Contain("graph TD");
+        result.Should().Contain("ProjGraph_Cli");
+        result.Should().Contain("ProjGraph_Core");
+        result.Should().Contain("ProjGraph_Lib");
+        result.Should().Contain("ProjGraph_Mcp");
+        result.Trim().Should().EndWith("```");
+    }
+
+    [Fact]
+    public void GetProjectGraph_SimpleDependencies_ShouldShowCorrectRelationships()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var slnxPath = GetSamplePath("visualize/simple-dependencies/simple-dependencies.slnx");
+
+        // Act
+        var result = tools.GetProjectGraph(slnxPath);
+
+        // Assert
+        result.Should().Contain("A --> B");
+        result.Should().Contain("B --> C");
+        result.Should().Contain("B --> D");
+    }
+
+    [Fact]
+    public void GetProjectGraph_NonExistentFile_ShouldThrow()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), "this", "path", "does", "not", "exist.slnx");
+
+        // Act
+        var act = () => tools.GetProjectGraph(nonExistentPath);
+
+        // Assert
+        act.Should().Throw<Exception>();
+    }
+
+    [Fact]
+    public void GetProjectGraph_InvalidFile_ShouldThrow()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var invalidPath = GetRootPath("README.md"); // Not a solution/project file
+
+        // Act
+        var act = () => tools.GetProjectGraph(invalidPath);
+
+        // Assert
+        act.Should().Throw<Exception>();
+    }
+
+    private static string GetSamplePath(string relativePath)
+    {
+        return TestPathHelper.GetSamplePath(relativePath);
+    }
+
+    private static string GetRootPath(string relativePath)
+    {
+        return TestPathHelper.GetRootPath(relativePath);
+    }
+
+    private static ProjGraphTools CreateTools()
+    {
+        return McpTestHelper.CreateTools();
+    }
+}

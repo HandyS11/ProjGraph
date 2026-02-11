@@ -16,7 +16,10 @@ public sealed class ClassAnalysisDepthTests : IDisposable
     public ClassAnalysisDepthTests()
     {
         _tempRoot = _temp.DirectoryPath;
-        _service = new ClassAnalysisService(new AnalyzeFileUseCase(new CompilationFactory(), new TypeProcessor(),
+        var workspaceTypeDiscovery = new WorkspaceTypeDiscovery();
+        var symbolResolver = new SymbolResolver(workspaceTypeDiscovery);
+        _service = new ClassAnalysisService(new AnalyzeFileUseCase(new CompilationFactory(),
+            new TypeProcessor(symbolResolver),
             new PhysicalFileSystem()));
     }
 
@@ -51,8 +54,38 @@ public sealed class ClassAnalysisDepthTests : IDisposable
         result.Types.Should().Contain(t => t.Name == "A");
         result.Types.Should().Contain(t => t.Name == "B");
         result.Types.Should().NotContain(t => t.Name == "C");
+    }
 
-        // C should be marked as external since it's at depth 2 (discovered from B but B is depth 1)
-        // Wait, if B is at depth 1, its base C is at depth 2.
+    [Fact]
+    public async Task AnalyzeFileAsync_DepthZero_ReturnsOnlyRootType()
+    {
+        var fileA = Path.Combine(_tempRoot, "A.cs");
+        var fileB = Path.Combine(_tempRoot, "B.cs");
+
+        await File.WriteAllTextAsync(fileA, "public class A : B {}");
+        await File.WriteAllTextAsync(fileB, "public class B {}");
+
+        var result = await _service.AnalyzeFileAsync(fileA, maxDepth: 0);
+
+        result.Types.Should().Contain(t => t.Name == "A");
+        result.Types.Should().NotContain(t => t.Name == "B");
+    }
+
+    [Fact]
+    public async Task AnalyzeFileAsync_DepthTwo_TraversesFullChain()
+    {
+        var fileA = Path.Combine(_tempRoot, "A.cs");
+        var fileB = Path.Combine(_tempRoot, "B.cs");
+        var fileC = Path.Combine(_tempRoot, "C.cs");
+
+        await File.WriteAllTextAsync(fileA, "public class A : B {}");
+        await File.WriteAllTextAsync(fileB, "public class B : C {}");
+        await File.WriteAllTextAsync(fileC, "public class C {}");
+
+        var result = await _service.AnalyzeFileAsync(fileA, maxDepth: 2);
+
+        result.Types.Should().Contain(t => t.Name == "A");
+        result.Types.Should().Contain(t => t.Name == "B");
+        result.Types.Should().Contain(t => t.Name == "C");
     }
 }

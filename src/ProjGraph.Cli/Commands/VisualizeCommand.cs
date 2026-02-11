@@ -1,7 +1,6 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.ProjectGraph.Application;
-using ProjGraph.Lib.ProjectGraph.Rendering;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -51,7 +50,12 @@ public sealed class VisualizeCommand(
         [CommandOption("-f|--format")]
         [Description("The output format (flat, tree, mermaid)")]
         [DefaultValue("mermaid")]
-        public string Format { get; private set; } = "mermaid";
+        public string Format { get; init; } = "mermaid";
+
+        /// <summary>
+        /// Gets the normalized (lowercased) format string.
+        /// </summary>
+        public string NormalizedFormat => Format.ToLowerInvariant();
 
         /// <summary>
         /// Gets or sets a value indicating whether to include the title in the rendered output.
@@ -80,8 +84,7 @@ public sealed class VisualizeCommand(
                 return ValidationResult.Error($"File not found: {Path}");
             }
 
-            Format = Format.ToLowerInvariant();
-            if (Format != FormatFlat && Format != FormatTree && Format != FormatMermaid)
+            if (NormalizedFormat != FormatFlat && NormalizedFormat != FormatTree && NormalizedFormat != FormatMermaid)
             {
                 return ValidationResult.Error("Format must be 'flat', 'tree' or 'mermaid'");
             }
@@ -113,32 +116,30 @@ public sealed class VisualizeCommand(
     {
         try
         {
-            if (settings.Format.Equals(FormatMermaid, StringComparison.OrdinalIgnoreCase))
+            if (settings.NormalizedFormat.Equals(FormatMermaid, StringComparison.OrdinalIgnoreCase))
             {
                 // For mermaid, we want clean stdout, so all status goes to stderr
                 console.WriteInfo($"Analyzing {settings.Path}...");
 
                 var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                console.WriteLine(GetRenderer(settings.Format).Render(graph, new DiagramOptions(settings.ShowTitle)));
+                console.WriteLine(GetRenderer(settings.NormalizedFormat)
+                    .Render(graph, new DiagramOptions(settings.ShowTitle)));
             }
             else
             {
-                // We'll keep AnsiConsole.Status for now as it's a CLI UI feature, 
-                // but we use the service for the final render if we refactor it.
                 SolutionGraph? graph = null;
-                await AnsiConsole.Status()
-                    .Spinner(Spinner.Known.Dots)
-                    .StartAsync($"Analyzing [blue]{settings.Path}[/]...", async _ =>
-                    {
-                        graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                    });
+                await console.RunWithStatusAsync($"Analyzing [blue]{settings.Path}[/]...", async () =>
+                {
+                    graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
+                }, cancellationToken);
 
                 if (graph is null)
                 {
                     return 0;
                 }
 
-                console.WriteLine(GetRenderer(settings.Format).Render(graph, new DiagramOptions(settings.ShowTitle)));
+                console.WriteLine(GetRenderer(settings.NormalizedFormat)
+                    .Render(graph, new DiagramOptions(settings.ShowTitle)));
             }
 
             return 0;
@@ -162,12 +163,7 @@ public sealed class VisualizeCommand(
     /// </exception>
     private IDiagramRenderer<SolutionGraph> GetRenderer(string format)
     {
-        return format.ToLowerInvariant() switch
-        {
-            FormatMermaid => renderers.OfType<MermaidGraphRenderer>().First(),
-            FormatTree => renderers.OfType<TreeGraphRenderer>().First(),
-            FormatFlat => renderers.OfType<FlatGraphRenderer>().First(),
-            _ => throw new ArgumentException($"Unsupported format: {format}")
-        };
+        return renderers.FirstOrDefault(r => r.Format.Equals(format, StringComparison.OrdinalIgnoreCase))
+               ?? throw new ArgumentException($"Unsupported format: {format}");
     }
 }

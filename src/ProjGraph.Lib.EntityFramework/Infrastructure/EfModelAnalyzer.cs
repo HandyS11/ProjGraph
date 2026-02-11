@@ -13,7 +13,10 @@ namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 /// <summary>
 /// Infrastructure implementation for advanced Entity Framework model analysis using Roslyn and semantic models.
 /// </summary>
-public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem fileSystem) : IEfModelAnalyzer
+public class EfModelAnalyzer(
+    ICompilationFactory compilationFactory,
+    IFileSystem fileSystem,
+    IEntityFileDiscovery entityFileDiscovery) : IEfModelAnalyzer
 {
     /// <summary>
     /// Discovers all DbContext classes in the provided syntax tree.
@@ -59,7 +62,7 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
     /// <seealso cref="RelationshipAnalyzer.AnalyzeRelationships(EfModel, Dictionary{string, EfEntity}, Compilation)"/>
     public async Task<EfModel> AnalyzeSnapshotAsync(string snapshotPath, string? snapshotName)
     {
-        var code = fileSystem.ReadAllText(snapshotPath);
+        var code = await fileSystem.ReadAllTextAsync(snapshotPath);
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
         var root = await syntaxTree.GetRootAsync();
 
@@ -98,7 +101,7 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
     /// <seealso cref="DbContextIdentifier.FindContextClass(IEnumerable{ClassDeclarationSyntax}, string?)"/>
     public async Task<EfModel> AnalyzeContextAsync(string path, string? contextName)
     {
-        var code = fileSystem.ReadAllText(path);
+        var code = await fileSystem.ReadAllTextAsync(path);
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
         var root = await syntaxTree.GetRootAsync();
 
@@ -126,9 +129,9 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
     /// <param name="contextDirectory">The directory containing the DbContext file.</param>
     /// <param name="contextSyntaxTree">The <see cref="SyntaxTree"/> of the DbContext file.</param>
     /// <returns>A <see cref="Task{TResult}"/> that resolves to a list of <see cref="SyntaxTree"/> objects.</returns>
-    /// <seealso cref="EntityFileDiscovery.ExtractEntityTypeNames(ClassDeclarationSyntax)"/>
-    /// <seealso cref="EntityFileDiscovery.DiscoverEntityFilesAsync(List{string}, HashSet{string}, string)"/>
-    /// <seealso cref="EntityFileDiscovery.DiscoverBaseClassFilesAsync(Dictionary{string, string}, string)"/>
+    /// <seealso cref="entityFileDiscovery.ExtractEntityTypeNames(ClassDeclarationSyntax)"/>
+    /// <seealso cref="entityFileDiscovery.DiscoverEntityFilesAsync(List{string}, HashSet{string}, string)"/>
+    /// <seealso cref="entityFileDiscovery.DiscoverBaseClassFilesAsync(Dictionary{string, string}, string)"/>
     /// <seealso cref="CreateSyntaxTrees(SyntaxTree, Dictionary{string, string})"/>
     private async Task<List<SyntaxTree>> BuildSyntaxTreesAsync(
         string contextPath,
@@ -137,22 +140,22 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
         SyntaxTree contextSyntaxTree)
     {
         var root = await contextSyntaxTree.GetRootAsync();
-        var entityTypeNames = EntityFileDiscovery.ExtractEntityTypeNames(contextClass);
-        var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(contextDirectory);
+        var entityTypeNames = entityFileDiscovery.ExtractEntityTypeNames(contextClass);
+        var searchDirectories = entityFileDiscovery.BuildSearchDirectories(contextDirectory);
 
-        var entityFiles = await EntityFileDiscovery.DiscoverEntityFilesAsync(
+        var entityFiles = await entityFileDiscovery.DiscoverEntityFilesAsync(
             searchDirectories,
             entityTypeNames,
             contextPath);
 
         // Also discover base classes for entities that might be in the context file itself
-        var baseClassFiles = await EntityFileDiscovery.DiscoverBaseClassFilesAsync(entityFiles, contextDirectory);
+        var baseClassFiles = await entityFileDiscovery.DiscoverBaseClassFilesAsync(entityFiles, contextDirectory);
 
         // New step: extract base classes from the context file root as well
         var additionalBaseClassNames = new HashSet<string>();
-        EntityFileDiscovery.ExtractBaseClassNamesFromSyntax(root, additionalBaseClassNames);
+        entityFileDiscovery.ExtractBaseClassNamesFromSyntax(root, additionalBaseClassNames);
         var additionalBaseFiles =
-            EntityFileDiscovery.SearchForBaseClassFiles(additionalBaseClassNames, new DirectoryInfo(contextDirectory));
+            entityFileDiscovery.SearchForBaseClassFiles(additionalBaseClassNames, new DirectoryInfo(contextDirectory));
         MergeFileDictionaries(baseClassFiles, additionalBaseFiles);
 
         MergeFileDictionaries(entityFiles, baseClassFiles);
@@ -267,8 +270,8 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
     /// <param name="snapshotSyntaxTree">The <see cref="SyntaxTree"/> of the ModelSnapshot file.</param>
     /// <returns>A <see cref="Task{TResult}"/> that resolves to a list of <see cref="SyntaxTree"/> objects.</returns>
     /// <seealso cref="ExtractEntityTypeNamesFromSnapshot(ClassDeclarationSyntax)"/>
-    /// <seealso cref="EntityFileDiscovery.DiscoverEntityFilesAsync(List{string}, HashSet{string}, string)"/>
-    /// <seealso cref="EntityFileDiscovery.DiscoverBaseClassFilesAsync(Dictionary{string, string}, string)"/>
+    /// <seealso cref="entityFileDiscovery.DiscoverEntityFilesAsync(List{string}, HashSet{string}, string)"/>
+    /// <seealso cref="entityFileDiscovery.DiscoverBaseClassFilesAsync(Dictionary{string, string}, string)"/>
     /// <seealso cref="CreateSyntaxTrees(SyntaxTree, Dictionary{string, string})"/>
     private async Task<List<SyntaxTree>> BuildSnapshotSyntaxTreesAsync(
         string snapshotPath,
@@ -278,20 +281,20 @@ public class EfModelAnalyzer(ICompilationFactory compilationFactory, IFileSystem
     {
         var root = await snapshotSyntaxTree.GetRootAsync();
         var entityTypeNames = ExtractEntityTypeNamesFromSnapshot(snapshotClass);
-        var searchDirectories = EntityFileDiscovery.BuildSearchDirectories(snapshotDirectory);
+        var searchDirectories = entityFileDiscovery.BuildSearchDirectories(snapshotDirectory);
 
-        var entityFiles = await EntityFileDiscovery.DiscoverEntityFilesAsync(
+        var entityFiles = await entityFileDiscovery.DiscoverEntityFilesAsync(
             searchDirectories,
             entityTypeNames,
             snapshotPath);
 
         // Also discover base classes
-        var baseClassFiles = await EntityFileDiscovery.DiscoverBaseClassFilesAsync(entityFiles, snapshotDirectory);
+        var baseClassFiles = await entityFileDiscovery.DiscoverBaseClassFilesAsync(entityFiles, snapshotDirectory);
 
         var additionalBaseClassNames = new HashSet<string>();
-        EntityFileDiscovery.ExtractBaseClassNamesFromSyntax(root, additionalBaseClassNames);
+        entityFileDiscovery.ExtractBaseClassNamesFromSyntax(root, additionalBaseClassNames);
         var additionalBaseFiles =
-            EntityFileDiscovery.SearchForBaseClassFiles(additionalBaseClassNames, new DirectoryInfo(snapshotDirectory));
+            entityFileDiscovery.SearchForBaseClassFiles(additionalBaseClassNames, new DirectoryInfo(snapshotDirectory));
         MergeFileDictionaries(baseClassFiles, additionalBaseFiles);
 
         MergeFileDictionaries(entityFiles, baseClassFiles);

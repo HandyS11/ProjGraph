@@ -19,6 +19,7 @@ public static class DependencyInjection
     public static IServiceCollection AddProjGraphEntityFramework(this IServiceCollection services)
     {
         // Infrastructure
+        services.AddSingleton<IEntityFileDiscovery, EntityFileDiscovery>();
         services.AddSingleton<IEfModelAnalyzer, EfModelAnalyzer>();
         services.AddSingleton<IDiagramRenderer<EfModel>, MermaidErdRenderer>();
 

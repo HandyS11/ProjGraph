@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using ProjGraph.Core.Models;
 
@@ -28,6 +29,16 @@ public sealed class AnalysisContext
     /// The Roslyn CSharpCompilation object used for semantic analysis.
     /// </summary>
     public required CSharpCompilation Compilation { get; set; }
+
+    /// <summary>
+    /// Adds syntax trees to the compilation, returning the updated compilation.
+    /// This is the only way to mutate the compilation after construction.
+    /// </summary>
+    public CSharpCompilation AddSyntaxTrees(params SyntaxTree[] trees)
+    {
+        Compilation = Compilation.AddSyntaxTrees(trees);
+        return Compilation;
+    }
 
     /// <summary>
     /// The starting directory for the analysis process.

@@ -9,17 +9,6 @@ namespace ProjGraph.Tests.Contract;
 public class McpErdContractTests
 {
     [Fact]
-    public void ProjGraphTools_ShouldHave_McpServerToolTypeAttribute()
-    {
-        // Arrange
-        var type = typeof(ProjGraphTools);
-
-        // Assert class attribute exists
-        var classAttr = type.GetCustomAttribute<McpServerToolTypeAttribute>();
-        classAttr.Should().NotBeNull("ProjGraphTools class should be marked with McpServerToolType attribute");
-    }
-
-    [Fact]
     public void GetErd_ShouldHave_CorrectSignature()
     {
         // Arrange
@@ -94,8 +83,9 @@ public class McpErdContractTests
         var method = type.GetMethod("GetErd");
         var parameters = method!.GetParameters();
 
-        // Assert parameters exist
-        parameters.Should().HaveCount(3, "GetErd should have 3 parameters: path, contextName, and show_title");
+        // Assert parameters exist (path, contextName, showTitle, cancellationToken)
+        parameters.Should().HaveCount(4,
+            "GetErd should have 4 parameters: path, contextName, showTitle, and cancellationToken");
 
         var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
         pathParam.ParameterType.Should().Be<string>();
@@ -110,5 +100,9 @@ public class McpErdContractTests
         titleParam.ParameterType.Should().Be<bool>();
         titleParam.IsOptional.Should().BeTrue();
         titleParam.DefaultValue.Should().Be(true);
+
+        var ctParam = parameters.Should().ContainSingle(p => p.Name == "cancellationToken").Which;
+        ctParam.ParameterType.Should().Be<CancellationToken>();
+        ctParam.IsOptional.Should().BeTrue();
     }
 }

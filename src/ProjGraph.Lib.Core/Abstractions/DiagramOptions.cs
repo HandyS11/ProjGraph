@@ -4,4 +4,5 @@ namespace ProjGraph.Lib.Core.Abstractions;
 /// Represents options for rendering a diagram.
 /// </summary>
 /// <param name="ShowTitle">Whether to include the title in the rendered output.</param>
-public record DiagramOptions(bool ShowTitle = true);
+/// <param name="WrapInMarkdownFence">Whether to wrap the output in a ```mermaid code fence. Defaults to true for backward compatibility.</param>
+public record DiagramOptions(bool ShowTitle = true, bool WrapInMarkdownFence = true);

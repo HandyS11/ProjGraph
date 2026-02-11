@@ -9,6 +9,9 @@ namespace ProjGraph.Lib.ProjectGraph.Rendering;
 /// </summary>
 public sealed class TreeGraphRenderer : SolutionGraphRendererBase
 {
+    /// <inheritdoc />
+    public override string Format => "tree";
+
     /// <summary>
     /// Renders a <see cref="SolutionGraph"/> as a tree structure, displaying project dependencies hierarchically.
     /// </summary>

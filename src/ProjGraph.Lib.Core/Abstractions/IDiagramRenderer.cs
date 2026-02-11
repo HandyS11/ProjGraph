@@ -7,6 +7,11 @@ namespace ProjGraph.Lib.Core.Abstractions;
 public interface IDiagramRenderer<in TModel>
 {
     /// <summary>
+    /// Gets the format name this renderer produces (e.g., "mermaid", "tree", "flat").
+    /// </summary>
+    string Format { get; }
+
+    /// <summary>
     /// Renders the specified model into a string representation.
     /// </summary>
     /// <param name="model">The model to render.</param>

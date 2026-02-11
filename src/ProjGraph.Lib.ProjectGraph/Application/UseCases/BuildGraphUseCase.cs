@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 
@@ -12,7 +13,8 @@ public class BuildGraphUseCase(
     IProjectParser projectParser,
     IProjectDiscoveryService discoveryService,
     IFileSystem fileSystem,
-    IOutputConsole console)
+    IOutputConsole console,
+    ILogger<BuildGraphUseCase> logger)
 {
     /// <summary>
     /// Executes the use case to build a solution graph from the specified file path.
@@ -63,6 +65,7 @@ public class BuildGraphUseCase(
             }
             catch (Exception ex)
             {
+                logger.LogWarning(ex, "Skipped project '{ProjectFile}'", Path.GetFileName(fullPath));
                 console.WriteWarning($"Skipped project '{Path.GetFileName(fullPath)}': {ex.Message}");
             }
         }

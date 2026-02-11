@@ -1,12 +1,13 @@
 using ProjGraph.Lib.Core.Abstractions;
 
-namespace ProjGraph.Tests.Shared.Helpers;
+namespace ProjGraph.Mcp;
 
 /// <summary>
-/// A no-op implementation of <see cref="IOutputConsole"/> for use in tests
-/// where console output is not relevant to the assertions.
+/// A no-op implementation of IOutputConsole for the MCP server.
+/// Prevents ANSI markup from being written to stdout, which is used
+/// for JSON-RPC transport in the MCP protocol.
 /// </summary>
-public sealed class NullOutputConsole : IOutputConsole
+internal sealed class NullOutputConsole : IOutputConsole
 {
     public void Write(string message) { }
     public void WriteLine(string message) { }

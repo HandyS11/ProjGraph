@@ -10,6 +10,9 @@ namespace ProjGraph.Lib.EntityFramework.Rendering;
 /// </summary>
 public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 {
+    /// <inheritdoc />
+    public string Format => "mermaid";
+
     /// <summary>
     /// Renders a Mermaid ERD diagram from the given Entity Framework model.
     /// </summary>
@@ -21,7 +24,12 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     public string Render(EfModel model, DiagramOptions? options = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("```mermaid");
+        var wrapFence = options?.WrapInMarkdownFence ?? true;
+
+        if (wrapFence)
+        {
+            sb.AppendLine("```mermaid");
+        }
 
         if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(model.ContextName))
         {
@@ -35,7 +43,11 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
         RenderEntities(model, sb);
         RenderRelationships(model, sb);
 
-        sb.AppendLine("```");
+        if (wrapFence)
+        {
+            sb.AppendLine("```");
+        }
+
         return sb.ToString();
     }
 

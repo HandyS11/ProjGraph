@@ -29,10 +29,6 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(IsTestProject)' != 'true'">
-    <InternalsVisibleTo Include="$(AssemblyName).Tests"/>
-  </ItemGroup>
-
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'ProjGraph.Cli' OR '$(MSBuildProjectName)' == 'ProjGraph.Mcp'">
     <None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath=""/>
   </ItemGroup>

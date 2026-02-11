@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using ProjGraph.Lib.Core.Abstractions;
 
 namespace ProjGraph.Lib.Core.Infrastructure;
@@ -5,7 +6,11 @@ namespace ProjGraph.Lib.Core.Infrastructure;
 /// <summary>
 /// Infrastructure implementation of project discovery and path resolution.
 /// </summary>
-public class ProjectDiscoveryService(IProjectParser projectParser, IFileSystem fileSystem, IOutputConsole console)
+public class ProjectDiscoveryService(
+    IProjectParser projectParser,
+    IFileSystem fileSystem,
+    IOutputConsole console,
+    ILogger<ProjectDiscoveryService> logger)
     : IProjectDiscoveryService
 {
     /// <summary>
@@ -54,6 +59,7 @@ public class ProjectDiscoveryService(IProjectParser projectParser, IFileSystem f
             }
             catch (Exception ex)
             {
+                logger.LogWarning(ex, "Failed to parse project '{ProjectFile}'", Path.GetFileName(currentFullPath));
                 console.WriteWarning($"Failed to parse project '{Path.GetFileName(currentFullPath)}': {ex.Message}");
             }
         }

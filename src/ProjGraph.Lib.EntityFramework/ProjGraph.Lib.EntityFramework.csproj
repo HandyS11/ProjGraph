@@ -8,4 +8,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ProjGraph.Tests.Unit.EntityFramework"/>
+    <InternalsVisibleTo Include="ProjGraph.Tests.Integration.Mcp"/>
+  </ItemGroup>
+
 </Project>

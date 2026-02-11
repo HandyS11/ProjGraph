@@ -33,6 +33,9 @@ public static class Program
         // Register Library services
         builder.Services.AddProjGraphLib();
 
+        // Override IOutputConsole with a no-op to prevent ANSI markup on stdout (JSON-RPC transport)
+        builder.Services.AddSingleton<IOutputConsole, NullOutputConsole>();
+
         builder.Services.AddSingleton<ProjGraphTools>();
 
         var host = builder.Build();
@@ -64,7 +67,8 @@ public class ProjGraphTools(
         [Description("How many levels of relationships to follow (default: 1).")]
         int depth = 1,
         [Description("Whether to include the title in the diagram (default: true).")]
-        bool showTitle = true)
+        bool showTitle = true,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
@@ -89,7 +93,8 @@ public class ProjGraphTools(
         [Description("Absolute path to the project or solution file.")]
         string path,
         [Description("Whether to include the title in the diagram (default: true).")]
-        bool showTitle = true)
+        bool showTitle = true,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
@@ -121,7 +126,8 @@ public class ProjGraphTools(
         [Description("Specific DbContext or ModelSnapshot class name to use if multiple are present.")]
         string? contextName = null,
         [Description("Whether to include the title in the diagram (default: true).")]
-        bool showTitle = true)
+        bool showTitle = true,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 

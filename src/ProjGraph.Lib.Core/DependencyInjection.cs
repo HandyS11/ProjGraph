@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
@@ -15,6 +17,9 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddProjGraphCore(this IServiceCollection services)
     {
+        // Logging - default to NullLogger (consumers can override with real logging)
+        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+
         // Infrastructure - General
         services.AddSingleton<IFileSystem, PhysicalFileSystem>();
         services.AddSingleton<IOutputConsole, SpectreOutputConsole>();

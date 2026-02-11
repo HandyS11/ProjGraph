@@ -9,6 +9,9 @@ namespace ProjGraph.Lib.ProjectGraph.Rendering;
 /// </summary>
 public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
 {
+    /// <inheritdoc />
+    public string Format => "mermaid";
+
     /// <summary>
     /// Renders a solution graph into a Mermaid.js graph definition.
     /// </summary>
@@ -18,7 +21,12 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
     public string Render(SolutionGraph graph, DiagramOptions? options = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("```mermaid");
+        var wrapFence = options?.WrapInMarkdownFence ?? true;
+
+        if (wrapFence)
+        {
+            sb.AppendLine("```mermaid");
+        }
 
         if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(graph.Name))
         {
@@ -56,7 +64,11 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
             sb.AppendLine($"    {SanitizeId(dep.Source!.Name)} --> {SanitizeId(dep.Target!.Name)}");
         }
 
-        sb.AppendLine("```");
+        if (wrapFence)
+        {
+            sb.AppendLine("```");
+        }
+
         return sb.ToString();
     }
 

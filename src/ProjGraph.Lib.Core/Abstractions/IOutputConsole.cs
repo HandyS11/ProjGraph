@@ -46,4 +46,22 @@ public interface IOutputConsole
     /// </summary>
     /// <param name="markup">The markup content to write.</param>
     void WriteMarkup(string markup);
+
+    /// <summary>
+    /// Displays a selection prompt and returns the user's choice.
+    /// </summary>
+    /// <param name="title">The prompt title.</param>
+    /// <param name="choices">The available choices.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation.</param>
+    /// <returns>The selected choice.</returns>
+    Task<string> PromptSelectionAsync(string title, IEnumerable<string> choices,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Displays a status spinner while executing an asynchronous action.
+    /// </summary>
+    /// <param name="statusMessage">The status message to display.</param>
+    /// <param name="action">The action to execute.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation.</param>
+    Task RunWithStatusAsync(string statusMessage, Func<Task> action, CancellationToken cancellationToken = default);
 }

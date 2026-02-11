@@ -9,6 +9,9 @@ namespace ProjGraph.Lib.ProjectGraph.Rendering;
 /// </summary>
 public sealed class FlatGraphRenderer : SolutionGraphRendererBase
 {
+    /// <inheritdoc />
+    public override string Format => "flat";
+
     /// <summary>
     /// Renders a <see cref="SolutionGraph"/> as a flat list of projects and their direct dependencies.
     /// </summary>

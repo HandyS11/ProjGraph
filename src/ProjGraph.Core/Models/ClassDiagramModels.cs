@@ -52,7 +52,7 @@ public record TypeDefinition(
     string Namespace,
     string FullName,
     TypeKind Kind,
-    List<MemberDefinition> Members,
+    IReadOnlyList<MemberDefinition> Members,
     bool IsAbstract = false
 );
 
@@ -64,7 +64,7 @@ public record MemberDefinition(
     string Type,
     Visibility Visibility,
     MemberKind Kind,
-    List<ParameterDefinition>? Parameters = null
+    IReadOnlyList<ParameterDefinition>? Parameters = null
 );
 
 /// <summary>
@@ -91,6 +91,6 @@ public record Relationship(
 /// </summary>
 public record ClassModel(
     string? Title,
-    List<TypeDefinition> Types,
-    List<Relationship> Relationships
+    IReadOnlyList<TypeDefinition> Types,
+    IReadOnlyList<Relationship> Relationships
 );

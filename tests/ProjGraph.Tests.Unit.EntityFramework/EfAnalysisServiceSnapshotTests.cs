@@ -15,7 +15,7 @@ public class EfAnalysisServiceSnapshotTests
     private static EfAnalysisService CreateService()
     {
         var fs = new PhysicalFileSystem();
-        var analyzer = new EfModelAnalyzer(new CompilationFactory(), fs);
+        var analyzer = new EfModelAnalyzer(new CompilationFactory(), fs, new EntityFileDiscovery());
         return new EfAnalysisService(
             new AnalyzeContextUseCase(analyzer),
             new DiscoverContextsUseCase(analyzer, fs),

@@ -9,7 +9,7 @@ namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 /// <summary>
 /// Provides methods for resolving type symbols and loading their definitions from source files.
 /// </summary>
-internal static class SymbolResolver
+internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscovery) : ISymbolResolver
 {
     /// <summary>
     /// Resolves a related symbol by determining if it's already in the compilation or needs to be loaded from a file.
@@ -21,7 +21,7 @@ internal static class SymbolResolver
     /// A task that represents the asynchronous operation. The task result contains the resolved symbol,
     /// or null if it's an external type that was added to the context.
     /// </returns>
-    public static async Task<INamedTypeSymbol?> ResolveRelatedSymbolAsync(
+    public async Task<INamedTypeSymbol?> ResolveRelatedSymbolAsync(
         INamedTypeSymbol relatedSymbol,
         AnalysisContext context)
     {
@@ -29,7 +29,7 @@ internal static class SymbolResolver
         var symbolToResolve = relatedSymbol.OriginalDefinition;
 
         var foundFile =
-            await WorkspaceTypeDiscovery.FindTypeDefinitionFileAsync(symbolToResolve.Name, context.StartDirectory);
+            await workspaceTypeDiscovery.FindTypeDefinitionFileAsync(symbolToResolve.Name, context.StartDirectory);
 
         if (foundFile is not null)
         {
@@ -62,7 +62,7 @@ internal static class SymbolResolver
         {
             var relatedCode = await File.ReadAllTextAsync(foundFile);
             treeToUse = CSharpSyntaxTree.ParseText(relatedCode, path: foundFile);
-            context.Compilation = context.Compilation.AddSyntaxTrees(treeToUse);
+            context.AddSyntaxTrees(treeToUse);
         }
         else
         {

@@ -9,6 +9,9 @@ namespace ProjGraph.Lib.ClassDiagram.Rendering;
 /// </summary>
 public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
 {
+    /// <inheritdoc />
+    public string Format => "mermaid";
+
     /// <summary>
     /// Renders a ClassModel as a Mermaid class diagram.
     /// </summary>
@@ -18,7 +21,12 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
     public string Render(ClassModel model, DiagramOptions? options = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("```mermaid");
+        var wrapFence = options?.WrapInMarkdownFence ?? true;
+
+        if (wrapFence)
+        {
+            sb.AppendLine("```mermaid");
+        }
 
         if ((options?.ShowTitle ?? true) && !string.IsNullOrWhiteSpace(model.Title))
         {
@@ -39,7 +47,11 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
             RenderRelationship(sb, relationship);
         }
 
-        sb.AppendLine("```");
+        if (wrapFence)
+        {
+            sb.AppendLine("```");
+        }
+
         return sb.ToString();
     }
 

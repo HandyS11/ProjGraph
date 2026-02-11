@@ -26,14 +26,14 @@ public class MermaidClassDiagramRendererTests
             "Models",
             "Models.User",
             TypeKind.Class,
-            []);
-
-        type.Members.Add(new MemberDefinition("Id", "int", Visibility.Public, MemberKind.Property));
-        type.Members.Add(new MemberDefinition("Username", "string", Visibility.Private, MemberKind.Field));
-        type.Members.Add(new MemberDefinition("Save", "void", Visibility.Protected, MemberKind.Method, []));
-        type.Members.Add(new MemberDefinition("Tags", "List<string>", Visibility.Public, MemberKind.Property));
-        type.Members.Add(new MemberDefinition("Metadata", "Dictionary<string, string>", Visibility.Public,
-            MemberKind.Property));
+            [
+                new MemberDefinition("Id", "int", Visibility.Public, MemberKind.Property),
+                new MemberDefinition("Username", "string", Visibility.Private, MemberKind.Field),
+                new MemberDefinition("Save", "void", Visibility.Protected, MemberKind.Method, []),
+                new MemberDefinition("Tags", "List<string>", Visibility.Public, MemberKind.Property),
+                new MemberDefinition("Metadata", "Dictionary<string, string>", Visibility.Public,
+                    MemberKind.Property)
+            ]);
 
         var model = new ClassModel("Test", [type], []);
 
@@ -189,13 +189,12 @@ public class MermaidClassDiagramRendererTests
             "SimpleHierarchy.Enums",
             "SimpleHierarchy.Enums.Types",
             TypeKind.Enum,
-            []);
-
-        // Enum members have empty type strings
-        enumType.Members.Add(new MemberDefinition("None", string.Empty, Visibility.Public, MemberKind.Field));
-        enumType.Members.Add(new MemberDefinition("TypeA", string.Empty, Visibility.Public, MemberKind.Field));
-        enumType.Members.Add(new MemberDefinition("TypeB", string.Empty, Visibility.Public, MemberKind.Field));
-        enumType.Members.Add(new MemberDefinition("TypeC", string.Empty, Visibility.Public, MemberKind.Field));
+            [
+                new MemberDefinition("None", string.Empty, Visibility.Public, MemberKind.Field),
+                new MemberDefinition("TypeA", string.Empty, Visibility.Public, MemberKind.Field),
+                new MemberDefinition("TypeB", string.Empty, Visibility.Public, MemberKind.Field),
+                new MemberDefinition("TypeC", string.Empty, Visibility.Public, MemberKind.Field)
+            ]);
 
         var model = new ClassModel("Types.cs", [enumType], []);
 
@@ -226,15 +225,15 @@ public class MermaidClassDiagramRendererTests
             "SimpleHierarchy.Interfaces",
             "SimpleHierarchy.Interfaces.IRepository<T>",
             TypeKind.Interface,
-            [],
+            [
+                new MemberDefinition("GetById", "T?", Visibility.Public, MemberKind.Method,
+                    [new ParameterDefinition("id", "Guid")]),
+                new MemberDefinition("GetAll", "IEnumerable<T>", Visibility.Public, MemberKind.Method,
+                    []),
+                new MemberDefinition("Save", "void", Visibility.Public, MemberKind.Method,
+                    [new ParameterDefinition("entity", "T")])
+            ],
             true); // Interfaces are marked as abstract by Roslyn
-
-        interfaceType.Members.Add(new MemberDefinition("GetById", "T?", Visibility.Public, MemberKind.Method,
-            [new ParameterDefinition("id", "Guid")]));
-        interfaceType.Members.Add(new MemberDefinition("GetAll", "IEnumerable<T>", Visibility.Public, MemberKind.Method,
-            []));
-        interfaceType.Members.Add(new MemberDefinition("Save", "void", Visibility.Public, MemberKind.Method,
-            [new ParameterDefinition("entity", "T")]));
 
         var model = new ClassModel("IRepository.cs", [interfaceType], []);
 
@@ -260,11 +259,11 @@ public class MermaidClassDiagramRendererTests
             "SimpleHierarchy.Models",
             "SimpleHierarchy.Models.Localisation",
             TypeKind.Record,
-            []);
-
-        recordType.Members.Add(new MemberDefinition("X", "int", Visibility.Public, MemberKind.Property));
-        recordType.Members.Add(new MemberDefinition("Y", "int", Visibility.Public, MemberKind.Property));
-        recordType.Members.Add(new MemberDefinition("Z", "int", Visibility.Public, MemberKind.Property));
+            [
+                new MemberDefinition("X", "int", Visibility.Public, MemberKind.Property),
+                new MemberDefinition("Y", "int", Visibility.Public, MemberKind.Property),
+                new MemberDefinition("Z", "int", Visibility.Public, MemberKind.Property)
+            ]);
 
         var model = new ClassModel("Localisation.cs", [recordType], []);
 

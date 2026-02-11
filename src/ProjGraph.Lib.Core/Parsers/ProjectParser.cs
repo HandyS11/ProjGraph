@@ -1,6 +1,8 @@
 using Microsoft.Build.Construction;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ProjGraph.Lib.Core.Parsers;
 
@@ -49,7 +51,7 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
             type = ProjectType.Test;
         }
 
-        var id = Guid.NewGuid();
+        var id = GenerateDeterministicId(projectPath);
         var project = new Project(id, name, projectPath, relativePath, framework, type);
 
         var projectReferences = root.Items
@@ -58,5 +60,18 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
             .ToList();
 
         return (project, projectReferences);
+    }
+
+    /// <summary>
+    /// Generates a deterministic GUID from the normalized absolute path of the project file.
+    /// Parsing the same project twice will always yield the same ID.
+    /// </summary>
+    private static Guid GenerateDeterministicId(string projectPath)
+    {
+        var normalizedPath = Path.GetFullPath(projectPath)
+            .Replace('\\', '/')
+            .ToUpperInvariant();
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(normalizedPath));
+        return new Guid(hash.AsSpan(0, 16));
     }
 }

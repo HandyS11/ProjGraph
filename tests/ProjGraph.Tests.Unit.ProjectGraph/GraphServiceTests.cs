@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
 using ProjGraph.Lib.ProjectGraph.Application;
@@ -16,9 +17,10 @@ public class GraphServiceTests
         var fs = new PhysicalFileSystem();
         var console = new NullOutputConsole();
         var projectParser = new ProjectParser(fs);
-        var discoveryService = new ProjectDiscoveryService(projectParser, fs, console);
+        var discoveryService = new ProjectDiscoveryService(projectParser, fs, console,
+            NullLogger<ProjectDiscoveryService>.Instance);
         var useCase = new BuildGraphUseCase(new SlnParser(fs), new SlnxParser(fs), projectParser, discoveryService, fs,
-            console);
+            console, NullLogger<BuildGraphUseCase>.Instance);
         return new GraphService(useCase);
     }
 

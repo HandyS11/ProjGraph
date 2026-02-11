@@ -113,4 +113,27 @@ public class SpectreOutputConsole : IOutputConsole
     {
         AnsiConsole.MarkupLine(markup);
     }
+
+    /// <inheritdoc />
+    public async Task<string> PromptSelectionAsync(string title, IEnumerable<string> choices,
+        CancellationToken cancellationToken = default)
+    {
+        return await AnsiConsole.PromptAsync(
+            new SelectionPrompt<string>()
+                .Title(title)
+                .AddChoices(choices),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task RunWithStatusAsync(string statusMessage, Func<Task> action,
+        CancellationToken cancellationToken = default)
+    {
+        await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .StartAsync(statusMessage, async _ =>
+            {
+                await action();
+            });
+    }
 }

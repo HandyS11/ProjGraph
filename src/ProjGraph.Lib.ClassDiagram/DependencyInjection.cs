@@ -19,6 +19,8 @@ public static class DependencyInjection
     public static IServiceCollection AddProjGraphClassDiagram(this IServiceCollection services)
     {
         // Infrastructure
+        services.AddSingleton<IWorkspaceTypeDiscovery, WorkspaceTypeDiscovery>();
+        services.AddSingleton<ISymbolResolver, SymbolResolver>();
         services.AddSingleton<ITypeProcessor, TypeProcessor>();
         services.AddSingleton<IDiagramRenderer<ClassModel>, MermaidClassDiagramRenderer>();
 

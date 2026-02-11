@@ -44,13 +44,7 @@ public sealed class McpErdTests : IDisposable
 
     private static string GetSamplePath(string relativePath)
     {
-        // Split path by both forward and backward slashes to support cross-platform
-        var parts = relativePath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
-        var pathParts = new[] { Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "samples" }
-            .Concat(parts)
-            .ToArray();
-        var path = Path.Combine(pathParts);
-        return Path.GetFullPath(path);
+        return TestPathHelper.GetSamplePath(relativePath);
     }
 
     private static ProjGraphTools CreateTools()

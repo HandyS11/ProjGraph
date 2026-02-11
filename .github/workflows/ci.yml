@@ -37,5 +37,16 @@ jobs:
       - name: Build
         run: dotnet build ProjGraph.slnx --no-restore --configuration Release
 
+      - name: Check formatting
+        run: dotnet format ProjGraph.slnx --no-restore --verify-no-changes
+
       - name: Test
-        run: dotnet test ProjGraph.slnx --no-build --configuration Release --verbosity normal
+        run: dotnet test ProjGraph.slnx --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+      - name: Upload coverage reports
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: ./coverage/**/coverage.cobertura.xml
+          retention-days: 14
