@@ -1,4 +1,4 @@
-﻿namespace DesignPatterns.Enums;
+namespace DesignPatterns.Enums;
 
 /// <summary>
 /// User role enumeration

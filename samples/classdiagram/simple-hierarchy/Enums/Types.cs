@@ -1,4 +1,4 @@
-﻿namespace SimpleHierarchy.Enums;
+namespace SimpleHierarchy.Enums;
 
 public enum Types
 {

@@ -1,4 +1,4 @@
-﻿namespace DesignPatterns.Interfaces;
+namespace DesignPatterns.Interfaces;
 
 /// <summary>
 /// Observer pattern interface for notifications

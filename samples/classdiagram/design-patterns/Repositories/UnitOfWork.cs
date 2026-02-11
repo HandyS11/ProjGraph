@@ -1,4 +1,4 @@
-﻿using DesignPatterns.Base;
+using DesignPatterns.Base;
 using DesignPatterns.Domain;
 using DesignPatterns.Interfaces;
 

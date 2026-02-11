@@ -1,4 +1,4 @@
-﻿namespace DesignPatterns.Interfaces;
+namespace DesignPatterns.Interfaces;
 
 /// <summary>
 /// Strategy pattern interface for payment processing

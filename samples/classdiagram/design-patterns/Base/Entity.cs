@@ -1,4 +1,4 @@
-﻿namespace DesignPatterns.Base;
+namespace DesignPatterns.Base;
 
 /// <summary>
 /// Base entity class with primary key

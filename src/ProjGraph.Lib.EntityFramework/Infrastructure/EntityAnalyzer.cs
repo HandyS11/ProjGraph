@@ -241,19 +241,19 @@ public static class EntityAnalyzer
             {
                 Expression: IdentifierNameSyntax { Identifier.Text: EfAnalysisConstants.CommonNames.Nameof }
             } invocation:
-                    var args = invocation.ArgumentList.Arguments;
-                    if (args.Count > 0)
+                var args = invocation.ArgumentList.Arguments;
+                if (args.Count > 0)
+                {
+                    switch (args[0].Expression)
                     {
-                        switch (args[0].Expression)
-                        {
-                            case MemberAccessExpressionSyntax ma:
-                                return ma.Name.Identifier.Text;
-                            case IdentifierNameSyntax id2:
-                                return id2.Identifier.Text;
-                        }
+                        case MemberAccessExpressionSyntax ma:
+                            return ma.Name.Identifier.Text;
+                        case IdentifierNameSyntax id2:
+                            return id2.Identifier.Text;
                     }
+                }
 
-                    break;
+                break;
             case LiteralExpressionSyntax literal when
                 literal.IsKind(SyntaxKind.StringLiteralExpression):
                 return literal.Token.ValueText;

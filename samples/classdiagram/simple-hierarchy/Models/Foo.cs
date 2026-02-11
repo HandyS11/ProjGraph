@@ -1,4 +1,4 @@
-﻿namespace SimpleHierarchy.Models;
+namespace SimpleHierarchy.Models;
 
 public class Foo
 {
