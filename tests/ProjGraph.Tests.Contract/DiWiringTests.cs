@@ -10,7 +10,7 @@ using ProjGraph.Lib.ProjectGraph.Application;
 namespace ProjGraph.Tests.Contract;
 
 /// <summary>
-/// Verifies that the DI container wired by <see cref="DependencyInjection.AddProjGraphLib"/>
+/// Verifies that the DI container wired by <see cref="ServiceRegistration.AddProjGraphLib"/>
 /// can resolve all critical service interfaces.
 /// </summary>
 public class DiWiringTests

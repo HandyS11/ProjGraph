@@ -73,7 +73,7 @@ public partial class BuildGraphUseCase(
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or XmlException)
             {
-                LogProjectSkipped(ex, Path.GetFileName(fullPath));
+                LogProjectSkipped(logger, ex, Path.GetFileName(fullPath));
                 console.WriteWarning($"Skipped project '{Path.GetFileName(fullPath)}': {ex.Message}");
             }
         }
@@ -94,5 +94,5 @@ public partial class BuildGraphUseCase(
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped project '{ProjectFile}'")]
-    private partial void LogProjectSkipped(Exception ex, string projectFile);
+    private static partial void LogProjectSkipped(ILogger logger, Exception ex, string projectFile);
 }

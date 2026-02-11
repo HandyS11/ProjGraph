@@ -129,8 +129,15 @@ public class SpectreOutputConsole : IOutputConsole
     public async Task RunWithStatusAsync(string statusMessage, Func<Task> action,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
-            .StartAsync(statusMessage, async _ => await action());
+            .StartAsync(statusMessage, async ctx =>
+            {
+                await using var registration = cancellationToken.Register(() => ctx.Status("Cancelling..."));
+                cancellationToken.ThrowIfCancellationRequested();
+                await action();
+            });
     }
 }

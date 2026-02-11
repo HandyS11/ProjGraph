@@ -72,10 +72,27 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
     /// <returns>A deterministic <see cref="Guid"/> derived from the normalized path.</returns>
     private static Guid GenerateDeterministicId(string projectPath)
     {
-        var normalizedPath = Path.GetFullPath(projectPath)
-            .Replace('\\', '/')
-            .ToUpperInvariant();
+        var normalizedPath = NormalizePath(projectPath);
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(normalizedPath));
         return new Guid(hash.AsSpan(0, 16));
+    }
+
+    /// <summary>
+    /// Normalizes a file path for use in deterministic ID generation.
+    /// On case-insensitive file systems (Windows/macOS), the path is case-folded.
+    /// On case-sensitive file systems (Linux), the exact case is preserved to avoid collisions.
+    /// Directory separators are normalized to forward slashes on all platforms.
+    /// </summary>
+    /// <param name="path">The file path to normalize.</param>
+    /// <returns>The normalized path string.</returns>
+    private static string NormalizePath(string path)
+    {
+        var fullPath = Path.GetFullPath(path).Replace('\\', '/');
+
+        // Only case-fold on case-insensitive file systems (Windows and macOS)
+        // Linux file systems are typically case-sensitive, so preserve exact case
+        return OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? fullPath.ToUpperInvariant()
+            : fullPath;
     }
 }
