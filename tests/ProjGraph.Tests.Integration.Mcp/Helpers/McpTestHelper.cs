@@ -12,6 +12,7 @@ using ProjGraph.Lib.ProjectGraph.Application;
 using ProjGraph.Lib.ProjectGraph.Application.UseCases;
 using ProjGraph.Lib.ProjectGraph.Rendering;
 using ProjGraph.Mcp;
+using ProjGraph.Tests.Shared.Helpers;
 
 namespace ProjGraph.Tests.Integration.Mcp.Helpers;
 
@@ -20,11 +21,12 @@ public static class McpTestHelper
     public static ProjGraphTools CreateTools()
     {
         var fs = new PhysicalFileSystem();
+        var console = new NullOutputConsole();
         var slnParser = new SlnParser(fs);
         var slnxParser = new SlnxParser(fs);
-        var projectParser = new ProjectParser();
+        var projectParser = new ProjectParser(fs);
         var graphService = new GraphService(new BuildGraphUseCase(slnParser, slnxParser, projectParser,
-            new ProjectDiscoveryService(projectParser, fs), fs));
+            new ProjectDiscoveryService(projectParser, fs, console), fs, console));
 
         var compilationFactory = new CompilationFactory();
         var typeProcessor = new TypeProcessor();

@@ -41,7 +41,8 @@ public class McpErdContractTests
         descAttr.Should().NotBeNull("GetErd should have Description attribute");
         descAttr.Description.Should().NotBeNullOrWhiteSpace()
             .And.Contain("ERD", "description should mention ERD")
-            .And.Contain("Entity Framework", "description should mention Entity Framework");
+            .And.Contain("Entity Framework", "description should mention Entity Framework")
+            .And.Contain("ModelSnapshot", "description should mention ModelSnapshot support");
     }
 
     [Fact]

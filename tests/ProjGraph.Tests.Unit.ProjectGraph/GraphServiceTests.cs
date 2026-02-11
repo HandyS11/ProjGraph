@@ -14,9 +14,11 @@ public class GraphServiceTests
     private static GraphService CreateService()
     {
         var fs = new PhysicalFileSystem();
-        var projectParser = new ProjectParser();
-        var discoveryService = new ProjectDiscoveryService(projectParser, fs);
-        var useCase = new BuildGraphUseCase(new SlnParser(fs), new SlnxParser(fs), projectParser, discoveryService, fs);
+        var console = new NullOutputConsole();
+        var projectParser = new ProjectParser(fs);
+        var discoveryService = new ProjectDiscoveryService(projectParser, fs, console);
+        var useCase = new BuildGraphUseCase(new SlnParser(fs), new SlnxParser(fs), projectParser, discoveryService, fs,
+            console);
         return new GraphService(useCase);
     }
 
@@ -31,10 +33,10 @@ public class GraphServiceTests
         );
         var normalizedPath = Path.GetFullPath(projectAPath);
 
-        // Skip test if sample project doesn't exist (makes test optional across platforms)
+        // Skip test if sample project doesn't exist (e.g., in CI without samples)
         if (!File.Exists(normalizedPath))
         {
-            return;
+            throw new SkipTestException($"Sample project not found at: {normalizedPath}");
         }
 
         // Act

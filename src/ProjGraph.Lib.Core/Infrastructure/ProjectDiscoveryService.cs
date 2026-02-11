@@ -1,12 +1,12 @@
 using ProjGraph.Lib.Core.Abstractions;
-using System.Diagnostics;
 
 namespace ProjGraph.Lib.Core.Infrastructure;
 
 /// <summary>
 /// Infrastructure implementation of project discovery and path resolution.
 /// </summary>
-public class ProjectDiscoveryService(IProjectParser projectParser, IFileSystem fileSystem) : IProjectDiscoveryService
+public class ProjectDiscoveryService(IProjectParser projectParser, IFileSystem fileSystem, IOutputConsole console)
+    : IProjectDiscoveryService
 {
     /// <summary>
     /// Discovers all project files recursively starting from the specified root project path.
@@ -54,7 +54,7 @@ public class ProjectDiscoveryService(IProjectParser projectParser, IFileSystem f
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Failed to parse project {currentFullPath}: {ex.Message}");
+                console.WriteWarning($"Failed to parse project '{Path.GetFileName(currentFullPath)}': {ex.Message}");
             }
         }
 

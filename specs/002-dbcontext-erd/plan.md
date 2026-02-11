@@ -44,20 +44,28 @@ specs/002-dbcontext-erd/
 
 ### Source Code (repository root)
 
+> **Note:** The original monolithic `ProjGraph.Lib` was subsequently split into domain-specific libraries during implementation.
+
 ```text
 src/
-├── ProjGraph.Core/      # Shared Domain Models
-├── ProjGraph.Lib/       # Core Business Logic (ERD extraction)
-├── ProjGraph.Cli/       # Thin CLI tool wrapper (erd command)
-└── ProjGraph.Mcp/       # MCP Server interface (get_erd tool)
+├── ProjGraph.Core/              # Shared Domain Models (including EfModel)
+├── ProjGraph.Lib/               # Composition Root (DI wiring only)
+├── ProjGraph.Lib.Core/          # Shared Infrastructure (CompilationFactory, Abstractions)
+├── ProjGraph.Lib.EntityFramework/ # ERD: EfAnalysisService, EfModelAnalyzer, MermaidErdRenderer
+├── ProjGraph.Cli/               # CLI wrapper (erd command)
+└── ProjGraph.Mcp/               # MCP Server (get_erd tool)
 ```
 
+```text
 tests/
-├── contract/            # MCP Contact Tests for get_erd
-├── integration/         # CLI & MCP Integration Tests
-└── unit/                # Unit tests for Roslyn-based ERD extraction
+├── ProjGraph.Tests.Unit.EntityFramework/ # Unit tests for Roslyn-based ERD extraction
+├── ProjGraph.Tests.Integration.Cli/      # CLI Integration Tests
+├── ProjGraph.Tests.Integration.Mcp/      # MCP Integration Tests
+├── ProjGraph.Tests.Contract/             # MCP Contract Tests for get_erd
+└── ProjGraph.Tests.Shared/               # Shared Test Helpers
+```
 
-**Structure Decision**: Logic will reside in `ProjGraph.Lib` within new namespaces for EF analysis. `ProjGraph.Core` will host the intermediate ERD models.
+**Structure Decision**: ERD logic resides in `ProjGraph.Lib.EntityFramework` with shared infrastructure (CompilationFactory, IFileSystem) in `ProjGraph.Lib.Core`. Domain models live in `ProjGraph.Core`.
 
 ## Complexity Tracking
 

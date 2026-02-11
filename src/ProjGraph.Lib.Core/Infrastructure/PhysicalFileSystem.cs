@@ -56,4 +56,67 @@ public class PhysicalFileSystem : IFileSystem
     {
         return Path.Combine(paths);
     }
+
+    /// <summary>
+    /// Asynchronously reads all text from the specified file.
+    /// </summary>
+    /// <param name="path">The path to the file.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous read operation. The task result contains the content of the file as a string.</returns>
+    public Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default)
+    {
+        return File.ReadAllTextAsync(path, cancellationToken);
+    }
+
+    /// <summary>
+    /// Determines whether the specified directory exists.
+    /// </summary>
+    /// <param name="path">The path to the directory.</param>
+    /// <returns>True if the directory exists; otherwise, false.</returns>
+    public bool DirectoryExists(string path)
+    {
+        return Directory.Exists(path);
+    }
+
+    /// <summary>
+    /// Enumerates files that match the specified search pattern in the specified directory.
+    /// </summary>
+    /// <param name="path">The directory to search.</param>
+    /// <param name="searchPattern">The search pattern to match against the names of files (e.g., "*.cs").</param>
+    /// <param name="searchOption">One of the enumeration values that specifies whether the search operation should include only the current directory or all subdirectories. The default is TopDirectoryOnly.</param>
+    /// <returns>An enumerable collection of file paths that match the search pattern.</returns>
+    public IEnumerable<string> EnumerateFiles(string path, string searchPattern,
+        SearchOption searchOption = SearchOption.TopDirectoryOnly)
+    {
+        return Directory.EnumerateFiles(path, searchPattern, searchOption);
+    }
+
+    /// <summary>
+    /// Enumerates all subdirectories in the specified directory.
+    /// </summary>
+    /// <param name="path">The directory to search.</param>
+    /// <returns>An enumerable collection of subdirectory paths.</returns>
+    public IEnumerable<string> EnumerateDirectories(string path)
+    {
+        return Directory.EnumerateDirectories(path);
+    }
+
+    /// <summary>
+    /// Gets the current working directory of the application.
+    /// </summary>
+    /// <returns>The current working directory path.</returns>
+    public string GetCurrentDirectory()
+    {
+        return Directory.GetCurrentDirectory();
+    }
+
+    /// <summary>
+    /// Gets the parent directory of the specified path.
+    /// </summary>
+    /// <param name="path">The path for which to retrieve the parent directory.</param>
+    /// <returns>The parent directory path, or null if the path is a root directory or if the parent cannot be determined.</returns>
+    public string? GetParentDirectory(string path)
+    {
+        return Directory.GetParent(path)?.FullName;
+    }
 }

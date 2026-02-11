@@ -75,9 +75,6 @@ public static class CliTestHelpers
             // Ensure all output is flushed before we read it
             writer.Flush();
 
-            // Give async operations a moment to complete
-            Thread.Sleep(100);
-
             return output.ToString();
         }
         finally

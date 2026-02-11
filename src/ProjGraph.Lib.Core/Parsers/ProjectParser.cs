@@ -7,7 +7,7 @@ namespace ProjGraph.Lib.Core.Parsers;
 /// <summary>
 /// Provides functionality to parse project files and extract project details and references.
 /// </summary>
-public sealed class ProjectParser : IProjectParser
+public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
 {
     /// <summary>
     /// Parses the specified project file and extracts project details and its references.
@@ -31,7 +31,7 @@ public sealed class ProjectParser : IProjectParser
                    ?? throw new InvalidOperationException($"Failed to parse project file: {projectPath}");
 
         var name = Path.GetFileNameWithoutExtension(projectPath);
-        var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), projectPath);
+        var relativePath = Path.GetRelativePath(fileSystem.GetCurrentDirectory(), projectPath);
 
         // Fast extraction of properties
         var framework = root.Properties.FirstOrDefault(p => p.Name == "TargetFramework")?.Value ??

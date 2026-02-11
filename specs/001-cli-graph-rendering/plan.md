@@ -48,20 +48,31 @@ specs/001-cli-graph-rendering/
 
 ### Source Code (repository root)
 
+> **Note:** The original monolithic `ProjGraph.Lib` was subsequently split into domain-specific libraries during implementation.
+
 ```text
 src/
-├── ProjGraph.Core/      # Shared Domain Models & Constants (Entities)
-├── ProjGraph.Lib/       # Clean Architecture: Application & Infrastructure (Parsing logic)
-├── ProjGraph.Cli/       # Thin CLI wrapper (Presentation)
-└── ProjGraph.Mcp/       # MCP Server interface (Presentation)
+├── ProjGraph.Core/              # Shared Domain Models & Constants (Entities)
+├── ProjGraph.Lib/               # Composition Root (DI wiring only)
+├── ProjGraph.Lib.Core/          # Shared Infrastructure (Parsers, Abstractions, Algorithms)
+├── ProjGraph.Lib.ProjectGraph/  # Project Graph: Use Cases & Rendering
+├── ProjGraph.Lib.ClassDiagram/  # Class Diagram: Analysis & Rendering
+├── ProjGraph.Lib.EntityFramework/ # ERD: EF Analysis & Rendering
+├── ProjGraph.Cli/               # Thin CLI wrapper (Presentation)
+└── ProjGraph.Mcp/               # MCP Server interface (Presentation)
 
 tests/
-├── ProjGraph.Tests.Unit/         # Unit Tests
-├── ProjGraph.Tests.Integration/  # Integration Tests
-└── ProjGraph.Tests.Contract/    # MCP Contract Tests
+├── ProjGraph.Tests.Unit.Core/          # Unit Tests (Core)
+├── ProjGraph.Tests.Unit.ProjectGraph/  # Unit Tests (ProjectGraph)
+├── ProjGraph.Tests.Unit.ClassDiagram/  # Unit Tests (ClassDiagram)
+├── ProjGraph.Tests.Unit.EntityFramework/ # Unit Tests (EntityFramework)
+├── ProjGraph.Tests.Integration.Cli/    # CLI Integration Tests
+├── ProjGraph.Tests.Integration.Mcp/    # MCP Integration Tests
+├── ProjGraph.Tests.Contract/           # MCP Contract Tests
+└── ProjGraph.Tests.Shared/             # Shared Test Helpers
 ```
 
-**Structure Decision**: Standard Clean Architecture layout with separation of Core, Lib (Logic), and delivery mechanisms (Cli, Mcp).
+**Structure Decision**: Clean Architecture layout with domain-specific libraries: `Lib.Core` (shared infrastructure), `Lib.ProjectGraph` (graph analysis), `Lib.ClassDiagram` (class analysis), `Lib.EntityFramework` (ERD analysis), composed via `Lib` (DI root) and delivered through `Cli` and `Mcp`.
 
 ## Complexity Tracking
 

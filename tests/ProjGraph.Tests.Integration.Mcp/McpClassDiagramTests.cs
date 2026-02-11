@@ -312,7 +312,7 @@ public sealed class McpClassDiagramTests : IDisposable
         // Skip if file doesn't exist (e.g., in CI environment)
         if (!File.Exists(modelsPath))
         {
-            return;
+            throw new SkipTestException($"Sample file not found at: {modelsPath}");
         }
 
         // Act

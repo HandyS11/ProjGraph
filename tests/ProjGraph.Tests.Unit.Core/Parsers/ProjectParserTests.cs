@@ -1,4 +1,5 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
 using ProjGraph.Tests.Shared.Helpers;
 
@@ -7,7 +8,7 @@ namespace ProjGraph.Tests.Unit.Core.Parsers;
 [Trait("Category", "Core")]
 public class ProjectParserTests
 {
-    private readonly ProjectParser _parser = new();
+    private readonly ProjectParser _parser = new(new PhysicalFileSystem());
 
     [Fact]
     public void Parse_ShouldIdentifyProjectReferences()

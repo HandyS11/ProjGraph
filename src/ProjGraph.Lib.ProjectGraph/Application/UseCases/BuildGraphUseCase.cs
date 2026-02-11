@@ -11,7 +11,8 @@ public class BuildGraphUseCase(
     ISlnxParser slnxParser,
     IProjectParser projectParser,
     IProjectDiscoveryService discoveryService,
-    IFileSystem fileSystem)
+    IFileSystem fileSystem,
+    IOutputConsole console)
 {
     /// <summary>
     /// Executes the use case to build a solution graph from the specified file path.
@@ -60,9 +61,9 @@ public class BuildGraphUseCase(
                     .Select(discoveryService.NormalizePath)
                     .Select(np => (normalizedPath, np)));
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently skip projects that fail to analyze
+                console.WriteWarning($"Skipped project '{Path.GetFileName(fullPath)}': {ex.Message}");
             }
         }
 
