@@ -1,4 +1,4 @@
-﻿namespace DesignPatterns.Base;
+namespace DesignPatterns.Base;
 
 /// <summary>
 /// Marker interface for all entities in the domain

@@ -1,3 +1,4 @@
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
@@ -6,6 +7,7 @@ using Spectre.Console.Cli;
 using System.ComponentModel;
 
 // ReSharper disable ClassNeverInstantiated.Global
+#pragma warning disable CA1812 // Types are instantiated by Spectre.Console DI via reflection
 
 namespace ProjGraph.Cli.Commands;
 
@@ -17,7 +19,10 @@ namespace ProjGraph.Cli.Commands;
 /// to configure the path to the DbContext/ModelSnapshot file and the optional name. It processes the input
 /// and generates a Mermaid ERD diagram based on the analyzed Entity Framework model.
 /// </remarks>
-public sealed class ErdCommand(
+/// <param name="efService">The Entity Framework analysis service for discovering and analyzing contexts and snapshots.</param>
+/// <param name="mermaidRenderer">The diagram renderer for producing Mermaid ERD output.</param>
+/// <param name="console">The output console for writing results and errors.</param>
+internal sealed class ErdCommand(
     IEfAnalysisService efService,
     IDiagramRenderer<EfModel> mermaidRenderer,
     IOutputConsole console)
@@ -30,7 +35,7 @@ public sealed class ErdCommand(
     /// This class contains the configuration options for the `ErdCommand`, including the path to the input file
     /// and the optional context/snapshot name. It also provides validation for the input settings.
     /// </remarks>
-    public sealed class Settings : CommandSettings
+    internal sealed class Settings : CommandSettings
     {
         /// <summary>
         /// Gets or sets the path to a .cs file containing a DbContext or ModelSnapshot.
@@ -76,7 +81,7 @@ public sealed class ErdCommand(
                 return ValidationResult.Error($"File not found: {Path}");
             }
 
-            if (!Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            if (!Path.EndsWith(FilePathGuard.CSharpExtension, StringComparison.OrdinalIgnoreCase))
             {
                 return ValidationResult.Error($"Only .cs files are supported. Got: {Path}");
             }
@@ -107,7 +112,7 @@ public sealed class ErdCommand(
     {
         try
         {
-            var targetPath = await ResolveTargetPathAsync(settings.Path, cancellationToken);
+            var targetPath = await ResolveTargetPathAsync(settings.Path, console, cancellationToken);
             if (targetPath is null)
             {
                 return 1;
@@ -120,7 +125,9 @@ public sealed class ErdCommand(
 
             return 0;
         }
+#pragma warning disable CA1031 // Do not catch general exception type — CLI handler intentionally catches all for user-friendly display
         catch (Exception ex)
+#pragma warning restore CA1031
         {
             console.WriteError(ex.Message);
             return 1;
@@ -131,37 +138,41 @@ public sealed class ErdCommand(
     /// Resolves the target file path, either from the provided path or by discovering files in the current directory.
     /// </summary>
     /// <param name="providedPath">The path provided by the user, or null to search automatically.</param>
+    /// <param name="console">The output console for user interaction.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The resolved file path, or null if no valid file was found.</returns>
-    private static async Task<string?> ResolveTargetPathAsync(string? providedPath, CancellationToken cancellationToken)
+    private static async Task<string?> ResolveTargetPathAsync(string? providedPath, IOutputConsole console,
+        CancellationToken cancellationToken)
     {
         if (!string.IsNullOrEmpty(providedPath))
         {
             return providedPath;
         }
 
-        var files = Directory.GetFiles(Directory.GetCurrentDirectory(), "*DbContext.cs",
+        var files = Directory.GetFiles(Directory.GetCurrentDirectory(), $"*DbContext{FilePathGuard.CSharpExtension}",
                 SearchOption.AllDirectories)
-            .Concat(Directory.GetFiles(Directory.GetCurrentDirectory(), "*ModelSnapshot.cs",
+            .Concat(Directory.GetFiles(Directory.GetCurrentDirectory(),
+                $"*ModelSnapshot{FilePathGuard.CSharpExtension}",
                 SearchOption.AllDirectories))
             .ToList();
 
         return files.Count switch
         {
-            0 => HandleNoFilesFound(),
-            1 => HandleSingleFileFound(files[0]),
-            _ => await HandleMultipleFilesFoundAsync(files, cancellationToken)
+            0 => HandleNoFilesFound(console),
+            1 => HandleSingleFileFound(files[0], console),
+            _ => await HandleMultipleFilesFoundAsync(files, console, cancellationToken)
         };
     }
 
     /// <summary>
     /// Handles the case when no DbContext or ModelSnapshot files are found.
     /// </summary>
+    /// <param name="console">The output console for user interaction.</param>
     /// <returns>Null to indicate failure.</returns>
-    private static string? HandleNoFilesFound()
+    private static string? HandleNoFilesFound(IOutputConsole console)
     {
-        AnsiConsole.MarkupLine("[red]Error:[/] No DbContext or ModelSnapshot .cs file found.");
-        AnsiConsole.MarkupLine("[grey]Usage: projgraph erd path/to/YourDbContext.cs[/]");
+        console.WriteError("No DbContext or ModelSnapshot .cs file found.");
+        console.WriteMarkup("[grey]Usage: projgraph erd path/to/YourDbContext.cs[/]");
         return null;
     }
 
@@ -169,10 +180,11 @@ public sealed class ErdCommand(
     /// Handles the case when a single file is found automatically.
     /// </summary>
     /// <param name="filePath">The path to the found file.</param>
+    /// <param name="console">The output console for user interaction.</param>
     /// <returns>The file path.</returns>
-    private static string HandleSingleFileFound(string filePath)
+    private static string HandleSingleFileFound(string filePath, IOutputConsole console)
     {
-        AnsiConsole.MarkupLine($"[grey]Using [white]{Path.GetFileName(filePath)}[/]...[/]");
+        console.WriteMarkup($"[grey]Using [white]{Path.GetFileName(filePath)}[/]...[/]");
         return filePath;
     }
 
@@ -180,15 +192,15 @@ public sealed class ErdCommand(
     /// Handles the case when multiple files are found, prompting the user to select one.
     /// </summary>
     /// <param name="files">The list of found files.</param>
+    /// <param name="console">The output console for user interaction.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The selected file path.</returns>
     private static async Task<string> HandleMultipleFilesFoundAsync(List<string> files,
-        CancellationToken cancellationToken)
+        IOutputConsole console, CancellationToken cancellationToken)
     {
-        var selectedFileName = await AnsiConsole.PromptAsync(
-            new SelectionPrompt<string>()
-                .Title("Multiple files found. Please select one:")
-                .AddChoices(files.Select(f => Path.GetFileName(f))),
+        var selectedFileName = await console.PromptSelectionAsync(
+            "Multiple files found. Please select one:",
+            files.Select(f => Path.GetFileName(f)),
             cancellationToken);
         return files.First(f => Path.GetFileName(f) == selectedFileName);
     }
@@ -205,7 +217,7 @@ public sealed class ErdCommand(
         string? contextName,
         CancellationToken cancellationToken)
     {
-        if (targetPath.EndsWith("ModelSnapshot.cs", StringComparison.OrdinalIgnoreCase))
+        if (targetPath.EndsWith($"ModelSnapshot{FilePathGuard.CSharpExtension}", StringComparison.OrdinalIgnoreCase))
         {
             return await AnalyzeSnapshotAsync(targetPath, contextName, cancellationToken);
         }
@@ -231,6 +243,7 @@ public sealed class ErdCommand(
             contextName,
             "Multiple ModelSnapshots found. Please select one:",
             $"No ModelSnapshot found in '{targetPath}'.",
+            console,
             cancellationToken);
 
         return await efService.AnalyzeSnapshotAsync(targetPath, selectedSnapshot);
@@ -254,6 +267,7 @@ public sealed class ErdCommand(
             contextName,
             "Multiple DbContexts found. Please select one:",
             $"No DbContext found in '{targetPath}'.",
+            console,
             cancellationToken);
 
         return await efService.AnalyzeContextAsync(targetPath, selectedContext);
@@ -266,13 +280,16 @@ public sealed class ErdCommand(
     /// <param name="providedName">The optional pre-selected item name.</param>
     /// <param name="promptTitle">The title to display when prompting the user.</param>
     /// <param name="notFoundMessage">The error message when no items are found.</param>
+    /// <param name="console">The output console for user interaction.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>The selected item name.</returns>
+    /// <exception cref="AnalysisException">Thrown when no items are found in the list.</exception>
     private static async Task<string> SelectItemAsync(
         List<string> items,
         string? providedName,
         string promptTitle,
         string notFoundMessage,
+        IOutputConsole console,
         CancellationToken cancellationToken)
     {
         if (!string.IsNullOrEmpty(providedName))
@@ -282,12 +299,8 @@ public sealed class ErdCommand(
 
         return items.Count switch
         {
-            0 => throw new InvalidOperationException(notFoundMessage),
-            > 1 => await AnsiConsole.PromptAsync(
-                new SelectionPrompt<string>()
-                    .Title(promptTitle)
-                    .AddChoices(items),
-                cancellationToken),
+            0 => throw new AnalysisException(notFoundMessage),
+            > 1 => await console.PromptSelectionAsync(promptTitle, items, cancellationToken),
             _ => items[0]
         };
     }

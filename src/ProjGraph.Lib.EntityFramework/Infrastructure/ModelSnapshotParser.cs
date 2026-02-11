@@ -65,6 +65,6 @@ public static class ModelSnapshotParser
             return contextType.Name;
         }
 
-        return snapshotType.Name.Replace("ModelSnapshot", "");
+        return snapshotType.Name.Replace("ModelSnapshot", "", StringComparison.Ordinal);
     }
 }

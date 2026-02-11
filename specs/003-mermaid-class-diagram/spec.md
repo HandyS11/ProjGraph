@@ -2,7 +2,7 @@
 
 **Feature Branch**: `003-mermaid-class-diagram`
 **Created**: 2026-01-20
-**Status**: Draft
+**Status**: Complete
 **Input**: User description: "Add a feature to draw classdiagram using mermaid. The user will give the exact path to the cs file. It can give option to add inheritance and dependencies on other classes (the tool will need to find them manually)"
 
 ## User Scenarios & Testing *(mandatory)*

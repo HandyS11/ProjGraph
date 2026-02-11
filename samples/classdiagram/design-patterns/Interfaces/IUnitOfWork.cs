@@ -1,4 +1,4 @@
-﻿using DesignPatterns.Base;
+using DesignPatterns.Base;
 
 namespace DesignPatterns.Interfaces;
 

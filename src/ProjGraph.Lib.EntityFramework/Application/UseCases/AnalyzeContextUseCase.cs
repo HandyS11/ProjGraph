@@ -1,10 +1,12 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
 
 namespace ProjGraph.Lib.EntityFramework.Application.UseCases;
 
 /// <summary>
 /// Use case for analyzing a specified DbContext class.
 /// </summary>
+/// <param name="modelAnalyzer">The EF model analyzer used for context analysis.</param>
 public class AnalyzeContextUseCase(IEfModelAnalyzer modelAnalyzer)
 {
     /// <summary>
@@ -16,20 +18,7 @@ public class AnalyzeContextUseCase(IEfModelAnalyzer modelAnalyzer)
     /// <exception cref="ArgumentException">Thrown when the provided file path is not a .cs file.</exception>
     public async Task<EfModel> ExecuteAsync(string path, string? contextName = null)
     {
-        ValidateCsFilePath(path);
+        FilePathGuard.RequireCsFile(path);
         return await modelAnalyzer.AnalyzeContextAsync(path, contextName);
-    }
-
-    /// <summary>
-    /// Validates that the provided file path points to a C# source file.
-    /// </summary>
-    /// <param name="path">The file path to validate.</param>
-    /// <exception cref="ArgumentException">Thrown when the file path does not end with a .cs extension.</exception>
-    private static void ValidateCsFilePath(string path)
-    {
-        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException("Only .cs files are supported", nameof(path));
-        }
     }
 }

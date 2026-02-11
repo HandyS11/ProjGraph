@@ -7,6 +7,10 @@ namespace ProjGraph.Lib.EntityFramework.Application;
 /// Service responsible for analyzing Entity Framework Core models architectures.
 /// Delegates orchestration to specific use cases.
 /// </summary>
+/// <param name="analyzeContextUseCase">The use case for analyzing DbContext classes.</param>
+/// <param name="discoverContextsUseCase">The use case for discovering DbContext classes.</param>
+/// <param name="analyzeSnapshotUseCase">The use case for analyzing ModelSnapshot classes.</param>
+/// <param name="discoverSnapshotsUseCase">The use case for discovering ModelSnapshot classes.</param>
 public class EfAnalysisService(
     AnalyzeContextUseCase analyzeContextUseCase,
     DiscoverContextsUseCase discoverContextsUseCase,

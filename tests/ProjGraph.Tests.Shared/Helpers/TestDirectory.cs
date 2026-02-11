@@ -80,12 +80,12 @@ public sealed class TestDirectory : IDisposable
                     Directory.Delete(DirectoryPath, true);
                 }
             }
-            catch
+            catch (IOException)
             {
                 // Best effort cleanup - CI will eventually clean up Temp folder or next run will use a different GUID
             }
         }
-        catch
+        catch (UnauthorizedAccessException)
         {
             // Best effort cleanup
         }

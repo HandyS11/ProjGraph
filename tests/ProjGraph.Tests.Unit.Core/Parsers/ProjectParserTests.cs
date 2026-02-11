@@ -1,4 +1,5 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
 using ProjGraph.Tests.Shared.Helpers;
 
@@ -7,7 +8,7 @@ namespace ProjGraph.Tests.Unit.Core.Parsers;
 [Trait("Category", "Core")]
 public class ProjectParserTests
 {
-    private readonly ProjectParser _parser = new();
+    private readonly ProjectParser _parser = new(new PhysicalFileSystem());
 
     [Fact]
     public void Parse_ShouldIdentifyProjectReferences()
@@ -211,7 +212,7 @@ public class ProjectParserTests
     }
 
     [Fact]
-    public void Parse_ShouldGenerateUniqueIds()
+    public void Parse_ShouldGenerateDeterministicIds()
     {
         // Arrange
         using var temp = new TestDirectory();
@@ -230,7 +231,32 @@ public class ProjectParserTests
         var (project1, _) = _parser.Parse(tempFile);
         var (project2, _) = _parser.Parse(tempFile);
 
-        // Assert
+        // Assert - same path should produce same ID (deterministic)
+        project1.Id.Should().Be(project2.Id);
+    }
+
+    [Fact]
+    public void Parse_ShouldGenerateUniqueIds_ForDifferentFiles()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+
+        const string content = """
+                               <Project Sdk="Microsoft.NET.Sdk">
+                                 <PropertyGroup>
+                                   <TargetFramework>net10.0</TargetFramework>
+                                 </PropertyGroup>
+                               </Project>
+                               """;
+
+        var file1 = temp.CreateFile("first.csproj", content);
+        var file2 = temp.CreateFile("second.csproj", content);
+
+        // Act
+        var (project1, _) = _parser.Parse(file1);
+        var (project2, _) = _parser.Parse(file2);
+
+        // Assert - different paths should produce different IDs
         project1.Id.Should().NotBe(project2.Id);
     }
 

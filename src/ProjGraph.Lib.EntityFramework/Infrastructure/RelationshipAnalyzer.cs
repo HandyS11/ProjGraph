@@ -3,6 +3,8 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Extensions;
 
+// ReSharper disable InconsistentNaming
+
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
 /// <summary>
@@ -130,48 +132,47 @@ public static class RelationshipAnalyzer
         INamedTypeSymbol targetType,
         bool isCollection)
     {
-        var relationship = new EfRelationship
+        var (relType, src, tgt) =
+            DetermineRelationshipValues(sourceEntity, targetEntity, prop, targetType, isCollection);
+
+        return new EfRelationship
         {
-            SourceEntity = sourceEntity.Name,
-            TargetEntity = targetEntity.Name,
-            Type = EfRelationshipType.OneToOne,
+            SourceEntity = src,
+            TargetEntity = tgt,
+            Type = relType,
             IsRequired = !prop.Type.IsNullable()
         };
-
-        DetermineRelationshipType(relationship, sourceEntity, targetEntity, prop, targetType, isCollection);
-
-        return relationship;
     }
 
     private static void MarkConventionForeignKey(EfEntity entity, string navigationName, string targetEntityName)
     {
         var potentialNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            $"{navigationName}{EfAnalysisConstants.Suffixes.IdSuffix}",
-            $"{targetEntityName}{EfAnalysisConstants.Suffixes.IdSuffix}"
+            navigationName + EfAnalysisConstants.Suffixes.IdSuffix,
+            targetEntityName + EfAnalysisConstants.Suffixes.IdSuffix
         };
 
-        foreach (var prop in entity.Properties.Where(prop => potentialNames.Contains(prop.Name)))
+        for (var i = 0; i < entity.Properties.Count; i++)
         {
-            prop.IsForeignKey = true;
+            if (potentialNames.Contains(entity.Properties[i].Name))
+            {
+                entity.Properties[i] = EfPropertyFactory.CopyWith(entity.Properties[i], isForeignKey: true);
+            }
         }
     }
 
     /// <summary>
-    /// Determines the type of relationship based on whether it is a collection or a reference.
+    /// Determines the type and entity direction of a relationship based on the navigation property.
     /// </summary>
-    /// <param name="relationship">The <see cref="EfRelationship"/> object representing the relationship being analyzed.</param>
     /// <param name="sourceEntity">The source <see cref="EfEntity"/> in the relationship.</param>
     /// <param name="targetEntity">The target <see cref="EfEntity"/> in the relationship.</param>
     /// <param name="prop">The <see cref="IPropertySymbol"/> representing the navigation property.</param>
     /// <param name="targetType">The <see cref="INamedTypeSymbol"/> representing the type of the target entity.</param>
     /// <param name="isCollection">A boolean indicating whether the navigation property is a collection.</param>
-    /// <remarks>
-    /// If the navigation property is a collection, the method delegates to <see cref="HandleCollectionNavigation"/> to determine
-    /// the relationship type. Otherwise, it delegates to <see cref="HandleReferenceNavigation"/> for further analysis.
-    /// </remarks>
-    private static void DetermineRelationshipType(
-        EfRelationship relationship,
+    /// <returns>
+    /// A tuple containing the relationship type, source entity name, and target entity name.
+    /// </returns>
+    private static (EfRelationshipType Type, string SourceEntity, string TargetEntity) DetermineRelationshipValues(
         EfEntity sourceEntity,
         EfEntity targetEntity,
         IPropertySymbol prop,
@@ -180,66 +181,42 @@ public static class RelationshipAnalyzer
     {
         if (isCollection)
         {
-            HandleCollectionNavigation(relationship, targetType, prop);
+            var type = NavigationPropertyAnalyzer.HasInverseCollection(prop, targetType)
+                ? EfRelationshipType.ManyToMany
+                : EfRelationshipType.OneToMany;
+            return (type, sourceEntity.Name, targetEntity.Name);
         }
-        else
-        {
-            HandleReferenceNavigation(relationship, sourceEntity, targetEntity, prop, targetType);
-        }
+
+        return DetermineReferenceNavigationValues(sourceEntity, targetEntity, prop, targetType);
     }
 
     /// <summary>
-    /// Determines the type of collection navigation property in an entity relationship.
+    /// Determines the relationship values for reference navigation properties.
     /// </summary>
-    /// <param name="relationship">The <see cref="EfRelationship"/> object representing the relationship being analyzed.</param>
-    /// <param name="targetType">The <see cref="INamedTypeSymbol"/> representing the type of the target entity.</param>
-    /// <param name="prop">The <see cref="IPropertySymbol"/> representing the navigation property.</param>
-    /// <remarks>
-    /// This method checks if the navigation property has an inverse collection. If it does, the relationship type is set to
-    /// <see cref="EfRelationshipType.ManyToMany"/>. Otherwise, it is set to <see cref="EfRelationshipType.OneToMany"/>.
-    /// </remarks>
-    private static void HandleCollectionNavigation(
-        EfRelationship relationship,
-        INamedTypeSymbol targetType,
-        IPropertySymbol prop)
-    {
-        relationship.Type = NavigationPropertyAnalyzer.HasInverseCollection(prop, targetType)
-            ? EfRelationshipType.ManyToMany
-            : EfRelationshipType.OneToMany;
-    }
-
-    /// <summary>
-    /// Handles the navigation logic for reference properties in an entity relationship.
-    /// </summary>
-    /// <param name="relationship">The <see cref="EfRelationship"/> object representing the relationship being analyzed.</param>
     /// <param name="sourceEntity">The source <see cref="EfEntity"/> in the relationship.</param>
     /// <param name="targetEntity">The target <see cref="EfEntity"/> in the relationship.</param>
     /// <param name="prop">The <see cref="IPropertySymbol"/> representing the navigation property.</param>
     /// <param name="targetType">The <see cref="INamedTypeSymbol"/> representing the type of the target entity.</param>
-    /// <remarks>
-    /// This method determines the type of relationship (e.g., One-to-One, One-to-Many) based on the navigation property
-    /// and its inverse. It updates the relationship object with the appropriate type, source, and target.
-    /// </remarks>
-    private static void HandleReferenceNavigation(
-        EfRelationship relationship,
-        EfEntity sourceEntity,
-        EfEntity targetEntity,
-        IPropertySymbol prop,
-        INamedTypeSymbol targetType)
+    /// <returns>
+    /// A tuple containing the relationship type, source entity name, and target entity name.
+    /// For One-to-Many relationships with a reference navigation, source and target are swapped.
+    /// </returns>
+    private static (EfRelationshipType Type, string SourceEntity, string TargetEntity)
+        DetermineReferenceNavigationValues(
+            EfEntity sourceEntity,
+            EfEntity targetEntity,
+            IPropertySymbol prop,
+            INamedTypeSymbol targetType)
     {
         if (NavigationPropertyAnalyzer.HasInverseReference(prop, targetType))
         {
             // If it has an inverse reference (including self-references with an explicit inverse), treat as One-to-One
-            relationship.Type = EfRelationshipType.OneToOne;
+            return (EfRelationshipType.OneToOne, sourceEntity.Name, targetEntity.Name);
         }
-        else
-        {
-            // Target has a collection back, or no inverse navigation found: treat as One-to-Many
-            // The foreign key will be on the source entity (the one with the reference navigation)
-            relationship.Type = EfRelationshipType.OneToMany;
-            relationship.SourceEntity = targetEntity.Name;
-            relationship.TargetEntity = sourceEntity.Name;
-        }
+
+        // Target has a collection back, or no inverse navigation found: treat as One-to-Many
+        // The foreign key will be on the source entity (the one with the reference navigation)
+        return (EfRelationshipType.OneToMany, targetEntity.Name, sourceEntity.Name);
     }
 
     /// <summary>
@@ -262,9 +239,9 @@ public static class RelationshipAnalyzer
             model.Relationships.Remove(m2m);
 
             var entitiesSorted = new[] { m2m.SourceEntity, m2m.TargetEntity }
-                .OrderBy(e => e)
+                .Order()
                 .ToArray();
-            var joinTableName = $"{entitiesSorted[0]}{entitiesSorted[1]}";
+            var joinTableName = entitiesSorted[0] + entitiesSorted[1];
 
             var sourceEntity = model.Entities.FirstOrDefault(e => e.Name == m2m.SourceEntity);
             var targetEntity = model.Entities.FirstOrDefault(e => e.Name == m2m.TargetEntity);
@@ -315,7 +292,7 @@ public static class RelationshipAnalyzer
             [
                 new EfProperty
                 {
-                    Name = $"{m2m.SourceEntity}{EfAnalysisConstants.Suffixes.IdSuffix}",
+                    Name = m2m.SourceEntity + EfAnalysisConstants.Suffixes.IdSuffix,
                     Type = sourcePkType,
                     IsPrimaryKey = true,
                     IsForeignKey = true,
@@ -323,7 +300,7 @@ public static class RelationshipAnalyzer
                 },
                 new EfProperty
                 {
-                    Name = $"{m2m.TargetEntity}{EfAnalysisConstants.Suffixes.IdSuffix}",
+                    Name = m2m.TargetEntity + EfAnalysisConstants.Suffixes.IdSuffix,
                     Type = targetPkType,
                     IsPrimaryKey = true,
                     IsForeignKey = true,

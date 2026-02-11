@@ -44,21 +44,13 @@ public sealed class McpErdTests : IDisposable
 
     private static string GetSamplePath(string relativePath)
     {
-        // Split path by both forward and backward slashes to support cross-platform
-        var parts = relativePath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
-        var pathParts = new[] { Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "samples" }
-            .Concat(parts)
-            .ToArray();
-        var path = Path.Combine(pathParts);
-        return Path.GetFullPath(path);
+        return TestPathHelper.GetSamplePath(relativePath);
     }
 
     private static ProjGraphTools CreateTools()
     {
         return McpTestHelper.CreateTools();
     }
-
-    #region Simple In-Memory DbContext Tests
 
     [Fact]
     public async Task GetErd_SimpleDbContext_ShouldReturnValidMermaid()
@@ -67,7 +59,7 @@ public sealed class McpErdTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetErd(_tempFile);
+        var result = await tools.GetErdAsync(_tempFile);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -84,7 +76,7 @@ public sealed class McpErdTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetErd(_tempFile);
+        var result = await tools.GetErdAsync(_tempFile);
 
         // Assert
         result.Should().Contain("int Id");
@@ -100,15 +92,11 @@ public sealed class McpErdTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetErd(_tempFile);
+        var result = await tools.GetErdAsync(_tempFile);
 
         // Assert
         result.Should().Contain("Blog ||--o{ Post");
     }
-
-    #endregion
-
-    #region Sample Project Tests
 
     [Fact]
     public async Task GetErd_SimpleContext_ShouldGenerateCompleteErDiagram()
@@ -118,7 +106,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath);
+        var result = await tools.GetErdAsync(contextPath);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -138,7 +126,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath);
+        var result = await tools.GetErdAsync(contextPath);
 
         // Assert
         result.Should().Contain("int Id PK");
@@ -156,7 +144,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath);
+        var result = await tools.GetErdAsync(contextPath);
 
         // Assert
         result.Should().Contain("||--o{"); // One-to-Many notation
@@ -172,7 +160,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath, "MyDbContext");
+        var result = await tools.GetErdAsync(contextPath, "MyDbContext");
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -189,7 +177,7 @@ public sealed class McpErdTests : IDisposable
         var contextPath = GetSamplePath("erd/simple-context/EntityFramework/MyDbContext.cs");
 
         // Act
-        var result = await tools.GetErd(contextPath);
+        var result = await tools.GetErdAsync(contextPath);
 
         // Assert
         result.Should().Contain("FK");
@@ -197,26 +185,22 @@ public sealed class McpErdTests : IDisposable
         result.Should().Contain("int BookId FK");
     }
 
-    #endregion
-
-    #region Error Handling
-
     [Fact]
-    public async Task GetErd_NonExistentFile_ShouldReturnError()
+    public async Task GetErd_NonExistentFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
         var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".cs");
 
         // Act
-        var result = await tools.GetErd(nonExistentPath);
+        var act = async () => await tools.GetErdAsync(nonExistentPath);
 
         // Assert
-        result.Should().StartWith("Error");
+        await act.Should().ThrowAsync<Exception>();
     }
 
     [Fact]
-    public async Task GetErd_InvalidCsFile_ShouldReturnError()
+    public async Task GetErd_InvalidCsFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
@@ -224,14 +208,14 @@ public sealed class McpErdTests : IDisposable
         await File.WriteAllTextAsync(invalidFile, "public class NotADbContext { }");
 
         // Act
-        var result = await tools.GetErd(invalidFile);
+        var act = async () => await tools.GetErdAsync(invalidFile);
 
         // Assert
-        result.Should().StartWith("Error");
+        await act.Should().ThrowAsync<Exception>();
     }
 
     [Fact]
-    public async Task GetErd_NonCsFile_ShouldReturnError()
+    public async Task GetErd_NonCsFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
@@ -239,13 +223,11 @@ public sealed class McpErdTests : IDisposable
         await File.WriteAllTextAsync(nonCsFile, "Not a C# file");
 
         // Act
-        var result = await tools.GetErd(nonCsFile);
+        var act = async () => await tools.GetErdAsync(nonCsFile);
 
         // Assert
-        result.Should().StartWith("Error");
+        await act.Should().ThrowAsync<Exception>();
     }
-
-    #endregion
 
     public void Dispose()
     {

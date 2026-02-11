@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ProjGraph.Cli.Commands;
 using ProjGraph.Cli.Infrastructure;
 using ProjGraph.Lib;
+using ProjGraph.Tests.Shared.Helpers;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System.Text;
@@ -12,19 +13,12 @@ public static class CliTestHelpers
 {
     public static string GetSamplePath(string relativePath)
     {
-        // Split path by both forward and backward slashes to support cross-platform
-        var parts = relativePath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
-        var pathParts = new[] { Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "samples" }
-            .Concat(parts)
-            .ToArray();
-        var path = Path.Combine(pathParts);
-        return Path.GetFullPath(path);
+        return TestPathHelper.GetSamplePath(relativePath);
     }
 
     public static string GetRootPath(string relativePath)
     {
-        var path = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", relativePath);
-        return Path.GetFullPath(path);
+        return TestPathHelper.GetRootPath(relativePath);
     }
 
     public static CommandApp CreateApp()
@@ -74,9 +68,6 @@ public static class CliTestHelpers
 
             // Ensure all output is flushed before we read it
             writer.Flush();
-
-            // Give async operations a moment to complete
-            Thread.Sleep(100);
 
             return output.ToString();
         }

@@ -11,14 +11,17 @@ namespace ProjGraph.Lib.EntityFramework;
 /// <summary>
 /// Provides extension methods for registering Entity Framework ProjGraph services.
 /// </summary>
-public static class DependencyInjection
+public static class ServiceRegistration
 {
     /// <summary>
     /// Adds Entity Framework ProjGraph services to the service collection.
     /// </summary>
+    /// <param name="services">The service collection to add services to.</param>
+    /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddProjGraphEntityFramework(this IServiceCollection services)
     {
         // Infrastructure
+        services.AddSingleton<IEntityFileDiscovery, EntityFileDiscovery>();
         services.AddSingleton<IEfModelAnalyzer, EfModelAnalyzer>();
         services.AddSingleton<IDiagramRenderer<EfModel>, MermaidErdRenderer>();
 

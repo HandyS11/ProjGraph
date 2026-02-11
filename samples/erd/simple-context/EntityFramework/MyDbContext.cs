@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 // ReSharper disable UnusedMember.Global
 // ReSharper disable PropertyCanBeMadeInitOnly.Global
@@ -9,6 +9,7 @@ namespace EntityFramework;
 
 public class MyDbContext : DbContext
 {
+#pragma warning disable CS8618 // Non-nullable property — DbSet properties are initialized by EF Core
     public DbSet<Author> Authors { get; set; }
     public DbSet<Book> Books { get; set; }
     public DbSet<Category> Categories { get; set; }
@@ -16,6 +17,7 @@ public class MyDbContext : DbContext
     public DbSet<Review> Reviews { get; set; }
     public DbSet<Profile> Profiles { get; set; }
     public DbSet<BookDetail> BookDetails { get; set; }
+#pragma warning restore CS8618
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

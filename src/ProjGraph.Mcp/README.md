@@ -34,8 +34,8 @@ Generates a Mermaid Entity Relationship Diagram from an EF Core `DbContext` or `
 
 **Parameters:**
 
-- `path` (string): Absolute path to `.cs` file containing a `DbContext` or `ModelSnapshot`
-- `contextName` (string, optional): Specific class name if multiple exist in the file
+- `path` (string): Absolute path to a `.cs` file containing a `DbContext` or `ModelSnapshot`
+- `contextName` (string, optional): Specific DbContext or ModelSnapshot class name if multiple exist in the file
 - `show_title` (boolean, optional): Whether to include the title in the diagram (default: true)
 
 **Returns:** Mermaid ERD diagram code

@@ -1,4 +1,4 @@
-﻿namespace SimpleHierarchy.Dtos;
+namespace SimpleHierarchy.Dtos;
 
 public record UserDto
 {

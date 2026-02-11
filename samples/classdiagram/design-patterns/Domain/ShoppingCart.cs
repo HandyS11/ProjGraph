@@ -1,4 +1,4 @@
-﻿using DesignPatterns.Base;
+using DesignPatterns.Base;
 
 namespace DesignPatterns.Domain;
 
@@ -31,7 +31,10 @@ public class ShoppingCart : Entity
         {
             Items.Add(new ShoppingCartItem
             {
-                ProductId = product.Id, Product = product, Quantity = quantity, UnitPrice = product.Price
+                ProductId = product.Id,
+                Product = product,
+                Quantity = quantity,
+                UnitPrice = product.Price
             });
         }
 

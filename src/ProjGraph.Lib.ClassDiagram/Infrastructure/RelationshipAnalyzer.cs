@@ -88,11 +88,12 @@ internal static class RelationshipAnalyzer
             }
 
             var extractedTypes = ExtractTypesFromGeneric(namedType);
-            relatedSymbols.AddRange(from extracted in extractedTypes
-                let typeName = extracted.Name
-                where seenMethodTypes.Add(typeName) && !TypeFilter.IsSystemType(extracted)
-                select ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(extracted,
-                    RelationshipKind.Dependency, null, null));
+            relatedSymbols.AddRange(
+                extractedTypes
+                    .Where(extracted => seenMethodTypes.Add(extracted.Name) && !TypeFilter.IsSystemType(extracted))
+                    .Select(extracted =>
+                        ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(
+                            extracted, RelationshipKind.Dependency, null, null)));
         }
     }
 
@@ -116,20 +117,23 @@ internal static class RelationshipAnalyzer
 
         // Detect if this is a collection type
         var isCollection = namedType.IsGenericType &&
-                           (namedType.Name.Contains("List") ||
-                            namedType.Name.Contains("Collection") ||
-                            namedType.Name.Contains("IEnumerable") ||
-                            namedType.Name.Contains("Array") ||
-                            namedType.Name.Contains("Set"));
+                           (namedType.Name.Contains("List", StringComparison.Ordinal) ||
+                            namedType.Name.Contains("Collection", StringComparison.Ordinal) ||
+                            namedType.Name.Contains("IEnumerable", StringComparison.Ordinal) ||
+                            namedType.Name.Contains("Array", StringComparison.Ordinal) ||
+                            namedType.Name.Contains("Set", StringComparison.Ordinal));
 
         var cardinality = isCollection ? "*" : "1";
 
         var extractedTypes = ExtractTypesFromGeneric(namedType);
 
-        relatedSymbols.AddRange(from extracted in extractedTypes
-            let typeName = extracted.Name
-            where seenCombinations.Add((typeName, memberName)) && !TypeFilter.IsSystemType(extracted)
-            select (extracted, RelationshipKind.Association, memberName, cardinality));
+        relatedSymbols.AddRange(
+            extractedTypes
+                .Where(extracted =>
+                    seenCombinations.Add((extracted.Name, memberName)) && !TypeFilter.IsSystemType(extracted))
+                .Select(extracted =>
+                    ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(
+                        extracted, RelationshipKind.Association, memberName, cardinality)));
     }
 
     /// <summary>

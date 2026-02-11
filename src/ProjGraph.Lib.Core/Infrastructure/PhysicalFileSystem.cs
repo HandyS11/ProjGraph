@@ -56,4 +56,24 @@ public class PhysicalFileSystem : IFileSystem
     {
         return Path.Combine(paths);
     }
+
+    /// <summary>
+    /// Asynchronously reads all text from the specified file.
+    /// </summary>
+    /// <param name="path">The path to the file.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous read operation. The task result contains the content of the file as a string.</returns>
+    public Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default)
+    {
+        return File.ReadAllTextAsync(path, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets the current working directory of the application.
+    /// </summary>
+    /// <returns>The current working directory path.</returns>
+    public string GetCurrentDirectory()
+    {
+        return Directory.GetCurrentDirectory();
+    }
 }

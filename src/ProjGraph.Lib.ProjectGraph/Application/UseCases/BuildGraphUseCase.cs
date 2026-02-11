@@ -1,17 +1,28 @@
+using Microsoft.Extensions.Logging;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
+using System.Xml;
 
 namespace ProjGraph.Lib.ProjectGraph.Application.UseCases;
 
 /// <summary>
 /// Use case for building a solution graph from a given file path.
 /// </summary>
-public class BuildGraphUseCase(
+/// <param name="slnParser">The parser for .sln solution files.</param>
+/// <param name="slnxParser">The parser for .slnx solution files.</param>
+/// <param name="projectParser">The parser for individual project files.</param>
+/// <param name="discoveryService">The service for discovering and resolving project references.</param>
+/// <param name="fileSystem">The file system abstraction for file operations.</param>
+/// <param name="console">The output console for displaying warnings.</param>
+/// <param name="logger">The logger for diagnostic messages.</param>
+public partial class BuildGraphUseCase(
     ISlnParser slnParser,
     ISlnxParser slnxParser,
     IProjectParser projectParser,
     IProjectDiscoveryService discoveryService,
-    IFileSystem fileSystem)
+    IFileSystem fileSystem,
+    IOutputConsole console,
+    ILogger<BuildGraphUseCase> logger)
 {
     /// <summary>
     /// Executes the use case to build a solution graph from the specified file path.
@@ -60,9 +71,10 @@ public class BuildGraphUseCase(
                     .Select(discoveryService.NormalizePath)
                     .Select(np => (normalizedPath, np)));
             }
-            catch
+            catch (Exception ex) when (ex is IOException or InvalidOperationException or XmlException)
             {
-                // Silently skip projects that fail to analyze
+                LogProjectSkipped(logger, ex, Path.GetFileName(fullPath));
+                console.WriteWarning($"Skipped project '{Path.GetFileName(fullPath)}': {ex.Message}");
             }
         }
 
@@ -80,4 +92,7 @@ public class BuildGraphUseCase(
             dependencies
         );
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped project '{ProjectFile}'")]
+    private static partial void LogProjectSkipped(ILogger logger, Exception ex, string projectFile);
 }

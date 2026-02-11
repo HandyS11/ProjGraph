@@ -4,7 +4,7 @@ using ProjGraph.Tests.Shared.Helpers;
 namespace ProjGraph.Tests.Integration.Cli;
 
 [Collection("CLI Tests")]
-public class ClassDiagramDiscoveryTests : IDisposable
+public sealed class ClassDiagramDiscoveryTests : IDisposable
 {
     private readonly TestDirectory _temp = new();
     private readonly string _tempRoot;
@@ -17,7 +17,6 @@ public class ClassDiagramDiscoveryTests : IDisposable
     public void Dispose()
     {
         _temp.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [Fact]

@@ -3,7 +3,7 @@
 **Feature Branch**: 002-dbcontext-erd
 **Created**: 2026-01-15
 **Updated**: 2026-01-29 (Added ModelSnapshot support)
-**Status**: Draft
+**Status**: Complete
 **Input**: User description: "I want the tool to be able to generate a erd mermaid diagram based on a DbContext or a ModelSnapshot. The tool will be able to locate the base file in a solution or take a file path as argument. Also add it to the mcp server."
 
 ## User Scenarios & Testing *(mandatory)*

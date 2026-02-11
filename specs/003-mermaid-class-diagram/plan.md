@@ -46,18 +46,26 @@ specs/003-mermaid-class-diagram/
 
 ### Source Code (repository root)
 
+> **Note:** The original monolithic `ProjGraph.Lib` was subsequently split into domain-specific libraries during implementation.
+
 ```text
 src/
-├── ProjGraph.Core/      # New Models: ClassModel, TypeDefinition, MemberDefinition, Relationship
-├── ProjGraph.Lib/       # New Services: ClassAnalysisService, ClassDiagramRenderer
-├── ProjGraph.Cli/       # New Command: ClassDiagramCommand
-└── ProjGraph.Mcp/       # New Tool registration in MCP server
+├── ProjGraph.Core/              # Models: ClassModel, TypeDefinition, MemberDefinition, Relationship
+├── ProjGraph.Lib/               # Composition Root (DI wiring only)
+├── ProjGraph.Lib.Core/          # Shared Infrastructure (CompilationFactory, Abstractions)
+├── ProjGraph.Lib.ClassDiagram/  # ClassAnalysisService, TypeProcessor, MermaidClassDiagramRenderer
+├── ProjGraph.Cli/               # ClassDiagramCommand
+└── ProjGraph.Mcp/               # get_class_diagram tool
 ```
 
+```text
 tests/
-├── ProjGraph.Tests.Contract/    # MCP Contract Tests for get_class_diagram
-├── ProjGraph.Tests.Integration/ # CLI Integration Tests
-└── ProjGraph.Tests.Unit/        # ClassAnalysisService & Renderer Unit Tests
+├── ProjGraph.Tests.Unit.ClassDiagram/    # ClassAnalysisService & Renderer Unit Tests
+├── ProjGraph.Tests.Integration.Cli/      # CLI Integration Tests
+├── ProjGraph.Tests.Integration.Mcp/      # MCP Integration Tests
+├── ProjGraph.Tests.Contract/             # MCP Contract Tests for get_class_diagram
+└── ProjGraph.Tests.Shared/               # Shared Test Helpers
+```
 
 **Structure Decision**: Standard repository structure. No major deviations.
 

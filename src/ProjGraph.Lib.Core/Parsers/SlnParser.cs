@@ -6,6 +6,7 @@ namespace ProjGraph.Lib.Core.Parsers;
 /// <summary>
 /// Provides functionality to parse solution files and extract project paths.
 /// </summary>
+/// <param name="fileSystem">The file system abstraction for file operations.</param>
 public sealed class SlnParser(IFileSystem fileSystem) : ISlnParser
 {
     /// <summary>

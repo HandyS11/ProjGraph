@@ -18,6 +18,11 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
+  <!-- Expose internals to test projects -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="ProjGraph.Tests.Integration.Cli"/>
+  </ItemGroup>
+
   <!-- Include README in package -->
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/"/>

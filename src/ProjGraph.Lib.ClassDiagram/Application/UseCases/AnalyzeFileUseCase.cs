@@ -9,6 +9,9 @@ namespace ProjGraph.Lib.ClassDiagram.Application.UseCases;
 /// <summary>
 /// Use case for analyzing a C# source file to extract class definitions and their relationships.
 /// </summary>
+/// <param name="compilationFactory">The factory for creating compilations.</param>
+/// <param name="typeProcessor">The type processor for analyzing type queues.</param>
+/// <param name="fileSystem">The file system abstraction.</param>
 public class AnalyzeFileUseCase(
     ICompilationFactory compilationFactory,
     ITypeProcessor typeProcessor,
@@ -35,7 +38,9 @@ public class AnalyzeFileUseCase(
         }
 
         var startDir = fileSystem.GetDirectoryName(filePath) ?? Environment.CurrentDirectory;
+#pragma warning disable CA1849, S6966 // Call async methods when in an async method
         var code = fileSystem.ReadAllText(filePath);
+#pragma warning restore CA1849, S6966
         var syntaxTree = CSharpSyntaxTree.ParseText(code, path: filePath);
 
         var compilation = (CSharpCompilation)compilationFactory.CreateCompilation([syntaxTree]);
@@ -51,7 +56,9 @@ public class AnalyzeFileUseCase(
 
         var options = new AnalysisOptions
         {
-            MaxDepth = maxDepth, IncludeInheritance = includeInheritance, IncludeDependencies = includeDependencies
+            MaxDepth = maxDepth,
+            IncludeInheritance = includeInheritance,
+            IncludeDependencies = includeDependencies
         };
 
         var typesToAnalyze = new Queue<(INamedTypeSymbol Symbol, int Depth)>();
@@ -77,9 +84,7 @@ public class AnalyzeFileUseCase(
         var root = await syntaxTree.GetRootAsync();
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
 
-        var typeDeclarations = root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>();
-
-        foreach (var typeDecl in typeDeclarations)
+        foreach (var typeDecl in root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>())
         {
             if (semanticModel.GetDeclaredSymbol(typeDecl) is not { } symbol)
             {

@@ -121,7 +121,6 @@ public sealed class McpClassDiagramTests : IDisposable
         return McpTestHelper.CreateTools();
     }
 
-    #region Basic Class Diagram Tests
 
     [Fact]
     public async Task GetClassDiagram_SimpleClasses_ShouldReturnValidMermaid()
@@ -130,7 +129,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFile);
+        var result = await tools.GetClassDiagramAsync(_tempFile);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -146,7 +145,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFile);
+        var result = await tools.GetClassDiagramAsync(_tempFile);
 
         // Assert
         result.Should().Contain("int Id");
@@ -158,22 +157,19 @@ public sealed class McpClassDiagramTests : IDisposable
     }
 
     [Fact]
-    public async Task GetClassDiagram_NonExistentFile_ShouldReturnError()
+    public async Task GetClassDiagram_NonExistentFile_ShouldThrow()
     {
         // Arrange
         var tools = CreateTools();
         var nonExistentPath = Path.Combine(Path.GetTempPath(), "this", "path", "does", "not", "exist.cs");
 
         // Act
-        var result = await tools.GetClassDiagram(nonExistentPath);
+        var act = async () => await tools.GetClassDiagramAsync(nonExistentPath);
 
         // Assert
-        result.Should().StartWith("Error");
+        await act.Should().ThrowAsync<Exception>();
     }
 
-    #endregion
-
-    #region Inheritance Tests
 
     [Fact]
     public async Task GetClassDiagram_WithInheritance_ShouldShowBaseClasses()
@@ -182,7 +178,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithInheritance, true);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithInheritance, true);
 
         // Assert
         result.Should().Contain("class TestNamespace_Entity");
@@ -200,7 +196,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithInheritance, true);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithInheritance, true);
 
         // Assert
         result.Should().Contain("class TestNamespace_INameable");
@@ -215,7 +211,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithInheritance);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithInheritance);
 
         // Assert
         result.Should().Contain("class TestNamespace_User");
@@ -224,9 +220,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().NotContain("<|--");
     }
 
-    #endregion
-
-    #region Dependencies Tests
 
     [Fact]
     public async Task GetClassDiagram_WithDependencies_ShouldShowRelatedClasses()
@@ -235,7 +228,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithDependencies, includeDependencies: true);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies, includeDependencies: true);
 
         // Assert
         result.Should().Contain("class TestNamespace_Customer");
@@ -251,7 +244,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithDependencies, includeDependencies: false);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies, includeDependencies: false);
 
         // Assert
         result.Should().Contain("class TestNamespace_Customer");
@@ -261,9 +254,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().NotContain("-->");
     }
 
-    #endregion
-
-    #region Depth Tests
 
     [Fact]
     public async Task GetClassDiagram_WithDepth1_ShouldLimitRelationshipDepth()
@@ -272,7 +262,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithDependencies, includeDependencies: true, depth: 1);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies, includeDependencies: true, depth: 1);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -289,7 +279,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(_tempFileWithDependencies, includeDependencies: true, depth: 2);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies, includeDependencies: true, depth: 2);
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -298,9 +288,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().Contain("class TestNamespace_Order");
     }
 
-    #endregion
-
-    #region Real Project Tests
 
     [Fact]
     public async Task GetClassDiagram_RealProject_CoreModels_ShouldGenerateDiagram()
@@ -312,20 +299,17 @@ public sealed class McpClassDiagramTests : IDisposable
         // Skip if file doesn't exist (e.g., in CI environment)
         if (!File.Exists(modelsPath))
         {
-            return;
+            throw new SkipTestException($"Sample file not found at: {modelsPath}");
         }
 
         // Act
-        var result = await tools.GetClassDiagram(modelsPath, true);
+        var result = await tools.GetClassDiagramAsync(modelsPath, true);
 
         // Assert
         result.Should().NotStartWith("Error");
         result.Should().Contain("classDiagram");
     }
 
-    #endregion
-
-    #region Parameter Combination Tests
 
     [Fact]
     public async Task GetClassDiagram_AllOptionsEnabled_ShouldWorkCorrectly()
@@ -334,7 +318,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(
+        var result = await tools.GetClassDiagramAsync(
             _tempFileWithInheritance,
             true,
             true,
@@ -353,7 +337,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagram(
+        var result = await tools.GetClassDiagramAsync(
             _tempFileWithInheritance,
             false,
             false,
@@ -365,8 +349,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().Contain("class TestNamespace_User");
         result.Should().Contain("class TestNamespace_Admin");
     }
-
-    #endregion
 
     private static string GetProjectPath(string relativePath)
     {

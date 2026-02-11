@@ -28,8 +28,8 @@ public class SlnxParserTests
 
         // Assert
         paths.Should().HaveCount(2);
-        paths.Any(p => p.EndsWith("ProjA.csproj")).Should().BeTrue();
-        paths.Any(p => p.EndsWith("ProjA.Tests.csproj")).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjA.csproj", StringComparison.Ordinal)).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjA.Tests.csproj", StringComparison.Ordinal)).Should().BeTrue();
     }
 
     [Fact]
@@ -85,8 +85,8 @@ public class SlnxParserTests
 
         // Assert
         paths.Should().HaveCount(2);
-        paths.Any(p => p.EndsWith("ProjA.csproj")).Should().BeTrue();
-        paths.Any(p => p.EndsWith("ProjB.csproj")).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjA.csproj", StringComparison.Ordinal)).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjB.csproj", StringComparison.Ordinal)).Should().BeTrue();
     }
 
     [Fact]
@@ -148,7 +148,7 @@ public class SlnxParserTests
 
         // Assert
         paths.Should().HaveCount(2);
-        paths.All(p => Path.IsPathRooted(p)).Should().BeTrue();
+        paths.All(Path.IsPathRooted).Should().BeTrue();
     }
 
     [Fact]

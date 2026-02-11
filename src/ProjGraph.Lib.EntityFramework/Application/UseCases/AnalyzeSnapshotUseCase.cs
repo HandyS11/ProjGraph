@@ -1,10 +1,12 @@
 using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
 
 namespace ProjGraph.Lib.EntityFramework.Application.UseCases;
 
 /// <summary>
 /// Use case for analyzing an Entity Framework ModelSnapshot.
 /// </summary>
+/// <param name="modelAnalyzer">The EF model analyzer used for snapshot analysis.</param>
 public class AnalyzeSnapshotUseCase(IEfModelAnalyzer modelAnalyzer)
 {
     /// <summary>
@@ -16,10 +18,7 @@ public class AnalyzeSnapshotUseCase(IEfModelAnalyzer modelAnalyzer)
     /// <exception cref="ArgumentException">Thrown when the provided file path is not a .cs file.</exception>
     public async Task<EfModel> ExecuteAsync(string path, string? snapshotName = null)
     {
-        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException("Only .cs files are supported", nameof(path));
-        }
+        FilePathGuard.RequireCsFile(path);
 
         return await modelAnalyzer.AnalyzeSnapshotAsync(path, snapshotName);
     }

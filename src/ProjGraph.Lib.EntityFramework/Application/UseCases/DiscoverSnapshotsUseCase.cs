@@ -6,6 +6,8 @@ namespace ProjGraph.Lib.EntityFramework.Application.UseCases;
 /// <summary>
 /// Use case for discovering all ModelSnapshot classes within a C# file.
 /// </summary>
+/// <param name="modelAnalyzer">The EF model analyzer used for snapshot discovery.</param>
+/// <param name="fileSystem">The file system abstraction for reading source files.</param>
 public class DiscoverSnapshotsUseCase(IEfModelAnalyzer modelAnalyzer, IFileSystem fileSystem)
 {
     /// <summary>
@@ -16,12 +18,12 @@ public class DiscoverSnapshotsUseCase(IEfModelAnalyzer modelAnalyzer, IFileSyste
     /// <exception cref="ArgumentException">Thrown when the provided file path is not a .cs file.</exception>
     public async Task<List<string>> ExecuteAsync(string path)
     {
-        if (!path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException("Only .cs files are supported", nameof(path));
-        }
+        FilePathGuard.RequireCsFile(path);
 
-        var syntaxTree = CSharpSyntaxTree.ParseText(fileSystem.ReadAllText(path));
+        var syntaxTree = CSharpSyntaxTree.ParseText(
+#pragma warning disable CA1849, S6966
+            fileSystem.ReadAllText(path));
+#pragma warning restore CA1849, S6966
         var root = await syntaxTree.GetRootAsync();
 
         return [.. modelAnalyzer.DiscoverModelSnapshots(root)];

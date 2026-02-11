@@ -73,6 +73,11 @@ public static class TarjanSccAlgorithm
     /// <summary>
     /// Recursively explores the graph to find strongly connected components using Tarjan's algorithm.
     /// </summary>
+    /// <remarks>
+    /// This method uses unbounded recursion. Graphs with more than ~1,000 nodes in a single dependency
+    /// chain may cause a <see cref="StackOverflowException"/>. In practice, .NET solution graphs
+    /// rarely approach this depth.
+    /// </remarks>
     /// <param name="v">The current node being visited.</param>
     /// <param name="adjacencyList">The adjacency list representing the graph.</param>
     /// <param name="context">The context of the Tarjan's algorithm execution.</param>

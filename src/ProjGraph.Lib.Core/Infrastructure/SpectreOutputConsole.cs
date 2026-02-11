@@ -9,12 +9,33 @@ namespace ProjGraph.Lib.Core.Infrastructure;
 public class SpectreOutputConsole : IOutputConsole
 {
     /// <summary>
+    /// Cached <see cref="IAnsiConsole"/> instance that writes to the standard error stream.
+    /// Invalidated automatically when <see cref="Console.Error"/> changes (e.g., during tests).
+    /// </summary>
+#pragma warning disable IDE0032
+    private static IAnsiConsole? _cachedStderr;
+#pragma warning restore IDE0032
+
+    /// <summary>
+    /// The <see cref="TextWriter"/> that was active when <see cref="_cachedStderr"/> was created.
+    /// Used to detect when <see cref="Console.Error"/> has been swapped.
+    /// </summary>
+    private static TextWriter? _cachedErrorWriter;
+
+    /// <summary>
     /// Gets an <see cref="IAnsiConsole"/> that writes to the current standard error stream.
+    /// The console is cached and reused as long as <see cref="Console.Error"/> has not changed.
     /// </summary>
     private static IAnsiConsole Stderr
     {
         get
         {
+            if (_cachedStderr is not null && _cachedErrorWriter == Console.Error)
+            {
+                return _cachedStderr;
+            }
+
+            _cachedErrorWriter = Console.Error;
             var globalConsole = AnsiConsole.Console;
             var console = AnsiConsole.Create(new AnsiConsoleSettings
             {
@@ -24,7 +45,9 @@ public class SpectreOutputConsole : IOutputConsole
             });
             console.Profile.Capabilities.Unicode = globalConsole.Profile.Capabilities.Unicode;
             console.Profile.Width = globalConsole.Profile.Width;
-            return console;
+            _cachedStderr = console;
+
+            return _cachedStderr;
         }
     }
 
@@ -89,5 +112,32 @@ public class SpectreOutputConsole : IOutputConsole
     public void WriteMarkup(string markup)
     {
         AnsiConsole.MarkupLine(markup);
+    }
+
+    /// <inheritdoc />
+    public async Task<string> PromptSelectionAsync(string title, IEnumerable<string> choices,
+        CancellationToken cancellationToken = default)
+    {
+        return await AnsiConsole.PromptAsync(
+            new SelectionPrompt<string>()
+                .Title(title)
+                .AddChoices(choices),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task RunWithStatusAsync(string statusMessage, Func<Task> action,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .StartAsync(statusMessage, async ctx =>
+            {
+                await using var registration = cancellationToken.Register(() => ctx.Status("Cancelling..."));
+                cancellationToken.ThrowIfCancellationRequested();
+                await action();
+            });
     }
 }

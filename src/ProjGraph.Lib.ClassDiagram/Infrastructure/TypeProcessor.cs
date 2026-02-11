@@ -7,7 +7,8 @@ namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 /// <summary>
 /// Provides methods for processing type queues and handling related types during analysis.
 /// </summary>
-public sealed class TypeProcessor : ITypeProcessor
+/// <param name="symbolResolver">The symbol resolver for resolving related type symbols.</param>
+public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcessor
 {
     /// <summary>
     /// Processes a queue of types to analyze, extracting type definitions and discovering relationships.
@@ -28,7 +29,10 @@ public sealed class TypeProcessor : ITypeProcessor
     /// <summary>
     /// Internal implementation of processing the type queue.
     /// </summary>
-    private static async Task ProcessTypeQueueInternalAsync(
+    /// <param name="typesToAnalyze">The queue of type symbols and their depths to analyze.</param>
+    /// <param name="context">The analysis context.</param>
+    /// <param name="options">The analysis options controlling the behavior.</param>
+    private async Task ProcessTypeQueueInternalAsync(
         Queue<(INamedTypeSymbol Symbol, int Depth)> typesToAnalyze,
         AnalysisContext context,
         AnalysisOptions options)
@@ -115,7 +119,7 @@ public sealed class TypeProcessor : ITypeProcessor
     /// <param name="typesToAnalyze">The queue to add newly discovered types to.</param>
     /// <param name="context">The <see cref="AnalysisContext"/> containing the current state of the analysis.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    private static async Task ProcessRelatedTypesAsync(
+    private async Task ProcessRelatedTypesAsync(
         List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)> relatedSymbols,
         string fullName,
         int depth,
@@ -130,7 +134,7 @@ public sealed class TypeProcessor : ITypeProcessor
             // Resolve symbol only once per unique type
             if (!resolvedSymbolsCache.TryGetValue(relatedSymbol, out var resolvedSymbol))
             {
-                resolvedSymbol = await SymbolResolver.ResolveRelatedSymbolAsync(relatedSymbol, context);
+                resolvedSymbol = await symbolResolver.ResolveRelatedSymbolAsync(relatedSymbol, context);
                 resolvedSymbolsCache[relatedSymbol] = resolvedSymbol;
             }
 

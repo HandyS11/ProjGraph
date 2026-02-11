@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using System.Collections.Frozen;
 
 namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 
@@ -7,6 +8,60 @@ namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 /// </summary>
 internal static class TypeFilter
 {
+    /// <summary>
+    /// A pre-computed, immutable set of well-known system type names used for fast lookup.
+    /// </summary>
+    private static readonly FrozenSet<string> WellKnownTypes = new HashSet<string>
+    {
+        // Generic collections
+        "List",
+        "Dictionary",
+        "IEnumerable",
+        "ICollection",
+        "IList",
+        "IDictionary",
+        "HashSet",
+        "Queue",
+        "Stack",
+        "LinkedList",
+        "SortedSet",
+        "SortedList",
+        "SortedDictionary",
+        // Async types
+        "Task",
+        "ValueTask",
+        // Nullable and lazy
+        "Nullable",
+        "Lazy",
+        // Common system value types
+        "DateTime",
+        "DateTimeOffset",
+        "TimeSpan",
+        "Guid",
+        "Uri",
+        "Decimal",
+        "Byte",
+        "SByte",
+        "Int16",
+        "UInt16",
+        "Int32",
+        "UInt32",
+        "Int64",
+        "UInt64",
+        "Single",
+        "Double",
+        "Char",
+        "Boolean",
+        "Object",
+        "String",
+        "Array",
+        "Delegate",
+        "MulticastDelegate",
+        "Enum",
+        "ValueType",
+        "Exception"
+    }.ToFrozenSet();
+
     /// <summary>
     /// Determines whether a given type is a system type.
     /// A type is considered a system type if it belongs to well-known system namespaces
@@ -28,7 +83,8 @@ internal static class TypeFilter
         var ns = type.ContainingNamespace?.ToDisplayString();
 
         // Check if it's in a system namespace
-        if (ns != null && (ns.StartsWith("System") || ns.StartsWith("Microsoft.Extensions")))
+        if (ns != null && (ns.StartsWith("System", StringComparison.Ordinal) ||
+                           ns.StartsWith("Microsoft.Extensions", StringComparison.Ordinal)))
         {
             return true;
         }
@@ -57,57 +113,6 @@ internal static class TypeFilter
     /// </remarks>
     private static bool IsWellKnownSystemType(string typeName)
     {
-        var wellKnownTypes = new HashSet<string>
-        {
-            // Generic collections
-            "List",
-            "Dictionary",
-            "IEnumerable",
-            "ICollection",
-            "IList",
-            "IDictionary",
-            "HashSet",
-            "Queue",
-            "Stack",
-            "LinkedList",
-            "SortedSet",
-            "SortedList",
-            "SortedDictionary",
-            // Async types
-            "Task",
-            "ValueTask",
-            // Nullable and lazy
-            "Nullable",
-            "Lazy",
-            // Common system value types
-            "DateTime",
-            "DateTimeOffset",
-            "TimeSpan",
-            "Guid",
-            "Uri",
-            "Decimal",
-            "Byte",
-            "SByte",
-            "Int16",
-            "UInt16",
-            "Int32",
-            "UInt32",
-            "Int64",
-            "UInt64",
-            "Single",
-            "Double",
-            "Char",
-            "Boolean",
-            "Object",
-            "String",
-            "Array",
-            "Delegate",
-            "MulticastDelegate",
-            "Enum",
-            "ValueType",
-            "Exception"
-        };
-
-        return wellKnownTypes.Contains(typeName);
+        return WellKnownTypes.Contains(typeName);
     }
 }

@@ -6,7 +6,7 @@ indent_size = 4
 charset = utf-8
 end_of_line = lf
 
-insert_final_newline = false
+insert_final_newline = true
 max_line_length = 120
 tab_width = 4
 
@@ -228,7 +228,7 @@ dotnet_naming_rule.private_fields_should_be__camelcase.style = _camelcase
 
 dotnet_naming_rule.private_static_fields_should_be_s_camelcase.severity = suggestion
 dotnet_naming_rule.private_static_fields_should_be_s_camelcase.symbols = private_static_fields
-dotnet_naming_rule.private_static_fields_should_be_s_camelcase.style = s_camelcase
+dotnet_naming_rule.private_static_fields_should_be_s_camelcase.style = _camelcase
 
 dotnet_naming_rule.public_constant_fields_should_be_pascalcase.severity = suggestion
 dotnet_naming_rule.public_constant_fields_should_be_pascalcase.symbols = public_constant_fields
@@ -311,7 +311,7 @@ dotnet_naming_symbols.non_field_members.applicable_kinds = property, event, meth
 dotnet_naming_symbols.non_field_members.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
 dotnet_naming_symbols.non_field_members.required_modifiers =
 
-dotnet_naming_symbols.type_parameters.applicable_kinds = namespace
+dotnet_naming_symbols.type_parameters.applicable_kinds = type_parameter
 dotnet_naming_symbols.type_parameters.applicable_accessibilities = *
 dotnet_naming_symbols.type_parameters.required_modifiers =
 
@@ -427,6 +427,11 @@ resharper_convert_if_statement_to_return_statement_highlighting = none
 resharper_convert_to_extension_block_highlighting = none
 resharper_unused_auto_property_accessor_global_highlighting = none
 
+# ReSharper formatting — align with dotnet format to prevent CI drift
+resharper_wrap_object_and_collection_initializer_style = chop_always
+resharper_place_simple_initializer_on_single_line = false
+resharper_wrap_linq_expressions = chop_always
+
 [**/Migrations/*.cs]
 generated_code = true
 dotnet_diagnostic.IDE0005.severity = none # Remove unnecessary using directives
@@ -445,6 +450,7 @@ dotnet_diagnostic.CA1515.severity = none # Application API means internal classe
 dotnet_diagnostic.CA2000.severity = none # Using statement required for IDisposable
 
 dotnet_diagnostic.IDE1006.severity = none # Naming rule for test classes
+dotnet_diagnostic.VSTHRD200.severity = none # Async suffix not required on xUnit test methods
 
 dotnet_diagnostic.S3220.severity = none # Partial match for parameters (params)
 

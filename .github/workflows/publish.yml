@@ -31,6 +31,9 @@ jobs:
         VERSION=${GITHUB_REF_NAME#v}
         dotnet build ProjGraph.slnx --no-restore --configuration Release -p:Version=$VERSION
 
+    - name: Test
+      run: dotnet test ProjGraph.slnx --no-build --configuration Release --verbosity normal
+
     - name: Pack
       run: |
         VERSION=${GITHUB_REF_NAME#v}

@@ -1,13 +1,17 @@
 using Microsoft.Build.Construction;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ProjGraph.Lib.Core.Parsers;
 
 /// <summary>
 /// Provides functionality to parse project files and extract project details and references.
 /// </summary>
-public sealed class ProjectParser : IProjectParser
+/// <param name="fileSystem">The file system abstraction for file operations.</param>
+public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
 {
     /// <summary>
     /// Parses the specified project file and extracts project details and its references.
@@ -24,14 +28,14 @@ public sealed class ProjectParser : IProjectParser
     /// </item>
     /// </list>
     /// </returns>
-    /// <exception cref="InvalidOperationException">Thrown when the project file cannot be parsed.</exception>
+    /// <exception cref="ParsingException">Thrown when the project file cannot be parsed.</exception>
     public (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath)
     {
         var root = ProjectRootElement.Open(projectPath)
-                   ?? throw new InvalidOperationException($"Failed to parse project file: {projectPath}");
+                   ?? throw new ParsingException($"Failed to parse project file: {projectPath}");
 
         var name = Path.GetFileNameWithoutExtension(projectPath);
-        var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), projectPath);
+        var relativePath = Path.GetRelativePath(fileSystem.GetCurrentDirectory(), projectPath);
 
         // Fast extraction of properties
         var framework = root.Properties.FirstOrDefault(p => p.Name == "TargetFramework")?.Value ??
@@ -49,7 +53,7 @@ public sealed class ProjectParser : IProjectParser
             type = ProjectType.Test;
         }
 
-        var id = Guid.NewGuid();
+        var id = GenerateDeterministicId(projectPath);
         var project = new Project(id, name, projectPath, relativePath, framework, type);
 
         var projectReferences = root.Items
@@ -58,5 +62,37 @@ public sealed class ProjectParser : IProjectParser
             .ToList();
 
         return (project, projectReferences);
+    }
+
+    /// <summary>
+    /// Generates a deterministic GUID from the normalized absolute path of the project file.
+    /// Parsing the same project twice will always yield the same ID.
+    /// </summary>
+    /// <param name="projectPath">The file path of the project.</param>
+    /// <returns>A deterministic <see cref="Guid"/> derived from the normalized path.</returns>
+    private static Guid GenerateDeterministicId(string projectPath)
+    {
+        var normalizedPath = NormalizePath(projectPath);
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(normalizedPath));
+        return new Guid(hash.AsSpan(0, 16));
+    }
+
+    /// <summary>
+    /// Normalizes a file path for use in deterministic ID generation.
+    /// On case-insensitive file systems (Windows/macOS), the path is case-folded.
+    /// On case-sensitive file systems (Linux), the exact case is preserved to avoid collisions.
+    /// Directory separators are normalized to forward slashes on all platforms.
+    /// </summary>
+    /// <param name="path">The file path to normalize.</param>
+    /// <returns>The normalized path string.</returns>
+    private static string NormalizePath(string path)
+    {
+        var fullPath = Path.GetFullPath(path).Replace('\\', '/');
+
+        // Only case-fold on case-insensitive file systems (Windows and macOS)
+        // Linux file systems are typically case-sensitive, so preserve exact case
+        return OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? fullPath.ToUpperInvariant()
+            : fullPath;
     }
 }

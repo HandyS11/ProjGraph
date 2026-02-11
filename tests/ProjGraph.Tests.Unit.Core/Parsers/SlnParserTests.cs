@@ -63,9 +63,9 @@ public class SlnParserTests
 
         // Assert
         paths.Should().HaveCount(3);
-        paths.Any(p => p.EndsWith("ProjA.csproj")).Should().BeTrue();
-        paths.Any(p => p.EndsWith("ProjB.csproj")).Should().BeTrue();
-        paths.Any(p => p.EndsWith("ProjA.Tests.csproj")).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjA.csproj", StringComparison.Ordinal)).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjB.csproj", StringComparison.Ordinal)).Should().BeTrue();
+        paths.Any(p => p.EndsWith("ProjA.Tests.csproj", StringComparison.Ordinal)).Should().BeTrue();
     }
 
     [Fact]

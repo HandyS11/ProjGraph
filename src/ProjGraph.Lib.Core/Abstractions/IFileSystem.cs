@@ -39,4 +39,18 @@ public interface IFileSystem
     /// <param name="paths">An array of parts of the path to combine.</param>
     /// <returns>The combined path.</returns>
     string Combine(params string[] paths);
+
+    /// <summary>
+    /// Asynchronously reads all text from a file at the specified path.
+    /// </summary>
+    /// <param name="path">The path to the file.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>The content of the file as a string.</returns>
+    Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current working directory of the application.
+    /// </summary>
+    /// <returns>The current directory path.</returns>
+    string GetCurrentDirectory();
 }

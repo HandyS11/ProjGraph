@@ -72,7 +72,7 @@ Configure your MCP client (e.g., GitHub Copilot, Claude) with the following sett
 
 ```bash
 # CLI
-dotnet run --project src/ProjGraph.Cli -- visualize ./ProjGraph.sln
+dotnet run --project src/ProjGraph.Cli -- visualize ./ProjGraph.slnx
 
 # MCP Server
 dotnet run --project src/ProjGraph.Mcp
@@ -87,7 +87,8 @@ dotnet run --project src/ProjGraph.Mcp
 projgraph visualize ./MySolution.sln
 
 # Mermaid format for documentation
-projgraph visualize ./MySolution.slnx --format mermaid > docs/dependencies.mmd```
+projgraph visualize ./MySolution.slnx --format mermaid > docs/dependencies.mmd
+```
 
 ### Generate Database Diagrams
 

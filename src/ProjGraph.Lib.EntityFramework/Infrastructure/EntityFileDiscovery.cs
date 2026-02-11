@@ -1,6 +1,8 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using ProjGraph.Lib.Core.Infrastructure;
+using ProjGraph.Lib.EntityFramework.Application;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
 
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
@@ -10,11 +12,11 @@ namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 /// and related search directories.
 /// </summary>
 /// <remarks>
-/// This static class contains methods to facilitate the discovery of entity files and their base class files
+/// This class contains methods to facilitate the discovery of entity files and their base class files
 /// in a project. It includes functionality for extracting entity type names, building search directories,
 /// and processing source files to identify relevant entities and their relationships.
 /// </remarks>
-public static class EntityFileDiscovery
+internal sealed class EntityFileDiscovery : IEntityFileDiscovery
 {
     /// <summary>
     /// Maximum recursion depth when searching for base class files to prevent infinite recursion
@@ -37,8 +39,8 @@ public static class EntityFileDiscovery
     /// For each directory, it calls <see cref="SearchDirectoryForEntitiesAsync"/> to process the files and populate
     /// the resulting dictionary with matching entity type names and their file paths.
     /// </remarks>
-    public static async Task<Dictionary<string, string>> DiscoverEntityFilesAsync(
-        List<string> searchDirectories,
+    public async Task<Dictionary<string, string>> DiscoverEntityFilesAsync(
+        IReadOnlyList<string> searchDirectories,
         HashSet<string> entityTypeNames,
         string contextFilePath)
     {
@@ -76,7 +78,7 @@ public static class EntityFileDiscovery
     /// Otherwise, it determines the solution root directory by traversing up the directory hierarchy
     /// from the context directory, and searches for the base class files within the solution root.
     /// </remarks>
-    public static async Task<Dictionary<string, string>> DiscoverBaseClassFilesAsync(
+    public async Task<Dictionary<string, string>> DiscoverBaseClassFilesAsync(
         Dictionary<string, string> entityFiles,
         string contextDirectory)
     {
@@ -87,7 +89,7 @@ public static class EntityFileDiscovery
         }
 
         // Search in context directory and its parents for base classes
-        var solutionRoot = FindSolutionRoot(contextDirectory, 3);
+        var solutionRoot = WorkspaceRootResolver.FindSolutionRoot(contextDirectory, 3);
         return SearchForBaseClassFiles(baseClassNames, solutionRoot);
     }
 
@@ -103,7 +105,7 @@ public static class EntityFileDiscovery
     /// Since the parent directory scan is recursive, it will naturally include the context directory
     /// and all siblings through the recursive search.
     /// </remarks>
-    public static List<string> BuildSearchDirectories(
+    public IReadOnlyList<string> BuildSearchDirectories(
         string contextDirectory)
     {
         var searchDirectories = new List<string> { contextDirectory };
@@ -139,7 +141,7 @@ public static class EntityFileDiscovery
     /// This method iterates through the members of the context class, identifying properties of type <c>DbSet&lt;T&gt;</c>.
     /// It extracts the type argument <c>T</c> from each <c>DbSet&lt;T&gt;</c> property and adds it to the resulting set.
     /// </remarks>
-    public static HashSet<string> ExtractEntityTypeNames(ClassDeclarationSyntax contextClass)
+    public HashSet<string> ExtractEntityTypeNames(ClassDeclarationSyntax contextClass)
     {
         var entityTypeNames = new HashSet<string>();
 
@@ -214,10 +216,14 @@ public static class EntityFileDiscovery
             // Process files in the current directory
             var options = new EnumerationOptions
             {
-                RecurseSubdirectories = false, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.System
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.System
             };
 
-            foreach (var csFile in Directory.EnumerateFiles(currentDir, EfAnalysisConstants.FilePatterns.CSharpFiles,
+            foreach (var csFile in Directory.EnumerateFiles(
+                         currentDir,
+                         EfAnalysisConstants.FilePatterns.CSharpFiles,
                          options))
             {
                 var fullPath = Path.GetFullPath(csFile);
@@ -232,8 +238,7 @@ public static class EntityFileDiscovery
             // Recursively process subdirectories, skipping excluded directories
             foreach (var subDir in Directory.EnumerateDirectories(currentDir, "*", options))
             {
-                var dirName = Path.GetFileName(subDir);
-                if (dirName is "bin" or "obj" or ".git" or "node_modules")
+                if (DirectoryFilters.ShouldSkipDirectory(subDir))
                 {
                     continue;
                 }
@@ -241,7 +246,7 @@ public static class EntityFileDiscovery
                 await SearchDirectoryRecursiveAsync(subDir, entityTypeNames, normalizedContextPath, entityFiles);
             }
         }
-        catch
+        catch (IOException)
         {
             // Ignore access errors for directories we can't read
         }
@@ -299,7 +304,7 @@ public static class EntityFileDiscovery
     /// This method reads the content of each unique entity file, parses it into a syntax tree, and retrieves the root node.
     /// It then extracts the base class names from the syntax tree using the <see cref="ExtractBaseClassNamesFromSyntax"/> method.
     /// </remarks>
-    private static async Task<HashSet<string>> ExtractBaseClassNamesAsync(Dictionary<string, string> entityFiles)
+    private async Task<HashSet<string>> ExtractBaseClassNamesAsync(Dictionary<string, string> entityFiles)
     {
         var baseClassNames = new HashSet<string>();
 
@@ -321,11 +326,11 @@ public static class EntityFileDiscovery
     /// <param name="root">The root <see cref="SyntaxNode"/> of the syntax tree to analyze.</param>
     /// <param name="baseClassNames">A <see cref="HashSet{T}"/> to store the extracted base class names.</param>
     /// <remarks>
-    /// This method traverses the syntax tree to find all class declarations with a base list. 
-    /// It then extracts the names of the base types using the <see cref="ExtractBaseTypeName"/> method 
+    /// This method traverses the syntax tree to find all class declarations with a base list.
+    /// It then extracts the names of the base types using the <see cref="ExtractBaseTypeName"/> method
     /// and filters them using the <see cref="IsValidBaseClassName"/> method before adding them to the set.
     /// </remarks>
-    public static void ExtractBaseClassNamesFromSyntax(SyntaxNode root, HashSet<string> baseClassNames)
+    public void ExtractBaseClassNamesFromSyntax(SyntaxNode root, HashSet<string> baseClassNames)
     {
         foreach (var baseTypeName in root.DescendantNodes()
                      .OfType<ClassDeclarationSyntax>()
@@ -349,9 +354,9 @@ public static class EntityFileDiscovery
     private static string ExtractBaseTypeName(BaseTypeSyntax baseType)
     {
         var baseTypeName = baseType.Type.ToString();
-        if (baseTypeName.Contains('<'))
+        if (baseTypeName.Contains('<', StringComparison.Ordinal))
         {
-            baseTypeName = baseTypeName[..baseTypeName.IndexOf('<')];
+            baseTypeName = baseTypeName[..baseTypeName.IndexOf('<', StringComparison.Ordinal)];
         }
 
         return baseTypeName;
@@ -380,42 +385,10 @@ public static class EntityFileDiscovery
     }
 
     /// <summary>
-    /// Finds the root directory of a solution by traversing up the directory hierarchy
-    /// starting from the specified directory, up to a maximum number of levels.
-    /// </summary>
-    /// <param name="startDirectory">The directory to start the search from.</param>
-    /// <param name="maxLevels">The maximum number of levels to traverse up the directory hierarchy.</param>
-    /// <returns>
-    /// A <see cref="DirectoryInfo"/> object representing the root directory of the solution.
-    /// If the root directory is not found within the specified levels, the topmost directory is returned.
-    /// </returns>
-    private static DirectoryInfo FindSolutionRoot(string startDirectory, int maxLevels)
-    {
-        var solutionRoot = new DirectoryInfo(startDirectory);
-        // Security: Path.GetTempPath() is used only for read-only path comparison to detect
-        // if we're in a test sandbox. No files are written to or read from the temp directory itself.
-        var tempPath = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-        // Don't traverse up if we're already in the temp directory to avoid 
-        // escaping our sandbox in parallel test environments.
-        if (startDirectory.StartsWith(tempPath, StringComparison.OrdinalIgnoreCase))
-        {
-            return solutionRoot;
-        }
-
-        for (var i = 0; i < maxLevels && solutionRoot.Parent != null; i++)
-        {
-            solutionRoot = solutionRoot.Parent;
-        }
-
-        return solutionRoot;
-    }
-
-    /// <summary>
     /// Searches for base class files within the specified solution root directory based on the provided base class names.
     /// </summary>
     /// <param name="baseClassNames">A set of base class names to search for.</param>
-    /// <param name="solutionRoot">The root directory of the solution to search within.</param>
+    /// <param name="searchDirectory">The directory to search within.</param>
     /// <returns>
     /// A dictionary where the keys are base class names and the values are the corresponding file paths
     /// if the files are found; otherwise, the dictionary will be empty.
@@ -424,12 +397,12 @@ public static class EntityFileDiscovery
     /// This method recursively searches for base class files while skipping common build and version control
     /// directories (bin, obj, .git, node_modules) to improve performance for large projects.
     /// </remarks>
-    public static Dictionary<string, string> SearchForBaseClassFiles(
+    public Dictionary<string, string> SearchForBaseClassFiles(
         HashSet<string> baseClassNames,
-        DirectoryInfo solutionRoot)
+        DirectoryInfo searchDirectory)
     {
         var baseClassFiles = new Dictionary<string, string>();
-        SearchForBaseClassFilesRecursive(solutionRoot.FullName, baseClassNames, baseClassFiles, 0, MaxSearchDepth);
+        SearchForBaseClassFilesRecursive(searchDirectory.FullName, baseClassNames, baseClassFiles, 0, MaxSearchDepth);
         return baseClassFiles;
     }
 
@@ -465,11 +438,16 @@ public static class EntityFileDiscovery
         {
             var options = new EnumerationOptions
             {
-                RecurseSubdirectories = false, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.System
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.System
             };
 
             // Process files in the current directory
-            foreach (var file in Directory.EnumerateFiles(currentDir, "*.cs", options))
+            foreach (var file in Directory.EnumerateFiles(
+                         currentDir,
+                         EfAnalysisConstants.FilePatterns.CSharpFiles,
+                         options))
             {
                 var fileName = Path.GetFileNameWithoutExtension(file);
                 if (!baseClassNames.Contains(fileName))
@@ -489,7 +467,7 @@ public static class EntityFileDiscovery
             // Recursively process subdirectories, skipping excluded directories
             foreach (var subDir in Directory.EnumerateDirectories(currentDir, "*", options))
             {
-                if (ShouldSkipDirectory(subDir))
+                if (DirectoryFilters.ShouldSkipDirectory(subDir))
                 {
                     continue;
                 }
@@ -502,23 +480,9 @@ public static class EntityFileDiscovery
                 }
             }
         }
-        catch
+        catch (IOException)
         {
             // Ignore access errors
         }
-    }
-
-    /// <summary>
-    /// Determines whether a directory should be skipped during file search operations.
-    /// </summary>
-    /// <param name="directory">The directory path to check.</param>
-    /// <returns>
-    /// <c>true</c> if the directory should be skipped (e.g., bin, obj, .git, node_modules);
-    /// otherwise, <c>false</c>.
-    /// </returns>
-    private static bool ShouldSkipDirectory(string directory)
-    {
-        var dirName = Path.GetFileName(directory);
-        return dirName is "bin" or "obj" or ".git" or "node_modules";
     }
 }
