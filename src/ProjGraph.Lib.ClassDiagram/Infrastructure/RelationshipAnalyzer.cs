@@ -88,11 +88,12 @@ internal static class RelationshipAnalyzer
             }
 
             var extractedTypes = ExtractTypesFromGeneric(namedType);
-            relatedSymbols.AddRange(from extracted in extractedTypes
-                let typeName = extracted.Name
-                where seenMethodTypes.Add(typeName) && !TypeFilter.IsSystemType(extracted)
-                select ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(extracted,
-                    RelationshipKind.Dependency, null, null));
+            relatedSymbols.AddRange(
+                extractedTypes
+                    .Where(extracted => seenMethodTypes.Add(extracted.Name) && !TypeFilter.IsSystemType(extracted))
+                    .Select(extracted =>
+                        ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(
+                            extracted, RelationshipKind.Dependency, null, null)));
         }
     }
 
@@ -126,10 +127,13 @@ internal static class RelationshipAnalyzer
 
         var extractedTypes = ExtractTypesFromGeneric(namedType);
 
-        relatedSymbols.AddRange(from extracted in extractedTypes
-            let typeName = extracted.Name
-            where seenCombinations.Add((typeName, memberName)) && !TypeFilter.IsSystemType(extracted)
-            select (extracted, RelationshipKind.Association, memberName, cardinality));
+        relatedSymbols.AddRange(
+            extractedTypes
+                .Where(extracted =>
+                    seenCombinations.Add((extracted.Name, memberName)) && !TypeFilter.IsSystemType(extracted))
+                .Select(extracted =>
+                    ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(
+                        extracted, RelationshipKind.Association, memberName, cardinality)));
     }
 
     /// <summary>
