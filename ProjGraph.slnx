@@ -1,75 +1,76 @@
 <Solution>
   <Folder Name="/samples/">
-    <File Path="samples/Directory.Build.props"/>
+    <File Path="samples/Directory.Build.props" />
   </Folder>
-  <Folder Name="/samples/classdiagram/"/>
+  <Folder Name="/samples/classdiagram/" />
   <Folder Name="/samples/classdiagram/complex-hierarchy/">
-    <Project Path="samples/classdiagram/complex-hierarchy/ComplexHierarchy.csproj"/>
+    <Project Path="samples/classdiagram/complex-hierarchy/ComplexHierarchy.csproj" />
   </Folder>
   <Folder Name="/samples/classdiagram/design-patterns/">
-    <Project Path="samples/classdiagram/design-patterns/DesignPatterns.csproj"/>
+    <Project Path="samples/classdiagram/design-patterns/DesignPatterns.csproj" />
   </Folder>
   <Folder Name="/samples/classdiagram/simple-hierarchy/">
-    <Project Path="samples/classdiagram/simple-hierarchy/SimpleHierarchy.csproj"/>
+    <Project Path="samples/classdiagram/simple-hierarchy/SimpleHierarchy.csproj" />
   </Folder>
-  <Folder Name="/samples/erd/"/>
+  <Folder Name="/samples/erd/" />
   <Folder Name="/samples/erd/simple-context/">
-    <File Path="samples/erd/simple-context/README.md"/>
-    <Project Path="samples/erd/simple-context/EntityFramework/EntityFramework.csproj"/>
+    <File Path="samples/erd/simple-context/README.md" />
+    <Project Path="samples/erd/simple-context/EntityFramework/EntityFramework.csproj" />
   </Folder>
-  <Folder Name="/samples/visualize/"/>
+  <Folder Name="/samples/visualize/" />
   <Folder Name="/samples/visualize/simple-dependencies/">
-    <File Path="samples/visualize/simple-dependencies/README.md"/>
-    <Project Path="samples/visualize/simple-dependencies/A/A.csproj"/>
-    <Project Path="samples/visualize/simple-dependencies/B/B.csproj"/>
-    <Project Path="samples/visualize/simple-dependencies/C/C.csproj"/>
-    <Project Path="samples/visualize/simple-dependencies/D/D.csproj"/>
+    <File Path="samples/visualize/simple-dependencies/README.md" />
+    <Project Path="samples/visualize/simple-dependencies/A/A.csproj" />
+    <Project Path="samples/visualize/simple-dependencies/B/B.csproj" />
+    <Project Path="samples/visualize/simple-dependencies/C/C.csproj" />
+    <Project Path="samples/visualize/simple-dependencies/D/D.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
-    <File Path=".editorconfig"/>
-    <File Path=".gitattributes"/>
-    <File Path=".gitignore"/>
-    <File Path=".markdownlint.json"/>
-    <File Path="ARCHITECTURE.md"/>
-    <File Path="CONTRIBUTING.md"/>
-    <File Path="Directory.Build.props"/>
-    <File Path="Directory.Packages.props"/>
-    <File Path="global.json"/>
-    <File Path="icon.png"/>
-    <File Path="LICENSE"/>
-    <File Path="Nuget.config"/>
-    <File Path="README.md"/>
-    <File Path="SECURITY.md"/>
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path=".markdownlint.json" />
+    <File Path=".runsettings" />
+    <File Path="ARCHITECTURE.md" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="icon.png" />
+    <File Path="LICENSE" />
+    <File Path="Nuget.config" />
+    <File Path="README.md" />
+    <File Path="SECURITY.md" />
   </Folder>
   <Folder Name="/Solution Items/.githooks/">
-    <File Path=".githooks/pre-commit"/>
+    <File Path=".githooks/pre-commit" />
   </Folder>
   <Folder Name="/Solution Items/.github/">
-    <File Path=".github/dependabot.yml"/>
+    <File Path=".github/dependabot.yml" />
   </Folder>
   <Folder Name="/Solution Items/.github/workflows/">
-    <File Path=".github/workflows/ci.yml"/>
-    <File Path=".github/workflows/publish.yml"/>
-    <File Path=".github/workflows/sonarqube.yml"/>
+    <File Path=".github/workflows/ci.yml" />
+    <File Path=".github/workflows/publish.yml" />
+    <File Path=".github/workflows/sonarqube.yml" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/ProjGraph.Core/ProjGraph.Core.csproj"/>
-    <Project Path="src/ProjGraph.Lib.ClassDiagram/ProjGraph.Lib.ClassDiagram.csproj"/>
-    <Project Path="src/ProjGraph.Lib.Core/ProjGraph.Lib.Core.csproj"/>
-    <Project Path="src/ProjGraph.Lib.EntityFramework/ProjGraph.Lib.EntityFramework.csproj"/>
-    <Project Path="src/ProjGraph.Lib.ProjectGraph/ProjGraph.Lib.ProjectGraph.csproj"/>
-    <Project Path="src/ProjGraph.Lib/ProjGraph.Lib.csproj"/>
-    <Project Path="src/ProjGraph.Cli/ProjGraph.Cli.csproj"/>
-    <Project Path="src/ProjGraph.Mcp/ProjGraph.Mcp.csproj"/>
+    <Project Path="src/ProjGraph.Core/ProjGraph.Core.csproj" />
+    <Project Path="src/ProjGraph.Lib.ClassDiagram/ProjGraph.Lib.ClassDiagram.csproj" />
+    <Project Path="src/ProjGraph.Lib.Core/ProjGraph.Lib.Core.csproj" />
+    <Project Path="src/ProjGraph.Lib.EntityFramework/ProjGraph.Lib.EntityFramework.csproj" />
+    <Project Path="src/ProjGraph.Lib.ProjectGraph/ProjGraph.Lib.ProjectGraph.csproj" />
+    <Project Path="src/ProjGraph.Lib/ProjGraph.Lib.csproj" />
+    <Project Path="src/ProjGraph.Cli/ProjGraph.Cli.csproj" />
+    <Project Path="src/ProjGraph.Mcp/ProjGraph.Mcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/ProjGraph.Tests.Contract/ProjGraph.Tests.Contract.csproj"/>
-    <Project Path="tests/ProjGraph.Tests.Integration.Cli/ProjGraph.Tests.Integration.Cli.csproj"/>
-    <Project Path="tests/ProjGraph.Tests.Integration.Mcp/ProjGraph.Tests.Integration.Mcp.csproj"/>
-    <Project Path="tests/ProjGraph.Tests.Shared/ProjGraph.Tests.Shared.csproj"/>
-    <Project Path="tests/ProjGraph.Tests.Unit.ClassDiagram/ProjGraph.Tests.Unit.ClassDiagram.csproj"/>
-    <Project Path="tests/ProjGraph.Tests.Unit.Core/ProjGraph.Tests.Unit.Core.csproj"/>
-    <Project Path="tests/ProjGraph.Tests.Unit.EntityFramework/ProjGraph.Tests.Unit.EntityFramework.csproj"/>
-    <Project Path="tests/ProjGraph.Tests.Unit.ProjectGraph/ProjGraph.Tests.Unit.ProjectGraph.csproj"/>
+    <Project Path="tests/ProjGraph.Tests.Contract/ProjGraph.Tests.Contract.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Integration.Cli/ProjGraph.Tests.Integration.Cli.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Integration.Mcp/ProjGraph.Tests.Integration.Mcp.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Shared/ProjGraph.Tests.Shared.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Unit.ClassDiagram/ProjGraph.Tests.Unit.ClassDiagram.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Unit.Core/ProjGraph.Tests.Unit.Core.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Unit.EntityFramework/ProjGraph.Tests.Unit.EntityFramework.csproj" />
+    <Project Path="tests/ProjGraph.Tests.Unit.ProjectGraph/ProjGraph.Tests.Unit.ProjectGraph.csproj" />
   </Folder>
 </Solution>

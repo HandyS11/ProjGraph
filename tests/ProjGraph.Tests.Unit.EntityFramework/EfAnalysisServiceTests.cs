@@ -303,4 +303,49 @@ public class EfAnalysisServiceTests
         model.ContextName.Should().Be("AppDbContext");
         model.Entities.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task DiscoverSnapshotsAsync_ShouldFindModelSnapshotInFile()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               using Microsoft.EntityFrameworkCore.Infrastructure;
+                               namespace Test;
+                               [DbContext(typeof(AppDbContext))]
+                               partial class AppDbContextModelSnapshot : ModelSnapshot
+                               {
+                                   protected override void BuildModel(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity("Blog", b =>
+                                       {
+                                           b.Property<int>("Id");
+                                           b.HasKey("Id");
+                                       });
+                                   }
+                               }
+                               public class AppDbContext : DbContext { }
+                               """;
+        var filePath = temp.CreateFile("Snapshot.cs", content);
+
+        // Act
+        var snapshots = await _service.DiscoverSnapshotsAsync(filePath);
+
+        // Assert
+        snapshots.Should().Contain("AppDbContextModelSnapshot");
+    }
+
+    [Fact]
+    public async Task DiscoverSnapshotsAsync_ShouldThrowForNonCsFile()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        var filePath = temp.CreateFile("test.txt", "test content");
+
+        // Act & Assert
+        var act = async () => await _service.DiscoverSnapshotsAsync(filePath);
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Only .cs files are supported*");
+    }
 }

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib;
 using ProjGraph.Lib.ClassDiagram.Application;
@@ -34,6 +35,11 @@ public class DiWiringTests
     [InlineData(typeof(IDiagramRenderer<SolutionGraph>))]
     [InlineData(typeof(IDiagramRenderer<EfModel>))]
     [InlineData(typeof(IDiagramRenderer<ClassModel>))]
+    [InlineData(typeof(ISlnParser))]
+    [InlineData(typeof(ISlnxParser))]
+    [InlineData(typeof(IProjectParser))]
+    [InlineData(typeof(IProjectDiscoveryService))]
+    [InlineData(typeof(ILogger<DiWiringTests>))]
     public void AddProjGraphLib_ShouldResolve_CriticalService(Type serviceType)
     {
         var service = _provider.GetService(serviceType);

@@ -82,7 +82,7 @@ erDiagram
     Publisher {
         int Id PK
         string Name "required, max:200"
-        string Country "string? | max:100"
+        string Country "max:100"
     }
     Book {
         int Id PK
