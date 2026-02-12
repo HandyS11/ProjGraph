@@ -41,7 +41,7 @@ public sealed class DirectoryFiltersTests
 
     [Theory]
     [InlineData("/path/to/bin")]
-    [InlineData("C:\\project\\obj")]
+    [InlineData("/project/obj")]
     [InlineData("/repo/.git")]
     public void ShouldSkipDirectory_FullPath_ShouldExtractDirectoryName(string fullPath)
     {
@@ -50,7 +50,7 @@ public sealed class DirectoryFiltersTests
 
     [Theory]
     [InlineData("/path/to/src")]
-    [InlineData("C:\\project\\Controllers")]
+    [InlineData("/project/Controllers")]
     public void ShouldSkipDirectory_FullPathNonExcluded_ShouldReturnFalse(string fullPath)
     {
         DirectoryFilters.ShouldSkipDirectory(fullPath).Should().BeFalse();
