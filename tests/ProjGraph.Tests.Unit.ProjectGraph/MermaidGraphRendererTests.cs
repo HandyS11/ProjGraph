@@ -37,15 +37,17 @@ public class MermaidGraphRendererTests
         result.Should().Contain("-->");
     }
 
-    [Fact]
-    public void Render_ShouldLabelExecutableProjects()
+    [Theory]
+    [InlineData(ProjectType.Executable, "(Exe)")]
+    [InlineData(ProjectType.Test, "(Test)")]
+    public void Render_ShouldLabelNonLibraryProjects(ProjectType projectType, string expectedLabel)
     {
         // Arrange
         var guidA = Guid.NewGuid();
 
         var projects = new List<Project>
         {
-            new(guidA, "ConsoleApp", "ConsoleApp.csproj", "ConsoleApp.csproj", "net10.0", ProjectType.Executable)
+            new(guidA, "MyProject", "MyProject.csproj", "MyProject.csproj", "net10.0", projectType)
         };
 
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, []);
@@ -54,27 +56,7 @@ public class MermaidGraphRendererTests
         var result = _renderer.Render(graph);
 
         // Assert
-        result.Should().Contain("ConsoleApp (Exe)");
-    }
-
-    [Fact]
-    public void Render_ShouldLabelTestProjects()
-    {
-        // Arrange
-        var guidA = Guid.NewGuid();
-
-        var projects = new List<Project>
-        {
-            new(guidA, "UnitTests", "UnitTests.csproj", "UnitTests.csproj", "net10.0", ProjectType.Test)
-        };
-
-        var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, []);
-
-        // Act
-        var result = _renderer.Render(graph);
-
-        // Assert
-        result.Should().Contain("UnitTests (Test)");
+        result.Should().Contain(expectedLabel);
     }
 
     [Fact]
@@ -142,37 +124,17 @@ public class MermaidGraphRendererTests
         result.Should().Contain("```");
     }
 
-    [Fact]
-    public void Render_ShouldSanitizeProjectNamesWithDots()
+    [Theory]
+    [InlineData("My.Project.Name")]
+    [InlineData("My-Project-Name")]
+    public void Render_ShouldSanitizeProjectNamesWithSpecialCharacters(string projectName)
     {
         // Arrange
         var guidA = Guid.NewGuid();
 
         var projects = new List<Project>
         {
-            new(guidA, "My.Project.Name", "My.Project.Name.csproj", "My.Project.Name.csproj", "net10.0",
-                ProjectType.Library)
-        };
-
-        var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, []);
-
-        // Act
-        var result = _renderer.Render(graph);
-
-        // Assert
-        result.Should().Contain("My_Project_Name");
-        result.Should().NotContain("My.Project.Name[");
-    }
-
-    [Fact]
-    public void Render_ShouldSanitizeProjectNamesWithHyphens()
-    {
-        // Arrange
-        var guidA = Guid.NewGuid();
-
-        var projects = new List<Project>
-        {
-            new(guidA, "My-Project-Name", "My-Project-Name.csproj", "My-Project-Name.csproj", "net10.0",
+            new(guidA, projectName, $"{projectName}.csproj", $"{projectName}.csproj", "net10.0",
                 ProjectType.Library)
         };
 
