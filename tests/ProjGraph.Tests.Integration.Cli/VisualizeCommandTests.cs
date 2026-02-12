@@ -163,4 +163,101 @@ public class VisualizeCommandTests
 
         exception.Message.Should().Contain("Format must be");
     }
+
+    [Fact]
+    public void VisualizeCommand_SimpleDependencies_Mermaid_WithShowTitleFalse_ShouldOmitTitle()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var slnxPath = CliTestHelpers.GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+        {
+            var result = app.Run(["visualize", slnxPath, "--format", "mermaid", "--show-title", "false"]);
+            result.Should().Be(0);
+        });
+
+        // Assert — mermaid content without title block
+        capturedOutput.Should().Contain("graph TD");
+        capturedOutput.Should().NotContain("title:");
+    }
+
+    [Fact]
+    public void VisualizeCommand_SimpleDependencies_TreeFormat_ShouldContainAllProjects()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var slnxPath = CliTestHelpers.GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+        {
+            var result = app.Run(["visualize", slnxPath, "--format", "tree"]);
+            result.Should().Be(0);
+        });
+
+        // Assert — all four projects should appear with dependencies shown
+        capturedOutput.Should().Contain("A");
+        capturedOutput.Should().Contain("B");
+        capturedOutput.Should().Contain("C");
+        capturedOutput.Should().Contain("D");
+        // Tree format should NOT contain mermaid markers
+        capturedOutput.Should().NotContain("graph TD");
+    }
+
+    [Fact]
+    public void VisualizeCommand_SingleCsproj_FlatFormat_ShouldShowProject()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var projPath = CliTestHelpers.GetSamplePath(@"visualize\simple-dependencies\A\A.csproj");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+        {
+            var result = app.Run(["visualize", projPath, "--format", "flat"]);
+            result.Should().Be(0);
+        });
+
+        // Assert
+        capturedOutput.Should().Contain("A");
+    }
+
+    [Fact]
+    public void VisualizeCommand_ProjGraphSolution_FlatFormat_ShouldShowAllProjects()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var slnxPath = CliTestHelpers.GetRootPath("ProjGraph.slnx");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+        {
+            var result = app.Run(["visualize", slnxPath, "--format", "flat"]);
+            result.Should().Be(0);
+        });
+
+        // Assert
+        capturedOutput.Should().Contain("Projects");
+        capturedOutput.Should().Contain("ProjGraph");
+    }
+
+    [Fact]
+    public void VisualizeCommand_ProjGraphSolution_TreeFormat_ShouldSucceed()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var slnxPath = CliTestHelpers.GetRootPath("ProjGraph.slnx");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+        {
+            var result = app.Run(["visualize", slnxPath, "--format", "tree"]);
+            result.Should().Be(0);
+        });
+
+        // Assert
+        capturedOutput.Should().Contain("ProjGraph");
+    }
 }

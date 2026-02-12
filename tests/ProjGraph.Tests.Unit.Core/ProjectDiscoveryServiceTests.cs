@@ -128,4 +128,60 @@ public sealed class ProjectDiscoveryServiceTests
 
         result.Should().HaveCount(1); // Root added to discoveredFullPaths initially
     }
+
+    [Fact]
+    public void DiscoverProjectsRecursively_InvalidOperationException_ShouldSkipAndWarn()
+    {
+        const string rootPath = "/src/invalid.csproj";
+
+        _fileSystem.GetFullPath(rootPath).Returns(rootPath);
+        _fileSystem.FileExists(rootPath).Returns(true);
+        _projectParser.Parse(rootPath).Throws(new InvalidOperationException("invalid xml"));
+
+        var result = _sut.DiscoverProjectsRecursively(rootPath).ToList();
+
+        result.Should().HaveCount(1);
+        _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Failed to parse")));
+    }
+
+    [Fact]
+    public void DiscoverProjectsRecursively_DuplicateReferences_ShouldDeduplicateByNormalizedPath()
+    {
+        const string pathA = "/src/a.csproj";
+        const string pathB = "/src/b.csproj";
+
+        _fileSystem.GetFullPath(pathA).Returns(pathA);
+        _fileSystem.GetFullPath(pathB).Returns(pathB);
+        _fileSystem.FileExists(pathA).Returns(true);
+        _fileSystem.FileExists(pathB).Returns(true);
+        _fileSystem.GetDirectoryName(pathA).Returns("/src");
+        _fileSystem.Combine("/src", Arg.Any<string>()).Returns("/src/b.csproj");
+        _fileSystem.GetFullPath("/src/b.csproj").Returns(pathB);
+
+        var projA = new Project(Guid.NewGuid(), "A", pathA, "a.csproj", "net10.0", ProjectType.Library);
+        var projB = new Project(Guid.NewGuid(), "B", pathB, "b.csproj", "net10.0", ProjectType.Library);
+
+        // A refs B twice — second reference should be deduplicated
+        _projectParser.Parse(pathA).Returns((projA, (IEnumerable<string>)["b.csproj", "b.csproj"]));
+        _projectParser.Parse(pathB).Returns((projB, Enumerable.Empty<string>()));
+
+        var result = _sut.DiscoverProjectsRecursively(pathA).ToList();
+
+        result.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ResolveProjectReferencePath_NullDirectoryName_ShouldUseEmptyString()
+    {
+        const string projectPath = "project.csproj";
+        const string refPath = "lib.csproj";
+
+        _fileSystem.GetDirectoryName(projectPath).Returns((string?)null);
+        _fileSystem.Combine("", Arg.Any<string>()).Returns("lib.csproj");
+        _fileSystem.GetFullPath("lib.csproj").Returns("/resolved/lib.csproj");
+
+        var result = _sut.ResolveProjectReferencePath(projectPath, refPath);
+
+        result.Should().Be("/resolved/lib.csproj");
+    }
 }

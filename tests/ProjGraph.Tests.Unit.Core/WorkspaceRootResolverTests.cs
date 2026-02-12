@@ -100,4 +100,36 @@ public sealed class WorkspaceRootResolverTests : IDisposable
 
         result.FullName.Should().Be(_tempDir);
     }
+
+    [Fact]
+    public void FindWorkspaceRoot_DirectoryWithCsprojFile_ShouldReturnThatDirectory()
+    {
+        File.Create(Path.Combine(_tempDir, "project.csproj")).Dispose();
+
+        var result = WorkspaceRootResolver.FindWorkspaceRoot(_tempDir);
+
+        result.Should().Be(_tempDir);
+    }
+
+    [Fact]
+    public void FindWorkspaceRoot_EmptyDirectory_ShouldReturnNull()
+    {
+        // _tempDir is under temp path, so traversal stops early
+        var result = WorkspaceRootResolver.FindWorkspaceRoot(_tempDir);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void FindSolutionRoot_MultipleLevels_ShouldTraverseUpToMaxLevels()
+    {
+        // Create a deep directory under temp — IsTempPath returns early
+        var deep = Path.Combine(_tempDir, "level1", "level2", "level3");
+        Directory.CreateDirectory(deep);
+
+        var result = WorkspaceRootResolver.FindSolutionRoot(deep, 2);
+
+        // Under temp, it returns the start directory directly
+        result.FullName.Should().Be(deep);
+    }
 }

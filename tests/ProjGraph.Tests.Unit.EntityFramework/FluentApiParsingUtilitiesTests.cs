@@ -194,4 +194,71 @@ public sealed class FluentApiParsingUtilitiesTests
 
         FluentApiParsingUtilities.IsInsideUsingEntityBlock(configSection, matchIndex).Should().BeFalse();
     }
+
+    [Fact]
+    public void GetOrCreateProperty_ExistingPropertyWithNewType_ShouldUpdateType()
+    {
+        var entity = new EfEntity
+        {
+            Name = "Order"
+        };
+        entity.Properties.Add(new EfProperty
+        {
+            Name = "Total",
+            Type = "string"
+        });
+
+        var result = FluentApiParsingUtilities.GetOrCreateProperty(entity, "Total", "decimal");
+
+        result.Name.Should().Be("Total");
+        result.Type.Should().Be("decimal");
+        result.IsValueType.Should().BeTrue();
+        entity.Properties.Should().HaveCount(1);
+        entity.Properties[0].Type.Should().Be("decimal");
+    }
+
+    [Theory]
+    [InlineData("System.Int32", true)]
+    [InlineData("System.Guid", true)]
+    [InlineData("MyNamespace.MyClass", false)]
+    [InlineData("System.DateTime?", true)]
+    public void IsValueTypeString_DottedTypeNames_ShouldExtractLastPartAndCheck(string type, bool expected)
+    {
+        FluentApiParsingUtilities.IsValueTypeString(type).Should().Be(expected);
+    }
+
+    [Fact]
+    public void ExtractPropertyNamesFromArgs_SingleUnquotedArg_ShouldReturnAsFallback()
+    {
+        var result = FluentApiParsingUtilities.ExtractPropertyNamesFromArgs("CustomProperty");
+
+        result.Should().ContainSingle().Which.Should().Be("CustomProperty");
+    }
+
+    [Fact]
+    public void ExtractPropertyNamesFromArgs_CompositeLambda_ShouldExtractMultipleNames()
+    {
+        const string args = "e => new { e.FirstName, e.LastName }";
+        var result = FluentApiParsingUtilities.ExtractPropertyNamesFromArgs(args);
+
+        result.Should().Contain("FirstName");
+        result.Should().Contain("LastName");
+    }
+
+    [Fact]
+    public void ExtractTargetName_LambdaWithNoMatch_ShouldReturnNull()
+    {
+        // Lambda with no dot-access pattern
+        var result = FluentApiParsingUtilities.ExtractTargetName("x => x");
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void IsInsideUsingEntityBlock_NoUsingEntity_ShouldReturnFalse()
+    {
+        const string configSection = ".HasMany(x => x.Orders).WithOne()";
+
+        FluentApiParsingUtilities.IsInsideUsingEntityBlock(configSection, 0).Should().BeFalse();
+    }
 }

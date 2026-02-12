@@ -168,4 +168,169 @@ public sealed class EntityAnalyzerTests
 
         symbol.Should().BeNull();
     }
+
+    [Fact]
+    public void AnalyzeEntity_KeyAttribute_ShouldMarkAsPrimaryKey()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using System.ComponentModel.DataAnnotations;
+                                                             public class Ticket
+                                                             {
+                                                                 [Key]
+                                                                 public string Code { get; set; }
+                                                                 public string Title { get; set; }
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Ticket")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "Code").IsPrimaryKey.Should().BeTrue();
+        entity.Properties.First(p => p.Name == "Title").IsPrimaryKey.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnalyzeEntity_RequiredAttribute_ShouldMarkAsRequired()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using System.ComponentModel.DataAnnotations;
+                                                             public class Product
+                                                             {
+                                                                 public int Id { get; set; }
+                                                                 [Required]
+                                                                 public string Name { get; set; }
+                                                                 public string? Description { get; set; }
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Product")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "Name").IsRequired.Should().BeTrue();
+        entity.Properties.First(p => p.Name == "Name").IsExplicitlyRequired.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnalyzeEntity_MaxLengthAttribute_ShouldExtractMaxLength()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using System.ComponentModel.DataAnnotations;
+                                                             public class Category
+                                                             {
+                                                                 public int Id { get; set; }
+                                                                 [MaxLength(100)]
+                                                                 public string Name { get; set; }
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Category")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "Name").MaxLength.Should().Be(100);
+    }
+
+    [Fact]
+    public void AnalyzeEntity_StringLengthAttribute_ShouldExtractMaxLength()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using System.ComponentModel.DataAnnotations;
+                                                             public class Tag
+                                                             {
+                                                                 public int Id { get; set; }
+                                                                 [StringLength(50)]
+                                                                 public string Label { get; set; }
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Tag")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "Label").MaxLength.Should().Be(50);
+    }
+
+    [Fact]
+    public void AnalyzeEntity_ColumnAttributeWithPrecision_ShouldExtractPrecisionAndScale()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using System.ComponentModel.DataAnnotations.Schema;
+                                                             public class Invoice
+                                                             {
+                                                                 public int Id { get; set; }
+                                                                 [Column(TypeName = "decimal(18,4)")]
+                                                                 public decimal Amount { get; set; }
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Invoice")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        var amount = entity.Properties.First(p => p.Name == "Amount");
+        amount.Precision.Should().Be(18);
+        amount.Scale.Should().Be(4);
+    }
+
+    [Fact]
+    public void AnalyzeEntity_PrimaryKeyAttributeOnClass_ShouldIdentifyCompositeKey()
+    {
+        // Syntax-based PrimaryKey extraction (class-level attribute)
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using Microsoft.EntityFrameworkCore;
+                                                             [PrimaryKey("OrderId", "ProductId")]
+                                                             public class OrderItem
+                                                             {
+                                                                 public int OrderId { get; set; }
+                                                                 public int ProductId { get; set; }
+                                                                 public int Quantity { get; set; }
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "OrderItem")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "OrderId").IsPrimaryKey.Should().BeTrue();
+        entity.Properties.First(p => p.Name == "ProductId").IsPrimaryKey.Should().BeTrue();
+        entity.Properties.First(p => p.Name == "Quantity").IsPrimaryKey.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnalyzeEntity_DuplicatePropertyInHierarchy_ShouldAddOnce()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             public class Base
+                                                             {
+                                                                 public int Id { get; set; }
+                                                                 public string Name { get; set; }
+                                                             }
+                                                             public class Derived : Base
+                                                             {
+                                                                 public new string Name { get; set; }
+                                                                 public int Extra { get; set; }
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Derived")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        // "Name" should appear only once despite being in both base and derived
+        entity.Properties.Count(p => p.Name == "Name").Should().Be(1);
+    }
+
+    [Fact]
+    public void AnalyzeEntity_NonNullableProperty_ShouldBeRequired()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             #nullable enable
+                                                             public class Item
+                                                             {
+                                                                 public int Id { get; set; }
+                                                                 public string Title { get; set; } = "";
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Item")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        // Non-nullable string property should be required
+        entity.Properties.First(p => p.Name == "Title").IsRequired.Should().BeTrue();
+    }
 }
