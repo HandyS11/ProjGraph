@@ -45,7 +45,7 @@ public sealed class MermaidFenceHelperTests
     public void AppendFenceStart_WithTitle_ShouldAddYamlTitleBlock()
     {
         var sb = new StringBuilder();
-        var options = new DiagramOptions(true);
+        var options = new DiagramOptions();
 
         MermaidFenceHelper.AppendFenceStart(sb, options, "My Diagram");
 
@@ -72,7 +72,7 @@ public sealed class MermaidFenceHelperTests
     public void AppendFenceStart_NullOrWhitespaceTitle_ShouldNotAddTitleBlock(string? title)
     {
         var sb = new StringBuilder();
-        var options = new DiagramOptions(true);
+        var options = new DiagramOptions();
 
         MermaidFenceHelper.AppendFenceStart(sb, options, title);
 
