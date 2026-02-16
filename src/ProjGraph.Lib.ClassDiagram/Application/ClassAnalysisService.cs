@@ -15,8 +15,16 @@ public class ClassAnalysisService(AnalyzeFileUseCase analyzeFileUseCase) : IClas
         string filePath,
         bool includeInheritance = true,
         bool includeDependencies = false,
+        bool includeProperties = true,
+        bool includeFunctions = true,
         int maxDepth = 1)
     {
-        return await analyzeFileUseCase.ExecuteAsync(filePath, includeInheritance, includeDependencies, maxDepth);
+        return await analyzeFileUseCase.ExecuteAsync(
+            filePath,
+            includeInheritance,
+            includeDependencies,
+            includeProperties,
+            includeFunctions,
+            maxDepth);
     }
 }

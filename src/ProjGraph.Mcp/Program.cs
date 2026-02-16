@@ -62,6 +62,10 @@ internal sealed class ProjGraphTools(
         bool includeInheritance = false,
         [Description("Whether to search for and include other classes used as properties or fields.")]
         bool includeDependencies = false,
+        [Description("Whether to display properties and fields in the class diagram (default: true).")]
+        bool includeProperties = true,
+        [Description("Whether to display functions/methods in the class diagram (default: true).")]
+        bool includeFunctions = true,
         [Description("How many levels of relationships to follow (default: 1).")]
         int depth = 1,
         [Description("Whether to include the title in the diagram (default: true).")]
@@ -78,7 +82,13 @@ internal sealed class ProjGraphTools(
 
         FilePathGuard.RequireCsFile(filePath, nameof(filePath));
 
-        var model = await classService.AnalyzeFileAsync(filePath, includeInheritance, includeDependencies, depth);
+        var model = await classService.AnalyzeFileAsync(
+            filePath,
+            includeInheritance,
+            includeDependencies,
+            includeProperties,
+            includeFunctions,
+            depth);
 
         return classRenderer.Render(model, new DiagramOptions(showTitle));
     }

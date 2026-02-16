@@ -53,7 +53,7 @@ public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcess
                 continue;
             }
 
-            var typeDef = TypeAnalyzer.AnalyzeType(symbol);
+            var typeDef = TypeAnalyzer.AnalyzeType(symbol, options.IncludeProperties, options.IncludeFunctions);
             context.Types.Add(typeDef);
 
             if (depth >= options.MaxDepth)

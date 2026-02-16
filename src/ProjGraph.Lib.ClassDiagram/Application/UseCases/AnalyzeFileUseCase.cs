@@ -23,13 +23,17 @@ public class AnalyzeFileUseCase(
     /// <param name="filePath">The path to the C# source file to analyze.</param>
     /// <param name="includeInheritance">Specifies whether to include inheritance relationships in the analysis.</param>
     /// <param name="includeDependencies">Specifies whether to include dependency relationships in the analysis.</param>
+    /// <param name="includeProperties">Specifies whether to include properties and fields in the analysis.</param>
+    /// <param name="includeFunctions">Specifies whether to include functions and methods in the analysis.</param>
     /// <param name="maxDepth">The maximum depth for analyzing relationships.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the analyzed class model.</returns>
     /// <exception cref="FileNotFoundException">Thrown when the specified source file is not found.</exception>
     public async Task<ClassModel> ExecuteAsync(
         string filePath,
-        bool includeInheritance = true,
+        bool includeInheritance = false,
         bool includeDependencies = false,
+        bool includeProperties = true,
+        bool includeFunctions = true,
         int maxDepth = 1)
     {
         if (!fileSystem.FileExists(filePath))
@@ -58,7 +62,9 @@ public class AnalyzeFileUseCase(
         {
             MaxDepth = maxDepth,
             IncludeInheritance = includeInheritance,
-            IncludeDependencies = includeDependencies
+            IncludeDependencies = includeDependencies,
+            IncludeProperties = includeProperties,
+            IncludeFunctions = includeFunctions
         };
 
         var typesToAnalyze = new Queue<(INamedTypeSymbol Symbol, int Depth)>();

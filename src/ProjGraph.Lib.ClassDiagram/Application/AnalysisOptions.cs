@@ -19,4 +19,14 @@ public sealed class AnalysisOptions
     /// Indicates whether dependency relationships should be included in the analysis.
     /// </summary>
     public required bool IncludeDependencies { get; init; }
+
+    /// <summary>
+    /// Indicates whether properties and fields should be included in the analysis.
+    /// </summary>
+    public required bool IncludeProperties { get; init; }
+
+    /// <summary>
+    /// Indicates whether functions and methods should be included in the analysis.
+    /// </summary>
+    public required bool IncludeFunctions { get; init; }
 }

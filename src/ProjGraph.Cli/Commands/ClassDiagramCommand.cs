@@ -55,6 +55,22 @@ internal sealed class ClassDiagramCommand(
         public bool IncludeDependencies { get; init; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to include properties and fields in the diagram.
+        /// </summary>
+        [CommandOption("--properties")]
+        [Description("Show properties and fields in the diagram (default true)")]
+        [DefaultValue(true)]
+        public bool IncludeProperties { get; init; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to include functions/methods in the diagram.
+        /// </summary>
+        [CommandOption("--functions")]
+        [Description("Show functions and methods in the diagram (default true)")]
+        [DefaultValue(true)]
+        public bool IncludeFunctions { get; init; } = true;
+
+        /// <summary>
         /// Gets or sets the maximum depth for relationship discovery.
         /// </summary>
         /// <value>An integer representing the maximum depth. Default is 1.</value>
@@ -118,6 +134,8 @@ internal sealed class ClassDiagramCommand(
                 settings.Path,
                 settings.IncludeInheritance,
                 settings.IncludeDependencies,
+                settings.IncludeProperties,
+                settings.IncludeFunctions,
                 settings.Depth);
 
             var mermaidOutput = mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle));

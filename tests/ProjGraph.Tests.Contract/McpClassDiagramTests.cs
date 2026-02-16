@@ -54,6 +54,16 @@ public class McpClassDiagramTests
         dependenciesParam.IsOptional.Should().BeTrue();
         dependenciesParam.DefaultValue.Should().Be(false);
 
+        var propertiesParam = parameters.Should().ContainSingle(p => p.Name == "includeProperties").Which;
+        propertiesParam.ParameterType.Should().Be<bool>();
+        propertiesParam.IsOptional.Should().BeTrue();
+        propertiesParam.DefaultValue.Should().Be(true);
+
+        var functionsParam = parameters.Should().ContainSingle(p => p.Name == "includeFunctions").Which;
+        functionsParam.ParameterType.Should().Be<bool>();
+        functionsParam.IsOptional.Should().BeTrue();
+        functionsParam.DefaultValue.Should().Be(true);
+
         var depthParam = parameters.Should().ContainSingle(p => p.Name == "depth").Which;
         depthParam.ParameterType.Should().Be<int>();
         depthParam.IsOptional.Should().BeTrue();

@@ -79,13 +79,17 @@ public sealed class AnalyzeFileUseCaseTests
                 Arg.Any<AnalysisOptions>())
             .ReturnsForAnyArgs(Task.CompletedTask);
 
-        await _sut.ExecuteAsync(filePath, false, true, 3);
+        await _sut.ExecuteAsync(filePath, false, true, true, false, 3);
 
         await _typeProcessor.Received(1).ProcessTypeQueueAsync(
             Arg.Any<Queue<(INamedTypeSymbol Symbol, int Depth)>>(),
             Arg.Any<AnalysisContext>(),
             Arg.Is<AnalysisOptions>(o =>
-                o.MaxDepth == 3 && !o.IncludeInheritance && o.IncludeDependencies));
+                o.MaxDepth == 3 &&
+                !o.IncludeInheritance &&
+                o.IncludeDependencies &&
+                o.IncludeProperties &&
+                !o.IncludeFunctions));
     }
 
     [Fact]
