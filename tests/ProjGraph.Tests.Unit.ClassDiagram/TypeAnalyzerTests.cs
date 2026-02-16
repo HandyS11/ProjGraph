@@ -192,4 +192,77 @@ public sealed class TypeAnalyzerTests
 
         result.Kind.Should().Be(ModelTypeKind.Struct);
     }
+
+    [Fact]
+    public void AnalyzeType_IncludePropertiesFalse_ShouldExcludePropertiesAndFields()
+    {
+        const string code = """
+                            namespace Test;
+                            public class Foo
+                            {
+                                public string Name { get; set; }
+                                public int Count;
+                                public void DoWork() { }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Foo")!;
+
+        var result = TypeAnalyzer.AnalyzeType(symbol, false);
+
+        result.Members.Should().NotContain(m => m.Kind == MemberKind.Property);
+        result.Members.Should().NotContain(m => m.Kind == MemberKind.Field);
+        result.Members.Should().Contain(m => m.Name == "DoWork" && m.Kind == MemberKind.Method);
+    }
+
+    [Fact]
+    public void AnalyzeType_IncludeFunctionsFalse_ShouldExcludeMethods()
+    {
+        const string code = """
+                            namespace Test;
+                            public class Foo
+                            {
+                                public string Name { get; set; }
+                                public void DoWork() { }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Foo")!;
+
+        var result = TypeAnalyzer.AnalyzeType(symbol, includeFunctions: false);
+
+        result.Members.Should().NotContain(m => m.Kind == MemberKind.Method);
+        result.Members.Should().Contain(m => m.Name == "Name" && m.Kind == MemberKind.Property);
+    }
+
+    [Fact]
+    public void AnalyzeType_Enum_IncludePropertiesFalse_ShouldStillIncludeEnumMembers()
+    {
+        const string code = """
+                            namespace Test;
+                            public enum Color { Red, Green, Blue }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Color")!;
+
+        var result = TypeAnalyzer.AnalyzeType(symbol, false);
+
+        result.Kind.Should().Be(ModelTypeKind.Enum);
+        result.Members.Should().Contain(m => m.Name == "Red" && m.Kind == MemberKind.Field);
+    }
+
+    [Fact]
+    public void AnalyzeType_EmptyClass_ShouldReturnNoMembers()
+    {
+        const string code = """
+                            namespace Test;
+                            public class Empty { }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Empty")!;
+
+        var result = TypeAnalyzer.AnalyzeType(symbol);
+
+        result.Members.Should().BeEmpty();
+    }
 }

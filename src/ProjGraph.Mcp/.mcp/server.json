@@ -4,6 +4,7 @@
   "version": "0.4.0",
   "description": "MCP server for ProjGraph to interact with LLMs and provide project graph context.",
   "title": "ProjGraph MCP Server",
+  "icon": "https://raw.githubusercontent.com/HandyS11/ProjGraph/develop/icon.png",
   "websiteUrl": "https://github.com/HandyS11/ProjGraph",
   "packages": [
     {

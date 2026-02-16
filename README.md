@@ -132,3 +132,10 @@ AI: [Generates the database schema]
 
 - **CLI Package**: [ProjGraph.Cli on NuGet](https://www.nuget.org/packages/ProjGraph.Cli)
 - **MCP Package**: [ProjGraph.Mcp on NuGet](https://www.nuget.org/packages/ProjGraph.Mcp)
+
+## 📚 Documentation
+
+- [Architecture Overview](./ARCHITECTURE.md) - Solution structure and design decisions
+- [Contributing Guide](./CONTRIBUTING.md) - How to contribute to the project
+- [Security Policy](./SECURITY.md) - Security reporting guidelines
+

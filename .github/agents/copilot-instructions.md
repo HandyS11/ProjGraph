@@ -1,8 +1,10 @@
-﻿# ProjGraph Development Guidelines
+# ProjGraph Development Guidelines
 
 Auto-generated from all feature plans. Last updated: 2026-01-13
 
 ## Active Technologies
+
+- .NET 10.0 (C# 14+) + Microsoft.CodeAnalysis.CSharp (Roslyn), ProjGraph.Lib.Core (004-config-class-members)
 
 - .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Spectre.Console` (003-mermaid-class-diagram)
 
@@ -28,12 +30,13 @@ tests/
 
 ## Recent Changes
 
+- 004-config-class-members: Added .NET 10.0 (C# 14+) + Microsoft.CodeAnalysis.CSharp (Roslyn), ProjGraph.Lib.Core
+
 - 003-mermaid-class-diagram: Added .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Spectre.Console`
 
 - 002-dbcontext-erd: Added .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`,
   `Microsoft.CodeAnalysis.Workspaces.MSBuild`, `Microsoft.EntityFrameworkCore` (for symbol analysis)
 
-- 001-cli-graph-rendering: Added .NET 10.0 (C# 14+) + Buildalyzer (Parsing), Spectre.Console (CLI), ModelContextProtocol (MCP)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

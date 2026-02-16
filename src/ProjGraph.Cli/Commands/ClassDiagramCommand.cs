@@ -32,7 +32,7 @@ internal sealed class ClassDiagramCommand(
         /// Gets or sets the path to the .cs file to analyze.
         /// </summary>
         /// <value>The file path as a string.</value>
-        [CommandArgument(0, "<path>")]
+        [CommandArgument(0, "[path]")]
         [Description("Path to the .cs file to analyze.")]
         public string Path { get; init; } = string.Empty;
 
@@ -53,6 +53,22 @@ internal sealed class ClassDiagramCommand(
         [Description("Discover dependent types in the workspace (optional)")]
         [DefaultValue(false)]
         public bool IncludeDependencies { get; init; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to include properties and fields in the diagram.
+        /// </summary>
+        [CommandOption("--properties <true|false>")]
+        [Description("Show properties and fields in the diagram (default true)")]
+        [DefaultValue(true)]
+        public bool IncludeProperties { get; init; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to include functions/methods in the diagram.
+        /// </summary>
+        [CommandOption("--functions <true|false>")]
+        [Description("Show functions and methods in the diagram (default true)")]
+        [DefaultValue(true)]
+        public bool IncludeFunctions { get; init; } = true;
 
         /// <summary>
         /// Gets or sets the maximum depth for relationship discovery.
@@ -118,6 +134,8 @@ internal sealed class ClassDiagramCommand(
                 settings.Path,
                 settings.IncludeInheritance,
                 settings.IncludeDependencies,
+                settings.IncludeProperties,
+                settings.IncludeFunctions,
                 settings.Depth);
 
             var mermaidOutput = mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle));

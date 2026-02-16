@@ -322,6 +322,8 @@ public sealed class McpClassDiagramTests : IDisposable
             _tempFileWithInheritance,
             true,
             true,
+            true,
+            true,
             3);
 
         // Assert
@@ -341,6 +343,8 @@ public sealed class McpClassDiagramTests : IDisposable
             _tempFileWithInheritance,
             false,
             false,
+            false,
+            false,
             0);
 
         // Assert
@@ -350,10 +354,133 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().Contain("class TestNamespace_Admin");
     }
 
+    [Fact]
+    public async Task GetClassDiagram_IncludePropertiesFalse_ShouldExcludeProperties()
+    {
+        // Arrange
+        var tools = CreateTools();
+
+        // Act
+        var result = await tools.GetClassDiagramAsync(_tempFile, includeProperties: false);
+
+        // Assert
+        result.Should().NotContain("int Id");
+        result.Should().NotContain("string Name");
+        result.Should().NotContain("int Age");
+    }
+
+    [Fact]
+    public async Task GetClassDiagram_IncludeFunctionsFalse_ShouldExcludeMethods()
+    {
+        // Arrange
+        var tools = CreateTools();
+        const string fileWithMethods = "Svc.cs";
+        var path = Path.Combine(_temp.DirectoryPath, fileWithMethods);
+
+        await File.WriteAllTextAsync(path, "namespace Test; public class Svc { public void DoWork() {} }");
+
+        // Act
+        var result = await tools.GetClassDiagramAsync(path, includeFunctions: false);
+
+        // Assert
+        result.Should().NotContain("DoWork()");
+    }
+
+    [Fact]
+    public async Task GetClassDiagram_HiddenMembers_ShouldStillShowRelationships()
+    {
+        // Arrange
+        var tools = CreateTools();
+
+        // Act
+        // Hide both properties and functions, but enable inheritance and dependencies
+        var result = await tools.GetClassDiagramAsync(
+            _tempFileWithDependencies,
+            true,
+            true,
+            false,
+            false);
+
+        // Assert
+        result.Should().Contain("class TestNamespace_Customer");
+        result.Should().Contain("class TestNamespace_Address");
+        result.Should().Contain("-->", "Relationships should still be present");
+
+        // Members should be hidden
+        result.Should().NotContain("int Id");
+        result.Should().NotContain("string Name");
+    }
+
+    [Fact]
+    public async Task GetClassDiagram_NoOptionalParams_ShouldShowAllMembers()
+    {
+        // Arrange
+        var tools = CreateTools();
+
+        // Act
+        // Call with only the mandatory filePath
+        var result = await tools.GetClassDiagramAsync(_tempFile);
+
+        // Assert
+        result.Should().Contain("class TestNamespace_Person");
+        result.Should().Contain("int Id");
+        result.Should().Contain("string Name");
+    }
+
+    [Fact]
+    public async Task GetClassDiagram_ComplexClass_ShouldSignificantlyReduceCharacterCountWhenMembersHidden()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var complexFile = Path.Combine(_temp.DirectoryPath, "Complex.cs");
+        const string code = """
+                            namespace Test;
+                            public class Complex
+                            {
+                                public int P1 { get; set; }
+                                public int P2 { get; set; }
+                                public int P3 { get; set; }
+                                public int P4 { get; set; }
+                                public int P5 { get; set; }
+                                public int P6 { get; set; }
+                                public int P7 { get; set; }
+                                public int P8 { get; set; }
+                                public int P9 { get; set; }
+                                public int P10 { get; set; }
+                                public void M1() {}
+                                public void M2() {}
+                                public void M3() {}
+                                public void M4() {}
+                                public void M5() {}
+                            }
+                            """;
+#pragma warning disable CA1849, S6966
+        File.WriteAllText(complexFile, code);
+#pragma warning restore CA1849, S6966
+
+        // Act
+        var resultWithMembers =
+            await tools.GetClassDiagramAsync(complexFile, includeProperties: true, includeFunctions: true);
+        var resultWithoutMembers =
+            await tools.GetClassDiagramAsync(complexFile, includeProperties: false, includeFunctions: false);
+
+        // Assert
+        var withCount = resultWithMembers.Length;
+        var withoutCount = resultWithoutMembers.Length;
+
+        // With 15 members, reduction should be > 50%
+        var reduction = (double)(withCount - withoutCount) / withCount;
+        reduction.Should().BeGreaterThanOrEqualTo(0.5,
+            $"Hiding members should reduce diagram size significantly. Reduced by {reduction:P}");
+    }
+
     private static string GetProjectPath(string relativePath)
     {
         var parts = relativePath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
-        var pathParts = new[] { Directory.GetCurrentDirectory(), "..", "..", "..", "..", ".." }
+        var pathParts = new[]
+            {
+                Directory.GetCurrentDirectory(), "..", "..", "..", "..", ".."
+            }
             .Concat(parts)
             .ToArray();
         var path = Path.Combine(pathParts);

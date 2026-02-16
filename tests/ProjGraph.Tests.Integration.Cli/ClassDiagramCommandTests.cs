@@ -242,4 +242,59 @@ public sealed class ClassDiagramCommandTests : IDisposable
         capturedOutput.Should().MatchRegex(@"(-->|\.\.>)",
             "Output should contain relationship arrow (association or dependency)");
     }
+
+    [Fact]
+    public void ClassDiagramCommand_HideProperties_ShouldNotShowProperties()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var userPath = CliTestHelpers.GetSamplePath(@"classdiagram\simple-hierarchy\Models\User.cs");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            app.Run(["classdiagram", userPath, "--properties", "false"]));
+
+        // Assert
+        capturedOutput.Should().Contain("classDiagram");
+        capturedOutput.Should().Contain("[\"User\"]");
+        capturedOutput.Should().NotContain("+string Username");
+        capturedOutput.Should().NotContain("+string Email");
+    }
+
+    [Fact]
+    public void ClassDiagramCommand_HideFunctions_ShouldNotShowMethods()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var userPath = CliTestHelpers.GetSamplePath(@"classdiagram\simple-hierarchy\Models\User.cs");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            app.Run(["classdiagram", userPath, "--functions", "false"]));
+
+        // Assert
+        capturedOutput.Should().Contain("classDiagram");
+        capturedOutput.Should().Contain("[\"User\"]");
+        // User in simple-hierarchy has only properties, so we check they are still there
+        capturedOutput.Should().Contain("+string Username");
+    }
+
+    [Fact]
+    public async Task ClassDiagramCommand_HideFunctions_WithMethods_ShouldExcludeMethods()
+    {
+        // Arrange
+        var tempDir = _temp.DirectoryPath;
+        var filePath = Path.Combine(tempDir, "Svc.cs");
+        await File.WriteAllTextAsync(filePath, "namespace Test; public class Svc { public void DoWork() {} }");
+
+        var app = CliTestHelpers.CreateApp();
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            app.Run(["classdiagram", filePath, "--functions", "false"]));
+
+        // Assert
+        capturedOutput.Should().Contain("[\"Svc\"]");
+        capturedOutput.Should().NotContain("DoWork()");
+    }
 }

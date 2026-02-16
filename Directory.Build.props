@@ -19,7 +19,6 @@
     <Version>0.4.0</Version>
     <Authors>HandyS11</Authors>
     <Company>HandyS11</Company>
-    <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://github.com/HandyS11/ProjGraph</PackageProjectUrl>
     <RepositoryUrl>https://github.com/HandyS11/ProjGraph.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -32,9 +31,6 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(MSBuildProjectName)' == 'ProjGraph.Cli' OR '$(MSBuildProjectName)' == 'ProjGraph.Mcp'">
-    <None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath=""/>
-  </ItemGroup>
 
   <!-- Code Analyzers -->
   <ItemGroup>

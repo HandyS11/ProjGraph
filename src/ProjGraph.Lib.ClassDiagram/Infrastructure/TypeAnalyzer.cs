@@ -20,10 +20,15 @@ internal static class TypeAnalyzer
     /// Analyzes a type symbol and extracts its definition including members (properties, fields, and methods).
     /// </summary>
     /// <param name="symbol">The <see cref="INamedTypeSymbol"/> representing the type to analyze.</param>
+    /// <param name="includeProperties">Whether to include properties and fields in the analyzed definition.</param>
+    /// <param name="includeFunctions">Whether to include functions and methods in the analyzed definition.</param>
     /// <returns>
     /// A <see cref="TypeDefinition"/> object containing the analyzed type's metadata and members.
     /// </returns>
-    public static TypeDefinition AnalyzeType(INamedTypeSymbol symbol)
+    public static TypeDefinition AnalyzeType(
+        INamedTypeSymbol symbol,
+        bool includeProperties = true,
+        bool includeFunctions = true)
     {
         var members = new List<MemberDefinition>();
         var isEnum = symbol.TypeKind == TypeKind.Enum;
@@ -32,7 +37,7 @@ internal static class TypeAnalyzer
         {
             switch (member)
             {
-                case IPropertySymbol prop:
+                case IPropertySymbol prop when includeProperties:
                     members.Add(new MemberDefinition(
                         prop.Name,
                         prop.Type.ToDisplayString(ShortNameFormat),
@@ -40,15 +45,18 @@ internal static class TypeAnalyzer
                         MemberKind.Property));
                     break;
                 case IFieldSymbol { IsImplicitlyDeclared: false } field:
-                    // For enums, only show the field name without the type
-                    var fieldType = isEnum ? string.Empty : field.Type.ToDisplayString(ShortNameFormat);
-                    members.Add(new MemberDefinition(
-                        field.Name,
-                        fieldType,
-                        MapAccessibility(field.DeclaredAccessibility),
-                        MemberKind.Field));
+                    if (isEnum || includeProperties)
+                    {
+                        // For enums, only show the field name without the type
+                        var fieldType = isEnum ? string.Empty : field.Type.ToDisplayString(ShortNameFormat);
+                        members.Add(new MemberDefinition(
+                            field.Name,
+                            fieldType,
+                            MapAccessibility(field.DeclaredAccessibility),
+                            MemberKind.Field));
+                    }
                     break;
-                case IMethodSymbol { MethodKind: MethodKind.Ordinary } method:
+                case IMethodSymbol { MethodKind: MethodKind.Ordinary } method when includeFunctions:
                     var parameters = method.Parameters
                         .Select(p => new ParameterDefinition(p.Name, p.Type.ToDisplayString(ShortNameFormat)))
                         .ToList();

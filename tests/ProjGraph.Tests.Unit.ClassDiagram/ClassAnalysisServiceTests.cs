@@ -87,7 +87,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
                             """;
         await File.WriteAllTextAsync(_tempFile, code);
 
-        var result = await _service.AnalyzeFileAsync(_tempFile);
+        var result = await _service.AnalyzeFileAsync(_tempFile, true);
 
         result.Types.Should().HaveCount(2);
         result.Relationships.Should().HaveCount(1);
@@ -126,7 +126,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
                             """;
         await File.WriteAllTextAsync(_tempFile, code);
 
-        var result = await _service.AnalyzeFileAsync(_tempFile);
+        var result = await _service.AnalyzeFileAsync(_tempFile, true);
 
         result.Types.Should().HaveCount(2);
         result.Relationships.Should().HaveCount(1);
@@ -154,7 +154,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
                                                """);
         await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
 
-        var result = await _service.AnalyzeFileAsync(userFile);
+        var result = await _service.AnalyzeFileAsync(userFile, true);
 
         result.Types.Count.Should().BeGreaterThanOrEqualTo(2);
         result.Relationships.Should().HaveCount(1);

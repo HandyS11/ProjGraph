@@ -18,6 +18,7 @@
     <!-- Set recommended package metadata -->
     <PackageId>ProjGraph.Mcp</PackageId>
     <Title>ProjGraph MCP Server</Title>
+    <PackageIcon>icon.png</PackageIcon>
     <Description>MCP server for ProjGraph to interact with LLMs and provide project graph context.</Description>
     <PackageTags>AI;MCP;server;stdio;graph;dependencies;visualization;erd;classdiagram;mermaid;dotnet</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -33,6 +34,7 @@
   <ItemGroup>
     <None Include=".mcp\server.json" Pack="true" PackagePath="/.mcp/"/>
     <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="..\..\icon.png" Pack="true" PackagePath=""/>
   </ItemGroup>
 
   <ItemGroup>
