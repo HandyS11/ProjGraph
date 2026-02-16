@@ -2,8 +2,6 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
 
     <!-- Package configuration -->
     <IsPackable>true</IsPackable>
@@ -13,6 +11,7 @@
     <!-- Package metadata -->
     <PackageId>ProjGraph.Cli</PackageId>
     <Title>ProjGraph CLI</Title>
+    <PackageIcon>icon.png</PackageIcon>
     <Description>CLI tool to visualize project dependencies and generate graphs.</Description>
     <PackageTags>dotnet-tool;graph;dependencies;visualization;erd;classdiagram;mermaid;cli</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -23,9 +22,10 @@
     <InternalsVisibleTo Include="ProjGraph.Tests.Integration.Cli"/>
   </ItemGroup>
 
-  <!-- Include README in package -->
+  <!-- Include README and icon in package -->
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="..\..\icon.png" Pack="true" PackagePath=""/>
   </ItemGroup>
 
   <ItemGroup>
