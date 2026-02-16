@@ -32,7 +32,7 @@ internal sealed class ClassDiagramCommand(
         /// Gets or sets the path to the .cs file to analyze.
         /// </summary>
         /// <value>The file path as a string.</value>
-        [CommandArgument(0, "<path>")]
+        [CommandArgument(0, "[path]")]
         [Description("Path to the .cs file to analyze.")]
         public string Path { get; init; } = string.Empty;
 

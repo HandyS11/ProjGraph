@@ -28,7 +28,7 @@ projgraph visualize ./MySolution.slnx --format mermaid --show-title false
 
 **Settings**:
 
-- `<PATH>`: Path to `.sln`, `.slnx`, or `.csproj` file.
+- `[path]`: Path to `.sln`, `.slnx`, or `.csproj` file.
 - `-f|--format`: Output format (`flat`, `tree`, `mermaid`). Default: `mermaid`.
 - `--show-title <true|false>`: Include diagram title. Default: `true`.
 
@@ -113,11 +113,11 @@ projgraph classdiagram ./Models/Admin.cs --properties false --functions false
 
 **Settings**:
 
-- `<path>`: Path to the `.cs` file.
+- `[path]`: Path to the `.cs` file.
 - `-i|--inheritance`: Include base classes/interfaces. Default: `false`.
 - `-d|--dependencies`: Include dependent types. Default: `false`.
-- `--properties`: Show properties and fields in the diagram. Default: `true`.
-- `--functions`: Show functions and methods in the diagram. Default: `true`.
+- `--properties <true|false>`: Show properties and fields in the diagram. Default: `true`.
+- `--functions <true|false>`: Show functions and methods in the diagram. Default: `true`.
 - `--depth <INT>`: Max discovery depth. Default: `1`.
 - `--show-title <true|false>`: Include diagram title. Default: `true`.
 

@@ -43,7 +43,7 @@ internal sealed class VisualizeCommand(
         /// <summary>
         /// Gets or sets the path to the .sln, .slnx, or .csproj file to be analyzed.
         /// </summary>
-        [CommandArgument(0, "<PATH>")]
+        [CommandArgument(0, "[path]")]
         [Description("The path to the .sln, .slnx, or .csproj file")]
         public string Path { get; init; } = string.Empty;
 
@@ -88,7 +88,9 @@ internal sealed class VisualizeCommand(
                 return ValidationResult.Error($"File not found: {Path}");
             }
 
-            if (NormalizedFormat != FormatFlat && NormalizedFormat != FormatTree && NormalizedFormat != FormatMermaid)
+            if (NormalizedFormat is not FormatFlat &&
+                NormalizedFormat is not FormatTree &&
+                NormalizedFormat is not FormatMermaid)
             {
                 return ValidationResult.Error("Format must be 'flat', 'tree' or 'mermaid'");
             }

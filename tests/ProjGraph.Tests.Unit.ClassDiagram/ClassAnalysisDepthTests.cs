@@ -49,7 +49,7 @@ public sealed class ClassAnalysisDepthTests : IDisposable
         await File.WriteAllTextAsync(fileC, "public class C {}");
 
         // Depth 1: Should find A and B, but not C
-        var result = await _service.AnalyzeFileAsync(fileA);
+        var result = await _service.AnalyzeFileAsync(fileA, true);
 
         result.Types.Should().Contain(t => t.Name == "A");
         result.Types.Should().Contain(t => t.Name == "B");
@@ -65,7 +65,7 @@ public sealed class ClassAnalysisDepthTests : IDisposable
         await File.WriteAllTextAsync(fileA, "public class A : B {}");
         await File.WriteAllTextAsync(fileB, "public class B {}");
 
-        var result = await _service.AnalyzeFileAsync(fileA, maxDepth: 0);
+        var result = await _service.AnalyzeFileAsync(fileA, true, maxDepth: 0);
 
         result.Types.Should().Contain(t => t.Name == "A");
         result.Types.Should().NotContain(t => t.Name == "B");
@@ -82,7 +82,7 @@ public sealed class ClassAnalysisDepthTests : IDisposable
         await File.WriteAllTextAsync(fileB, "public class B : C {}");
         await File.WriteAllTextAsync(fileC, "public class C {}");
 
-        var result = await _service.AnalyzeFileAsync(fileA, maxDepth: 2);
+        var result = await _service.AnalyzeFileAsync(fileA, true, maxDepth: 2);
 
         result.Types.Should().Contain(t => t.Name == "A");
         result.Types.Should().Contain(t => t.Name == "B");

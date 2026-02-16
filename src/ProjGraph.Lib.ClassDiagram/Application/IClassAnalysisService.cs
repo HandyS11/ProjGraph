@@ -19,7 +19,7 @@ public interface IClassAnalysisService
     /// <returns>A ClassModel representing the discovered types and relationships.</returns>
     Task<ClassModel> AnalyzeFileAsync(
         string filePath,
-        bool includeInheritance = true,
+        bool includeInheritance = false,
         bool includeDependencies = false,
         bool includeProperties = true,
         bool includeFunctions = true,
