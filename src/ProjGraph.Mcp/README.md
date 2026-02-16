@@ -35,7 +35,7 @@ Generates a Mermaid Entity Relationship Diagram from an EF Core `DbContext` or `
 **Parameters:**
 
 - `path` (string): Absolute path to a `.cs` file containing a `DbContext` or `ModelSnapshot`
-- `contextName` (string, optional): Specific DbContext or ModelSnapshot class name if multiple exist in the file
+- `context_name` (string, optional): Specific DbContext or ModelSnapshot class name if multiple exist in the file
 - `show_title` (boolean, optional): Whether to include the title in the diagram (default: true)
 
 **Returns:** Mermaid ERD diagram code
@@ -64,11 +64,14 @@ related types in the workspace.
 
 **Parameters:**
 
-- `filePath` (string): Absolute path to the C# file to analyze
-- `includeInheritance` (boolean, optional): Whether to search the workspace for base classes and interfaces (default:
+- `path` (string): Absolute path to the C# file to analyze
+- `include_inheritance` (boolean, optional): Whether to search the workspace for base classes and interfaces (default:
   false)
-- `includeDependencies` (boolean, optional): Whether to search for and include other classes used as properties or
+- `include_dependencies` (boolean, optional): Whether to search for and include other classes used as properties or
   fields (default: false)
+- `include_properties` (boolean, optional): Whether to display properties and fields in the class diagram (default:
+  true)
+- `include_functions` (boolean, optional): Whether to display functions/methods in the class diagram (default: true)
 - `depth` (number, optional): How many levels of relationships to follow (default: 1)
 - `show_title` (boolean, optional): Whether to include the title in the diagram (default: true)
 

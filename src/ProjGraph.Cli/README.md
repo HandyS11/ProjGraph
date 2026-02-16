@@ -106,6 +106,9 @@ projgraph classdiagram ./Models/Admin.cs --depth 5
 
 # Generate without title header
 projgraph classdiagram ./Models/Admin.cs --show-title false
+
+# Hide properties or functions
+projgraph classdiagram ./Models/Admin.cs --properties false --functions false
 ```
 
 **Settings**:
@@ -113,6 +116,8 @@ projgraph classdiagram ./Models/Admin.cs --show-title false
 - `<path>`: Path to the `.cs` file.
 - `-i|--inheritance`: Include base classes/interfaces. Default: `false`.
 - `-d|--dependencies`: Include dependent types. Default: `false`.
+- `--properties`: Show properties and fields in the diagram. Default: `true`.
+- `--functions`: Show functions and methods in the diagram. Default: `true`.
 - `--depth <INT>`: Max discovery depth. Default: `1`.
 - `--show-title <true|false>`: Include diagram title. Default: `true`.
 

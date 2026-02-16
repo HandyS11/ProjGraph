@@ -57,7 +57,7 @@ internal sealed class ClassDiagramCommand(
         /// <summary>
         /// Gets or sets a value indicating whether to include properties and fields in the diagram.
         /// </summary>
-        [CommandOption("--properties")]
+        [CommandOption("--properties <true|false>")]
         [Description("Show properties and fields in the diagram (default true)")]
         [DefaultValue(true)]
         public bool IncludeProperties { get; init; } = true;
@@ -65,7 +65,7 @@ internal sealed class ClassDiagramCommand(
         /// <summary>
         /// Gets or sets a value indicating whether to include functions/methods in the diagram.
         /// </summary>
-        [CommandOption("--functions")]
+        [CommandOption("--functions <true|false>")]
         [Description("Show functions and methods in the diagram (default true)")]
         [DefaultValue(true)]
         public bool IncludeFunctions { get; init; } = true;

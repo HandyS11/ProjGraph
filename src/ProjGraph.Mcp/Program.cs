@@ -26,7 +26,11 @@ internal static class Program
         var builder = Host.CreateApplicationBuilder(args);
 
         builder.Services.AddMcpServer(options =>
-                options.ServerInfo = new Implementation { Name = "ProjGraph", Version = version })
+                options.ServerInfo = new Implementation
+                {
+                    Name = "ProjGraph",
+                    Version = version
+                })
             .WithStdioServerTransport()
             .WithTools<ProjGraphTools>();
 
@@ -57,7 +61,7 @@ internal sealed class ProjGraphTools(
         "Generates a Mermaid class diagram for the types defined in a specific C# file, with options to discover inheritance and related types in the workspace.")]
     public async Task<string> GetClassDiagramAsync(
         [Description("Absolute path to the .cs file to analyze.")]
-        string filePath,
+        string path,
         [Description("Whether to search the workspace for base classes and interfaces.")]
         bool includeInheritance = false,
         [Description("Whether to search for and include other classes used as properties or fields.")]
@@ -73,17 +77,17 @@ internal sealed class ProjGraphTools(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        if (!File.Exists(filePath))
+        if (!File.Exists(path))
         {
-            throw new FileNotFoundException($"File not found: {filePath}", filePath);
+            throw new FileNotFoundException($"File not found: {path}", path);
         }
 
-        FilePathGuard.RequireCsFile(filePath, nameof(filePath));
+        FilePathGuard.RequireCsFile(path);
 
         var model = await classService.AnalyzeFileAsync(
-            filePath,
+            path,
             includeInheritance,
             includeDependencies,
             includeProperties,
