@@ -39,7 +39,7 @@ public class McpClassDiagramTests
         var parameters = method!.GetParameters();
 
         // Check filePath parameter
-        var pathParam = parameters.Should().ContainSingle(p => p.Name == "filePath").Which;
+        var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
         pathParam.ParameterType.Should().Be<string>();
         pathParam.GetCustomAttribute<DescriptionAttribute>().Should().NotBeNull();
 
