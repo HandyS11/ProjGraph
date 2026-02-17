@@ -1,3 +1,4 @@
+using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Integration.Mcp.Helpers;
 using ProjGraph.Tests.Shared.Helpers;
@@ -178,7 +179,8 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagramAsync(_tempFileWithInheritance, true);
+        var result =
+            await tools.GetClassDiagramAsync(_tempFileWithInheritance, new AnalysisOptions(IncludeInheritance: true));
 
         // Assert
         result.Should().Contain("class TestNamespace_Entity");
@@ -196,7 +198,8 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagramAsync(_tempFileWithInheritance, true);
+        var result =
+            await tools.GetClassDiagramAsync(_tempFileWithInheritance, new AnalysisOptions(IncludeInheritance: true));
 
         // Assert
         result.Should().Contain("class TestNamespace_INameable");
@@ -228,7 +231,8 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies, includeDependencies: true);
+        var result =
+            await tools.GetClassDiagramAsync(_tempFileWithDependencies, new AnalysisOptions(IncludeDependencies: true));
 
         // Assert
         result.Should().Contain("class TestNamespace_Customer");
@@ -244,7 +248,8 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies, includeDependencies: false);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies,
+            new AnalysisOptions(IncludeDependencies: false));
 
         // Assert
         result.Should().Contain("class TestNamespace_Customer");
@@ -262,7 +267,8 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies, includeDependencies: true, depth: 1);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies,
+            new AnalysisOptions(1, IncludeDependencies: true));
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -279,7 +285,8 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies, includeDependencies: true, depth: 2);
+        var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies,
+            new AnalysisOptions(2, IncludeDependencies: true));
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -303,7 +310,7 @@ public sealed class McpClassDiagramTests : IDisposable
         }
 
         // Act
-        var result = await tools.GetClassDiagramAsync(modelsPath, true);
+        var result = await tools.GetClassDiagramAsync(modelsPath, new AnalysisOptions(IncludeInheritance: true));
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -320,11 +327,7 @@ public sealed class McpClassDiagramTests : IDisposable
         // Act
         var result = await tools.GetClassDiagramAsync(
             _tempFileWithInheritance,
-            true,
-            true,
-            true,
-            true,
-            3);
+            new AnalysisOptions(3, true, true));
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -341,11 +344,7 @@ public sealed class McpClassDiagramTests : IDisposable
         // Act
         var result = await tools.GetClassDiagramAsync(
             _tempFileWithInheritance,
-            false,
-            false,
-            false,
-            false,
-            0);
+            new AnalysisOptions(0, false, false, false, false));
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -361,7 +360,7 @@ public sealed class McpClassDiagramTests : IDisposable
         var tools = CreateTools();
 
         // Act
-        var result = await tools.GetClassDiagramAsync(_tempFile, includeProperties: false);
+        var result = await tools.GetClassDiagramAsync(_tempFile, new AnalysisOptions(IncludeProperties: false));
 
         // Assert
         result.Should().NotContain("int Id");
@@ -380,7 +379,7 @@ public sealed class McpClassDiagramTests : IDisposable
         await File.WriteAllTextAsync(path, "namespace Test; public class Svc { public void DoWork() {} }");
 
         // Act
-        var result = await tools.GetClassDiagramAsync(path, includeFunctions: false);
+        var result = await tools.GetClassDiagramAsync(path, new AnalysisOptions(IncludeFunctions: false));
 
         // Assert
         result.Should().NotContain("DoWork()");
@@ -396,10 +395,8 @@ public sealed class McpClassDiagramTests : IDisposable
         // Hide both properties and functions, but enable inheritance and dependencies
         var result = await tools.GetClassDiagramAsync(
             _tempFileWithDependencies,
-            true,
-            true,
-            false,
-            false);
+            new AnalysisOptions(IncludeInheritance: true, IncludeDependencies: true, IncludeProperties: false,
+                IncludeFunctions: false));
 
         // Assert
         result.Should().Contain("class TestNamespace_Customer");
@@ -460,9 +457,11 @@ public sealed class McpClassDiagramTests : IDisposable
 
         // Act
         var resultWithMembers =
-            await tools.GetClassDiagramAsync(complexFile, includeProperties: true, includeFunctions: true);
+            await tools.GetClassDiagramAsync(complexFile,
+                new AnalysisOptions(IncludeProperties: true, IncludeFunctions: true));
         var resultWithoutMembers =
-            await tools.GetClassDiagramAsync(complexFile, includeProperties: false, includeFunctions: false);
+            await tools.GetClassDiagramAsync(complexFile,
+                new AnalysisOptions(IncludeProperties: false, IncludeFunctions: false));
 
         // Assert
         var withCount = resultWithMembers.Length;

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ModelContextProtocol.Server;
+using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Mcp;
 using System.ComponentModel;
 using System.Reflection;
@@ -43,35 +44,23 @@ public class McpClassDiagramTests
         pathParam.ParameterType.Should().Be<string>();
         pathParam.GetCustomAttribute<DescriptionAttribute>().Should().NotBeNull();
 
-        // Check optional flags
-        var inheritanceParam = parameters.Should().ContainSingle(p => p.Name == "includeInheritance").Which;
-        inheritanceParam.ParameterType.Should().Be<bool>();
-        inheritanceParam.IsOptional.Should().BeTrue();
-        inheritanceParam.DefaultValue.Should().Be(false);
+        // Check options parameter
+        var optionsParam = parameters.Should().ContainSingle(p => p.Name == "options").Which;
+        optionsParam.ParameterType.Should().Be<AnalysisOptions>();
+        optionsParam.IsOptional.Should().BeTrue();
+        optionsParam.DefaultValue.Should().BeNull();
+        optionsParam.GetCustomAttribute<DescriptionAttribute>().Should().NotBeNull();
 
-        var dependenciesParam = parameters.Should().ContainSingle(p => p.Name == "includeDependencies").Which;
-        dependenciesParam.ParameterType.Should().Be<bool>();
-        dependenciesParam.IsOptional.Should().BeTrue();
-        dependenciesParam.DefaultValue.Should().Be(false);
-
-        var propertiesParam = parameters.Should().ContainSingle(p => p.Name == "includeProperties").Which;
-        propertiesParam.ParameterType.Should().Be<bool>();
-        propertiesParam.IsOptional.Should().BeTrue();
-        propertiesParam.DefaultValue.Should().Be(true);
-
-        var functionsParam = parameters.Should().ContainSingle(p => p.Name == "includeFunctions").Which;
-        functionsParam.ParameterType.Should().Be<bool>();
-        functionsParam.IsOptional.Should().BeTrue();
-        functionsParam.DefaultValue.Should().Be(true);
-
-        var depthParam = parameters.Should().ContainSingle(p => p.Name == "depth").Which;
-        depthParam.ParameterType.Should().Be<int>();
-        depthParam.IsOptional.Should().BeTrue();
-        depthParam.DefaultValue.Should().Be(1);
-
+        // Check showTitle parameter
         var titleParam = parameters.Should().ContainSingle(p => p.Name == "showTitle").Which;
         titleParam.ParameterType.Should().Be<bool>();
         titleParam.IsOptional.Should().BeTrue();
         titleParam.DefaultValue.Should().Be(true);
+        titleParam.GetCustomAttribute<DescriptionAttribute>().Should().NotBeNull();
+
+        // Check cancellationToken parameter
+        var ctParam = parameters.Should().ContainSingle(p => p.Name == "cancellationToken").Which;
+        ctParam.ParameterType.Should().Be<CancellationToken>();
+        ctParam.IsOptional.Should().BeTrue();
     }
 }

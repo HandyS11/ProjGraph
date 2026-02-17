@@ -21,21 +21,15 @@ public class AnalyzeFileUseCase(
     /// Executes the analysis of a C# source file to extract class definitions and their relationships.
     /// </summary>
     /// <param name="filePath">The path to the C# source file to analyze.</param>
-    /// <param name="includeInheritance">Specifies whether to include inheritance relationships in the analysis.</param>
-    /// <param name="includeDependencies">Specifies whether to include dependency relationships in the analysis.</param>
-    /// <param name="includeProperties">Specifies whether to include properties and fields in the analysis.</param>
-    /// <param name="includeFunctions">Specifies whether to include functions and methods in the analysis.</param>
-    /// <param name="maxDepth">The maximum depth for analyzing relationships.</param>
+    /// <param name="options">The analysis options.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the analyzed class model.</returns>
     /// <exception cref="FileNotFoundException">Thrown when the specified source file is not found.</exception>
     public async Task<ClassModel> ExecuteAsync(
         string filePath,
-        bool includeInheritance = false,
-        bool includeDependencies = false,
-        bool includeProperties = true,
-        bool includeFunctions = true,
-        int maxDepth = 1)
+        AnalysisOptions? options = null)
     {
+        options ??= new AnalysisOptions();
+
         if (!fileSystem.FileExists(filePath))
         {
             throw new FileNotFoundException("Source file not found", filePath);
@@ -56,15 +50,6 @@ public class AnalyzeFileUseCase(
             Relationships = [],
             Compilation = compilation,
             StartDirectory = startDir
-        };
-
-        var options = new AnalysisOptions
-        {
-            MaxDepth = maxDepth,
-            IncludeInheritance = includeInheritance,
-            IncludeDependencies = includeDependencies,
-            IncludeProperties = includeProperties,
-            IncludeFunctions = includeFunctions
         };
 
         var typesToAnalyze = new Queue<(INamedTypeSymbol Symbol, int Depth)>();

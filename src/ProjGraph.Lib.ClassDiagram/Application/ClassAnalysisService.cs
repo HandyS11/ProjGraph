@@ -13,18 +13,8 @@ public class ClassAnalysisService(AnalyzeFileUseCase analyzeFileUseCase) : IClas
     /// <inheritdoc />
     public async Task<ClassModel> AnalyzeFileAsync(
         string filePath,
-        bool includeInheritance = false,
-        bool includeDependencies = false,
-        bool includeProperties = true,
-        bool includeFunctions = true,
-        int maxDepth = 1)
+        AnalysisOptions? options = null)
     {
-        return await analyzeFileUseCase.ExecuteAsync(
-            filePath,
-            includeInheritance,
-            includeDependencies,
-            includeProperties,
-            includeFunctions,
-            maxDepth);
+        return await analyzeFileUseCase.ExecuteAsync(filePath, options);
     }
 }
