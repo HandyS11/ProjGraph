@@ -79,7 +79,7 @@ public sealed class AnalyzeFileUseCaseTests
                 Arg.Any<AnalysisOptions>())
             .ReturnsForAnyArgs(Task.CompletedTask);
 
-        await _sut.ExecuteAsync(filePath, false, true, true, false, 3);
+        await _sut.ExecuteAsync(filePath, new AnalysisOptions(3, false, true, true, false));
 
         await _typeProcessor.Received(1).ProcessTypeQueueAsync(
             Arg.Any<Queue<(INamedTypeSymbol Symbol, int Depth)>>(),

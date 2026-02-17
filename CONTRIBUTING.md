@@ -57,13 +57,13 @@ dotnet test tests/ProjGraph.Tests.Unit.ClassDiagram --filter "ClassAnalysisDepth
 
 ### Test Organisation
 
-| Project                 | Purpose                                                                 |
-|-------------------------|-------------------------------------------------------------------------|
-| `Tests.Unit.*`          | Unit tests per library                                                  |
-| `Tests.Integration.Cli` | CLI end-to-end tests                                                    |
-| `Tests.Integration.Mcp` | MCP tool integration tests                                              |
-| `Tests.Contract`        | MCP contract validation & DI wiring                                     |
-| `Tests.Shared`          | Shared helpers (`TestDirectory`, `NullOutputConsole`, `TestPathHelper`) |
+| Project                 | Purpose                                            |
+|-------------------------|----------------------------------------------------|
+| `Tests.Unit.*`          | Unit tests per library                             |
+| `Tests.Integration.Cli` | CLI end-to-end tests                               |
+| `Tests.Integration.Mcp` | MCP tool integration tests                         |
+| `Tests.Contract`        | MCP contract validation & DI wiring                |
+| `Tests.Shared`          | Shared helpers (`TestDirectory`, `TestPathHelper`) |
 
 ## Adding a New Feature
 

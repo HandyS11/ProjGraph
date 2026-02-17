@@ -130,13 +130,14 @@ internal sealed class ClassDiagramCommand(
     {
         try
         {
-            var model = await analysisService.AnalyzeFileAsync(
-                settings.Path,
+            var options = new AnalysisOptions(
+                settings.Depth,
                 settings.IncludeInheritance,
                 settings.IncludeDependencies,
                 settings.IncludeProperties,
-                settings.IncludeFunctions,
-                settings.Depth);
+                settings.IncludeFunctions);
+
+            var model = await analysisService.AnalyzeFileAsync(settings.Path, options);
 
             var mermaidOutput = mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle));
             console.WriteLine(mermaidOutput);

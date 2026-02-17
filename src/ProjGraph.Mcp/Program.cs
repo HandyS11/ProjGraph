@@ -62,16 +62,8 @@ internal sealed class ProjGraphTools(
     public async Task<string> GetClassDiagramAsync(
         [Description("Absolute path to the .cs file to analyze.")]
         string path,
-        [Description("Whether to search the workspace for base classes and interfaces.")]
-        bool includeInheritance = false,
-        [Description("Whether to search for and include other classes used as properties or fields.")]
-        bool includeDependencies = false,
-        [Description("Whether to display properties and fields in the class diagram (default: true).")]
-        bool includeProperties = true,
-        [Description("Whether to display functions/methods in the class diagram (default: true).")]
-        bool includeFunctions = true,
-        [Description("How many levels of relationships to follow (default: 1).")]
-        int depth = 1,
+        [Description("Analysis and discovery options.")]
+        AnalysisOptions? options = null,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
         CancellationToken cancellationToken = default)
@@ -86,13 +78,7 @@ internal sealed class ProjGraphTools(
 
         FilePathGuard.RequireCsFile(path);
 
-        var model = await classService.AnalyzeFileAsync(
-            path,
-            includeInheritance,
-            includeDependencies,
-            includeProperties,
-            includeFunctions,
-            depth);
+        var model = await classService.AnalyzeFileAsync(path, options);
 
         return classRenderer.Render(model, new DiagramOptions(showTitle));
     }

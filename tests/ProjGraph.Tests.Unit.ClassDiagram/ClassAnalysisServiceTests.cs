@@ -51,7 +51,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
                             """;
         await File.WriteAllTextAsync(_tempFile, code);
 
-        var result = await _service.AnalyzeFileAsync(_tempFile, false);
+        var result = await _service.AnalyzeFileAsync(_tempFile);
 
         result.Types.Should().HaveCount(1);
         var type = result.Types[0];
@@ -70,7 +70,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
                             """;
         await File.WriteAllTextAsync(_tempFile, code);
 
-        var result = await _service.AnalyzeFileAsync(_tempFile, false);
+        var result = await _service.AnalyzeFileAsync(_tempFile);
 
         result.Types.Should().HaveCount(1);
         var type = result.Types[0];
@@ -87,7 +87,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
                             """;
         await File.WriteAllTextAsync(_tempFile, code);
 
-        var result = await _service.AnalyzeFileAsync(_tempFile, true);
+        var result = await _service.AnalyzeFileAsync(_tempFile, new AnalysisOptions(IncludeInheritance: true));
 
         result.Types.Should().HaveCount(2);
         result.Relationships.Should().HaveCount(1);
@@ -108,7 +108,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
         await File.WriteAllTextAsync(modelFile, "public class Model {}");
         await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
 
-        var result = await _service.AnalyzeFileAsync(serviceFile, false, true);
+        var result = await _service.AnalyzeFileAsync(serviceFile, new AnalysisOptions(IncludeDependencies: true));
 
         result.Types.Should().Contain(t => t.Name == "Service");
         result.Types.Should().Contain(t => t.Name == "Model");
@@ -126,7 +126,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
                             """;
         await File.WriteAllTextAsync(_tempFile, code);
 
-        var result = await _service.AnalyzeFileAsync(_tempFile, true);
+        var result = await _service.AnalyzeFileAsync(_tempFile, new AnalysisOptions(IncludeInheritance: true));
 
         result.Types.Should().HaveCount(2);
         result.Relationships.Should().HaveCount(1);
@@ -154,7 +154,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
                                                """);
         await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
 
-        var result = await _service.AnalyzeFileAsync(userFile, true);
+        var result = await _service.AnalyzeFileAsync(userFile, new AnalysisOptions(IncludeInheritance: true));
 
         result.Types.Count.Should().BeGreaterThanOrEqualTo(2);
         result.Relationships.Should().HaveCount(1);
@@ -179,7 +179,7 @@ public sealed class ClassAnalysisServiceTests : IDisposable
                             """;
         await File.WriteAllTextAsync(_tempFile, code);
 
-        var result = await _service.AnalyzeFileAsync(_tempFile, false, true);
+        var result = await _service.AnalyzeFileAsync(_tempFile, new AnalysisOptions(IncludeDependencies: true));
 
         result.Types.Should().HaveCount(1);
         var type = result.Types[0];
