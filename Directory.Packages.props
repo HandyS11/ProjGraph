@@ -3,7 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="coverlet.collector" Version="6.0.4"/>
+    <PackageVersion Include="coverlet.collector" Version="8.0.0"/>
     <PackageVersion Include="FluentAssertions" Version="8.8.0"/>
     <PackageVersion Include="Microsoft.Build" Version="18.0.2"/>
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0"/>
