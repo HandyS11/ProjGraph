@@ -1,39 +1,21 @@
-# Simple Dependencies Example
+# Sample: Simple Project Dependencies
 
-Four projects demonstrating basic dependency structure: **A** → **B** → **C**, **D**
+This sample demonstrates **Project Dependency Visualization** for a modern .NET solution using the `.slnx` format.
+It showcases how ProjGraph renders project-to-project references as both ASCII trees and Mermaid diagrams.
 
-## Usage
+## 🏙️ Architecture: Diamond Dependency
 
-### Tree Format (Default)
+The sample solution consists of four projects with a clear dependency flow:
 
-```bash
-projgraph visualize simple-dependencies.slnx
-# or from a single project (recursively discovers all dependencies)
-projgraph visualize A/A.csproj
-```
+- **Project A**: The entry point/application project.
+- **Project B**: A shared library used by A.
+- **Project C & D**: Low-level infrastructure or utility projects used by B.
 
-**Output:**
+Structure: `A` → `B` → (`C`, `D`)
 
-```bash
-Projects
-├── 📦 A
-│   └── → B
-├── 📦 B
-│   ├── → C
-│   └── → D
-├── 📦 C
-└── 📦 D
-```
+## 📊 Visual Snapshot
 
-### Mermaid Format
-
-```bash
-projgraph visualize simple-dependencies.slnx --format mermaid > dependencies.mmd
-# or
-projgraph visualize A/A.csproj --format mermaid
-```
-
-**Output:**
+Below is the dependency graph generated for the solution using ProjGraph:
 
 ```mermaid
 graph TD
@@ -46,10 +28,29 @@ graph TD
   B --> D
 ```
 
-## Key Features
+> [!TIP]
+> This diagram was generated directly from the `.slnx` solution file. You can find the latest snapshot in [simple-dependencies.mmd](./simple-dependencies.mmd).
 
-- **Supports `.sln`, `.slnx`, or `.csproj` files** - Start from any entry point
-- **Recursive discovery** - When starting from `.csproj`, automatically finds all referenced projects
-- **Tree format** - Quick terminal viewing
-- **Mermaid format** - Documentation-ready diagrams
-- **Circular dependency detection** - Automatically highlighted in output
+## 🚀 Quick Start
+
+To generate this diagram yourself, run the following command from the repository root:
+
+```bash
+projgraph visualize ./samples/visualize/simple-dependencies/simple-dependencies.slnx --format mermaid > ./samples/visualize/simple-dependencies/simple-dependencies.mmd
+```
+
+### Alternative: ASCII Tree
+
+For a quick view in your terminal, run:
+
+```bash
+projgraph visualize ./samples/visualize/simple-dependencies/simple-dependencies.slnx
+```
+
+## 🛠️ Build and Test
+
+The solution contains multiple projects. You can build all of them using:
+
+```bash
+dotnet build ./samples/visualize/simple-dependencies/simple-dependencies.slnx
+```

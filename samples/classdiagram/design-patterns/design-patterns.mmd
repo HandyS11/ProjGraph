@@ -1,0 +1,140 @@
+---
+title: Order.cs
+---
+classDiagram
+    class DesignPatterns_Domain_Order ["Order"]
+    class DesignPatterns_Domain_Order {
+        +string OrderNumber
+        +int UserId
+        +User? User
+        +DateTime OrderDate
+        +OrderStatus Status
+        +decimal SubTotal
+        +decimal TaxAmount
+        +decimal ShippingCost
+        +decimal TotalAmount
+        +string ShippingAddress
+        +string BillingAddress
+        +string? TrackingNumber
+        +List~OrderItem~ Items
+        +Payment? PaymentInfo
+    }
+    class DesignPatterns_Base_AuditableEntity ["AuditableEntity"]
+    <<abstract>> DesignPatterns_Base_AuditableEntity
+    class DesignPatterns_Base_AuditableEntity {
+        +string CreatedBy
+        +DateTime CreatedAt
+        +string? ModifiedBy
+        +DateTime? ModifiedAt
+        +bool IsDeleted
+    }
+    class DesignPatterns_Domain_User ["User"]
+    class DesignPatterns_Domain_User {
+        +string Username
+        +string Email
+        +string PasswordHash
+        +string FirstName
+        +string LastName
+        +UserRole Role
+        +DateTime? LastLoginAt
+        +bool IsActive
+        +List~Order~ Orders
+        +ShoppingCart? ShoppingCart
+    }
+    class DesignPatterns_Enums_OrderStatus ["OrderStatus"]
+    <<enum>> DesignPatterns_Enums_OrderStatus
+    class DesignPatterns_Enums_OrderStatus {
+        +Pending
+        +Processing
+        +Shipped
+        +Delivered
+        +Cancelled
+        +Refunded
+    }
+    class DesignPatterns_Domain_OrderItem ["OrderItem"]
+    class DesignPatterns_Domain_OrderItem {
+        +int OrderId
+        +Order? Order
+        +int ProductId
+        +Product? Product
+        +int Quantity
+        +decimal UnitPrice
+        +decimal Discount
+        +decimal TotalPrice
+    }
+    class DesignPatterns_Domain_Payment ["Payment"]
+    class DesignPatterns_Domain_Payment {
+        +int OrderId
+        +Order? Order
+        +PaymentMethod Method
+        +decimal Amount
+        +string TransactionId
+        +DateTime PaymentDate
+        +bool IsSuccessful
+        +string? ErrorMessage
+        +string? CardLastFourDigits
+    }
+    class DesignPatterns_Base_Entity ["Entity"]
+    <<abstract>> DesignPatterns_Base_Entity
+    class DesignPatterns_Base_Entity {
+        +int Id
+    }
+    class DesignPatterns_Enums_UserRole ["UserRole"]
+    <<enum>> DesignPatterns_Enums_UserRole
+    class DesignPatterns_Enums_UserRole {
+        +Guest
+        +Customer
+        +Administrator
+        +Manager
+        +Support
+    }
+    class DesignPatterns_Domain_ShoppingCart ["ShoppingCart"]
+    class DesignPatterns_Domain_ShoppingCart {
+        +int UserId
+        +User? User
+        +DateTime CreatedAt
+        +DateTime LastModifiedAt
+        +List~ShoppingCartItem~ Items
+        +GetTotalAmount() decimal
+        +AddItem(Product product, int quantity) void
+    }
+    class DesignPatterns_Domain_Product ["Product"]
+    class DesignPatterns_Domain_Product {
+        +string Name
+        +string Description
+        +string Sku
+        +decimal Price
+        +int StockQuantity
+        +decimal Weight
+        +string ImageUrl
+        +bool IsActive
+        +int CategoryId
+        +Category? Category
+        +List~OrderItem~ OrderItems
+    }
+    class DesignPatterns_Enums_PaymentMethod ["PaymentMethod"]
+    <<enum>> DesignPatterns_Enums_PaymentMethod
+    class DesignPatterns_Enums_PaymentMethod {
+        +CreditCard
+        +DebitCard
+        +PayPal
+        +BankTransfer
+        +Cash
+    }
+    DesignPatterns_Base_AuditableEntity <|-- DesignPatterns_Domain_Order
+    DesignPatterns_Domain_Order "1" --> DesignPatterns_Domain_User : User
+    DesignPatterns_Domain_Order "1" --> DesignPatterns_Enums_OrderStatus : Status
+    DesignPatterns_Domain_Order "*" --> DesignPatterns_Domain_OrderItem : Items
+    DesignPatterns_Domain_Order "1" --> DesignPatterns_Domain_Payment : PaymentInfo
+    DesignPatterns_Base_Entity <|-- DesignPatterns_Base_AuditableEntity
+    DesignPatterns_Base_AuditableEntity <|-- DesignPatterns_Domain_User
+    DesignPatterns_Domain_User "1" --> DesignPatterns_Enums_UserRole : Role
+    DesignPatterns_Domain_User "*" --> DesignPatterns_Domain_Order : Orders
+    DesignPatterns_Domain_User "1" --> DesignPatterns_Domain_ShoppingCart : ShoppingCart
+    DesignPatterns_Base_Entity <|-- DesignPatterns_Domain_OrderItem
+    DesignPatterns_Domain_OrderItem "1" --> DesignPatterns_Domain_Order : Order
+    DesignPatterns_Domain_OrderItem "1" --> DesignPatterns_Domain_Product : Product
+    DesignPatterns_Base_Entity <|-- DesignPatterns_Domain_Payment
+    DesignPatterns_Domain_Payment "1" --> DesignPatterns_Domain_Order : Order
+    DesignPatterns_Domain_Payment "1" --> DesignPatterns_Enums_PaymentMethod : Method
+

@@ -1,0 +1,16 @@
+---
+title: ModularArchitecture.slnx
+---
+graph TD
+    App["App"]
+    Core["Core"]
+    Infrastructure["Infrastructure"]
+    Services["Services"]
+    Shared["Shared"]
+    App --> Core
+    App --> Infrastructure
+    App --> Services
+    Infrastructure --> Core
+    Services --> Core
+    Services --> Infrastructure
+

@@ -1,138 +1,108 @@
-# Design Patterns - Complex Class Diagram Example
+# Sample: Design Patterns & Advanced OOP
 
-A comprehensive C# sample project demonstrating advanced OOP concepts, design patterns, and complex class relationships
-for the **Class Diagram** feature.
+This sample is a comprehensive showcase of **Class Diagram** generation for sophisticated C# architectures.
+It demonstrates ProjGraph's support for design patterns, generic constraints, multi-level inheritance, and complex associations.
 
-## Model Structure
+## 🏙️ Domain: Enterprise Order System
 
-This example showcases:
+The sample implements several industry-standard design patterns:
 
-### Architectural Patterns
+- **Creational**: `OrderBuilder` (Fluent Builder), Generic Repository, and Unit of Work.
+- **Structural**: `LoggingNotificationService` (Decorator), `CompositeValidator` (Composite).
+- **Behavioral**: `IPricingStrategy` (Strategy), `IDomainEvent` (Observer), and `ICommand` (Command).
 
-- **Repository Pattern**: Generic repository with unit of work
-- **Factory Pattern**: Object creation abstraction
-- **Strategy Pattern**: Interchangeable algorithms
-- **Observer Pattern**: Event notification system
-- **Decorator Pattern**: Dynamic behavior extension
+## 📊 Visual Snapshot
 
-### Advanced OOP Concepts
+Below is a high-level view of the `Order` aggregate and its related patterns:
 
-- **Multiple inheritance levels** (3+ levels deep)
-- **Generic constraints** (`where T : class`)
-- **Interface segregation** (multiple interfaces)
-- **Composition over inheritance**
-- **Abstract base classes**
-- **Static factory methods**
-- **Fluent builder pattern**
-
-### Complex Relationships
-
-- **Inheritance hierarchies**: Entity → AuditableEntity → User/Product/Order
-- **Composition**: Order contains OrderItems, PaymentInfo, ShippingAddress
-- **Aggregation**: ShoppingCart aggregates Products
-- **Dependencies**: Services depend on repositories
-- **Associations**: Many-to-many through junction tables
-
-## Project Structure
-
-```
-Base/
-├── Entity.cs                    - Base entity with Id
-├── AuditableEntity.cs          - Adds audit fields (CreatedBy, UpdatedAt, etc.)
-└── IEntity.cs                   - Entity marker interface
-
-Domain/
-├── User.cs                      - User entity with roles and orders
-├── Product.cs                   - Product with categories and inventory
-├── Order.cs                     - Order with items and payment
-├── OrderItem.cs                 - Order line item
-├── Category.cs                  - Product categorization
-├── ShoppingCart.cs              - Shopping cart aggregate
-└── Payment.cs                   - Payment information
-
-Enums/
-├── OrderStatus.cs               - Order state enum
-├── PaymentMethod.cs             - Payment type enum
-└── UserRole.cs                  - User role enum
-
-Interfaces/
-├── IRepository.cs               - Generic repository interface
-├── IUnitOfWork.cs               - Unit of work pattern
-├── INotificationService.cs      - Observer pattern interface
-├── IPaymentStrategy.cs          - Strategy pattern interface
-├── IPricingStrategy.cs          - Pricing calculation strategy
-└── IValidator.cs                - Validation interface
-
-Services/
-├── UserService.cs               - User business logic
-├── OrderService.cs              - Order processing
-├── NotificationService.cs       - Event notifications
-├── PaymentProcessor.cs          - Payment handling
-└── PricingService.cs            - Price calculations
-
-Repositories/
-├── Repository.cs                - Generic repository implementation
-├── UserRepository.cs            - User-specific queries
-├── OrderRepository.cs           - Order-specific queries
-└── UnitOfWork.cs                - Transaction management
-
-Builders/
-└── OrderBuilder.cs              - Fluent order builder
-
-Strategies/
-├── CreditCardPayment.cs         - Credit card payment strategy
-├── PayPalPayment.cs             - PayPal payment strategy
-├── StandardPricing.cs           - Standard pricing strategy
-└── DiscountPricing.cs           - Discount pricing strategy
-
-Validators/
-├── UserValidator.cs             - User validation rules
-└── OrderValidator.cs            - Order validation rules
+```mermaid
+classDiagram
+    class IRepository~T~ {
+        <<interface>>
+        +Add(T entity)
+        +GetById(Guid id)
+    }
+    class OrderBuilder {
+        +WithCustomer(User user)
+        +WithItem(Product p, int qty)
+        +Build() Order
+    }
+    class IPricingStrategy {
+        <<interface>>
+        +CalculatePrice(Order order) decimal
+    }
+    class Order {
+        +Guid Id
+        +User Customer
+        +List~OrderItem~ Items
+        +OrderStatus Status
+    }
+    OrderBuilder ..> Order : built
+    Order "*" --> OrderItem : contains
+    Order "1" --> IPricingStrategy : uses
 ```
 
-## Usage Examples
+> [!TIP]
+> Use the `--depth` and `--dependencies` flags to explore this complex web of relationships. View the latest snapshot in [design-patterns.mmd](./design-patterns.mmd).
 
-### Analyze Complete Domain
+## 🚀 Quick Start
+
+To generate a detailed diagram of the `Order` class including its dependencies and inheritance, run:
 
 ```bash
-# Start from the main aggregate root
-projgraph classdiagram Domain/Order.cs
+projgraph classdiagram ./samples/classdiagram/design-patterns/Domain/Order.cs --inheritance --dependencies --depth 2 --properties true --functions true > ./samples/classdiagram/design-patterns/design-patterns.mmd
+```
 
+### Parameters explained
+
+- `--inheritance`: Shows the full hierarchy of `Order` (e.g., `AuditableEntity` -> `Entity`).
+- `--dependencies`: Discovers related types like `User`, `OrderItem`, and `IPricingStrategy`.
+- `--properties true`: Includes fields and properties in the diagram nodes.
+
+## 🛠️ Build and Test
+
+This is a multi-file enterprise-grade sample. Build it using:
+
+```bash
+dotnet build ./samples/classdiagram/design-patterns/
+```
+
+### Analyze Specific Patterns
+
+Run these from the repository root to see ProjGraph in action:
+
+```bash
 # Analyze the entire service layer
-projgraph classdiagram Services/OrderService.cs
+projgraph classdiagram ./samples/classdiagram/design-patterns/Services/OrderService.cs
 
 # View the repository pattern implementation
-projgraph classdiagram Repositories/Repository.cs
-```
+projgraph classdiagram ./samples/classdiagram/design-patterns/Repositories/Repository.cs
 
-### Specific Patterns
-
-```bash
 # Strategy pattern visualization
-projgraph classdiagram Interfaces/IPaymentStrategy.cs
+projgraph classdiagram ./samples/classdiagram/design-patterns/Interfaces/IPaymentStrategy.cs
 
 # Builder pattern
-projgraph classdiagram Builders/OrderBuilder.cs
+projgraph classdiagram ./samples/classdiagram/design-patterns/Builders/OrderBuilder.cs
 
 # Repository pattern with generic constraints
-projgraph classdiagram Repositories/UserRepository.cs
+projgraph classdiagram ./samples/classdiagram/design-patterns/Repositories/UserRepository.cs
 ```
 
 ### Discovery Options
 
 ```bash
 # Deep discovery (show all relationships up to depth 5)
-projgraph classdiagram Domain/Order.cs --depth 5
+projgraph classdiagram ./samples/classdiagram/design-patterns/Domain/Order.cs --depth 5
 
 # Include only direct dependencies
-projgraph classdiagram Services/OrderService.cs --depth 1
+projgraph classdiagram ./samples/classdiagram/design-patterns/Services/OrderService.cs --depth 1
 ```
 
 ## Key Features Demonstrated
 
 ### 1. **Complex Inheritance Chains**
 
-```
+```raw
 IEntity → Entity → AuditableEntity → User/Product/Order
 ```
 
@@ -181,11 +151,13 @@ The tool will generate a comprehensive Mermaid diagram showing:
 ## Running the Sample
 
 1. Navigate to the sample directory:
+
    ```bash
    cd samples\classdiagram\design-patterns
    ```
 
 2. Run the class diagram tool:
+
    ```bash
    projgraph classdiagram Domain/Order.cs
    ```

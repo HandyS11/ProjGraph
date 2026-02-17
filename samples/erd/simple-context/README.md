@@ -1,42 +1,110 @@
-# Simple DbContext ERD Example
+# Sample: Simple DbContext ERD
 
-Entity Framework Core DbContext with a simple book management schema demonstrating **one-to-many** and **many-to-many**
-relationships.
+This sample demonstrates **Entity Relationship Diagram (ERD)** generation for a standard Entity Framework Core `DbContext`.
+It showcases how ProjGraph visualizes database schemas including one-to-many, many-to-many, and one-to-one relationships.
 
-## Database Schema
+## 🏙️ Domain: Library Management
 
-This example includes:
+The domain consists of a simple book management schema:
 
-- **7 entities**: Author, Book, Category, Publisher, Review, Profile, BookDetail
-- **2 many-to-many relationships**: Book ↔ Author, Book ↔ Category
-- **2 one-to-many relationships**: Publisher → Book (Required), Book → Review (Optional)
-- **2 one-to-one relationships**: Author ↔ Profile (Optional), Book ↔ BookDetail (Required)
+- **Authors & Books**: A many-to-many relationship (`AuthorBook` join table).
+- **Books & Categories**: A many-to-many relationship (`BookCategory` join table).
+- **Publishers**: A one-to-many relationship with Books.
+- **Reviews**: A one-to-many relationship for each Book.
+- **Profiles & BookDetails**: One-to-one relationships providing additional metadata.
 
-## Usage
+## 📊 Visual Snapshot
 
-### Direct DbContext File
+Below is the diagram generated for the `MyDbContext` class using ProjGraph:
 
-```bash
-# Specify the DbContext .cs file directly
-projgraph erd EntityFramework/MyDbContext.cs
-
-# Or let it auto-detect in current directory
-cd EntityFramework
-projgraph erd
-
-# Specify a particular DbContext if multiple exist in the file
-projgraph erd EntityFramework/MyDbContext.cs --context MyDbContext
+```mermaid
+---
+title: MyDbContext
+---
+erDiagram
+  Author {
+    int Id PK
+    int MentorId FK
+    string Bio "max:1000"
+    DateTime BirthDate
+    bool IsActive
+    string Name "required, max:200"
+  }
+  AuthorBook {
+    int AuthorId PK,FK
+    int BookId PK,FK
+  }
+  Book {
+    int Id PK
+    int PublisherId FK
+    string ISBN "max:13"
+    int PageCount
+    DateTime PublishedDate
+    string Title "required, max:300"
+  }
+  BookCategory {
+    int BookId PK,FK
+    int CategoryId PK,FK
+  }
+  BookDetail {
+    int Id PK
+    int BookId FK
+    string Notes "required"
+    string Summary "required"
+  }
+  Category {
+    int Id PK
+    string Description "max:500"
+    string Name "required, max:100"
+  }
+  Profile {
+    int Id PK
+    int AuthorId FK
+    string AvatarUrl "required"
+    string BioData "required"
+  }
+  Publisher {
+    int Id PK
+    string Country "max:100"
+    DateTime FoundedDate
+    string Name "required, max:200"
+  }
+  Review {
+    int Id PK
+    int BookId FK
+    string Comment "max:2000"
+    int Rating "required"
+    DateTime ReviewDate
+  }
+  Author ||--o{ Author : ""
+  Author ||--o{ AuthorBook : ""
+  Author |o--|| Profile : ""
+  Book ||--o{ AuthorBook : ""
+  Book ||--o{ BookCategory : ""
+  Book ||--|| BookDetail : ""
+  Book ||--o{ Review : ""
+  Category ||--o{ BookCategory : ""
+  Publisher ||--o{ Book : ""
 ```
 
-## Output
+> [!TIP]
+> This diagram was generated directly from the `DbContext` source. You can find the latest snapshot in [simple-context.mmd](./simple-context.mmd).
 
-The tool generates a **Mermaid ERD diagram** showing:
+## 🚀 Quick Start
 
-- All entities with their properties
-- Property types (with original C# type in comments for nullable types, generics, etc.)
-- Primary keys (PK) and foreign keys (FK)
-- **Explicit join tables** for many-to-many relationships
-- Relationship cardinalities with proper notation
+To generate this diagram yourself, run the following command from the repository root:
+
+```bash
+projgraph erd ./samples/erd/simple-context/EntityFramework/MyDbContext.cs > ./samples/erd/simple-context/simple-context.mmd
+```
+
+## 🛠️ Build and Test
+
+This project is a standard .NET 10 project using EF Core. You can build it using:
+
+```bash
+dotnet build ./samples/erd/simple-context/
+```
 
 ### Example Output
 

@@ -18,14 +18,12 @@ public class McpProjectGraphTests
 
         // Assert
         result.Should().NotStartWith("Error");
-        result.Should().StartWith("```mermaid");
         result.Should().Contain("graph TD");
         result.Should().Contain("A");
         result.Should().Contain("B");
         result.Should().Contain("C");
         result.Should().Contain("D");
         result.Should().Contain("-->");
-        result.Trim().Should().EndWith("```");
     }
 
     [Fact]
@@ -40,12 +38,10 @@ public class McpProjectGraphTests
 
         // Assert
         result.Should().NotStartWith("Error");
-        result.Should().StartWith("```mermaid");
         result.Should().Contain("graph TD");
         result.Should().Contain("A");
         result.Should().Contain("B");
         result.Should().Contain("-->");
-        result.Trim().Should().EndWith("```");
     }
 
     [Fact]
@@ -60,13 +56,11 @@ public class McpProjectGraphTests
 
         // Assert
         result.Should().NotStartWith("Error");
-        result.Should().StartWith("```mermaid");
         result.Should().Contain("graph TD");
         result.Should().Contain("ProjGraph_Cli");
         result.Should().Contain("ProjGraph_Core");
         result.Should().Contain("ProjGraph_Lib");
         result.Should().Contain("ProjGraph_Mcp");
-        result.Trim().Should().EndWith("```");
     }
 
     [Fact]

@@ -15,10 +15,10 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Standardize `samples/Directory.Build.props` to target net10.0 and enforce global build settings
-- [ ] T002 Create root `samples/README.md` as a "Map of ProjGraph Capabilities"
-- [ ] T003 Clean all existing sample directories of `bin/` and `obj/` legacy folders
-- [ ] T004 [P] Update root `.gitignore` to ensure `bin/` and `obj/` are excluded for all samples
+- [X] T001 Standardize `samples/Directory.Build.props` to target net10.0 and enforce global build settings
+- [X] T002 Create root `samples/README.md` as a "Map of ProjGraph Capabilities"
+- [X] T003 Clean all existing sample directories of `bin/` and `obj/` legacy folders
+- [X] T004 [P] Update root `.gitignore` to ensure `bin/` and `obj/` are excluded for all samples
 
 ---
 
@@ -26,12 +26,9 @@
 
 **Purpose**: Core infrastructure for documentation maintenance
 
-- [ ] T005 Create internal `scripts/regenerate-samples.ps1` template that runs `projgraph` commands and saves to snapshots
-- [ ] T006 [P] Create `samples/snapshots/` global directory or local folders per sample (per research)
-
----
-
-## Phase 3: User Story 1 - Self-Guided Discovery (Priority: P1) 🎯 MVP
+- [X] T005 Create internal `scripts/regenerate-samples.ps1` template that runs `projgraph` commands and saves to snapshots
+- [ ] T006 [P] Update `README.md` in root to link specifically to the new samples showcase and create global snapshots folders if needed
+- [ ] T032 [P] Mark snapshot folders as local to each sample for better discoverability
 
 **Goal**: Transform existing basic samples into clear, self-documented entry points.
 
@@ -39,12 +36,12 @@
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Create standardized `README.md` for `samples/classdiagram/simple-hierarchy/` with Quick Start
-- [ ] T008 [P] [US1] Generate and verify `samples/classdiagram/simple-hierarchy/snapshots/simple-hierarchy.mmd`
-- [ ] T009 [P] [US1] Create standardized `README.md` for `samples/erd/simple-context/` with Quick Start
-- [ ] T010 [P] [US1] Generate and verify `samples/erd/simple-context/snapshots/erd.mmd`
-- [ ] T011 [P] [US1] Create standardized `README.md` for `samples/visualize/simple-dependencies/` with Quick Start
-- [ ] T012 [P] [US1] Generate and verify `samples/visualize/simple-dependencies/snapshots/dependencies.mmd`
+- [X] T007 [P] [US1] Create standardized `README.md` for `samples/classdiagram/simple-hierarchy/` with Quick Start
+- [X] T008 [P] [US1] Generate and verify `samples/classdiagram/simple-hierarchy/snapshots/simple-hierarchy.mmd`
+- [X] T009 [P] [US1] Create standardized `README.md` for `samples/erd/simple-context/` with Quick Start
+- [X] T010 [P] [US1] Generate and verify `samples/erd/simple-context/snapshots/erd.mmd`
+- [X] T011 [P] [US1] Create standardized `README.md` for `samples/visualize/simple-dependencies/` with Quick Start
+- [X] T012 [P] [US1] Generate and verify `samples/visualize/simple-dependencies/snapshots/dependencies.mmd`
 
 **Checkpoint**: Basic discovery flow is functional for new users.
 
@@ -58,18 +55,18 @@
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Implement `samples/erd/complex-ecommerce/` project with the 12+ entities from `data-model.md`
-- [ ] T014 [US2] Create standardized `README.md` for `samples/erd/complex-ecommerce/`
-- [ ] T015 [US2] Generate `samples/erd/complex-ecommerce/snapshots/erd.mmd` using `projgraph erd`
-- [ ] T016 [US2] Enhance `samples/classdiagram/design-patterns/` source code to fully implement patterns from `data-model.md`
-- [ ] T017 [US2] Create standardized `README.md` for `samples/classdiagram/design-patterns/`
-- [ ] T018 [US2] Generate `samples/classdiagram/design-patterns/snapshots/design-patterns.mmd` using `projgraph classdiagram`
-- [ ] T019 [P] [US2] Update `samples/classdiagram/complex-hierarchy/` with deep nesting (3+ levels)
-- [ ] T020 [P] [US2] Create standardized `README.md` for `samples/classdiagram/complex-hierarchy/`
-- [ ] T021 [P] [US2] Generate `samples/classdiagram/complex-hierarchy/snapshots/complex-hierarchy.mmd`
-- [ ] T022 [US2] Implement `samples/visualize/modular-architecture/` using a `.slnx` file and 5+ projects
-- [ ] T023 [US2] Create standardized `README.md` for `samples/visualize/modular-architecture/`
-- [ ] T024 [US2] Generate `samples/visualize/modular-architecture/snapshots/dependencies.mmd`
+- [X] T013 [US2] Implement `samples/erd/complex-ecommerce/` project with the 12+ entities from `data-model.md`
+- [X] T014 [US2] Create standardized `README.md` for `samples/erd/complex-ecommerce/`
+- [X] T015 [US2] Generate `samples/erd/complex-ecommerce/snapshots/erd.mmd` using `projgraph erd`
+- [X] T016 [US2] Enhance `samples/classdiagram/design-patterns/` source code to fully implement patterns from `data-model.md`
+- [X] T017 [US2] Create standardized `README.md` for `samples/classdiagram/design-patterns/`
+- [X] T018 [US2] Generate `samples/classdiagram/design-patterns/snapshots/design-patterns.mmd` using `projgraph classdiagram`
+- [X] T019 [P] [US2] Update `samples/classdiagram/complex-hierarchy/` with deep nesting (3+ levels)
+- [X] T020 [P] [US2] Create standardized `README.md` for `samples/classdiagram/complex-hierarchy/`
+- [X] T021 [P] [US2] Generate `samples/classdiagram/complex-hierarchy/snapshots/complex-hierarchy.mmd`
+- [X] T022 [US2] Implement `samples/visualize/modular-architecture/` using a `.slnx` file and 5+ projects
+- [X] T023 [US2] Create standardized `README.md` for `samples/visualize/modular-architecture/`
+- [X] T024 [US2] Generate `samples/visualize/modular-architecture/snapshots/dependencies.mmd`
 
 **Checkpoint**: Showcase samples provide "Impactful" visual examples.
 
@@ -83,10 +80,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T025 [P] [US3] Finalize `scripts/regenerate-samples.ps1` (with timing logic for SC-001) to automate all snapshot generation defined in `contracts/sample-commands.md`
-- [ ] T026 [US3] Verify that `dotnet build samples/` succeeds for the entire directory (no warnings/errors)
-- [ ] T027 [P] [US3] Convert legacy `.sln` samples to `.slnx` format where multi-project solutions exist
-- [ ] T031 [US3] Document edge cases (Missing Solution Files, Tool Versioning) in `quickstart.md` or root samples README
+- [X] T025 [P] [US3] Finalize `scripts/regenerate-samples.ps1` (with timing logic for SC-001) to automate all snapshot generation defined in `contracts/sample-commands.md`
+- [X] T026 [US3] Verify that `dotnet build samples/` succeeds for the entire directory (no warnings/errors)
+- [X] T027 [P] [US3] Convert legacy `.sln` samples to `.slnx` format where multi-project solutions exist
+- [X] T031 [US3] Document edge cases (Missing Solution Files, Tool Versioning) in `quickstart.md` or root samples README
 
 ---
 
@@ -94,9 +91,9 @@
 
 **Purpose**: Consistency check and final documentation review
 
-- [ ] T028 [P] Review all sample `README.md` files for professional domain-appropriate naming (No "Foo", "Bar")
-- [ ] T029 [P] Embed all Mermaid code snippets directly into `README.md` for native GitHub rendering (per `research.md`)
-- [ ] T030 Final verification of all links in root `samples/README.md`
+- [X] T028 [P] Review all sample `README.md` files for professional domain-appropriate naming (No "Foo", "Bar")
+- [X] T029 [P] Embed all Mermaid code snippets directly into `README.md` for native GitHub rendering (per `research.md`)
+- [X] T030 Final verification of all links in root `samples/README.md`
 
 ## Dependency Graph
 

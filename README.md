@@ -133,9 +133,18 @@ AI: [Generates the database schema]
 - **CLI Package**: [ProjGraph.Cli on NuGet](https://www.nuget.org/packages/ProjGraph.Cli)
 - **MCP Package**: [ProjGraph.Mcp on NuGet](https://www.nuget.org/packages/ProjGraph.Mcp)
 
+## 📚 Samples & Showcase
+
+Explore live examples of ProjGraph's capabilities in the [Samples Showcase](./samples/README.md).
+Available samples include:
+
+- **E-commerce ERD**: Complex database model with inheritance and hierarchies.
+- **Design Patterns**: Deep class diagrams showing pattern implementation.
+- **Modular Architecture**: Project dependency visualization for modern solutions.
+- **Simple Hierarchy**: Easy entry-level examples for new users.
+
 ## 📚 Documentation
 
 - [Architecture Overview](./ARCHITECTURE.md) - Solution structure and design decisions
 - [Contributing Guide](./CONTRIBUTING.md) - How to contribute to the project
 - [Security Policy](./SECURITY.md) - Security reporting guidelines
-
