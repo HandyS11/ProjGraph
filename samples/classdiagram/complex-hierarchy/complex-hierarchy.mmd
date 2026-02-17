@@ -1,0 +1,61 @@
+---
+title: CEO.cs
+---
+classDiagram
+    class ComplexHierarchy_Domain_Models_CEO ["CEO"]
+    class ComplexHierarchy_Domain_Models_CEO {
+        +string GlobalStrategy
+        +decimal StockOptions
+        +ICollection~Manager~ RegionalManagers
+    }
+    class ComplexHierarchy_Domain_Models_Manager ["Manager"]
+    class ComplexHierarchy_Domain_Models_Manager {
+        +string Department
+        +decimal Budget
+        +ICollection~Employee~ DirectReports
+    }
+    class ComplexHierarchy_Domain_Models_Employee ["Employee"]
+    class ComplexHierarchy_Domain_Models_Employee {
+        +string EmployeeId
+        +decimal Salary
+        +DateTime HireDate
+    }
+    class ComplexHierarchy_Domain_Models_Person ["Person"]
+    <<abstract>> ComplexHierarchy_Domain_Models_Person
+    class ComplexHierarchy_Domain_Models_Person {
+        +string FirstName
+        +string LastName
+        +string FullName
+        +Address? PrimaryAddress
+    }
+    class ComplexHierarchy_Domain_Base_AuditableEntity ["AuditableEntity"]
+    <<abstract>> ComplexHierarchy_Domain_Base_AuditableEntity
+    class ComplexHierarchy_Domain_Base_AuditableEntity {
+        +Guid Id
+        +DateTime CreatedAt
+        +string? CreatedBy
+        +DateTime? ModifiedAt
+        +string? ModifiedBy
+    }
+    class ComplexHierarchy_Domain_Models_Address ["Address"]
+    <<record>> ComplexHierarchy_Domain_Models_Address
+    class ComplexHierarchy_Domain_Models_Address {
+        +string Street
+        +string City
+        +string ZipCode
+        +string Country
+    }
+    class ComplexHierarchy_Domain_Base_IEntity ["IEntity"]
+    <<interface>> ComplexHierarchy_Domain_Base_IEntity
+    class ComplexHierarchy_Domain_Base_IEntity {
+        +Guid Id
+    }
+    ComplexHierarchy_Domain_Models_Manager <|-- ComplexHierarchy_Domain_Models_CEO
+    ComplexHierarchy_Domain_Models_CEO "*" --> ComplexHierarchy_Domain_Models_Manager : RegionalManagers
+    ComplexHierarchy_Domain_Models_Employee <|-- ComplexHierarchy_Domain_Models_Manager
+    ComplexHierarchy_Domain_Models_Manager "*" --> ComplexHierarchy_Domain_Models_Employee : DirectReports
+    ComplexHierarchy_Domain_Models_Person <|-- ComplexHierarchy_Domain_Models_Employee
+    ComplexHierarchy_Domain_Base_AuditableEntity <|-- ComplexHierarchy_Domain_Models_Person
+    ComplexHierarchy_Domain_Models_Person "1" --> ComplexHierarchy_Domain_Models_Address : PrimaryAddress
+    ComplexHierarchy_Domain_Base_IEntity <|-- ComplexHierarchy_Domain_Base_AuditableEntity
+

@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+    <File Path="regenerate-samples.ps1" />
+    <File Path="regenerate-samples.sh" />
+  </Folder>
+  <Folder Name="/classdiagram/complex-hierarchy/">
+    <Project Path="classdiagram\complex-hierarchy\ComplexHierarchy.csproj" />
+  </Folder>
+  <Folder Name="/classdiagram/design-patterns/">
+    <Project Path="classdiagram\design-patterns\DesignPatterns.csproj" />
+  </Folder>
+  <Folder Name="/classdiagram/simple-hierarchy/">
+    <Project Path="classdiagram\simple-hierarchy\SimpleHierarchy.csproj" />
+  </Folder>
+  <Folder Name="/erd/complex-ecommerce/">
+    <Project Path="erd\complex-ecommerce\ComplexEcommerce.csproj" />
+  </Folder>
+  <Folder Name="/erd/simple-context/">
+    <Project Path="erd\simple-context\EntityFramework\EntityFramework.csproj" />
+  </Folder>
+  <Folder Name="/visualize/modular-architecture/">
+    <Project Path="visualize\modular-architecture\App\App.csproj" />
+    <Project Path="visualize\modular-architecture\Core\Core.csproj" />
+    <Project Path="visualize\modular-architecture\Infrastructure\Infrastructure.csproj" />
+    <Project Path="visualize\modular-architecture\Services\Services.csproj" />
+    <Project Path="visualize\modular-architecture\Shared\Shared.csproj" />
+  </Folder>
+  <Folder Name="/visualize/simple-dependencies/">
+    <Project Path="visualize\simple-dependencies\A\A.csproj" />
+    <Project Path="visualize\simple-dependencies\B\B.csproj" />
+    <Project Path="visualize\simple-dependencies\C\C.csproj" />
+    <Project Path="visualize\simple-dependencies\D\D.csproj" />
+  </Folder>
+</Solution>

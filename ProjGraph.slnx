@@ -1,30 +1,4 @@
 <Solution>
-  <Folder Name="/samples/">
-    <File Path="samples/Directory.Build.props" />
-  </Folder>
-  <Folder Name="/samples/classdiagram/" />
-  <Folder Name="/samples/classdiagram/complex-hierarchy/">
-    <Project Path="samples/classdiagram/complex-hierarchy/ComplexHierarchy.csproj" />
-  </Folder>
-  <Folder Name="/samples/classdiagram/design-patterns/">
-    <Project Path="samples/classdiagram/design-patterns/DesignPatterns.csproj" />
-  </Folder>
-  <Folder Name="/samples/classdiagram/simple-hierarchy/">
-    <Project Path="samples/classdiagram/simple-hierarchy/SimpleHierarchy.csproj" />
-  </Folder>
-  <Folder Name="/samples/erd/" />
-  <Folder Name="/samples/erd/simple-context/">
-    <File Path="samples/erd/simple-context/README.md" />
-    <Project Path="samples/erd/simple-context/EntityFramework/EntityFramework.csproj" />
-  </Folder>
-  <Folder Name="/samples/visualize/" />
-  <Folder Name="/samples/visualize/simple-dependencies/">
-    <File Path="samples/visualize/simple-dependencies/README.md" />
-    <Project Path="samples/visualize/simple-dependencies/A/A.csproj" />
-    <Project Path="samples/visualize/simple-dependencies/B/B.csproj" />
-    <Project Path="samples/visualize/simple-dependencies/C/C.csproj" />
-    <Project Path="samples/visualize/simple-dependencies/D/D.csproj" />
-  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />

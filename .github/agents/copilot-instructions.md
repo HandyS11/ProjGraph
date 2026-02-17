@@ -4,6 +4,9 @@ Auto-generated from all feature plans. Last updated: 2026-01-13
 
 ## Active Technologies
 
+- .NET 10.0 (C# 14+) + ProjGraph.Cli (local build), .NET SDK 10.0 (005-improve-samples)
+- Local file system (Markdown, C# Source, .slnx Solution Explorers) (005-improve-samples)
+
 - .NET 10.0 (C# 14+) + Microsoft.CodeAnalysis.CSharp (Roslyn), ProjGraph.Lib.Core (004-config-class-members)
 
 - .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Spectre.Console` (003-mermaid-class-diagram)
@@ -30,11 +33,12 @@ tests/
 
 ## Recent Changes
 
+- 005-improve-samples: Added .NET 10.0 (C# 14+) + ProjGraph.Cli (local build), .NET SDK 10.0
+
 - 004-config-class-members: Added .NET 10.0 (C# 14+) + Microsoft.CodeAnalysis.CSharp (Roslyn), ProjGraph.Lib.Core
 
 - 003-mermaid-class-diagram: Added .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Spectre.Console`
 
-- 002-dbcontext-erd: Added .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`,
   `Microsoft.CodeAnalysis.Workspaces.MSBuild`, `Microsoft.EntityFrameworkCore` (for symbol analysis)
 
 

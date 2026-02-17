@@ -1,0 +1,68 @@
+---
+title: MyDbContext
+---
+erDiagram
+  Author {
+    int Id PK
+    int MentorId FK
+    string Bio "max:1000"
+    DateTime BirthDate
+    bool IsActive
+    string Name "required, max:200"
+  }
+  AuthorBook {
+    int AuthorId PK,FK
+    int BookId PK,FK
+  }
+  Book {
+    int Id PK
+    int PublisherId FK
+    string ISBN "max:13"
+    int PageCount
+    DateTime PublishedDate
+    string Title "required, max:300"
+  }
+  BookCategory {
+    int BookId PK,FK
+    int CategoryId PK,FK
+  }
+  BookDetail {
+    int Id PK
+    int BookId FK
+    string Notes "required"
+    string Summary "required"
+  }
+  Category {
+    int Id PK
+    string Description "max:500"
+    string Name "required, max:100"
+  }
+  Profile {
+    int Id PK
+    int AuthorId FK
+    string AvatarUrl "required"
+    string BioData "required"
+  }
+  Publisher {
+    int Id PK
+    string Country "max:100"
+    DateTime FoundedDate
+    string Name "required, max:200"
+  }
+  Review {
+    int Id PK
+    int BookId FK
+    string Comment "max:2000"
+    int Rating "required"
+    DateTime ReviewDate
+  }
+  Author ||--o{ Author : ""
+  Author ||--o{ AuthorBook : ""
+  Author |o--|| Profile : ""
+  Book ||--o{ AuthorBook : ""
+  Book ||--o{ BookCategory : ""
+  Book ||--|| BookDetail : ""
+  Book ||--o{ Review : ""
+  Category ||--o{ BookCategory : ""
+  Publisher ||--o{ Book : ""
+

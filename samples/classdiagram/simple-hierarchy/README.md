@@ -1,82 +1,77 @@
-# Simple Class Hierarchy Example
+# Sample: Simple Class Hierarchy
 
-A C# sample project demonstrating inheritance, composition, and dependencies for the **Class Diagram** feature.
+This sample demonstrates **Class Diagram** generation for a basic object-oriented hierarchy in C#.
+It showcases inheritance, interface implementation, and property associations (composition).
 
-## Model Structure
+## 🏙️ Domain: User Management
 
-This example includes:
+The domain consists of a simple user and administration model:
 
-- **BaseEntity**: Abstract base class with `Id`, `CreatedAt`, and `UpdatedAt`.
-- **User**: Inherits from `BaseEntity`. Contains an `Address` and a list of `Address` objects.
-- **Admin**: Inherits from `User`. Adds `Permissions` and `LastLogin`.
-- **Address**: A plain data model used by `User`.
-- **IRepository<T>**: A generic interface for repository operations.
+- `BaseEntity`: An abstract base class providing common metadata (`Id`, `CreatedAt`).
+- `User`: A domain model representing a registered person.
+- `Admin`: A specialized user with elevated permissions.
+- `Address`: A value object used to describe physical locations.
+- `IRepository`: A generic interface for data access.
 
-## Usage
+## 📊 Visual Snapshot
 
-### Direct File Analysis
-
-```bash
-# Analyze a specific file
-projgraph classdiagram Models/User.cs
-
-# Analyze a class and its hierarchy with discovery
-projgraph classdiagram Models/Admin.cs
-```
-
-### Discovery Logic
-
-When you run `classdiagram` on a file, the tool will:
-
-1. Parse the specified file for class definitions.
-2. If base classes or typed properties (dependencies) are found but not defined in the same file, it searches the
-   workspace root (detecting `.sln`, `.csproj`, or `.git` folders) to find the missing definitions.
-3. It recursively builds the diagram up to a default depth (or as specified).
-
-## Output
-
-The tool generates a **Mermaid Class Diagram** showing:
-
-- Class names and their members (properties/fields).
-- Inheritance relationships (`<|--`).
-- Association relationships (`-->`).
-- Dependency relationships (`..>`).
-- Support for generics (e.g., `List~Address~`).
-- Cardinality labels (e.g., `"1"`, `"*"`).
-- Property names on relationships.
-
-### Example Output for Admin
+Below is the diagram generated for the `Admin` class using ProjGraph:
 
 ```mermaid
 classDiagram
-  class SimpleHierarchy_Models_Admin ["Admin"]
-  class SimpleHierarchy_Models_Admin {
+  class Admin ["Admin"]
+  class Admin {
     +string Permissions
     +DateTime? LastLogin
   }
-  class SimpleHierarchy_Models_User ["User"]
-  class SimpleHierarchy_Models_User {
+  class User ["User"]
+  class User {
     +string Username
     +string Email
     +Address PrimaryAddress
     +List~Address~ ShippingAddresses
   }
-  class SimpleHierarchy_Base_BaseEntity ["BaseEntity"]
-  <<abstract>> SimpleHierarchy_Base_BaseEntity
-  class SimpleHierarchy_Base_BaseEntity {
+  class BaseEntity ["BaseEntity"]
+  <<abstract>> BaseEntity
+  class BaseEntity {
     +Guid Id
     +DateTime CreatedAt
     +DateTime? UpdatedAt
   }
-  class SimpleHierarchy_Models_Address ["Address"]
-  class SimpleHierarchy_Models_Address {
+  class Address ["Address"]
+  class Address {
     +string Street
     +string City
     +string ZipCode
     +string Country
   }
-  SimpleHierarchy_Models_User <|-- SimpleHierarchy_Models_Admin
-  SimpleHierarchy_Base_BaseEntity <|-- SimpleHierarchy_Models_User
-  SimpleHierarchy_Models_User "1" --> SimpleHierarchy_Models_Address : PrimaryAddress
-  SimpleHierarchy_Models_User "*" --> SimpleHierarchy_Models_Address : ShippingAddresses
+  User <|-- Admin
+  BaseEntity <|-- User
+  User "1" --> Address : PrimaryAddress
+  User "*" --> Address : ShippingAddresses
+```
+
+> [!TIP]
+> This diagram was generated directly from the source code. You can find the latest snapshot in [simple-hierarchy.mmd](./simple-hierarchy.mmd).
+
+## 🚀 Quick Start
+
+To generate this diagram yourself, run the following command from the repository root:
+
+```bash
+projgraph classdiagram ./samples/classdiagram/simple-hierarchy/Models/Admin.cs --inheritance --dependencies --depth 2 --properties true --functions true > ./samples/classdiagram/simple-hierarchy/simple-hierarchy.mmd
+```
+
+### Parameters explained
+
+- `--inheritance`: Automatically discovers and includes base classes (`User`, `BaseEntity`).
+- `--dependencies`: Discovers related types used as properties (`Address`).
+- `--depth 2`: Traverses relationships up to two levels deep.
+
+## 🛠️ Build and Test
+
+This project is a standard .NET 10 library. You can build it using:
+
+```bash
+dotnet build ./samples/classdiagram/simple-hierarchy/
 ```
