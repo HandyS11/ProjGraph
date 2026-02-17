@@ -27,8 +27,6 @@
 **Purpose**: Core infrastructure for documentation maintenance
 
 - [X] T005 Create internal `scripts/regenerate-samples.ps1` template that runs `projgraph` commands and saves to snapshots
-- [ ] T006 [P] Update `README.md` in root to link specifically to the new samples showcase and create global snapshots folders if needed
-- [ ] T032 [P] Mark snapshot folders as local to each sample for better discoverability
 
 **Goal**: Transform existing basic samples into clear, self-documented entry points.
 
