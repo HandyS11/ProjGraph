@@ -9,6 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" VersionOverride="10.0.3" />
     <InternalsVisibleTo Include="ProjGraph.Tests.Unit.EntityFramework"/>
     <InternalsVisibleTo Include="ProjGraph.Tests.Integration.Mcp"/>
   </ItemGroup>

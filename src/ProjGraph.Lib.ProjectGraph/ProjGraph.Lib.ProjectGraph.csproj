@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" VersionOverride="10.0.3" />
     <ProjectReference Include="..\ProjGraph.Lib.Core\ProjGraph.Lib.Core.csproj"/>
   </ItemGroup>
 
