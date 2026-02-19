@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" VersionOverride="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" VersionOverride="10.0.3" />
     <ProjectReference Include="..\ProjGraph.Lib.ProjectGraph\ProjGraph.Lib.ProjectGraph.csproj"/>
     <ProjectReference Include="..\ProjGraph.Lib.EntityFramework\ProjGraph.Lib.EntityFramework.csproj"/>
