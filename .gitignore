@@ -6,6 +6,23 @@
 # dotenv files
 .env
 
+# DocFX
+**/_site/
+**/api/
+specs/toc.yml
+**.manifest
+**.pdf
+**.log
+**.mdd
+**.html
+**.cache
+**.tmp
+**.lnk
+**.zip
+**.7z
+**.tar
+**.gz
+
 # User-specific files
 *.rsuser
 *.suo

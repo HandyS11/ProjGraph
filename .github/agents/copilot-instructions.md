@@ -4,6 +4,10 @@ Auto-generated from all feature plans. Last updated: 2026-01-13
 
 ## Active Technologies
 
+- .NET 10.0 (C# 14+) for API metadata extraction + DocFX (v2.70+), Mermaid.js (v10+), GitHub Actions (
+  006-docfx-documentation)
+- N/A (Static site) (006-docfx-documentation)
+
 - .NET 10.0 (C# 14+) + ProjGraph.Cli (local build), .NET SDK 10.0 (005-improve-samples)
 - Local file system (Markdown, C# Source, .slnx Solution Explorers) (005-improve-samples)
 
@@ -33,11 +37,13 @@ tests/
 
 ## Recent Changes
 
+- 006-docfx-documentation: Added .NET 10.0 (C# 14+) for API metadata extraction + DocFX (v2.70+), Mermaid.js (v10+),
+  GitHub Actions
+
 - 005-improve-samples: Added .NET 10.0 (C# 14+) + ProjGraph.Cli (local build), .NET SDK 10.0
 
 - 004-config-class-members: Added .NET 10.0 (C# 14+) + Microsoft.CodeAnalysis.CSharp (Roslyn), ProjGraph.Lib.Core
 
-- 003-mermaid-class-diagram: Added .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Spectre.Console`
 
   `Microsoft.CodeAnalysis.Workspaces.MSBuild`, `Microsoft.EntityFrameworkCore` (for symbol analysis)
 

@@ -3,11 +3,33 @@
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that enables AI assistants to analyze .NET
 solution architectures, generate Entity Relationship Diagrams, and visualize class hierarchies.
 
-## Requirements
+## Setup
 
-- .NET 10.0 or later runtime
+To use ProjGraph with an MCP-compatible client like Claude or Cursor, add the following configuration to your client's
+MCP settings file:
+
+```json
+{
+  "mcpServers": {
+    "projgraph": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "/absolute/path/to/src/ProjGraph.Mcp/ProjGraph.Mcp.csproj"
+      ]
+    }
+  }
+}
+```
 
 ## Available Tools
+
+| Tool Name           | Description                                             | Primary Parameters |
+|---------------------|---------------------------------------------------------|--------------------|
+| `get_project_graph` | Analyzes .NET solution/project dependency graph.        | `path`             |
+| `get_erd`           | Generates Mermaid ERD from EF Core source or snapshots. | `path`             |
+| `get_class_diagram` | Generates Mermaid class diagram for C# files.           | `path`             |
 
 ### `get_project_graph`
 

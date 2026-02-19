@@ -1,0 +1,11 @@
+- name: 🛠️ Essentials
+- name: 🏛️ Architecture
+  href: ../../ARCHITECTURE.md
+
+- name: 🤝 Community
+- name: 📝 Contributing
+  href: ../../CONTRIBUTING.md
+- name: 🛡️ Security
+  href: ../../SECURITY.md
+- name: 📜 License
+  href: ../license.md
