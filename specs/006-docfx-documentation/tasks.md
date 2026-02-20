@@ -57,4 +57,4 @@
 ## Parallel Execution Examples
 
 - US2 (T006, T007) and US3 (T009) can be worked on simultaneously.
-- Content enhancements (T016, T017) can be done in parallel with инфраструктура tasks.
+- Content enhancements (T016, T017) can be done in parallel with infrastructure tasks.
