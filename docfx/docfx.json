@@ -55,11 +55,6 @@
           "samples/**/*.mmd",
           "icon.png"
         ]
-      },
-      {
-        "files": [
-          "logo.svg"
-        ]
       }
     ],
     "dest": "_site",
