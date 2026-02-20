@@ -37,25 +37,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a detailed overview of the solution s
 4. **Ensure the build passes** — the project uses `TreatWarningsAsErrors=true` and `EnforceCodeStyleInBuild=true`.
 5. **Open a pull request** against `develop`.
 
-## Documentation
-
-The project documentation is built with [DocFX](https://dotnet.github.io/docfx/).
-
-To build and serve the documentation locally:
-
-```powershell
-./doc-serve.ps1
-```
-
-Or on Linux/macOS:
-
-```bash
-./doc-serve.sh
-```
-
-Navigation and API configuration is located in the `docfx/` directory. For more details on documentation structure,
-see [specs/006-docfx-documentation/spec.md](specs/006-docfx-documentation/spec.md).
-
 ## Code Style
 
 - The project enforces code style at build time via `EnforceCodeStyleInBuild=true`.
@@ -103,7 +84,7 @@ Open an issue on GitHub with:
 
 ## Documentation
 
-We use [DocFX](https://dotnet.github.io/docfx/) for our documentation site.
+The project documentation is built with [DocFX](https://dotnet.github.io/docfx/). Navigation and API configuration is located in the `docfx/` directory.
 
 ### Local Preview
 
