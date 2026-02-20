@@ -15,15 +15,8 @@ using System.Reflection;
 
 namespace ProjGraph.Mcp;
 
-/// <summary>
-/// Entry point for the Model Context Protocol (MCP) server for ProjGraph.
-/// </summary>
 internal static class Program
 {
-    /// <summary>
-    /// Starts the MCP server on stdio.
-    /// </summary>
-    /// <param name="args">Command-line arguments.</param>
     public static async Task Main(string[] args)
     {
         var version = typeof(Program).Assembly
@@ -63,7 +56,7 @@ internal sealed class ProjGraphTools(
     IDiagramRenderer<ClassModel> classRenderer,
     IDiagramRenderer<EfModel> erdRenderer)
 {
-    [McpServerTool(Name = "GetClassDiagram")]
+    [McpServerTool(Name = "get_class_diagram")]
     [Description(
         "Generates a Mermaid class diagram for the types defined in a specific C# file, with options to discover inheritance and related types in the workspace.")]
     public async Task<string> GetClassDiagramAsync(
@@ -90,7 +83,7 @@ internal sealed class ProjGraphTools(
         return classRenderer.Render(model, new DiagramOptions(showTitle));
     }
 
-    [McpServerTool(Name = "GetProjectGraph")]
+    [McpServerTool(Name = "get_project_graph")]
     [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
     public Task<string> GetProjectGraphAsync(
         [Description("Absolute path to the project or solution file.")]
@@ -119,7 +112,7 @@ internal sealed class ProjGraphTools(
         return Task.FromResult(graphRenderer.Render(graph, new DiagramOptions(showTitle)));
     }
 
-    [McpServerTool(Name = "GetErd")]
+    [McpServerTool(Name = "get_erd")]
     [Description(
         "Generates a Mermaid Entity Relationship Diagram (ERD) from an Entity Framework Core DbContext or ModelSnapshot file, including entities, properties, relationships, constraints, and inherited properties from base classes.")]
     public async Task<string> GetErdAsync(
