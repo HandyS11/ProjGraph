@@ -5,6 +5,7 @@ Thank you for your interest in contributing to ProjGraph! This guide will help y
 ## Prerequisites
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later
+- [DocFX](https://dotnet.github.io/docfx/) (for documentation): `dotnet tool install -g docfx`
 - A code editor (VS Code or Rider recommended)
 
 ## Getting Started
@@ -80,3 +81,36 @@ Open an issue on GitHub with:
 - A clear description of the problem or feature request.
 - Steps to reproduce (for bugs).
 - Expected vs actual behavior.
+
+## Documentation
+
+The project documentation is built with [DocFX](https://dotnet.github.io/docfx/). Navigation and API configuration is located in the `docfx/` directory.
+
+### Local Preview
+
+To build and preview the documentation locally, use the provided scripts:
+
+**PowerShell (Windows):**
+
+```powershell
+./docfx/doc-serve.ps1
+```
+
+**Bash (Linux/macOS):**
+
+```bash
+./docfx/doc-serve.sh
+```
+
+These scripts will:
+
+1. Verify that DocFX is installed.
+2. Build the DocFX site.
+3. Serve it at `http://localhost:8080`.
+
+### Requirements
+
+- .NET 10.0 SDK
+- `docfx` dotnet tool (`dotnet tool install -g docfx`)
+
+All PRs must pass the documentation build with **zero warnings** (`--warningsAsErrors`).

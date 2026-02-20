@@ -1,0 +1,4 @@
+- name: CLI Guide
+  href: ../../src/ProjGraph.Cli/README.md
+- name: MCP Guide
+  href: ../../src/ProjGraph.Mcp/README.md

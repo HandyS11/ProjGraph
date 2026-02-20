@@ -98,27 +98,30 @@ erDiagram
 Generate Mermaid Class Diagram for a specific class and its hierarchy.
 
 ```bash
-# Analyze a specific class and discover its base types and dependencies
-projgraph classdiagram ./Models/Admin.cs
+# Generate class diagram for a specific file
+projgraph classdiagram ./Models/Person.cs
 
-# Specify depth of discovery (default: 1)
-projgraph classdiagram ./Models/Admin.cs --depth 5
+# Include base classes/interfaces and dependencies
+projgraph classdiagram ./Models/Person.cs --inheritance --dependencies
 
-# Generate without title header
-projgraph classdiagram ./Models/Admin.cs --show-title false
+# Limit discovery depth
+projgraph classdiagram ./Models/Person.cs --depth 2
 
-# Hide properties or functions
-projgraph classdiagram ./Models/Admin.cs --properties false --functions false
+# Hide properties and functions
+projgraph classdiagram ./Models/Person.cs --properties false --functions false
+
+# Save to file
+projgraph classdiagram ./Models/Person.cs > person-hierarchy.md
 ```
 
 **Settings**:
 
-- `[path]`: Path to the `.cs` file.
-- `-i|--inheritance`: Include base classes/interfaces. Default: `false`.
-- `-d|--dependencies`: Include dependent types. Default: `false`.
-- `--properties <true|false>`: Show properties and fields in the diagram. Default: `true`.
-- `--functions <true|false>`: Show functions and methods in the diagram. Default: `true`.
-- `--depth <INT>`: Max discovery depth. Default: `1`.
+- `[path]`: Required path to the `.cs` file to analyze.
+- `-i|--inheritance`: Search workspace for base classes and interfaces. Default: `false`.
+- `-d|--dependencies`: Search and include other classes used as properties/fields. Default: `false`.
+- `--properties <true|false>`: Display properties and fields in diagram. Default: `true`.
+- `--functions <true|false>`: Display functions/methods in diagram. Default: `true`.
+- `--depth <INTEGER>`: How many levels of relationships to follow. Default: `1`.
 - `--show-title <true|false>`: Include diagram title. Default: `true`.
 
 **Features**:
@@ -128,20 +131,14 @@ projgraph classdiagram ./Models/Admin.cs --properties false --functions false
 - Simple heuristic workspace-wide discovery of missing types (scans for `.sln`, `.slnx`, or `.csproj`)
 - Support for generic types (sanitized for Mermaid as `~T~`)
 
-**Example output**:
+## Troubleshooting
 
-```mermaid
-classDiagram
-    class User {
-        +string Name
-        +Address PrimaryAddress
-    }
-    class Admin {
-        +Permissions Rights
-    }
-    User <|-- Admin
-    User *-- Address
-```
+- **No output**: Ensure the provided path exists and is a valid C# file.
+- **Missing dependencies**: For `visualize`, ensure project references are present in the `.sln` or `.slnx` file.
+- **Empty ERD**: For `erd`, ensure your `DbContext` class is public and uses Entity Framework Core naming conventions (
+  ends with `DbContext`).
+- **Parsing errors**: If using new C# features (e.g., primary constructors), ensure you have the latest .NET SDK
+  installed.
 
 ## Requirements
 

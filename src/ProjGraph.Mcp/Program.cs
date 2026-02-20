@@ -15,8 +15,15 @@ using System.Reflection;
 
 namespace ProjGraph.Mcp;
 
+/// <summary>
+/// Entry point for the Model Context Protocol (MCP) server for ProjGraph.
+/// </summary>
 internal static class Program
 {
+    /// <summary>
+    /// Starts the MCP server on stdio.
+    /// </summary>
+    /// <param name="args">Command-line arguments.</param>
     public static async Task Main(string[] args)
     {
         var version = typeof(Program).Assembly
