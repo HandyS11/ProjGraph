@@ -123,7 +123,7 @@ To build and preview the documentation locally, use the provided scripts:
 
 These scripts will:
 
-1. Restore tools.
+1. Verify that DocFX is installed.
 2. Build the DocFX site.
 3. Serve it at `http://localhost:8080`.
 
