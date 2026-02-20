@@ -50,4 +50,4 @@ After running the serve command, verify that:
 
 ## 4. GitHub Actions Deployment
 
-The documentation starts building automatically on every PR to `main` and deploys on merge. To view the deployment status, check the **Actions** tab in the GitHub repository and look for the `docs-publish` workflow.
+The documentation starts building automatically on every PR to `develop` and deploys on merge. To view the deployment status, check the **Actions** tab in the GitHub repository and look for the `docs-publish` workflow.

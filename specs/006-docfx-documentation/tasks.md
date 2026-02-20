@@ -37,7 +37,7 @@
 ## Phase 5: User Story 1 - Maintainer Automated Publishing (Priority: P1)
 
 **Goal**: Automate rebuilding and publishing to GitHub Pages via CI/CD.
-**Independent Test**: Merge a PR to `main` and verify the live GitHub Pages site updates.
+**Independent Test**: Merge a PR to `develop` and verify the live GitHub Pages site updates.
 
 - [x] T014 [US1] Create GitHub Actions deployment workflow in `.github/workflows/docs-publish.yml`
 - [x] T015 [US1] Configure DocFX build validation in CI pipeline (MUST fail on warnings/broken links per Constitution I)

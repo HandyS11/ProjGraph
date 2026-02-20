@@ -9,7 +9,7 @@
 
 ### User Story 1 - Maintainer Automated Publishing (Priority: P1)
 
-As a repository maintainer, I want the documentation to be automatically rebuilt and published to GitHub Pages whenever changes are merged into the `main` branch, ensuring the online docs are always current.
+As a repository maintainer, I want the documentation to be automatically rebuilt and published to GitHub Pages whenever changes are merged into the `develop` branch, ensuring the online docs are always current.
 
 **Why this priority**: Continuous delivery of documentation is critical for keeping users and developers informed without manual effort.
 
@@ -17,7 +17,7 @@ As a repository maintainer, I want the documentation to be automatically rebuilt
 
 **Acceptance Scenarios**:
 
-1. **Given** a merge to the `main` branch, **When** the GitHub Action completes successfully, **Then** the updated documentation is visible at the GitHub Pages URL.
+1. **Given** a merge to the `develop` branch, **When** the GitHub Action completes successfully, **Then** the updated documentation is visible at the GitHub Pages URL.
 2. **Given** a failed build (e.g., broken links), **When** the GitHub Action runs, **Then** the process fails and the previous version of the site remains live.
 
 ---
@@ -57,7 +57,7 @@ As a developer using the ProjGraph libraries, I want an exhaustive API reference
 - **Broken Internal Links**: How does the build process handle links between Markdown files that have moved or been renamed? (Build should fail or log a critical warning).
 - **Missing XML Documentation**: How should the API reference present classes or methods that lack `<summary>` tags? (Display a placeholder noting the lack of documentation rather than leaving it blank).
 - **Diagram Rendering Failures**: If a Mermaid diagram has syntax errors, how should the documentation site display it? (Display the raw Mermaid code block with an error message instead of an empty box).
-- **Concurrent Builds**: How should the GitHub Actions workflow handle multiple pushes to `main` in rapid succession? (Cancel outdated runs to save resources and ensure the final state is correct).
+- **Concurrent Builds**: How should the GitHub Actions workflow handle multiple pushes to `develop` in rapid succession? (Cancel outdated runs to save resources and ensure the final state is correct).
 
 ---
 
