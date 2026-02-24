@@ -33,8 +33,10 @@ The response format remains `string`. When `includePackages` is `true`, the resu
 #### Updated Mermaid Syntax Rules
 
 - **Projects**: `id["Name (Type)"]` (Rectangle)
-- **Packages**: `id("Name (Version)")` (Rounded Corners)
-- **Relationships**: `Project --> Package`
+- **Packages**: `id{{"Name Version"}}` (Hexagon for external)
+- **Relationships**:
+  - `Project --> Project` (Solid Arrow)
+  - `Project -.-> Package` (Dotted Arrow for PackageReferences)
 
 ## Command-Line Interface (CLI)
 
@@ -42,33 +44,12 @@ The response format remains `string`. When `includePackages` is `true`, the resu
 
 #### New Arguments/Options
 
-`--include-packages`: Boolean flag to enable NuGet package rendering in the output.
+`--include-packages`: Boolean flag to enable NuGet package rendering.
 
-#### Syntax Example
+#### Resulting Styles (In-Terminal)
 
-```bash
-projgraph visualize ./MySolution.sln --format mermaid --include-packages
-```
-
-## Library Contracts (Internal APIs)
-
-### `IGraphService`
-
-```csharp
-SolutionGraph BuildGraph(string path, bool includePackages = false);
-```
-
-### `BuildGraphUseCase`
-
-```csharp
-SolutionGraph Execute(string path, bool includePackages = false);
-```
-
-### `IProjectParser`
-
-```csharp
-(Project Project, IEnumerable<string> ProjectReferences, IEnumerable<PackageReference> PackageReferences) Parse(string projectPath);
-```
+- **Packages**: Prefixed with `📦` icon, yellow name, version in `(dim yellow)`.
+- **Arrows**: Yellow italic `→` arrows for package dependencies.
 
 Where `PackageReference` is a new record:
 
