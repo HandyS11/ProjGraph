@@ -27,32 +27,61 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
 
         sb.AppendLine("graph TD");
 
+        var hasPackages = model.Projects.Any(p => p.Type == ProjectType.Package);
+        if (hasPackages)
+        {
+            sb.AppendLine("    classDef pkg stroke:#5b8ec4");
+        }
+
         foreach (var project in model.Projects.OrderBy(p => p.Name))
         {
-            var typeLabel = project.Type switch
-            {
-                ProjectType.Executable => " (Exe)",
-                ProjectType.Test => " (Test)",
-                _ => ""
-            };
             var safeId = SanitizeId(project.Name);
-            sb.AppendLine(CultureInfo.InvariantCulture, $"    {safeId}[\"{project.Name}{typeLabel}\"]");
+            string nodeDef;
+            if (project.Type == ProjectType.Package)
+            {
+                // Version is stored in FullPath for package nodes
+                // Hexagon shape: id{{"label"}} — use concatenation to avoid brace-escape complexity
+                nodeDef = "    " + safeId + "{{\"" + project.Name + " " + project.FullPath + "\"}}";
+            }
+            else
+            {
+                var typeLabel = project.Type switch
+                {
+                    ProjectType.Executable => " (Exe)",
+                    ProjectType.Test => " (Test)",
+                    _ => ""
+                };
+                nodeDef = $"    {safeId}[\"{project.Name}{typeLabel}\"]";
+            }
+
+            sb.AppendLine(nodeDef);
+        }
+
+        if (hasPackages)
+        {
+            foreach (var pkg in model.Projects.Where(p => p.Type == ProjectType.Package).OrderBy(p => p.Name))
+            {
+                sb.AppendLine(CultureInfo.InvariantCulture, $"    class {SanitizeId(pkg.Name)} pkg");
+            }
         }
 
         var sortedDependencies = model.Dependencies
             .Select(d => new
             {
                 Source = model.Projects.FirstOrDefault(p => p.Id == d.SourceId),
-                Target = model.Projects.FirstOrDefault(p => p.Id == d.TargetId)
+                Target = model.Projects.FirstOrDefault(p => p.Id == d.TargetId),
+                d.Type
             })
             .Where(d => d.Source != null && d.Target != null)
             .OrderBy(d => d.Source!.Name)
-            .ThenBy(d => d.Target!.Name);
+            .ThenBy(d => d.Target!.Name)
+            .ToList();
 
         foreach (var dep in sortedDependencies)
         {
+            var arrow = dep.Type == DependencyType.PackageReference ? "-.->" : "-->";
             sb.AppendLine(CultureInfo.InvariantCulture,
-                $"    {SanitizeId(dep.Source!.Name)} --> {SanitizeId(dep.Target!.Name)}");
+                $"    {SanitizeId(dep.Source!.Name)} {arrow} {SanitizeId(dep.Target!.Name)}");
         }
 
         MermaidFenceHelper.AppendFenceEnd(sb, options);

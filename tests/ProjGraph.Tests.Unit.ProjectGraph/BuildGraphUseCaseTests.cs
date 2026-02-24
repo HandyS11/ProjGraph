@@ -71,7 +71,8 @@ public sealed class BuildGraphUseCaseTests
 
         var project = new Project(Guid.NewGuid(), "ProjA", projPath, "projA.csproj", "net10.0",
             ProjectType.Library);
-        _projectParser.Parse(projPath).Returns((project, Enumerable.Empty<string>()));
+        _projectParser.Parse(projPath)
+            .Returns((project, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
 
         var result = _sut.Execute(slnPath);
 
@@ -95,7 +96,8 @@ public sealed class BuildGraphUseCaseTests
 
         var project = new Project(Guid.NewGuid(), "ProjA", projPath, "projA.csproj", "net10.0",
             ProjectType.Library);
-        _projectParser.Parse(projPath).Returns((project, Enumerable.Empty<string>()));
+        _projectParser.Parse(projPath)
+            .Returns((project, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
 
         var result = _sut.Execute(slnxPath);
 
@@ -116,7 +118,8 @@ public sealed class BuildGraphUseCaseTests
 
         var project = new Project(Guid.NewGuid(), "Project", csprojPath, "project.csproj", "net10.0",
             ProjectType.Library);
-        _projectParser.Parse(csprojPath).Returns((project, Enumerable.Empty<string>()));
+        _projectParser.Parse(csprojPath)
+            .Returns((project, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
 
         var result = _sut.Execute(csprojPath);
 
@@ -146,8 +149,10 @@ public sealed class BuildGraphUseCaseTests
         var idB = Guid.NewGuid();
         var projectA = new Project(idA, "A", pathA, "a.csproj", "net10.0", ProjectType.Library);
         var projectB = new Project(idB, "B", pathB, "b.csproj", "net10.0", ProjectType.Library);
-        _projectParser.Parse(pathA).Returns((projectA, (IEnumerable<string>)["../b.csproj"]));
-        _projectParser.Parse(pathB).Returns((projectB, Enumerable.Empty<string>()));
+        _projectParser.Parse(pathA).Returns((projectA, (IEnumerable<string>)["../b.csproj"],
+            Enumerable.Empty<PackageReference>()));
+        _projectParser.Parse(pathB)
+            .Returns((projectB, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
 
         var result = _sut.Execute(slnPath);
 
@@ -209,7 +214,8 @@ public sealed class BuildGraphUseCaseTests
         _discoveryService.ResolveProjectReferencePath(pathA, "../unknown.csproj").Returns("/test/unknown.csproj");
 
         var projectA = new Project(Guid.NewGuid(), "A", pathA, "a.csproj", "net10.0", ProjectType.Library);
-        _projectParser.Parse(pathA).Returns((projectA, (IEnumerable<string>)["../unknown.csproj"]));
+        _projectParser.Parse(pathA).Returns((projectA, (IEnumerable<string>)["../unknown.csproj"],
+            Enumerable.Empty<PackageReference>()));
 
         var result = _sut.Execute(slnPath);
 
@@ -227,5 +233,74 @@ public sealed class BuildGraphUseCaseTests
         var result = _sut.Execute(slnPath);
 
         result.Path.Should().Be(slnPath);
+    }
+
+    [Fact]
+    public void Execute_WithPackagesRequested_ShouldIncludeDeduplicatedPackages()
+    {
+        // Arrange
+        const string slnPath = "/test/solution.sln";
+        const string pathA = "/test/a.csproj";
+        const string pathB = "/test/b.csproj";
+
+        _fileSystem.FileExists(slnPath).Returns(true);
+        _slnParser.GetProjectPaths(slnPath).Returns([pathA, pathB]);
+
+        _fileSystem.GetFullPath(pathA).Returns(pathA);
+        _fileSystem.GetFullPath(pathB).Returns(pathB);
+        _fileSystem.FileExists(pathA).Returns(true);
+        _fileSystem.FileExists(pathB).Returns(true);
+        _discoveryService.NormalizePath(pathA).Returns(pathA);
+        _discoveryService.NormalizePath(pathB).Returns(pathB);
+
+        var idA = Guid.NewGuid();
+        var idB = Guid.NewGuid();
+        var projectA = new Project(idA, "A", pathA, "a.csproj", "net10.0", ProjectType.Library);
+        var projectB = new Project(idB, "B", pathB, "b.csproj", "net10.0", ProjectType.Library);
+
+        var pkg = new PackageReference("Newtonsoft.Json", "13.0.1");
+
+        _projectParser.Parse(pathA)
+            .Returns((projectA, Enumerable.Empty<string>(), (IEnumerable<PackageReference>)[pkg]));
+        _projectParser.Parse(pathB)
+            .Returns((projectB, Enumerable.Empty<string>(), (IEnumerable<PackageReference>)[pkg]));
+
+        // Act
+        var result = _sut.Execute(slnPath, true);
+
+        // Assert
+        result.Projects.Should().HaveCount(3); // A, B, and 1 Newtonsoft.Json
+        result.Projects.Should().Contain(p => p.Name == "Newtonsoft.Json" && p.Type == ProjectType.Package);
+        result.Dependencies.Should().HaveCount(2); // A -> Pkg, B -> Pkg
+        result.Dependencies.All(d => d.Type == DependencyType.PackageReference).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Execute_WithPackagesNotRequested_ShouldExcludePackages()
+    {
+        // Arrange
+        const string slnPath = "/test/solution.sln";
+        const string pathA = "/test/a.csproj";
+
+        _fileSystem.FileExists(slnPath).Returns(true);
+        _slnParser.GetProjectPaths(slnPath).Returns([pathA]);
+
+        _fileSystem.GetFullPath(pathA).Returns(pathA);
+        _fileSystem.FileExists(pathA).Returns(true);
+        _discoveryService.NormalizePath(pathA).Returns(pathA);
+
+        var projectA = new Project(Guid.NewGuid(), "A", pathA, "a.csproj", "net10.0", ProjectType.Library);
+        var pkg = new PackageReference("Newtonsoft.Json", "13.0.1");
+
+        _projectParser.Parse(pathA)
+            .Returns((projectA, Enumerable.Empty<string>(), (IEnumerable<PackageReference>)[pkg]));
+
+        // Act
+        var result = _sut.Execute(slnPath, false);
+
+        // Assert
+        result.Projects.Should().HaveCount(1);
+        result.Projects.Should().NotContain(p => p.Type == ProjectType.Package);
+        result.Dependencies.Should().BeEmpty();
     }
 }

@@ -22,7 +22,10 @@ public class MermaidGraphRendererTests
             new(guidB, "ProjectB", "ProjectB.csproj", "ProjectB.csproj", "net10.0", ProjectType.Library)
         };
 
-        var dependencies = new List<Dependency> { new(guidA, guidB, DependencyType.ProjectReference) };
+        var dependencies = new List<Dependency>
+        {
+            new(guidA, guidB, DependencyType.ProjectReference)
+        };
 
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, dependencies);
 
@@ -79,6 +82,28 @@ public class MermaidGraphRendererTests
         result.Should().Contain("Library[\"Library\"]");
         result.Should().NotContain("(Exe)");
         result.Should().NotContain("(Test)");
+    }
+
+    [Fact]
+    public void Render_ShouldUseRoundedNodesForPackages()
+    {
+        // Arrange
+        var guid = Guid.NewGuid();
+        var projects = new List<Project>
+        {
+            new(guid, "Newtonsoft.Json", "13.0.1", "13.0.1", "net10.0", ProjectType.Package)
+        };
+
+        var graph = new SolutionGraph("Test", "test.csproj", projects, []);
+
+        // Act
+        var result = _renderer.Render(graph);
+
+        // Assert
+        result.Should().Contain("Newtonsoft_Json{{");
+        result.Should().Contain("Newtonsoft.Json 13.0.1");
+        result.Should().Contain("classDef pkg");
+        result.Should().Contain("class Newtonsoft_Json pkg");
     }
 
     [Fact]
@@ -195,7 +220,8 @@ public class MermaidGraphRendererTests
 
         var dependencies = new List<Dependency>
         {
-            new(guidA, guidB, DependencyType.ProjectReference), new(guidB, guidA, DependencyType.ProjectReference)
+            new(guidA, guidB, DependencyType.ProjectReference),
+            new(guidB, guidA, DependencyType.ProjectReference)
         };
 
         var graph = new SolutionGraph("TestSolution", "TestSolution.sln", projects, dependencies);

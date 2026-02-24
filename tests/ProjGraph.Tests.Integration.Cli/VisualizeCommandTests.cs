@@ -98,6 +98,29 @@ public class VisualizeCommandTests
     }
 
     [Fact]
+    public void VisualizeCommand_WithIncludePackages_ShouldShowPackages()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var projPath = CliTestHelpers.GetSamplePath(@"visualize\simple-dependencies\A\A.csproj");
+
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+        {
+            var result = app.Run(["visualize", projPath, "--format", "mermaid", "--include-packages"]);
+            result.Should().Be(0);
+        });
+
+        // Assert
+        capturedOutput.Should().Contain("Spectre_Console");
+        capturedOutput.Should().Contain("Microsoft_Extensions_DependencyInjection");
+        capturedOutput.Should().Contain("Microsoft_Extensions_Logging_Abstractions");
+        capturedOutput.Should().Contain("A -.-> Spectre_Console");
+        capturedOutput.Should().Contain("A -.-> Microsoft_Extensions_DependencyInjection");
+        capturedOutput.Should().Contain("A -.-> Microsoft_Extensions_Logging_Abstractions");
+    }
+
+    [Fact]
     public async Task VisualizeCommand_FileOutput_ShouldSaveToDiskAndWrapInFence()
     {
         // Arrange

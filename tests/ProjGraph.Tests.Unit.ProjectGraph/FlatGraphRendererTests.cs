@@ -113,4 +113,20 @@ public sealed class FlatGraphRendererTests : IDisposable
             result.Should().Contain(p.Name);
         }
     }
+
+    [Fact]
+    public void Render_WithPackage_ShouldContainPkgPrefix()
+    {
+        var parentId = Guid.NewGuid();
+        var pkgId = Guid.NewGuid();
+        var parent = new Project(parentId, "App", "/app.csproj", "app.csproj", "net10.0", ProjectType.Executable);
+        var pkg = new Project(pkgId, "Newtonsoft.Json", "13.0.1", "13.0.1", "net10.0", ProjectType.Package);
+        var dep = new Dependency(parentId, pkgId, DependencyType.PackageReference);
+        var graph = CreateGraph("PkgSolution", [parent, pkg], [dep]);
+
+        var result = _sut.Render(graph);
+
+        result.Should().Contain("Newtonsoft.Json");
+        result.Should().Contain("(13.0.1)");
+    }
 }

@@ -67,7 +67,8 @@ public sealed class ProjectDiscoveryServiceTests
 
         var project = new Project(Guid.NewGuid(), "Root", rootPath, "root.csproj", "net10.0",
             ProjectType.Library);
-        _projectParser.Parse(rootPath).Returns((project, Enumerable.Empty<string>()));
+        _projectParser.Parse(rootPath)
+            .Returns((project, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
 
         var result = _sut.DiscoverProjectsRecursively(rootPath).ToList();
 
@@ -91,8 +92,9 @@ public sealed class ProjectDiscoveryServiceTests
 
         var projA = new Project(Guid.NewGuid(), "A", pathA, "a.csproj", "net10.0", ProjectType.Library);
         var projB = new Project(Guid.NewGuid(), "B", pathB, "b.csproj", "net10.0", ProjectType.Library);
-        _projectParser.Parse(pathA).Returns((projA, (IEnumerable<string>)["b.csproj"]));
-        _projectParser.Parse(pathB).Returns((projB, Enumerable.Empty<string>()));
+        _projectParser.Parse(pathA)
+            .Returns((projA, (IEnumerable<string>)["b.csproj"], Enumerable.Empty<PackageReference>()));
+        _projectParser.Parse(pathB).Returns((projB, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
 
         var result = _sut.DiscoverProjectsRecursively(pathA).ToList();
 
@@ -162,8 +164,9 @@ public sealed class ProjectDiscoveryServiceTests
         var projB = new Project(Guid.NewGuid(), "B", pathB, "b.csproj", "net10.0", ProjectType.Library);
 
         // A refs B twice — second reference should be deduplicated
-        _projectParser.Parse(pathA).Returns((projA, (IEnumerable<string>)["b.csproj", "b.csproj"]));
-        _projectParser.Parse(pathB).Returns((projB, Enumerable.Empty<string>()));
+        _projectParser.Parse(pathA).Returns((projA, (IEnumerable<string>)["b.csproj", "b.csproj"],
+            Enumerable.Empty<PackageReference>()));
+        _projectParser.Parse(pathB).Returns((projB, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
 
         var result = _sut.DiscoverProjectsRecursively(pathA).ToList();
 

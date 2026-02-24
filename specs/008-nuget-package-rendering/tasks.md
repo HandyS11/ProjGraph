@@ -18,10 +18,10 @@ We will update the project analysis pipeline to extract NuGet `PackageReference`
 
 **Purpose**: Update core models and abstractions.
 
-- [ ] T001 [P] Add `Package = 4` to `ProjectType` enum in `src/ProjGraph.Core/Models/Project.cs`
-- [ ] T002 [P] Create `PackageReference` record in `src/ProjGraph.Core/Models/Dependency.cs`
-- [ ] T003 [P] Update `IProjectParser` to include `IEnumerable<PackageReference>` in `src/ProjGraph.Lib.Core/Abstractions/IProjectParser.cs`
-- [ ] T004 [P] Update `DiagramOptions` record to include `bool IncludePackages = false` in `src/ProjGraph.Lib.Core/Abstractions/DiagramOptions.cs`
+- [x] T001 [P] Add `Package = 4` to `ProjectType` enum in `src/ProjGraph.Core/Models/Project.cs`
+- [x] T002 [P] Create `PackageReference` record in `src/ProjGraph.Core/Models/Dependency.cs`
+- [x] T003 [P] Update `IProjectParser` to include `IEnumerable<PackageReference>` in `src/ProjGraph.Lib.Core/Abstractions/IProjectParser.cs`
+- [x] T004 [P] Update `DiagramOptions` record to include `bool IncludePackages = false` in `src/ProjGraph.Lib.Core/Abstractions/DiagramOptions.cs`
 
 ---
 
@@ -29,10 +29,10 @@ We will update the project analysis pipeline to extract NuGet `PackageReference`
 
 **Purpose**: Implement the data extraction and graph building service updates.
 
-- [ ] T011 [P] Implement `PackageReference` extraction in `ProjectParser.Parse` in `src/ProjGraph.Lib.Core/Parsers/ProjectParser.cs`
-- [ ] T012 [P] Unit Test: Verify `ProjectParser` correctly extracts packages in `tests/ProjGraph.Tests.Unit.Core/Parsers/ProjectParserTests.cs`
-- [ ] T013 Update `IGraphService.BuildGraph` and `BuildGraphUseCase.Execute` signature to include `bool includePackages = false` in `src/ProjGraph.Lib.ProjectGraph/Application/IGraphService.cs` and `src/ProjGraph.Lib.ProjectGraph/Application/UseCases/BuildGraphUseCase.cs`
-- [ ] T014 Update `GraphService` implementation to pass the flag in `src/ProjGraph.Lib.ProjectGraph/Application/GraphService.cs`
+- [x] T011 [P] Implement `PackageReference` extraction in `ProjectParser.Parse` in `src/ProjGraph.Lib.Core/Parsers/ProjectParser.cs`
+- [x] T012 [P] Unit Test: Verify `ProjectParser` correctly extracts packages in `tests/ProjGraph.Tests.Unit.Core/Parsers/ProjectParserTests.cs`
+- [x] T013 Update `IGraphService.BuildGraph` and `BuildGraphUseCase.Execute` signature to include `bool includePackages = false` in `src/ProjGraph.Lib.ProjectGraph/Application/IGraphService.cs` and `src/ProjGraph.Lib.ProjectGraph/Application/UseCases/BuildGraphUseCase.cs`
+- [x] T014 Update `GraphService` implementation to pass the flag in `src/ProjGraph.Lib.ProjectGraph/Application/GraphService.cs`
 
 ---
 
@@ -44,13 +44,13 @@ We will update the project analysis pipeline to extract NuGet `PackageReference`
 
 ### Implementation for User Story 1
 
-- [ ] T021 [US1] Update `BuildGraphUseCase.Execute` to inject "Package Node" (Project records) and create `PackageReference` dependencies in `src/ProjGraph.Lib.ProjectGraph/Application/UseCases/BuildGraphUseCase.cs`. Packages MUST be deduplicated in the `SolutionGraph.Projects` list.
-- [ ] T022 [P] [US1] Unit Test: Verify `BuildGraphUseCase` includes deduplicated packages and references in `tests/ProjGraph.Tests.Unit.ProjectGraph/BuildGraphUseCaseTests.cs`
-- [ ] T023 [US1] Add `--include-packages` flag to `VisualizeCommand.Settings` in `src/ProjGraph.Cli/Commands/VisualizeCommand.cs`
-- [ ] T024 [US1] Pass the flag from `VisualizeCommand.ExecuteAsync` to `graphService.BuildGraph` in `src/ProjGraph.Cli/Commands/VisualizeCommand.cs`
-- [ ] T025 [US1] Update `ProjGraphTools.get_project_graph` to include `includePackages` parameter in `src/ProjGraph.Mcp/Program.cs`
-- [ ] T026 [P] [US1] Integration Test: Verify CLI recognizes the flag in `tests/ProjGraph.Tests.Integration.Cli/VisualizeCommandTests.cs`
-- [ ] T027 [P] [US1] Integration Test: Verify MCP tool schema and parameters in `tests/ProjGraph.Tests.Integration.Mcp/McpProjectGraphTests.cs`
+- [x] T021 [US1] Update `BuildGraphUseCase.Execute` to inject "Package Node" (Project records) and create `PackageReference` dependencies in `src/ProjGraph.Lib.ProjectGraph/Application/UseCases/BuildGraphUseCase.cs`. Packages MUST be deduplicated in the `SolutionGraph.Projects` list.
+- [x] T022 [P] [US1] Unit Test: Verify `BuildGraphUseCase` includes deduplicated packages and references in `tests/ProjGraph.Tests.Unit.ProjectGraph/BuildGraphUseCaseTests.cs`
+- [x] T023 [US1] Add `--include-packages` flag to `VisualizeCommand.Settings` in `src/ProjGraph.Cli/Commands/VisualizeCommand.cs`
+- [x] T024 [US1] Pass the flag from `VisualizeCommand.ExecuteAsync` to `graphService.BuildGraph` in `src/ProjGraph.Cli/Commands/VisualizeCommand.cs`
+- [x] T025 [US1] Update `ProjGraphTools.get_project_graph` to include `includePackages` parameter in `src/ProjGraph.Mcp/Program.cs`
+- [x] T026 [P] [US1] Integration Test: Verify CLI recognizes the flag in `tests/ProjGraph.Tests.Integration.Cli/VisualizeCommandTests.cs`
+- [x] T027 [P] [US1] Integration Test: Verify MCP tool schema and parameters in `tests/ProjGraph.Tests.Integration.Mcp/McpProjectGraphTests.cs`
 
 **Checkpoint**: Core logic and flag propagation are complete. Graph populated with packages.
 
@@ -64,8 +64,8 @@ We will update the project analysis pipeline to extract NuGet `PackageReference`
 
 ### Implementation for User Story 2
 
-- [ ] T031 [US2] Update `MermaidGraphRenderer.Render` to use `()` rounded syntax for nodes with `ProjectType.Package` in `src/ProjGraph.Lib.ProjectGraph/Rendering/MermaidGraphRenderer.cs`
-- [ ] T032 [P] [US2] Unit Test: Verify Mermaid renderer uses rounded nodes for packages in `tests/ProjGraph.Tests.Unit.ProjectGraph/MermaidGraphRendererTests.cs`
+- [x] T031 [US2] Update `MermaidGraphRenderer.Render` to use `()` rounded syntax for nodes with `ProjectType.Package` in `src/ProjGraph.Lib.ProjectGraph/Rendering/MermaidGraphRenderer.cs`
+- [x] T032 [P] [US2] Unit Test: Verify Mermaid renderer uses rounded nodes for packages in `tests/ProjGraph.Tests.Unit.ProjectGraph/MermaidGraphRendererTests.cs`
 
 ---
 
@@ -77,18 +77,18 @@ We will update the project analysis pipeline to extract NuGet `PackageReference`
 
 ### Implementation for User Story 3
 
-- [ ] T041 [US3] Update `TreeGraphRenderer` to prepend `[pkg]` to package nodes in `src/ProjGraph.Lib.ProjectGraph/Rendering/TreeGraphRenderer.cs`
-- [ ] T042 [US3] Update `FlatGraphRenderer` to prepend `[pkg]` to package dependencies in `src/ProjGraph.Lib.ProjectGraph/Rendering/FlatGraphRenderer.cs`
-- [ ] T043 [P] [US3] Unit Test: Verify Tree renderer markup in `tests/ProjGraph.Tests.Unit.ProjectGraph/TreeGraphRendererTests.cs`
-- [ ] T044 [P] [US3] Unit Test: Verify Flat renderer markup in `tests/ProjGraph.Tests.Unit.ProjectGraph/FlatGraphRendererTests.cs`
+- [x] T041 [US3] Update `TreeGraphRenderer` to prepend `[pkg]` to package nodes in `src/ProjGraph.Lib.ProjectGraph/Rendering/TreeGraphRenderer.cs`
+- [x] T042 [US3] Update `FlatGraphRenderer` to prepend `[pkg]` to package dependencies in `src/ProjGraph.Lib.ProjectGraph/Rendering/FlatGraphRenderer.cs`
+- [x] T043 [P] [US3] Unit Test: Verify Tree renderer markup in `tests/ProjGraph.Tests.Unit.ProjectGraph/TreeGraphRendererTests.cs`
+- [x] T044 [P] [US3] Unit Test: Verify Flat renderer markup in `tests/ProjGraph.Tests.Unit.ProjectGraph/FlatGraphRendererTests.cs`
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T051 [P] Ensure all new/modified public APIs (IGraphService, BuildGraphUseCase, IProjectParser) have full XML documentation for DocFX and LLM tool context.
-- [ ] T052 [P] Verify performance impact for large solutions when flag is disabled (Success Criterion: <5% variance in execution time).
-- [ ] T053 [P] Final integration test with complex solution (e.g., ProjGraph.slnx itself) to verify deduplication.
+- [x] T051 [P] Ensure all new/modified public APIs (IGraphService, BuildGraphUseCase, IProjectParser) have full XML documentation for DocFX and LLM tool context.
+- [x] T052 [P] Verify performance impact for large solutions when flag is disabled (Success Criterion: <5% variance in execution time).
+- [x] T053 [P] Final integration test with complex solution (e.g., ProjGraph.slnx itself) to verify deduplication.
 
 ## Dependency Graph
 

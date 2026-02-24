@@ -90,6 +90,8 @@ internal sealed class ProjGraphTools(
         string path,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
+        [Description("Whether to include NuGet package dependencies in the graph (default: false).")]
+        bool includePackages = false,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -107,9 +109,10 @@ internal sealed class ProjGraphTools(
                 $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
         }
 
-        var graph = graphService.BuildGraph(path);
+        var graph = graphService.BuildGraph(path, includePackages);
 
-        return Task.FromResult(graphRenderer.Render(graph, new DiagramOptions(showTitle)));
+        return Task.FromResult(graphRenderer.Render(graph,
+            new DiagramOptions(showTitle, IncludePackages: includePackages)));
     }
 
     [McpServerTool(Name = "get_erd")]

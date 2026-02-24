@@ -45,7 +45,7 @@ public partial class ProjectDiscoveryService(
 
             try
             {
-                var (_, refs) = projectParser.Parse(currentFullPath);
+                var (_, refs, _) = projectParser.Parse(currentFullPath);
 
                 foreach (var refPath in refs)
                 {

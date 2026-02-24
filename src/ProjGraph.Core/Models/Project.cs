@@ -23,7 +23,12 @@ public enum ProjectType
     /// <summary>
     /// Represents a project of other types.
     /// </summary>
-    Other = 3
+    Other = 3,
+
+    /// <summary>
+    /// Represents an external NuGet package dependency.
+    /// </summary>
+    Package = 4
 }
 
 /// <summary>

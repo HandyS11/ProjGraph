@@ -80,6 +80,25 @@ public class McpProjectGraphTests
     }
 
     [Fact]
+    public async Task GetProjectGraph_WithIncludePackages_ShouldReturnPackages()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var projPath = GetSamplePath(@"visualize\simple-dependencies\A\A.csproj");
+
+        // Act
+        var result = await tools.GetProjectGraphAsync(projPath, includePackages: true);
+
+        // Assert
+        result.Should().Contain("Spectre_Console");
+        result.Should().Contain("Microsoft_Extensions_DependencyInjection");
+        result.Should().Contain("Microsoft_Extensions_Logging_Abstractions");
+        result.Should().Contain("A -.-> Spectre_Console");
+        result.Should().Contain("A -.-> Microsoft_Extensions_DependencyInjection");
+        result.Should().Contain("A -.-> Microsoft_Extensions_Logging_Abstractions");
+    }
+
+    [Fact]
     public async Task GetProjectGraph_NonExistentFile_ShouldThrow()
     {
         // Arrange
