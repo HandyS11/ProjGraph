@@ -64,6 +64,28 @@ public interface IFileSystem
     void CreateDirectory(string path);
 
     /// <summary>
+    /// Checks if a directory exists at the specified path.
+    /// </summary>
+    /// <param name="path">The path to the directory.</param>
+    /// <returns>True if the directory exists, otherwise false.</returns>
+    bool DirectoryExists(string path);
+
+    /// <summary>
+    /// Gets the names of subdirectories (including their paths) in the specified directory.
+    /// </summary>
+    /// <param name="path">The directory path.</param>
+    /// <returns>An array of full names of subdirectories.</returns>
+    string[] GetDirectories(string path);
+
+    /// <summary>
+    /// Returns the names of files (including their paths) that match the specified search pattern in the specified directory.
+    /// </summary>
+    /// <param name="path">The directory path.</param>
+    /// <param name="searchPattern">The search string to match against the names of files.</param>
+    /// <returns>An array of the full names of files that match the search pattern.</returns>
+    string[] GetFiles(string path, string searchPattern);
+
+    /// <summary>
     /// Gets the current working directory of the application.
     /// </summary>
     /// <returns>The current directory path.</returns>

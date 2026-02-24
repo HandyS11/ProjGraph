@@ -90,9 +90,13 @@ The Fluent API parser is split across focused classes: `FluentApiConfigurationPa
 
 Class analysis uses Roslyn to:
 
-1. Parse the target `.cs` file for type declarations.
-2. Optionally discover related types across the workspace (inheritance, dependencies).
-3. Control traversal depth via `maxDepth` parameter.
+1. Parse the target `.cs` file or **directory** (scanning recursively for `.cs` files) for type declarations.
+2. For directories, all discovered files are included in a single `CSharpCompilation` for cross-file relationship
+   analysis.
+3. Automatically excludes standard directories: `.git`, `bin`, `obj`, `node_modules`.
+4. Optionally discover related types across the workspace (inheritance, dependencies) via `IWorkspaceTypeDiscovery`.
+5. Control traversal depth via `maxDepth` parameter.
+6. Includes a large-set warning (50+ files) to prevent unreadable diagrams.
 
 ## Build & Quality
 

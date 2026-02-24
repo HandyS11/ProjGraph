@@ -62,6 +62,15 @@ To generate this diagram yourself, run the following command from the repository
 projgraph classdiagram ./samples/classdiagram/simple-hierarchy/Models/Admin.cs --inheritance --dependencies --depth 2 --properties true --functions true > ./samples/classdiagram/simple-hierarchy/simple-hierarchy.mmd
 ```
 
+### NEW: Recursive Directory Scanning
+
+You can also scan an entire directory to generate a single combined diagram of all types found:
+
+```bash
+# Scan the entire Models directory
+projgraph classdiagram ./samples/classdiagram/simple-hierarchy/Models/ --inheritance --dependencies --properties true --functions true > ./samples/classdiagram/simple-hierarchy/simple-hierarchy-folder.mmd
+```
+
 ### Parameters explained
 
 - `--inheritance`: Automatically discovers and includes base classes (`User`, `BaseEntity`).

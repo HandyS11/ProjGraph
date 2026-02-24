@@ -106,7 +106,7 @@ erDiagram
 
 ### `classdiagram` - Class Hierarchies
 
-Generate Mermaid Class Diagram for a specific class and its hierarchy.
+Generate Mermaid Class Diagram for a specific class or an **entire directory** and its hierarchy.
 
 ```bash
 # Generate class diagram for a specific file
@@ -130,7 +130,7 @@ projgraph classdiagram ./Models/Person.cs --output docs/person.mmd
 
 **Settings**:
 
-- `[path]`: Required path to the `.cs` file to analyze.
+- `[path]`: Required path to the `.cs` file or directory to analyze.
 - `-i|--inheritance`: Search workspace for base classes and interfaces. Default: `false`.
 - `-d|--dependencies`: Search and include other classes used as properties/fields. Default: `false`.
 - `-o|--output <file>`: Write diagram directly to file. Auto-creates directories.

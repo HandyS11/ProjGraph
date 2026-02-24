@@ -29,7 +29,7 @@ public class McpClassDiagramTests
         // Assert method has Description attribute
         var descAttr = method.GetCustomAttribute<DescriptionAttribute>();
         descAttr.Should().NotBeNull();
-        descAttr.Description.Should().Contain("class diagram");
+        descAttr.Description.Should().Contain("directory");
     }
 
     [Fact]

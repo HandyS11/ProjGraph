@@ -42,12 +42,17 @@ internal static class McpTestHelper
             new DiscoverContextsUseCase(analyzer, fs),
             new AnalyzeSnapshotUseCase(analyzer),
             new DiscoverSnapshotsUseCase(analyzer, fs));
-        var classService = new ClassAnalysisService(new AnalyzeFileUseCase(compilationFactory, typeProcessor, fs));
+
+        var discoverCsFilesUseCase = new DiscoverCsFilesUseCase(fs);
+        var classService = new ClassAnalysisService(
+            new AnalyzeFileUseCase(compilationFactory, typeProcessor, fs),
+            new AnalyzeDirectoryUseCase(discoverCsFilesUseCase, compilationFactory, typeProcessor, fs));
 
         return new ProjGraphTools(
             graphService,
             efService,
             classService,
+            discoverCsFilesUseCase,
             new MermaidGraphRenderer(),
             new MermaidClassDiagramRenderer(),
             new MermaidErdRenderer());

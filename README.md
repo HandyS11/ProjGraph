@@ -29,6 +29,9 @@ projgraph erd ./Data/MyDbContext.cs
 
 # Generate Class Diagram for a class and its hierarchy
 projgraph classdiagram ./Models/User.cs
+
+# Generate a combined Class Diagram for all classes in a directory
+projgraph classdiagram ./Models/
 ```
 
 📖 [Full CLI Documentation](./src/ProjGraph.Cli/README.md)

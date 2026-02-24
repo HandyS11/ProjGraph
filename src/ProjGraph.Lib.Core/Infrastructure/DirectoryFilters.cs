@@ -8,10 +8,41 @@ namespace ProjGraph.Lib.Core.Infrastructure;
 public static class DirectoryFilters
 {
     /// <summary>
+    /// Standard extension for C# source files.
+    /// </summary>
+    public const string CSharpExtension = ".cs";
+
+    /// <summary>
+    /// The name of the binary output directory.
+    /// </summary>
+    public const string Bin = "bin";
+
+    /// <summary>
+    /// The name of the object output directory.
+    /// </summary>
+    public const string Obj = "obj";
+
+    /// <summary>
+    /// The name of the git metadata directory.
+    /// </summary>
+    public const string Git = ".git";
+
+    /// <summary>
+    /// The name of the Node.js modules directory.
+    /// </summary>
+    public const string NodeModules = "node_modules";
+
+    /// <summary>
     /// Directories that should be excluded from recursive searches.
     /// </summary>
     private static FrozenSet<string> DefaultExcludedDirectories { get; } =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bin", "obj", ".git", "node_modules" }.ToFrozenSet(
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            Bin,
+            Obj,
+            Git,
+            NodeModules
+        }.ToFrozenSet(
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>

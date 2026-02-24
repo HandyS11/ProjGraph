@@ -8,7 +8,11 @@ namespace ProjGraph.Lib.ClassDiagram.Application;
 /// Delegates orchestration to specific use cases.
 /// </summary>
 /// <param name="analyzeFileUseCase">The use case for analyzing files.</param>
-public class ClassAnalysisService(AnalyzeFileUseCase analyzeFileUseCase) : IClassAnalysisService
+/// <param name="analyzeDirectoryUseCase">The use case for analyzing directories.</param>
+public class ClassAnalysisService(
+    AnalyzeFileUseCase analyzeFileUseCase,
+    AnalyzeDirectoryUseCase analyzeDirectoryUseCase)
+    : IClassAnalysisService
 {
     /// <inheritdoc />
     public async Task<ClassModel> AnalyzeFileAsync(
@@ -16,5 +20,13 @@ public class ClassAnalysisService(AnalyzeFileUseCase analyzeFileUseCase) : IClas
         AnalysisOptions? options = null)
     {
         return await analyzeFileUseCase.ExecuteAsync(filePath, options);
+    }
+
+    /// <inheritdoc />
+    public async Task<ClassModel> AnalyzeDirectoryAsync(
+        string directoryPath,
+        AnalysisOptions? options = null)
+    {
+        return await analyzeDirectoryUseCase.ExecuteAsync(directoryPath, options);
     }
 }

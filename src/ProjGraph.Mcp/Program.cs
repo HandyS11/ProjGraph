@@ -6,6 +6,7 @@ using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib;
 using ProjGraph.Lib.ClassDiagram.Application;
+using ProjGraph.Lib.ClassDiagram.Application.UseCases;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
 using ProjGraph.Lib.ProjectGraph.Application;
@@ -52,15 +53,16 @@ internal sealed class ProjGraphTools(
     IGraphService graphService,
     IEfAnalysisService efService,
     IClassAnalysisService classService,
+    DiscoverCsFilesUseCase discoverCsFilesUseCase,
     MermaidGraphRenderer graphRenderer,
     IDiagramRenderer<ClassModel> classRenderer,
     IDiagramRenderer<EfModel> erdRenderer)
 {
     [McpServerTool(Name = "get_class_diagram")]
     [Description(
-        "Generates a Mermaid class diagram for the types defined in a specific C# file, with options to discover inheritance and related types in the workspace.")]
+        "Generates a Mermaid class diagram for the types defined in a specific C# file or directory, with options to discover inheritance and related types in the workspace.")]
     public async Task<string> GetClassDiagramAsync(
-        [Description("Absolute path to the .cs file to analyze.")]
+        [Description("Absolute path to the .cs file or directory to analyze.")]
         string path,
         [Description("Analysis and discovery options.")]
         AnalysisOptions? options = null,
@@ -71,16 +73,32 @@ internal sealed class ProjGraphTools(
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        if (!File.Exists(path))
+        if (!File.Exists(path) && !Directory.Exists(path))
         {
-            throw new FileNotFoundException($"File not found: {path}", path);
+            throw new FileNotFoundException($"Path not found: {path}", path);
         }
 
-        FilePathGuard.RequireCsFile(path);
+        ClassModel model;
+        var warningMarkup = string.Empty;
 
-        var model = await classService.AnalyzeFileAsync(path, options);
+        if (Directory.Exists(path))
+        {
+            var files = discoverCsFilesUseCase.Execute(path);
+            if (files.Count > 50)
+            {
+                warningMarkup = $"%% WARNING: Scanning {files.Count} files. Large diagrams may be hard to read.\n";
+            }
 
-        return classRenderer.Render(model, new DiagramOptions(showTitle));
+            model = await classService.AnalyzeDirectoryAsync(path, options);
+        }
+        else
+        {
+            FilePathGuard.RequireCsFile(path);
+            model = await classService.AnalyzeFileAsync(path, options);
+        }
+
+        var diagram = classRenderer.Render(model, new DiagramOptions(showTitle));
+        return warningMarkup + diagram;
     }
 
     [McpServerTool(Name = "get_project_graph")]

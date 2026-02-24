@@ -81,12 +81,12 @@ Generates a Mermaid Entity Relationship Diagram from an EF Core `DbContext` or `
 
 ### `get_class_diagram`
 
-Generates a Mermaid class diagram for the types defined in a specific C# file, with options to discover inheritance and
-related types in the workspace.
+Generates a Mermaid class diagram for the types defined in a specific C# file or directory, with options to discover
+inheritance and related types in the workspace.
 
 **Parameters:**
 
-- `path` (string): Absolute path to the C# file to analyze
+- `path` (string): Absolute path to the C# file or directory to analyze
 - `include_inheritance` (boolean, optional): Whether to search the workspace for base classes and interfaces (default:
   false)
 - `include_dependencies` (boolean, optional): Whether to search for and include other classes used as properties or
@@ -98,6 +98,14 @@ related types in the workspace.
 - `show_title` (boolean, optional): Whether to include the title in the diagram (default: true)
 
 **Returns:** Mermaid class diagram code
+
+**Example prompts:**
+
+```text
+"Show me the class diagram for the Models folder"
+"Analyze the class hierarchy in ./Services/OrderService.cs"
+"Generate a combined diagram for all classes in the Domain project"
+```
 
 **Example prompts:**
 

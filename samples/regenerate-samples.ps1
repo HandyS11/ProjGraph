@@ -25,16 +25,12 @@ function Invoke-ProjGraph {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Host "Rendering: $OutputPath" -ForegroundColor Cyan
     
-    # Run the CLI tool and capture output lines
+    # Run the CLI tool
     # Paths in $Arguments are relative to the repository root
     Push-Location $root
     try {
         $allArgs = @("run", "--project", "$cliProject", "--no-build", "--") + $Arguments.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)
-        $output = & dotnet $allArgs
-        
-        # Save as UTF-8 without BOM to prevent "garbage" characters
-        if ($null -eq $output) { $output = @() }
-        [System.IO.File]::WriteAllLines($OutputPath, $output)
+        & dotnet $allArgs
     }
     finally {
         Pop-Location
@@ -57,37 +53,42 @@ if ($LASTEXITCODE -ne 0) { Write-Error "Failed to build CLI project."; exit 1 }
 
 # 1. ERD: Complex E-commerce
 Invoke-ProjGraph `
-    -Arguments "erd ./samples/erd/complex-ecommerce/Data/MyDbContext.cs" `
-    -OutputPath (Join-Path $root "samples\erd\complex-ecommerce\complex-ecommerce.mmd")
+    -Arguments "erd ./samples/erd/complex-ecommerce/Data/MyDbContext.cs --output ./samples/erd/complex-ecommerce/complex-ecommerce.mmd" `
+    -OutputPath "./samples/erd/complex-ecommerce/complex-ecommerce.mmd"
 
 # 2. ERD: Simple Context
 Invoke-ProjGraph `
-    -Arguments "erd ./samples/erd/simple-context/EntityFramework/MyDbContext.cs" `
-    -OutputPath (Join-Path $root "samples\erd\simple-context\simple-context.mmd")
+    -Arguments "erd ./samples/erd/simple-context/EntityFramework/MyDbContext.cs --output ./samples/erd/simple-context/simple-context.mmd" `
+    -OutputPath "./samples/erd/simple-context/simple-context.mmd"
 
 # 3. Class Diagram: Design Patterns
 Invoke-ProjGraph `
-    -Arguments "classdiagram ./samples/classdiagram/design-patterns/Domain/Order.cs --inheritance --dependencies --depth 2 --properties true --functions true" `
-    -OutputPath (Join-Path $root "samples\classdiagram\design-patterns\design-patterns.mmd")
+    -Arguments "classdiagram ./samples/classdiagram/design-patterns/Domain/Order.cs --inheritance --dependencies --depth 2 --properties true --functions true --output ./samples/classdiagram/design-patterns/design-patterns.mmd" `
+    -OutputPath "./samples/classdiagram/design-patterns/design-patterns.mmd"
 
 # 4. Class Diagram: Complex Hierarchy
 Invoke-ProjGraph `
-    -Arguments "classdiagram ./samples/classdiagram/complex-hierarchy/Domain/Models/CEO.cs --inheritance --dependencies --depth 5 --properties true --functions true" `
-    -OutputPath (Join-Path $root "samples\classdiagram\complex-hierarchy\complex-hierarchy.mmd")
+    -Arguments "classdiagram ./samples/classdiagram/complex-hierarchy/Domain/Models/CEO.cs --inheritance --dependencies --depth 5 --properties true --functions true --output ./samples/classdiagram/complex-hierarchy/complex-hierarchy.mmd" `
+    -OutputPath "./samples/classdiagram/complex-hierarchy/complex-hierarchy.mmd"
 
 # 5. Class Diagram: Simple Hierarchy
 Invoke-ProjGraph `
-    -Arguments "classdiagram ./samples/classdiagram/simple-hierarchy/Models/Admin.cs --inheritance --dependencies --depth 2 --properties true --functions true" `
-    -OutputPath (Join-Path $root "samples\classdiagram\simple-hierarchy\simple-hierarchy.mmd")
+    -Arguments "classdiagram ./samples/classdiagram/simple-hierarchy/Models/Admin.cs --inheritance --dependencies --depth 2 --properties true --functions true --output ./samples/classdiagram/simple-hierarchy/simple-hierarchy.mmd" `
+    -OutputPath "./samples/classdiagram/simple-hierarchy/simple-hierarchy.mmd"
+
+# 5b. Class Diagram: Simple Hierarchy (Directory Scan)
+Invoke-ProjGraph `
+    -Arguments "classdiagram ./samples/classdiagram/simple-hierarchy/Models/ --inheritance --dependencies --properties true --functions true --output ./samples/classdiagram/simple-hierarchy/simple-hierarchy-folder.mmd" `
+    -OutputPath "./samples/classdiagram/simple-hierarchy/simple-hierarchy-folder.mmd"
 
 # 6. Project Graph: Modular Architecture
 Invoke-ProjGraph `
-    -Arguments "visualize ./samples/visualize/modular-architecture/ModularArchitecture.slnx --format mermaid" `
-    -OutputPath (Join-Path $root "samples\visualize\modular-architecture\modular-architecture.mmd")
+    -Arguments "visualize ./samples/visualize/modular-architecture/ModularArchitecture.slnx --format mermaid --output ./samples/visualize/modular-architecture/modular-architecture.mmd" `
+    -OutputPath "./samples/visualize/modular-architecture/modular-architecture.mmd"
 
 # 7. Project Graph: Simple Dependencies
 Invoke-ProjGraph `
-    -Arguments "visualize ./samples/visualize/simple-dependencies/simple-dependencies.slnx --format mermaid" `
-    -OutputPath (Join-Path $root "samples\visualize\simple-dependencies\simple-dependencies.mmd")
+    -Arguments "visualize ./samples/visualize/simple-dependencies/simple-dependencies.slnx --format mermaid --output ./samples/visualize/simple-dependencies/simple-dependencies.mmd" `
+    -OutputPath "./samples/visualize/simple-dependencies/simple-dependencies.mmd"
 
 Write-Host "`n--- All snapshots processed ---" -ForegroundColor Green
