@@ -86,6 +86,26 @@ public interface IFileSystem
     string[] GetFiles(string path, string searchPattern);
 
     /// <summary>
+    /// Returns an enumerable collection of full file names that match a search pattern in a specified path,
+    /// using the specified enumeration options.
+    /// </summary>
+    /// <param name="path">The directory path.</param>
+    /// <param name="searchPattern">The search string to match against the names of files.</param>
+    /// <param name="options">The enumeration options to use.</param>
+    /// <returns>An enumerable collection of the full names of files that match the search pattern.</returns>
+    IEnumerable<string> EnumerateFiles(string path, string searchPattern, EnumerationOptions options);
+
+    /// <summary>
+    /// Returns an enumerable collection of directory full names that match a search pattern in a specified path,
+    /// using the specified enumeration options.
+    /// </summary>
+    /// <param name="path">The directory path.</param>
+    /// <param name="searchPattern">The search string to match against the names of directories.</param>
+    /// <param name="options">The enumeration options to use.</param>
+    /// <returns>An enumerable collection of the full names of directories that match the search pattern.</returns>
+    IEnumerable<string> EnumerateDirectories(string path, string searchPattern, EnumerationOptions options);
+
+    /// <summary>
     /// Gets the current working directory of the application.
     /// </summary>
     /// <returns>The current directory path.</returns>

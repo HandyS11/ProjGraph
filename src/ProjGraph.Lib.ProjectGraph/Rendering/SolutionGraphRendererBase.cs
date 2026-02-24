@@ -8,25 +8,28 @@ namespace ProjGraph.Lib.ProjectGraph.Rendering;
 /// <summary>
 /// Base class for rendering solution graphs with ANSI console support.
 /// </summary>
-public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph>, IDisposable
+public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph>
 {
     /// <inheritdoc />
     public abstract string Format { get; }
 
     /// <summary>
     /// Gets the ANSI console used for rendering output.
+    /// Set per <see cref="Render"/> call via <see cref="CreateRenderContext"/>.
     /// </summary>
-    protected IAnsiConsole RenderConsole { get; }
+    protected IAnsiConsole RenderConsole { get; private set; } = null!;
 
     /// <summary>
     /// Gets the string writer that captures rendered output.
+    /// Set per <see cref="Render"/> call via <see cref="CreateRenderContext"/>.
     /// </summary>
-    protected StringWriter OutputWriter { get; }
+    protected StringWriter OutputWriter { get; private set; } = null!;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SolutionGraphRendererBase"/> class.
+    /// Creates a fresh <see cref="OutputWriter"/> and <see cref="RenderConsole"/> pair for a single render pass.
+    /// Must be called at the start of every <see cref="Render"/> implementation.
     /// </summary>
-    protected SolutionGraphRendererBase()
+    protected void CreateRenderContext()
     {
         OutputWriter = new StringWriter();
         var globalConsole = AnsiConsole.Console;
@@ -112,24 +115,5 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
                 .Where(c => c.Count > 1)
                 .SelectMany(c => c)
         ];
-    }
-
-    /// <summary>
-    /// Releases the resources used by the <see cref="SolutionGraphRendererBase"/>.
-    /// </summary>
-    /// <param name="disposing">A value indicating whether managed resources should be disposed.</param>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            OutputWriter.Dispose();
-        }
-    }
-
-    /// <inheritdoc />
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
     }
 }

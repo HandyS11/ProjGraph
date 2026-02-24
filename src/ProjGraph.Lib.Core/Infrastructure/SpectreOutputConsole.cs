@@ -84,7 +84,7 @@ public class SpectreOutputConsole : IOutputConsole
     /// <param name="message">The error message to write.</param>
     public void WriteError(string message)
     {
-        Stderr.MarkupLine($"[red]Error: {message}[/]");
+        Stderr.MarkupLine($"[red]Error: {Markup.Escape(message)}[/]");
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public class SpectreOutputConsole : IOutputConsole
     /// <param name="message">The warning message to write.</param>
     public void WriteWarning(string message)
     {
-        Stderr.MarkupLine($"[yellow]Warning: {message}[/]");
+        Stderr.MarkupLine($"[yellow]Warning: {Markup.Escape(message)}[/]");
     }
 
     /// <summary>
@@ -102,7 +102,7 @@ public class SpectreOutputConsole : IOutputConsole
     /// <param name="message">The success message to write.</param>
     public void WriteSuccess(string message)
     {
-        Stderr.MarkupLine($"[green]{message}[/]");
+        Stderr.MarkupLine($"[green]{Markup.Escape(message)}[/]");
     }
 
     /// <summary>

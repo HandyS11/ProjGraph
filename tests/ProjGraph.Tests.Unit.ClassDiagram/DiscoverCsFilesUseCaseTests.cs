@@ -23,7 +23,7 @@ public class DiscoverCsFilesUseCaseTests
         _fileSystemMock.DirectoryExists(root).Returns(true);
         _fileSystemMock.GetFullPath(root).Returns(root);
         _fileSystemMock.GetDirectories(root).Returns([sub]);
-        _fileSystemMock.GetDirectories(sub).Returns(Array.Empty<string>());
+        _fileSystemMock.GetDirectories(sub).Returns([]);
         _fileSystemMock.GetFiles(root, "*.cs").Returns(["C:/root/File1.cs"]);
         _fileSystemMock.GetFiles(sub, "*.cs").Returns(["C:/root/sub/File2.cs"]);
 

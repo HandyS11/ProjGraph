@@ -8,14 +8,10 @@ namespace ProjGraph.Tests.Unit.ProjectGraph;
 /// Tests for <see cref="TreeGraphRenderer"/>.
 /// </summary>
 [Trait("Category", "Unit")]
-public sealed class TreeGraphRendererTests : IDisposable
+public sealed class TreeGraphRendererTests
 {
     private readonly TreeGraphRenderer _sut = new();
 
-    public void Dispose()
-    {
-        _sut.Dispose();
-    }
 
     private static SolutionGraph CreateGraph(
         string name,

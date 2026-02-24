@@ -56,7 +56,8 @@ internal sealed class ProjGraphTools(
     DiscoverCsFilesUseCase discoverCsFilesUseCase,
     MermaidGraphRenderer graphRenderer,
     IDiagramRenderer<ClassModel> classRenderer,
-    IDiagramRenderer<EfModel> erdRenderer)
+    IDiagramRenderer<EfModel> erdRenderer,
+    IFileSystem fileSystem)
 {
     [McpServerTool(Name = "get_class_diagram")]
     [Description(
@@ -73,7 +74,7 @@ internal sealed class ProjGraphTools(
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        if (!File.Exists(path) && !Directory.Exists(path))
+        if (!fileSystem.FileExists(path) && !fileSystem.DirectoryExists(path))
         {
             throw new FileNotFoundException($"Path not found: {path}", path);
         }
@@ -81,7 +82,7 @@ internal sealed class ProjGraphTools(
         ClassModel model;
         var warningMarkup = string.Empty;
 
-        if (Directory.Exists(path))
+        if (fileSystem.DirectoryExists(path))
         {
             var files = discoverCsFilesUseCase.Execute(path);
             if (files.Count > 50)
@@ -115,7 +116,7 @@ internal sealed class ProjGraphTools(
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        if (!File.Exists(path))
+        if (!fileSystem.FileExists(path))
         {
             throw new FileNotFoundException($"File not found: {path}", path);
         }
@@ -148,7 +149,7 @@ internal sealed class ProjGraphTools(
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        if (!File.Exists(path))
+        if (!fileSystem.FileExists(path))
         {
             throw new FileNotFoundException($"File not found: {path}", path);
         }

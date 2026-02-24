@@ -32,11 +32,11 @@ internal static class McpTestHelper
             NullLogger<BuildGraphUseCase>.Instance));
 
         var compilationFactory = new CompilationFactory();
-        var workspaceTypeDiscovery = new WorkspaceTypeDiscovery();
-        var symbolResolver = new SymbolResolver(workspaceTypeDiscovery);
+        var workspaceTypeDiscovery = new WorkspaceTypeDiscovery(fs);
+        var symbolResolver = new SymbolResolver(workspaceTypeDiscovery, fs);
         var typeProcessor = new TypeProcessor(symbolResolver);
 
-        var entityFileDiscovery = new EntityFileDiscovery();
+        var entityFileDiscovery = new EntityFileDiscovery(fs);
         var analyzer = new EfModelAnalyzer(compilationFactory, fs, entityFileDiscovery);
         var efService = new EfAnalysisService(new AnalyzeContextUseCase(analyzer),
             new DiscoverContextsUseCase(analyzer, fs),
@@ -55,6 +55,7 @@ internal static class McpTestHelper
             discoverCsFilesUseCase,
             new MermaidGraphRenderer(),
             new MermaidClassDiagramRenderer(),
-            new MermaidErdRenderer());
+            new MermaidErdRenderer(),
+            fs);
     }
 }
