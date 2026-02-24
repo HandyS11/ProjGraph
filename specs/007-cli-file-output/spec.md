@@ -59,7 +59,7 @@ As a user, I want to receive confirmation that the file has been written success
 
 ### Functional Requirements
 
-- **FR-001**: System MUST provide a `-o|--output <file>` option for `visualize`, `class-diagram`, and `erd` commands.
+- **FR-001**: System MUST provide a `-o|--output <file>` option for `visualize`, `classdiagram`, and `erd` commands.
 - **FR-002**: System MUST write the rendered diagram to the specified file path if the output option is provided.
 - **FR-003**: System MUST NOT write the diagram to stdout when the output option is provided.
 - **FR-004**: System MUST ensure the output file is written using consistent encoding (UTF-8 without BOM).
@@ -72,7 +72,7 @@ As a user, I want to receive confirmation that the file has been written success
 
 ### Measurable Outcomes
 
-- **SC-001**: 100% of CLI commands (`visualize`, `class-diagram`, `erd`) correctly handle the `--output` flag.
+- **SC-001**: 100% of CLI commands (`visualize`, `classdiagram`, `erd`) correctly handle the `--output` flag.
 - **SC-002**: Diagrams saved via `--output` contain the same diagram logic as stdout, with optional Markdown fencing as per `FR-007`.
 - **SC-003**: Output files are consistently encoded as UTF-8 without BOM.
 - **SC-004**: Command returns a non-zero exit code if file writing fails.
