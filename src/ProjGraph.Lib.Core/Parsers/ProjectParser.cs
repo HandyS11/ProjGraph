@@ -90,14 +90,14 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
     /// <param name="projectPath">The path to the project file.</param>
     /// <param name="packageName">The package name to look up.</param>
     /// <returns>The resolved version string, or <see langword="null"/> if not found.</returns>
-    private static string? ResolveCentralPackageVersion(string projectPath, string packageName)
+    private string? ResolveCentralPackageVersion(string projectPath, string packageName)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
 
         while (directory is not null)
         {
             var propsFile = Path.Combine(directory, "Directory.Packages.props");
-            if (File.Exists(propsFile))
+            if (fileSystem.FileExists(propsFile))
             {
                 try
                 {
