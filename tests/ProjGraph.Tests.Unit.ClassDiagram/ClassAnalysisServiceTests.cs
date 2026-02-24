@@ -19,9 +19,14 @@ public sealed class ClassAnalysisServiceTests : IDisposable
         _tempFile = Path.Combine(_temp.DirectoryPath, "temp.cs");
         var workspaceTypeDiscovery = new WorkspaceTypeDiscovery();
         var symbolResolver = new SymbolResolver(workspaceTypeDiscovery);
-        _service = new ClassAnalysisService(new AnalyzeFileUseCase(new CompilationFactory(),
-            new TypeProcessor(symbolResolver),
-            new PhysicalFileSystem()));
+        var compilationFactory = new CompilationFactory();
+        var fileSystem = new PhysicalFileSystem();
+        var typeProcessor = new TypeProcessor(symbolResolver);
+        var analyzeFileUseCase = new AnalyzeFileUseCase(compilationFactory, typeProcessor, fileSystem);
+        var discoverCsFilesUseCase = new DiscoverCsFilesUseCase(fileSystem);
+        var analyzeDirectoryUseCase =
+            new AnalyzeDirectoryUseCase(discoverCsFilesUseCase, compilationFactory, typeProcessor, fileSystem);
+        _service = new ClassAnalysisService(analyzeFileUseCase, analyzeDirectoryUseCase);
     }
 
     public void Dispose()

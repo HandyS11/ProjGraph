@@ -147,7 +147,7 @@ public sealed class ClassDiagramCommandTests : IDisposable
         var exception = Assert.Throws<CommandRuntimeException>(() =>
             app.Run(["classdiagram", nonExistentPath]));
 
-        exception.Message.Should().Contain("File not found");
+        exception.Message.Should().Contain("Path not found");
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public sealed class ClassDiagramCommandTests : IDisposable
         await File.WriteAllTextAsync(serviceFile, """
                                                   namespace TestNamespace;
 
-                                                  public class UserService 
+                                                  public class UserService
                                                   {
                                                       public User GetUser() => new User();
                                                   }
@@ -210,7 +210,7 @@ public sealed class ClassDiagramCommandTests : IDisposable
         await File.WriteAllTextAsync(userFile, """
                                                namespace TestNamespace;
 
-                                               public class User 
+                                               public class User
                                                {
                                                    public string Name { get; set; }
                                                }
@@ -332,5 +332,52 @@ public sealed class ClassDiagramCommandTests : IDisposable
                 File.Delete(outputPath);
             }
         }
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    public void ClassDiagramCommand_Directory_SimpleHierarchy_ShouldGenerateCombinedClassDiagram()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var modelsDir = CliTestHelpers.GetSamplePath("classdiagram/simple-hierarchy/Models");
+
+        Directory.Exists(modelsDir).Should().BeTrue($"Sample directory should exist at: {modelsDir}");
+
+        // Act
+        var resultCode = 0;
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            resultCode = app.Run(["classdiagram", modelsDir, "-i", "-d"]));
+
+        // Assert
+        resultCode.Should().Be(0);
+        capturedOutput.Should().Contain("class SimpleHierarchy_Models_User");
+        capturedOutput.Should().Contain("class SimpleHierarchy_Models_Admin");
+        capturedOutput.Should().Contain("class SimpleHierarchy_Models_Address");
+        capturedOutput.Should().Contain("SimpleHierarchy_Models_User <|-- SimpleHierarchy_Models_Admin");
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    public void ClassDiagramCommand_Directory_Recursive_ShouldIncludeNestedTypes()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        // The simple-hierarchy root has Models/ and other folders
+        var rootDir = CliTestHelpers.GetSamplePath("classdiagram/simple-hierarchy");
+
+        Directory.Exists(rootDir).Should().BeTrue($"Sample directory should exist at: {rootDir}");
+
+        // Act
+        var resultCode = 0;
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            resultCode = app.Run(["classdiagram", rootDir, "-i", "-d"]));
+
+        // Assert
+        resultCode.Should().Be(0);
+        // Models/User.cs
+        capturedOutput.Should().Contain("class SimpleHierarchy_Models_User");
+        // Mappers/UserMapper.cs
+        capturedOutput.Should().Contain("class SimpleHierarchy_Mappers_UserMapper");
     }
 }

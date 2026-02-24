@@ -27,7 +27,9 @@ public static class ServiceRegistration
         services.AddSingleton<IDiagramRenderer<ClassModel>, MermaidClassDiagramRenderer>();
 
         // Use Cases
+        services.AddSingleton<DiscoverCsFilesUseCase>();
         services.AddSingleton<AnalyzeFileUseCase>();
+        services.AddSingleton<AnalyzeDirectoryUseCase>();
 
         // Services
         services.AddSingleton<IClassAnalysisService, ClassAnalysisService>();

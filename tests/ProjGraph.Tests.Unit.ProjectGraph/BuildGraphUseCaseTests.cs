@@ -296,7 +296,7 @@ public sealed class BuildGraphUseCaseTests
             .Returns((projectA, Enumerable.Empty<string>(), (IEnumerable<PackageReference>)[pkg]));
 
         // Act
-        var result = _sut.Execute(slnPath, false);
+        var result = _sut.Execute(slnPath);
 
         // Assert
         result.Projects.Should().HaveCount(1);

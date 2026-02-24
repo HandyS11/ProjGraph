@@ -165,7 +165,7 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
             }
         }
 
-        sb.AppendLine(CultureInfo.InvariantCulture, $"    {relationshipStr}");
+        sb.Append(CultureInfo.InvariantCulture, $"    {relationshipStr}").AppendLine();
     }
 
     /// <summary>

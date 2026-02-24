@@ -72,7 +72,7 @@ public static class WorkspaceRootResolver
         return directory.GetFiles("*.sln").Length > 0 ||
                directory.GetFiles("*.slnx").Length > 0 ||
                directory.GetFiles("*.csproj").Length > 0 ||
-               directory.GetDirectories(".git").Length > 0;
+               directory.GetDirectories(DirectoryFilters.Git).Length > 0;
     }
 
     /// <summary>

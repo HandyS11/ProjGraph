@@ -259,7 +259,6 @@ public sealed class McpClassDiagramTests : IDisposable
         result.Should().NotContain("-->");
     }
 
-
     [Fact]
     public async Task GetClassDiagram_WithDepth1_ShouldLimitRelationshipDepth()
     {
@@ -268,7 +267,7 @@ public sealed class McpClassDiagramTests : IDisposable
 
         // Act
         var result = await tools.GetClassDiagramAsync(_tempFileWithDependencies,
-            new AnalysisOptions(1, IncludeDependencies: true));
+            new AnalysisOptions(IncludeDependencies: true));
 
         // Assert
         result.Should().NotStartWith("Error");
@@ -471,6 +470,25 @@ public sealed class McpClassDiagramTests : IDisposable
         var reduction = (double)(withCount - withoutCount) / withCount;
         reduction.Should().BeGreaterThanOrEqualTo(0.5,
             $"Hiding members should reduce diagram size significantly. Reduced by {reduction:P}");
+    }
+
+    [Fact]
+    public async Task GetClassDiagram_Directory_ShouldReturnCombinedDiagram()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var modelsDir = GetProjectPath("samples/classdiagram/simple-hierarchy/Models");
+
+        // Act
+        // Use IncludeInheritance: true to see inheritance relationships (like Admin --|> User)
+        var result = await tools.GetClassDiagramAsync(modelsDir, new AnalysisOptions(IncludeInheritance: true));
+
+        // Assert
+        result.Should().NotStartWith("Error");
+        result.Should().Contain("class SimpleHierarchy_Models_User");
+        result.Should().Contain("class SimpleHierarchy_Models_Admin");
+        result.Should().Contain("class SimpleHierarchy_Models_Address");
+        result.Should().Contain("<|--", "Inheritance relationships should be present");
     }
 
     private static string GetProjectPath(string relativePath)

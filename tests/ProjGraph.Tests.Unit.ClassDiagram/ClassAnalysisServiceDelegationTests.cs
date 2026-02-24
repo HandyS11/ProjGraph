@@ -21,8 +21,11 @@ public sealed class ClassAnalysisServiceDelegationTests
         const string filePath = "/test/model.cs";
         _fileSystem.FileExists(filePath).Returns(false);
 
-        var useCase = new AnalyzeFileUseCase(_compilationFactory, _typeProcessor, _fileSystem);
-        var sut = new ClassAnalysisService(useCase);
+        var analyzeFileUseCase = new AnalyzeFileUseCase(_compilationFactory, _typeProcessor, _fileSystem);
+        var discoverCsFilesUseCase = new DiscoverCsFilesUseCase(_fileSystem);
+        var analyzeDirectoryUseCase =
+            new AnalyzeDirectoryUseCase(discoverCsFilesUseCase, _compilationFactory, _typeProcessor, _fileSystem);
+        var sut = new ClassAnalysisService(analyzeFileUseCase, analyzeDirectoryUseCase);
 
         var act = () => sut.AnalyzeFileAsync(filePath);
 

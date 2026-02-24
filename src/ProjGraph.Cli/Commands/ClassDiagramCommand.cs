@@ -1,6 +1,7 @@
 using ProjGraph.Cli.Infrastructure;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Application;
+using ProjGraph.Lib.ClassDiagram.Application.UseCases;
 using ProjGraph.Lib.Core.Abstractions;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -19,11 +20,13 @@ namespace ProjGraph.Cli.Commands;
 /// <param name="mermaidRenderer">The diagram renderer for producing Mermaid class diagram output.</param>
 /// <param name="console">The output console for writing results and errors.</param>
 /// <param name="outputWriter">The helper for writing rendered output to file or console.</param>
+/// <param name="discoverCsFilesUseCase">The use case for discovering .cs files.</param>
 internal sealed class ClassDiagramCommand(
     IClassAnalysisService analysisService,
     IDiagramRenderer<ClassModel> mermaidRenderer,
     IOutputConsole console,
-    DiagramOutputWriter outputWriter)
+    DiagramOutputWriter outputWriter,
+    DiscoverCsFilesUseCase discoverCsFilesUseCase)
     : AsyncCommand<ClassDiagramCommand.Settings>
 {
     /// <summary>
@@ -100,7 +103,7 @@ internal sealed class ClassDiagramCommand(
 
         /// <summary>
         /// Validates the settings provided by the user.
-        /// Ensures the file path is valid, exists, and points to a .cs file.
+        /// Ensures the path is valid, exists, and points to a .cs file or a directory.
         /// </summary>
         /// <returns>A <see cref="ValidationResult"/> indicating success or failure.</returns>
         public override ValidationResult Validate()
@@ -110,12 +113,12 @@ internal sealed class ClassDiagramCommand(
                 return ValidationResult.Error("Path is required");
             }
 
-            if (!File.Exists(Path))
+            if (!System.IO.Path.Exists(Path))
             {
-                return ValidationResult.Error($"File not found: {Path}");
+                return ValidationResult.Error($"Path not found: {Path}");
             }
 
-            if (!Path.EndsWith(FilePathGuard.CSharpExtension, StringComparison.OrdinalIgnoreCase))
+            if (File.Exists(Path) && !Path.EndsWith(FilePathGuard.CSharpExtension, StringComparison.OrdinalIgnoreCase))
             {
                 return ValidationResult.Error($"Only .cs files are supported. Got: {Path}");
             }
@@ -148,7 +151,21 @@ internal sealed class ClassDiagramCommand(
                 settings.IncludeProperties,
                 settings.IncludeFunctions);
 
-            var model = await analysisService.AnalyzeFileAsync(settings.Path, options);
+            ClassModel model;
+            if (Directory.Exists(settings.Path))
+            {
+                var files = discoverCsFilesUseCase.Execute(settings.Path);
+                if (files.Count > 50)
+                {
+                    console.WriteWarning($"Scanning {files.Count} files. Large diagrams may be hard to read.");
+                }
+
+                model = await analysisService.AnalyzeDirectoryAsync(settings.Path, options);
+            }
+            else
+            {
+                model = await analysisService.AnalyzeFileAsync(settings.Path, options);
+            }
 
             var wrapInMarkdownFence = DiagramOutputWriter.ShouldWrapInMarkdownFence(settings.Output);
 
