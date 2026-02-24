@@ -4,6 +4,7 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 
 namespace ProjGraph.Lib.Core.Parsers;
 
@@ -26,10 +27,14 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
     /// <item>
     /// <description>A collection of project references as strings.</description>
     /// </item>
+    /// <item>
+    /// <description>A collection of NuGet package references as <see cref="PackageReference"/> objects.</description>
+    /// </item>
     /// </list>
     /// </returns>
     /// <exception cref="ParsingException">Thrown when the project file cannot be parsed.</exception>
-    public (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath)
+    public (Project Project, IEnumerable<string> ProjectReferences, IEnumerable<PackageReference> PackageReferences)
+        Parse(string projectPath)
     {
         var root = ProjectRootElement.Open(projectPath)
                    ?? throw new ParsingException($"Failed to parse project file: {projectPath}");
@@ -61,7 +66,65 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
             .Select(i => i.Include)
             .ToList();
 
-        return (project, projectReferences);
+        var packageReferences = root.Items
+            .Where(i => i.ItemType == "PackageReference")
+            .Select(i =>
+            {
+                var version = i.Metadata.FirstOrDefault(m => m.Name == "Version")?.Value;
+                if (string.IsNullOrEmpty(version))
+                {
+                    version = ResolveCentralPackageVersion(projectPath, i.Include);
+                }
+
+                return new PackageReference(i.Include, version ?? "unknown");
+            })
+            .ToList();
+
+        return (project, projectReferences, packageReferences);
+    }
+
+    /// <summary>
+    /// Resolves the version of a NuGet package from a <c>Directory.Packages.props</c> file
+    /// when Central Package Management is used (i.e., no Version attribute on the PackageReference).
+    /// Walks up the directory tree from the project file until a matching props file is found.
+    /// </summary>
+    /// <param name="projectPath">The path to the project file.</param>
+    /// <param name="packageName">The package name to look up.</param>
+    /// <returns>The resolved version string, or <see langword="null"/> if not found.</returns>
+    private string? ResolveCentralPackageVersion(string projectPath, string packageName)
+    {
+        var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
+
+        while (directory is not null)
+        {
+            var propsFile = Path.Combine(directory, "Directory.Packages.props");
+            if (fileSystem.FileExists(propsFile))
+            {
+                try
+                {
+                    var propsRoot = ProjectRootElement.Open(propsFile);
+                    var version = propsRoot?.Items
+                        .FirstOrDefault(i =>
+                            i.ItemType == "PackageVersion" &&
+                            i.Include.Equals(packageName, StringComparison.OrdinalIgnoreCase))
+                        ?.Metadata.FirstOrDefault(m => m.Name == "Version")
+                        ?.Value;
+
+                    if (!string.IsNullOrEmpty(version))
+                    {
+                        return version;
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or InvalidOperationException or XmlException)
+                {
+                    // If we can't read the props file, continue searching up
+                }
+            }
+
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        return null;
     }
 
     /// <summary>

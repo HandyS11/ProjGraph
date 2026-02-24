@@ -31,8 +31,9 @@ public class ProjectParserTests
         var tempFile = temp.CreateFile("app.csproj", content);
 
         // Act
-        var (project, references) = _parser.Parse(tempFile);
+        var (project, references, packages) = _parser.Parse(tempFile);
         var referencesList = references.ToList();
+        var packagesList = packages.ToList();
 
         // Assert
         project.Name.Should().Be("app");
@@ -41,6 +42,37 @@ public class ProjectParserTests
         referencesList.Should().HaveCount(2);
         referencesList.Should().Contain("../LibA/LibA.csproj");
         referencesList.Should().Contain("../LibB/LibB.csproj");
+        packagesList.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Parse_ShouldIdentifyPackageReferences()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               <Project Sdk="Microsoft.NET.Sdk">
+                                 <PropertyGroup>
+                                   <TargetFramework>net10.0</TargetFramework>
+                                 </PropertyGroup>
+                                 <ItemGroup>
+                                   <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+                                   <PackageReference Include="Spectre.Console" Version="0.45.0" />
+                                 </ItemGroup>
+                               </Project>
+                               """;
+
+        var tempFile = temp.CreateFile("packages.csproj", content);
+
+        // Act
+        var (_, references, packages) = _parser.Parse(tempFile);
+        var packagesList = packages.ToList();
+
+        // Assert
+        packagesList.Should().HaveCount(2);
+        packagesList.Should().Contain(new PackageReference("Newtonsoft.Json", "13.0.1"));
+        packagesList.Should().Contain(new PackageReference("Spectre.Console", "0.45.0"));
+        references.Should().BeEmpty();
     }
 
     [Fact]
@@ -59,7 +91,7 @@ public class ProjectParserTests
         var tempFile = temp.CreateFile("lib.csproj", content);
 
         // Act
-        var (project, _) = _parser.Parse(tempFile);
+        var (project, _, _) = _parser.Parse(tempFile);
 
         // Assert
         project.Type.Should().Be(ProjectType.Library);
@@ -81,7 +113,7 @@ public class ProjectParserTests
         var tempFile = temp.CreateFile("MyProject.Tests.csproj", content);
 
         // Act
-        var (project, _) = _parser.Parse(tempFile);
+        var (project, _, _) = _parser.Parse(tempFile);
 
         // Assert
         project.Type.Should().Be(ProjectType.Test);
@@ -104,7 +136,7 @@ public class ProjectParserTests
         var tempFile = temp.CreateFile("test-prop.csproj", content);
 
         // Act
-        var (project, _) = _parser.Parse(tempFile);
+        var (project, _, _) = _parser.Parse(tempFile);
 
         // Assert
         project.Type.Should().Be(ProjectType.Test);
@@ -126,7 +158,7 @@ public class ProjectParserTests
         var tempFile = temp.CreateFile("multi.csproj", content);
 
         // Act
-        var (project, _) = _parser.Parse(tempFile);
+        var (project, _, _) = _parser.Parse(tempFile);
 
         // Assert
         project.Framework.Should().Be("net8.0;net9.0;net10.0");
@@ -149,7 +181,7 @@ public class ProjectParserTests
         var tempFile = temp.CreateFile("no-refs.csproj", content);
 
         // Act
-        var (project, references) = _parser.Parse(tempFile);
+        var (project, references, _) = _parser.Parse(tempFile);
         var referencesList = references.ToList();
 
         // Assert
@@ -205,7 +237,7 @@ public class ProjectParserTests
         var tempFile = temp.CreateFile("no-framework.csproj", content);
 
         // Act
-        var (project, _) = _parser.Parse(tempFile);
+        var (project, _, _) = _parser.Parse(tempFile);
 
         // Assert
         project.Framework.Should().Be("unknown");
@@ -228,8 +260,8 @@ public class ProjectParserTests
         var tempFile = temp.CreateFile("ids.csproj", content);
 
         // Act
-        var (project1, _) = _parser.Parse(tempFile);
-        var (project2, _) = _parser.Parse(tempFile);
+        var (project1, _, _) = _parser.Parse(tempFile);
+        var (project2, _, _) = _parser.Parse(tempFile);
 
         // Assert - same path should produce same ID (deterministic)
         project1.Id.Should().Be(project2.Id);
@@ -253,8 +285,8 @@ public class ProjectParserTests
         var file2 = temp.CreateFile("second.csproj", content);
 
         // Act
-        var (project1, _) = _parser.Parse(file1);
-        var (project2, _) = _parser.Parse(file2);
+        var (project1, _, _) = _parser.Parse(file1);
+        var (project2, _, _) = _parser.Parse(file2);
 
         // Assert - different paths should produce different IDs
         project1.Id.Should().NotBe(project2.Id);
@@ -277,7 +309,7 @@ public class ProjectParserTests
         var tempFile = temp.CreateFile("paths.csproj", content);
 
         // Act
-        var (project, _) = _parser.Parse(tempFile);
+        var (project, _, _) = _parser.Parse(tempFile);
 
         // Assert
         project.FullPath.Should().Be(tempFile);

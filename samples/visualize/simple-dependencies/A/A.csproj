@@ -4,4 +4,10 @@
     <ProjectReference Include="..\B\B.csproj"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console"/>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+  </ItemGroup>
+
 </Project>

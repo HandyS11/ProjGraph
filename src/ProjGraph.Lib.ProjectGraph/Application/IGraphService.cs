@@ -11,6 +11,7 @@ public interface IGraphService
     /// Builds a solution or project graph from the specified path.
     /// </summary>
     /// <param name="path">The file path to the solution or project.</param>
+    /// <param name="includePackages">Whether to include NuGet package dependencies in the graph.</param>
     /// <returns>A <see cref="SolutionGraph"/> representing the structure of the solution or project.</returns>
-    SolutionGraph BuildGraph(string path);
+    SolutionGraph BuildGraph(string path, bool includePackages = false);
 }

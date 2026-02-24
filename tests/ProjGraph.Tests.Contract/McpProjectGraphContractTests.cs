@@ -59,9 +59,9 @@ public class McpProjectGraphContractTests
         var method = type.GetMethod("GetProjectGraphAsync");
         var parameters = method!.GetParameters();
 
-        // Assert parameters exist (path, showTitle, cancellationToken)
-        parameters.Should().HaveCount(3,
-            "GetProjectGraph should have 'path', 'showTitle', and 'cancellationToken' parameters");
+        // Assert parameters exist (path, showTitle, includePackages, cancellationToken)
+        parameters.Should().HaveCount(4,
+            "GetProjectGraph should have 'path', 'showTitle', 'includePackages', and 'cancellationToken' parameters");
 
         var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
         pathParam.ParameterType.Should().Be<string>();
@@ -71,6 +71,11 @@ public class McpProjectGraphContractTests
         titleParam.ParameterType.Should().Be<bool>();
         titleParam.IsOptional.Should().BeTrue();
         titleParam.DefaultValue.Should().Be(true);
+
+        var pkgParam = parameters.Should().ContainSingle(p => p.Name == "includePackages").Which;
+        pkgParam.ParameterType.Should().Be<bool>();
+        pkgParam.IsOptional.Should().BeTrue();
+        pkgParam.DefaultValue.Should().Be(false);
 
         var ctParam = parameters.Should().ContainSingle(p => p.Name == "cancellationToken").Which;
         ctParam.ParameterType.Should().Be<CancellationToken>();

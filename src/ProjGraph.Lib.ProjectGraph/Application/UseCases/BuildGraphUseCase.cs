@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
+using System.Security.Cryptography;
+using System.Text;
 using System.Xml;
 
 namespace ProjGraph.Lib.ProjectGraph.Application.UseCases;
@@ -28,10 +30,11 @@ public partial class BuildGraphUseCase(
     /// Executes the use case to build a solution graph from the specified file path.
     /// </summary>
     /// <param name="path">The file path to the solution or project file.</param>
+    /// <param name="includePackages">Whether to include NuGet package dependencies in the graph.</param>
     /// <returns>A <see cref="ProjGraph.Core.Models.SolutionGraph"/> representing the solution structure.</returns>
     /// <exception cref="FileNotFoundException">Thrown when the specified file does not exist.</exception>
     /// <exception cref="ArgumentException">Thrown when the file type is unsupported.</exception>
-    public SolutionGraph Execute(string path)
+    public SolutionGraph Execute(string path, bool includePackages = false)
     {
         if (!fileSystem.FileExists(path))
         {
@@ -51,6 +54,7 @@ public partial class BuildGraphUseCase(
         var projects = new List<Project>();
         var dependencies = new List<Dependency>();
         var pathToProject = new Dictionary<string, Project>();
+        var packageToProject = new Dictionary<(string Name, string Version), Project>();
         var rawDependencies = new List<(string sourcePath, string targetPath)>();
 
         var processedPaths = projectFilePaths
@@ -62,7 +66,7 @@ public partial class BuildGraphUseCase(
         {
             try
             {
-                var (project, refs) = projectParser.Parse(fullPath);
+                var (project, refs, packages) = projectParser.Parse(fullPath);
                 projects.Add(project);
                 pathToProject[normalizedPath] = project;
 
@@ -70,6 +74,32 @@ public partial class BuildGraphUseCase(
                     .Select(r => discoveryService.ResolveProjectReferencePath(fullPath, r))
                     .Select(discoveryService.NormalizePath)
                     .Select(np => (normalizedPath, np)));
+
+                if (includePackages)
+                {
+                    foreach (var pkg in packages)
+                    {
+                        if (!packageToProject.TryGetValue((pkg.Name, pkg.Version), out var packageNode))
+                        {
+                            // Create a deterministic ID based on package name and version
+                            var pkgKey = $"{pkg.Name}:{pkg.Version}";
+                            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(pkgKey));
+                            var pkgId = new Guid(hash.AsMemory(0, 16).Span);
+
+                            packageNode = new Project(
+                                pkgId,
+                                pkg.Name,
+                                pkg.Version,
+                                pkg.Version,
+                                project.Framework,
+                                ProjectType.Package
+                            );
+                            packageToProject[(pkg.Name, pkg.Version)] = packageNode;
+                        }
+
+                        dependencies.Add(new Dependency(project.Id, packageNode.Id, DependencyType.PackageReference));
+                    }
+                }
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or XmlException)
             {
@@ -77,6 +107,9 @@ public partial class BuildGraphUseCase(
                 console.WriteWarning($"Skipped project '{Path.GetFileName(fullPath)}': {ex.Message}");
             }
         }
+
+        // Add all unique packages to the projects list
+        projects.AddRange(packageToProject.Values);
 
         dependencies.AddRange(rawDependencies
             .Select(d => (

@@ -60,7 +60,10 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
         if (options?.ShowTitle ?? true)
         {
             var graphName = Markup.Escape(graph.Name.Trim());
-            RenderConsole.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]") { Justification = Justify.Left });
+            RenderConsole.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]")
+            {
+                Justification = Justify.Left
+            });
         }
 
         RenderConsole.MarkupLine("[bold blue]Projects[/]");
@@ -77,7 +80,8 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
         {
             ProjectType.Executable => "🚀",
             ProjectType.Test => "🧪",
-            _ => "📦"
+            ProjectType.Package => "📦",
+            _ => "🔷"
         };
     }
 
@@ -105,8 +109,8 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
         return
         [
             .. cycles
-            .Where(c => c.Count > 1)
-            .SelectMany(c => c)
+                .Where(c => c.Count > 1)
+                .SelectMany(c => c)
         ];
     }
 

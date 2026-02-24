@@ -63,11 +63,24 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
     private void RenderProject(Project project, bool isLastProject, HashSet<Guid> cyclicProjectIds)
     {
         var pPrefix = isLastProject ? "└── " : "├── ";
-        var color = cyclicProjectIds.Contains(project.Id) ? "red" : "green";
         var typeIcon = GetProjectTypeIcon(project.Type);
-        var projectName = Markup.Escape(project.Name.Trim());
 
-        RenderConsole.MarkupLine($"{pPrefix}{typeIcon} [{color}]{projectName}[/]");
+        string label;
+        if (project.Type is ProjectType.Package)
+        {
+            // FullPath holds the version for package nodes
+            var version = Markup.Escape(project.FullPath.Trim());
+            var packageName = Markup.Escape(project.Name.Trim());
+            label = $"{pPrefix}{typeIcon} [yellow]{packageName}[/] [dim yellow]({version})[/]";
+        }
+        else
+        {
+            var color = cyclicProjectIds.Contains(project.Id) ? "red" : "green";
+            var projectName = Markup.Escape(project.Name.Trim());
+            label = $"{pPrefix}{typeIcon} [{color}]{projectName}[/]";
+        }
+
+        RenderConsole.MarkupLine(label);
     }
 
     /// <summary>
@@ -122,9 +135,21 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
     {
         var dPrefix = isLastProject ? "    " : "│   ";
         var dConnector = isLastDep ? "└── " : "├── ";
-        var depColor = cyclicProjectIds.Contains(dependency.Id) ? "red" : "grey";
-        var depName = Markup.Escape(dependency.Name.Trim());
 
-        RenderConsole.MarkupLine($"{dPrefix}{dConnector}[italic {depColor}]→ {depName}[/]");
+        string label;
+        if (dependency.Type is ProjectType.Package)
+        {
+            var version = Markup.Escape(dependency.FullPath.Trim());
+            var depName = Markup.Escape(dependency.Name.Trim());
+            label = $"{dPrefix}{dConnector}[italic yellow]→ {depName}[/] [dim yellow]({version})[/]";
+        }
+        else
+        {
+            var depColor = cyclicProjectIds.Contains(dependency.Id) ? "red" : "grey";
+            var depName = Markup.Escape(dependency.Name.Trim());
+            label = $"{dPrefix}{dConnector}[italic {depColor}]→ {depName}[/]";
+        }
+
+        RenderConsole.MarkupLine(label);
     }
 }

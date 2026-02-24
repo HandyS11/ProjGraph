@@ -11,6 +11,7 @@ public interface IProjectParser
     /// Parses the specified project file and extracts project details and its references.
     /// </summary>
     /// <param name="projectPath">The file path to the project file to be parsed.</param>
-    /// <returns>A tuple containing the parsed <see cref="Project"/> and a collection of its project references.</returns>
-    (Project Project, IEnumerable<string> ProjectReferences) Parse(string projectPath);
+    /// <returns>A tuple containing the parsed <see cref="Project"/>, a collection of its project references, and a collection of its package references.</returns>
+    (Project Project, IEnumerable<string> ProjectReferences, IEnumerable<PackageReference> PackageReferences) Parse(
+        string projectPath);
 }

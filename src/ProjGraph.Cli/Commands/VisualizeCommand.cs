@@ -73,6 +73,13 @@ internal sealed class VisualizeCommand(
         public bool ShowTitle { get; init; } = true;
 
         /// <summary>
+        /// Gets or sets a value indicating whether to include NuGet package dependencies.
+        /// </summary>
+        [CommandOption("--include-packages")]
+        [Description("Include NuGet package dependencies in the graph")]
+        public bool IncludePackages { get; init; }
+
+        /// <summary>
         /// Gets or sets the output file path.
         /// If specified, the diagram will be written to this file instead of stdout.
         /// </summary>
@@ -138,14 +145,16 @@ internal sealed class VisualizeCommand(
             {
                 // For mermaid, we want clean stdout, so all status goes to stderr
                 console.WriteInfo($"Analyzing {settings.Path}...");
-                graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
+                graph = await Task.Run(() => graphService.BuildGraph(settings.Path, settings.IncludePackages),
+                    cancellationToken);
             }
             else
             {
                 SolutionGraph? result = null;
                 await console.RunWithStatusAsync($"Analyzing [blue]{settings.Path}[/]...",
                     async () => result =
-                        await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken),
+                        await Task.Run(() => graphService.BuildGraph(settings.Path, settings.IncludePackages),
+                            cancellationToken),
                     cancellationToken);
 
                 if (result is null)
@@ -159,7 +168,7 @@ internal sealed class VisualizeCommand(
             var wrapInMarkdownFence = DiagramOutputWriter.ShouldWrapInMarkdownFence(settings.Output);
 
             var rendered = GetRenderer(settings.NormalizedFormat)
-                .Render(graph, new DiagramOptions(settings.ShowTitle, wrapInMarkdownFence));
+                .Render(graph, new DiagramOptions(settings.ShowTitle, wrapInMarkdownFence, settings.IncludePackages));
 
             await outputWriter.WriteAsync(rendered, settings.Output, cancellationToken);
 

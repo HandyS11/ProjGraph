@@ -17,6 +17,13 @@ public enum DependencyType
 }
 
 /// <summary>
+/// Represents a NuGet package reference in a project.
+/// </summary>
+/// <param name="Name">The package ID.</param>
+/// <param name="Version">The package version.</param>
+public record PackageReference(string Name, string Version);
+
+/// <summary>
 /// Represents a dependency between two entities in a project.
 /// </summary>
 /// <param name="SourceId">The unique identifier of the source entity.</param>

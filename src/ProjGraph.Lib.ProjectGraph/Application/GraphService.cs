@@ -10,8 +10,8 @@ namespace ProjGraph.Lib.ProjectGraph.Application;
 public class GraphService(BuildGraphUseCase buildGraphUseCase) : IGraphService
 {
     /// <inheritdoc />
-    public SolutionGraph BuildGraph(string path)
+    public SolutionGraph BuildGraph(string path, bool includePackages = false)
     {
-        return buildGraphUseCase.Execute(path);
+        return buildGraphUseCase.Execute(path, includePackages);
     }
 }

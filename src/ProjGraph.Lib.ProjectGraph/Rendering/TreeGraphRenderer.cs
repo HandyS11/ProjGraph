@@ -119,16 +119,28 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
             var isCycle = currentPath.Contains(dep!.Id);
             var typeIcon = GetProjectTypeIcon(dep.Type);
             var isCyclicProject = cyclicProjectIds.Contains(dep.Id);
-            var projectName = Markup.Escape(dep.Name.Trim());
 
             if (isCycle)
             {
-                parent.AddNode($"{typeIcon} [red]{projectName}[/] [italic red](cycle detected)[/]");
+                var depName = Markup.Escape(dep.Name.Trim());
+                parent.AddNode($"[red]{depName}[/] [italic red](cycle detected)[/]");
                 continue;
             }
 
-            var color = isCyclicProject ? "red" : "green";
-            var label = $"{typeIcon} [{color}]{projectName}[/]";
+            string label;
+            if (dep.Type == ProjectType.Package)
+            {
+                var version = Markup.Escape(dep.FullPath.Trim());
+                var depName = Markup.Escape(dep.Name.Trim());
+                label = $"{typeIcon} [yellow]{depName}[/] [dim yellow]({version})[/]";
+            }
+            else
+            {
+                var color = isCyclicProject ? "red" : "green";
+                var depName = Markup.Escape(dep.Name.Trim());
+                label = $"[{color}]{depName}[/]";
+            }
+
             var node = parent.AddNode(label);
 
             AddChildrenRecursive(node, dep, graph, currentPath, globalVisited, cyclicProjectIds);
@@ -150,8 +162,16 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
     private static string GetProjectMarkup(Project project, HashSet<Guid> cyclicProjectIds)
     {
         var typeIcon = GetProjectTypeIcon(project.Type);
+
+        if (project.Type == ProjectType.Package)
+        {
+            var version = Markup.Escape(project.FullPath.Trim());
+            var projectName = Markup.Escape(project.Name.Trim());
+            return $"{typeIcon} [yellow]{projectName}[/] [dim yellow]({version})[/]";
+        }
+
         var color = cyclicProjectIds.Contains(project.Id) ? "red" : "green";
-        var projectName = Markup.Escape(project.Name.Trim());
-        return $"{typeIcon} [{color}]{projectName}[/]";
+        var name = Markup.Escape(project.Name.Trim());
+        return $"{typeIcon} [{color}]{name}[/]";
     }
 }
