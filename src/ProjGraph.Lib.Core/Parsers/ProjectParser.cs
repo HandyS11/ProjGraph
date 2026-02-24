@@ -4,6 +4,7 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 
 namespace ProjGraph.Lib.Core.Parsers;
 
@@ -114,7 +115,7 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
                         return version;
                     }
                 }
-                catch (Exception ex) when (ex is IOException or InvalidOperationException)
+                catch (Exception ex) when (ex is IOException or InvalidOperationException or XmlException)
                 {
                     // If we can't read the props file, continue searching up
                 }
