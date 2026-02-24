@@ -25,6 +25,7 @@ public static class CliTestHelpers
     {
         var services = new ServiceCollection();
         services.AddProjGraphLib();
+        services.AddSingleton<DiagramOutputWriter>();
 
         var registrar = new TypeRegistrar(services);
         var app = new CommandApp(registrar);

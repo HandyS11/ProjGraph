@@ -1,3 +1,4 @@
+using ProjGraph.Cli.Infrastructure;
 using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
@@ -22,12 +23,12 @@ namespace ProjGraph.Cli.Commands;
 /// <param name="efService">The Entity Framework analysis service for discovering and analyzing contexts and snapshots.</param>
 /// <param name="mermaidRenderer">The diagram renderer for producing Mermaid ERD output.</param>
 /// <param name="console">The output console for writing results and errors.</param>
-/// <param name="fileSystem">The file system abstraction for disk operations.</param>
+/// <param name="outputWriter">The helper for writing rendered output to file or console.</param>
 internal sealed class ErdCommand(
     IEfAnalysisService efService,
     IDiagramRenderer<EfModel> mermaidRenderer,
     IOutputConsole console,
-    IFileSystem fileSystem)
+    DiagramOutputWriter outputWriter)
     : AsyncCommand<ErdCommand.Settings>
 {
     /// <summary>
@@ -130,26 +131,12 @@ internal sealed class ErdCommand(
 
             var model = await AnalyzeModelAsync(targetPath, settings.ContextName, cancellationToken);
 
-            var wrapInMarkdownFence = settings.Output?.EndsWith(".mmd", StringComparison.OrdinalIgnoreCase) is false;
+            var wrapInMarkdownFence = DiagramOutputWriter.ShouldWrapInMarkdownFence(settings.Output);
 
             var mermaidOutput =
                 mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle, wrapInMarkdownFence));
 
-            if (settings.Output is not null)
-            {
-                var directory = fileSystem.GetDirectoryName(settings.Output);
-                if (!string.IsNullOrEmpty(directory))
-                {
-                    fileSystem.CreateDirectory(directory);
-                }
-
-                await fileSystem.WriteAllTextAsync(settings.Output, mermaidOutput, cancellationToken);
-                console.WriteInfo($"Saved to {settings.Output}");
-            }
-            else
-            {
-                console.WriteLine(mermaidOutput);
-            }
+            await outputWriter.WriteAsync(mermaidOutput, settings.Output, cancellationToken);
 
             return 0;
         }

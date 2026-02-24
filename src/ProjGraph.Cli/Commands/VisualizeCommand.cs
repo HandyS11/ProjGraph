@@ -1,3 +1,4 @@
+using ProjGraph.Cli.Infrastructure;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.ProjectGraph.Application;
@@ -21,12 +22,12 @@ namespace ProjGraph.Cli.Commands;
 /// <param name="graphService">The graph service used to build the dependency graph.</param>
 /// <param name="renderers">The collection of diagram renderers for different output formats.</param>
 /// <param name="console">The output console for writing results and errors.</param>
-/// <param name="fileSystem">The file system abstraction for disk operations.</param>
+/// <param name="outputWriter">The helper for writing rendered output to file or console.</param>
 internal sealed class VisualizeCommand(
     IGraphService graphService,
     IEnumerable<IDiagramRenderer<SolutionGraph>> renderers,
     IOutputConsole console,
-    IFileSystem fileSystem)
+    DiagramOutputWriter outputWriter)
     : AsyncCommand<VisualizeCommand.Settings>
 {
     private const string FormatMermaid = "mermaid";
@@ -155,26 +156,12 @@ internal sealed class VisualizeCommand(
                 graph = result;
             }
 
-            var wrapInMarkdownFence = settings.Output?.EndsWith(".mmd", StringComparison.OrdinalIgnoreCase) is false;
+            var wrapInMarkdownFence = DiagramOutputWriter.ShouldWrapInMarkdownFence(settings.Output);
 
             var rendered = GetRenderer(settings.NormalizedFormat)
                 .Render(graph, new DiagramOptions(settings.ShowTitle, wrapInMarkdownFence));
 
-            if (settings.Output is not null)
-            {
-                var directory = fileSystem.GetDirectoryName(settings.Output);
-                if (!string.IsNullOrEmpty(directory))
-                {
-                    fileSystem.CreateDirectory(directory);
-                }
-
-                await fileSystem.WriteAllTextAsync(settings.Output, rendered, cancellationToken);
-                console.WriteInfo($"Saved to {settings.Output}");
-            }
-            else
-            {
-                console.WriteLine(rendered);
-            }
+            await outputWriter.WriteAsync(rendered, settings.Output, cancellationToken);
 
             return 0;
         }
