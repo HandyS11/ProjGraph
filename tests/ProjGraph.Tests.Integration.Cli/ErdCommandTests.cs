@@ -22,7 +22,10 @@ public partial class ErdCommandTests
         var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
         {
             // Debug: verify the command and path
-            var args = new[] { "erd", contextPath };
+            var args = new[]
+            {
+                "erd", contextPath
+            };
             resultCode = app.Run(args);
         });
 
@@ -200,6 +203,42 @@ public partial class ErdCommandTests
         // Assert — erDiagram should still be present but no ---\ntitle: line
         capturedOutput.Should().Contain("erDiagram");
         capturedOutput.Should().NotContain("title:");
+    }
+
+    [Fact]
+    public async Task ErdCommand_FileOutput_ShouldSaveToDisk()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var contextPath = CliTestHelpers.GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
+        var outputPath = Path.Combine(Path.GetTempPath(), "erd_" + Guid.NewGuid() + ".md");
+
+        try
+        {
+            // Act
+            var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            {
+                var result = app.Run(["erd", contextPath, "--output", outputPath]);
+                result.Should().Be(0);
+            });
+
+            // Assert
+            capturedOutput.Should().Contain($"Saved to {outputPath}");
+            capturedOutput.Should().NotContain("erDiagram");
+
+            File.Exists(outputPath).Should().BeTrue();
+            var fileContent = await File.ReadAllTextAsync(outputPath);
+            fileContent.Should().Contain("```mermaid");
+            fileContent.Should().Contain("erDiagram");
+            fileContent.Should().Contain("Author {");
+        }
+        finally
+        {
+            if (File.Exists(outputPath))
+            {
+                File.Delete(outputPath);
+            }
+        }
     }
 
     private static string ExtractMermaidBlock(string content)

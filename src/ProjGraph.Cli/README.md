@@ -19,8 +19,14 @@ Visualize solution/project dependencies as ASCII tree or Mermaid diagram.
 # ASCII tree (default)
 projgraph visualize ./MySolution.sln
 
-# Mermaid diagram
+# Mermaid diagram (redirecting stdout)
 projgraph visualize ./MySolution.slnx --format mermaid > graph.mmd
+
+# Mermaid diagram (using output flag)
+projgraph visualize ./MySolution.slnx --format mermaid --output graph.mmd
+
+# Save as fenced Markdown
+projgraph visualize ./MySolution.slnx --format mermaid --output docs/diagram.md
 
 # Mermaid diagram without title header
 projgraph visualize ./MySolution.slnx --format mermaid --show-title false
@@ -30,6 +36,7 @@ projgraph visualize ./MySolution.slnx --format mermaid --show-title false
 
 - `[path]`: Path to `.sln`, `.slnx`, or `.csproj` file.
 - `-f|--format`: Output format (`flat`, `tree`, `mermaid`). Default: `mermaid`.
+- `-o|--output <file>`: Write diagram directly to file. Auto-creates directories.
 - `--show-title <true|false>`: Include diagram title. Default: `true`.
 
 **Supports**: `.sln`, `.slnx`, `.csproj`
@@ -53,8 +60,11 @@ projgraph erd ./Data/MyDbContext.cs
 # Generate ERD from ModelSnapshot (useful if migrations already exist)
 projgraph erd ./Migrations/MyDbContextModelSnapshot.cs
 
-# Save to file
+# Save to file (stdout)
 projgraph erd ./Data/MyDbContext.cs > database-schema.md
+
+# Save to file (flag)
+projgraph erd ./Data/MyDbContext.cs --output ./docs/database-schema.md
 
 # Generate without title header
 projgraph erd ./Data/MyDbContext.cs --show-title false
@@ -64,6 +74,7 @@ projgraph erd ./Data/MyDbContext.cs --show-title false
 
 - `[path]`: Optional path to `.cs` file. Searches current directory if not specified.
 - `-c|--context <NAME>`: Optional context/snapshot name.
+- `-o|--output <file>`: Write diagram directly to file. Auto-creates directories.
 - `--show-title <true|false>`: Include diagram title. Default: `true`.
 
 **Features**:
@@ -110,8 +121,11 @@ projgraph classdiagram ./Models/Person.cs --depth 2
 # Hide properties and functions
 projgraph classdiagram ./Models/Person.cs --properties false --functions false
 
-# Save to file
+# Save to file (stdout)
 projgraph classdiagram ./Models/Person.cs > person-hierarchy.md
+
+# Save to file (flag)
+projgraph classdiagram ./Models/Person.cs --output docs/person.mmd
 ```
 
 **Settings**:
@@ -119,6 +133,7 @@ projgraph classdiagram ./Models/Person.cs > person-hierarchy.md
 - `[path]`: Required path to the `.cs` file to analyze.
 - `-i|--inheritance`: Search workspace for base classes and interfaces. Default: `false`.
 - `-d|--dependencies`: Search and include other classes used as properties/fields. Default: `false`.
+- `-o|--output <file>`: Write diagram directly to file. Auto-creates directories.
 - `--properties <true|false>`: Display properties and fields in diagram. Default: `true`.
 - `--functions <true|false>`: Display functions/methods in diagram. Default: `true`.
 - `--depth <INTEGER>`: How many levels of relationships to follow. Default: `1`.

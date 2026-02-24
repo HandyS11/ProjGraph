@@ -98,6 +98,74 @@ public class VisualizeCommandTests
     }
 
     [Fact]
+    public async Task VisualizeCommand_FileOutput_ShouldSaveToDiskAndWrapInFence()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var slnxPath = CliTestHelpers.GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
+        var outputPath = Path.Combine(Path.GetTempPath(), "visualize_" + Guid.NewGuid() + ".md");
+
+        try
+        {
+            // Act
+            var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            {
+                var result = app.Run(["visualize", slnxPath, "--output", outputPath]);
+                result.Should().Be(0);
+            });
+
+            // Assert
+            capturedOutput.Should().Contain($"Saved to {outputPath}");
+            capturedOutput.Should().NotContain("graph TD");
+
+            File.Exists(outputPath).Should().BeTrue();
+            var fileContent = await File.ReadAllTextAsync(outputPath);
+            fileContent.Should().Contain("```mermaid");
+            fileContent.Should().Contain("graph TD");
+            fileContent.Should().Contain("A --> B");
+        }
+        finally
+        {
+            if (File.Exists(outputPath))
+            {
+                File.Delete(outputPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task VisualizeCommand_FileOutput_MmdExtension_ShouldNotWrapInFence()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var slnxPath = CliTestHelpers.GetSamplePath(@"visualize\simple-dependencies\simple-dependencies.slnx");
+        var outputPath = Path.Combine(Path.GetTempPath(), "visualize_" + Guid.NewGuid() + ".mmd");
+
+        try
+        {
+            // Act
+            CliTestHelpers.CaptureConsoleOutput(() =>
+            {
+                var result = app.Run(["visualize", slnxPath, "--output", outputPath]);
+                result.Should().Be(0);
+            });
+
+            // Assert
+            File.Exists(outputPath).Should().BeTrue();
+            var fileContent = await File.ReadAllTextAsync(outputPath);
+            fileContent.Should().NotContain("```mermaid");
+            fileContent.Should().Contain("graph TD");
+        }
+        finally
+        {
+            if (File.Exists(outputPath))
+            {
+                File.Delete(outputPath);
+            }
+        }
+    }
+
+    [Fact]
     public void VisualizeCommand_SimpleDependencies_TreeFormat_ShouldShowHierarchy()
     {
         // Arrange

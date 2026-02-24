@@ -21,10 +21,12 @@ namespace ProjGraph.Cli.Commands;
 /// <param name="graphService">The graph service used to build the dependency graph.</param>
 /// <param name="renderers">The collection of diagram renderers for different output formats.</param>
 /// <param name="console">The output console for writing results and errors.</param>
+/// <param name="fileSystem">The file system abstraction for disk operations.</param>
 internal sealed class VisualizeCommand(
     IGraphService graphService,
     IEnumerable<IDiagramRenderer<SolutionGraph>> renderers,
-    IOutputConsole console)
+    IOutputConsole console,
+    IFileSystem fileSystem)
     : AsyncCommand<VisualizeCommand.Settings>
 {
     private const string FormatMermaid = "mermaid";
@@ -68,6 +70,14 @@ internal sealed class VisualizeCommand(
         [Description("Include the diagram title (default true)")]
         [DefaultValue(true)]
         public bool ShowTitle { get; init; } = true;
+
+        /// <summary>
+        /// Gets or sets the output file path.
+        /// If specified, the diagram will be written to this file instead of stdout.
+        /// </summary>
+        [CommandOption("-o|--output <path>")]
+        [Description("The output file path")]
+        public string? Output { get; init; }
 
         /// <summary>
         /// Validates the settings provided for the command.
@@ -122,29 +132,48 @@ internal sealed class VisualizeCommand(
     {
         try
         {
+            SolutionGraph graph;
             if (settings.NormalizedFormat.Equals(FormatMermaid, StringComparison.OrdinalIgnoreCase))
             {
                 // For mermaid, we want clean stdout, so all status goes to stderr
                 console.WriteInfo($"Analyzing {settings.Path}...");
-
-                var graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
-                console.WriteLine(GetRenderer(settings.NormalizedFormat)
-                    .Render(graph, new DiagramOptions(settings.ShowTitle)));
+                graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken);
             }
             else
             {
-                SolutionGraph? graph = null;
+                SolutionGraph? result = null;
                 await console.RunWithStatusAsync($"Analyzing [blue]{settings.Path}[/]...",
-                    async () => graph = await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken),
+                    async () => result =
+                        await Task.Run(() => graphService.BuildGraph(settings.Path), cancellationToken),
                     cancellationToken);
 
-                if (graph is null)
+                if (result is null)
                 {
                     return 0;
                 }
 
-                console.WriteLine(GetRenderer(settings.NormalizedFormat)
-                    .Render(graph, new DiagramOptions(settings.ShowTitle)));
+                graph = result;
+            }
+
+            var wrapInMarkdownFence = settings.Output?.EndsWith(".mmd", StringComparison.OrdinalIgnoreCase) is false;
+
+            var rendered = GetRenderer(settings.NormalizedFormat)
+                .Render(graph, new DiagramOptions(settings.ShowTitle, wrapInMarkdownFence));
+
+            if (settings.Output is not null)
+            {
+                var directory = fileSystem.GetDirectoryName(settings.Output);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    fileSystem.CreateDirectory(directory);
+                }
+
+                await fileSystem.WriteAllTextAsync(settings.Output, rendered, cancellationToken);
+                console.WriteInfo($"Saved to {settings.Output}");
+            }
+            else
+            {
+                console.WriteLine(rendered);
             }
 
             return 0;
