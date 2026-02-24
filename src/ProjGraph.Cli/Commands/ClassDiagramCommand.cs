@@ -17,10 +17,12 @@ namespace ProjGraph.Cli.Commands;
 /// <param name="analysisService">The class analysis service used to analyze C# files.</param>
 /// <param name="mermaidRenderer">The diagram renderer for producing Mermaid class diagram output.</param>
 /// <param name="console">The output console for writing results and errors.</param>
+/// <param name="fileSystem">The file system abstraction for disk operations.</param>
 internal sealed class ClassDiagramCommand(
     IClassAnalysisService analysisService,
     IDiagramRenderer<ClassModel> mermaidRenderer,
-    IOutputConsole console)
+    IOutputConsole console,
+    IFileSystem fileSystem)
     : AsyncCommand<ClassDiagramCommand.Settings>
 {
     /// <summary>
@@ -88,6 +90,14 @@ internal sealed class ClassDiagramCommand(
         public bool ShowTitle { get; init; } = true;
 
         /// <summary>
+        /// Gets or sets the output file path.
+        /// If specified, the diagram will be written to this file instead of stdout.
+        /// </summary>
+        [CommandOption("-o|--output <path>")]
+        [Description("The output file path")]
+        public string? Output { get; init; }
+
+        /// <summary>
         /// Validates the settings provided by the user.
         /// Ensures the file path is valid, exists, and points to a .cs file.
         /// </summary>
@@ -139,8 +149,26 @@ internal sealed class ClassDiagramCommand(
 
             var model = await analysisService.AnalyzeFileAsync(settings.Path, options);
 
-            var mermaidOutput = mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle));
-            console.WriteLine(mermaidOutput);
+            var wrapInMarkdownFence = settings.Output?.EndsWith(".mmd", StringComparison.OrdinalIgnoreCase) is false;
+
+            var mermaidOutput =
+                mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle, wrapInMarkdownFence));
+
+            if (settings.Output is not null)
+            {
+                var directory = fileSystem.GetDirectoryName(settings.Output);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    fileSystem.CreateDirectory(directory);
+                }
+
+                await fileSystem.WriteAllTextAsync(settings.Output, mermaidOutput, cancellationToken);
+                console.WriteInfo($"Saved to {settings.Output}");
+            }
+            else
+            {
+                console.WriteLine(mermaidOutput);
+            }
 
             return 0;
         }

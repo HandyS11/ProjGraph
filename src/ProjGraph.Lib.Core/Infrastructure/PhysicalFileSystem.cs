@@ -69,6 +69,28 @@ public class PhysicalFileSystem : IFileSystem
     }
 
     /// <summary>
+    /// Asynchronously writes all text to a file at the specified path.
+    /// </summary>
+    /// <param name="path">The path to the file.</param>
+    /// <param name="contents">The string content to write.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public Task WriteAllTextAsync(string path, string contents, CancellationToken cancellationToken = default)
+    {
+        // File.WriteAllTextAsync defaults to UTF-8 without BOM in .NET
+        return File.WriteAllTextAsync(path, contents, cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates all directories in the specified path unless they already exist.
+    /// </summary>
+    /// <param name="path">The directory path to create.</param>
+    public void CreateDirectory(string path)
+    {
+        Directory.CreateDirectory(path);
+    }
+
+    /// <summary>
     /// Gets the current working directory of the application.
     /// </summary>
     /// <returns>The current working directory path.</returns>

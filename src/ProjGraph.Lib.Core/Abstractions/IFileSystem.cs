@@ -49,6 +49,21 @@ public interface IFileSystem
     Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Asynchronously writes all text to a file at the specified path.
+    /// </summary>
+    /// <param name="path">The path to the file.</param>
+    /// <param name="contents">The string content to write.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task WriteAllTextAsync(string path, string contents, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates all directories in the specified path unless they already exist.
+    /// </summary>
+    /// <param name="path">The directory path to create.</param>
+    void CreateDirectory(string path);
+
+    /// <summary>
     /// Gets the current working directory of the application.
     /// </summary>
     /// <returns>The current directory path.</returns>

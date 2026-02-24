@@ -87,7 +87,7 @@ dotnet run --project src/ProjGraph.Mcp
 projgraph visualize ./MySolution.sln
 
 # Mermaid format for documentation
-projgraph visualize ./MySolution.slnx --format mermaid > docs/dependencies.mmd
+projgraph visualize ./MySolution.slnx --format mermaid --output docs/dependencies.mmd
 ```
 
 ### Generate Database Diagrams
@@ -100,7 +100,7 @@ projgraph erd ./Data/MyDbContext.cs
 projgraph erd ./Migrations/MyDbContextModelSnapshot.cs
 
 # Output to Markdown for documentation
-projgraph erd ./Data/MyDbContext.cs > docs/database-schema.md
+projgraph erd ./Data/MyDbContext.cs --output docs/database-schema.md
 ```
 
 ### Visualize Class Hierarchies

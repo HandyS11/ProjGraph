@@ -297,4 +297,40 @@ public sealed class ClassDiagramCommandTests : IDisposable
         capturedOutput.Should().Contain("[\"Svc\"]");
         capturedOutput.Should().NotContain("DoWork()");
     }
+
+    [Fact]
+    public async Task ClassDiagramCommand_FileOutput_ShouldSaveToDisk()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var userPath = CliTestHelpers.GetSamplePath(@"classdiagram\simple-hierarchy\Models\User.cs");
+        var outputPath = Path.Combine(Path.GetTempPath(), "classdiagram_" + Guid.NewGuid() + ".md");
+
+        try
+        {
+            // Act
+            var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            {
+                var result = app.Run(["classdiagram", userPath, "--output", outputPath]);
+                result.Should().Be(0);
+            });
+
+            // Assert
+            capturedOutput.Should().Contain($"Saved to {outputPath}");
+            capturedOutput.Should().NotContain("classDiagram");
+
+            File.Exists(outputPath).Should().BeTrue();
+            var fileContent = await File.ReadAllTextAsync(outputPath);
+            fileContent.Should().Contain("```mermaid");
+            fileContent.Should().Contain("classDiagram");
+            fileContent.Should().Contain("User");
+        }
+        finally
+        {
+            if (File.Exists(outputPath))
+            {
+                File.Delete(outputPath);
+            }
+        }
+    }
 }
