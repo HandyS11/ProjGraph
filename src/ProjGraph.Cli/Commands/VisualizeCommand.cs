@@ -155,7 +155,7 @@ internal sealed class VisualizeCommand(
             {
                 // For mermaid, we want clean stdout, so all status goes to stderr
                 console.WriteInfo($"Analyzing {settings.Path}...");
-                graph = await Task.Run(() => graphService.BuildGraph(settings.Path, settings.IncludePackages),
+                graph = await graphService.BuildGraphAsync(settings.Path, settings.IncludePackages,
                     cancellationToken);
             }
             else
@@ -163,7 +163,7 @@ internal sealed class VisualizeCommand(
                 SolutionGraph? result = null;
                 await console.RunWithStatusAsync($"Analyzing [blue]{settings.Path}[/]...",
                     async () => result =
-                        await Task.Run(() => graphService.BuildGraph(settings.Path, settings.IncludePackages),
+                        await graphService.BuildGraphAsync(settings.Path, settings.IncludePackages,
                             cancellationToken),
                     cancellationToken);
 

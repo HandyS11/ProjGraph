@@ -104,7 +104,7 @@ internal sealed class ProjGraphTools(
 
     [McpServerTool(Name = "get_project_graph")]
     [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
-    public Task<string> GetProjectGraphAsync(
+    public async Task<string> GetProjectGraphAsync(
         [Description("Absolute path to the project or solution file.")]
         string path,
         [Description("Whether to include the title in the diagram (default: true).")]
@@ -128,10 +128,10 @@ internal sealed class ProjGraphTools(
                 $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
         }
 
-        var graph = graphService.BuildGraph(path, includePackages);
+        var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
 
-        return Task.FromResult(graphRenderer.Render(graph,
-            new DiagramOptions(showTitle, false, includePackages)));
+        return graphRenderer.Render(graph,
+            new DiagramOptions(showTitle, false, includePackages));
     }
 
     [McpServerTool(Name = "get_erd")]

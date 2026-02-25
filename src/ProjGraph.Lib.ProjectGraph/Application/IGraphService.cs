@@ -12,6 +12,8 @@ public interface IGraphService
     /// </summary>
     /// <param name="path">The file path to the solution or project.</param>
     /// <param name="includePackages">Whether to include NuGet package dependencies in the graph.</param>
-    /// <returns>A <see cref="SolutionGraph"/> representing the structure of the solution or project.</returns>
-    SolutionGraph BuildGraph(string path, bool includePackages = false);
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task containing a <see cref="SolutionGraph"/> representing the structure of the solution or project.</returns>
+    Task<SolutionGraph> BuildGraphAsync(string path, bool includePackages = false,
+        CancellationToken cancellationToken = default);
 }

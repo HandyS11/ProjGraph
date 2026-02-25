@@ -10,8 +10,9 @@ namespace ProjGraph.Lib.ProjectGraph.Application;
 public class GraphService(BuildGraphUseCase buildGraphUseCase) : IGraphService
 {
     /// <inheritdoc />
-    public SolutionGraph BuildGraph(string path, bool includePackages = false)
+    public Task<SolutionGraph> BuildGraphAsync(string path, bool includePackages = false,
+        CancellationToken cancellationToken = default)
     {
-        return buildGraphUseCase.Execute(path, includePackages);
+        return Task.Run(() => buildGraphUseCase.Execute(path, includePackages), cancellationToken);
     }
 }

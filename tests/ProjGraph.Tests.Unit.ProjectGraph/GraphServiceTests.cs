@@ -26,7 +26,7 @@ public class GraphServiceTests
     }
 
     [Fact]
-    public void BuildGraph_FromCsproj_ShouldDiscoverAllDependencies()
+    public async Task BuildGraphAsync_FromCsproj_ShouldDiscoverAllDependencies()
     {
         // Arrange
         var projectAPath = Path.Combine(
@@ -43,7 +43,7 @@ public class GraphServiceTests
         }
 
         // Act
-        var graph = _graphService.BuildGraph(normalizedPath);
+        var graph = await _graphService.BuildGraphAsync(normalizedPath);
 
         // Assert
         graph.Should().NotBeNull();
@@ -67,32 +67,32 @@ public class GraphServiceTests
     }
 
     [Fact]
-    public void BuildGraph_ShouldThrowForNonExistentFile()
+    public async Task BuildGraphAsync_ShouldThrowForNonExistentFile()
     {
         // Arrange
         using var temp = new TestDirectory();
         var nonExistentPath = temp.GetTempFilePath(".sln");
 
         // Act & Assert
-        var act = () => _graphService.BuildGraph(nonExistentPath);
-        act.Should().Throw<FileNotFoundException>();
+        var act = () => _graphService.BuildGraphAsync(nonExistentPath);
+        await act.Should().ThrowAsync<FileNotFoundException>();
     }
 
     [Fact]
-    public void BuildGraph_ShouldThrowForUnsupportedFileType()
+    public async Task BuildGraphAsync_ShouldThrowForUnsupportedFileType()
     {
         // Arrange
         using var temp = new TestDirectory();
         var tempFile = temp.CreateFile("test.txt", "test content");
 
         // Act & Assert
-        var act = () => _graphService.BuildGraph(tempFile);
-        act.Should().Throw<ArgumentException>()
+        var act = () => _graphService.BuildGraphAsync(tempFile);
+        await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Unsupported file type*");
     }
 
     [Fact]
-    public void BuildGraph_FromSlnx_ShouldHandleEmptySolution()
+    public async Task BuildGraphAsync_FromSlnx_ShouldHandleEmptySolution()
     {
         // Arrange
         using var temp = new TestDirectory();
@@ -104,7 +104,7 @@ public class GraphServiceTests
         var tempSlnx = temp.CreateFile("empty.slnx", content);
 
         // Act
-        var graph = _graphService.BuildGraph(tempSlnx);
+        var graph = await _graphService.BuildGraphAsync(tempSlnx);
 
         // Assert
         graph.Should().NotBeNull();
@@ -113,7 +113,7 @@ public class GraphServiceTests
     }
 
     [Fact]
-    public void BuildGraph_ShouldSkipNonExistentProjectFiles()
+    public async Task BuildGraphAsync_ShouldSkipNonExistentProjectFiles()
     {
         // Arrange
 
@@ -127,7 +127,7 @@ public class GraphServiceTests
         var tempSlnx = temp.CreateFile("missing_projects.slnx", content);
 
         // Act
-        var graph = _graphService.BuildGraph(tempSlnx);
+        var graph = await _graphService.BuildGraphAsync(tempSlnx);
 
         // Assert
         graph.Should().NotBeNull();
@@ -135,7 +135,7 @@ public class GraphServiceTests
     }
 
     [Fact]
-    public void BuildGraph_ShouldSetCorrectGraphName()
+    public async Task BuildGraphAsync_ShouldSetCorrectGraphName()
     {
         // Arrange
 
@@ -148,7 +148,7 @@ public class GraphServiceTests
         var tempSlnx = temp.CreateFile("MySolution.slnx", content);
 
         // Act
-        var graph = _graphService.BuildGraph(tempSlnx);
+        var graph = await _graphService.BuildGraphAsync(tempSlnx);
 
         // Assert
         graph.Name.Should().Be("MySolution.slnx");
@@ -156,7 +156,7 @@ public class GraphServiceTests
     }
 
     [Fact]
-    public void BuildGraph_ShouldHandleProjectsWithoutDependencies()
+    public async Task BuildGraphAsync_ShouldHandleProjectsWithoutDependencies()
     {
         // Arrange
 
@@ -180,7 +180,7 @@ public class GraphServiceTests
         var slnxPath = temp.CreateFile("Solution.slnx", slnxContent);
 
         // Act
-        var graph = _graphService.BuildGraph(slnxPath);
+        var graph = await _graphService.BuildGraphAsync(slnxPath);
 
         // Assert
         graph.Projects.Should().HaveCount(1);
