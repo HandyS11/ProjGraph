@@ -8,6 +8,6 @@ namespace ProjGraph.Lib.Core.Abstractions;
 /// <param name="IncludePackages">Whether to include NuGet package dependencies in the graph.</param>
 public record DiagramOptions(
     bool ShowTitle = true,
-    bool WrapInMarkdownFence = false,
+    bool WrapInMarkdownFence = true,
     bool IncludePackages = false
 );

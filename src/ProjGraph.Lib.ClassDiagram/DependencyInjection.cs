@@ -11,7 +11,7 @@ namespace ProjGraph.Lib.ClassDiagram;
 /// <summary>
 /// Provides extension methods for registering Class Diagram ProjGraph services.
 /// </summary>
-public static class ServiceRegistration
+public static class ClassDiagramServiceRegistration
 {
     /// <summary>
     /// Adds Class Diagram ProjGraph services to the service collection.
@@ -27,7 +27,7 @@ public static class ServiceRegistration
         services.AddSingleton<IDiagramRenderer<ClassModel>, MermaidClassDiagramRenderer>();
 
         // Use Cases
-        services.AddSingleton<DiscoverCsFilesUseCase>();
+        services.AddSingleton<IDiscoverCsFilesUseCase, DiscoverCsFilesUseCase>();
         services.AddSingleton<AnalyzeFileUseCase>();
         services.AddSingleton<AnalyzeDirectoryUseCase>();
 

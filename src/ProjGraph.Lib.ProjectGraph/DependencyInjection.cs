@@ -10,7 +10,7 @@ namespace ProjGraph.Lib.ProjectGraph;
 /// <summary>
 /// Provides extension methods for registering ProjectGraph services.
 /// </summary>
-public static class ServiceRegistration
+public static class ProjectGraphServiceRegistration
 {
     /// <summary>
     /// Adds ProjectGraph specific services to the service collection.

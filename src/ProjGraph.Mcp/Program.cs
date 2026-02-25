@@ -53,7 +53,7 @@ internal sealed class ProjGraphTools(
     IGraphService graphService,
     IEfAnalysisService efService,
     IClassAnalysisService classService,
-    DiscoverCsFilesUseCase discoverCsFilesUseCase,
+    IDiscoverCsFilesUseCase discoverCsFilesUseCase,
     MermaidGraphRenderer graphRenderer,
     IDiagramRenderer<ClassModel> classRenderer,
     IDiagramRenderer<EfModel> erdRenderer,
@@ -98,7 +98,7 @@ internal sealed class ProjGraphTools(
             model = await classService.AnalyzeFileAsync(path, options);
         }
 
-        var diagram = classRenderer.Render(model, new DiagramOptions(showTitle));
+        var diagram = classRenderer.Render(model, new DiagramOptions(showTitle, false));
         return warningMarkup + diagram;
     }
 
@@ -131,7 +131,7 @@ internal sealed class ProjGraphTools(
         var graph = graphService.BuildGraph(path, includePackages);
 
         return Task.FromResult(graphRenderer.Render(graph,
-            new DiagramOptions(showTitle, IncludePackages: includePackages)));
+            new DiagramOptions(showTitle, false, includePackages)));
     }
 
     [McpServerTool(Name = "get_erd")]
@@ -179,6 +179,6 @@ internal sealed class ProjGraphTools(
             model = await efService.AnalyzeContextAsync(path, contextName);
         }
 
-        return erdRenderer.Render(model, new DiagramOptions(showTitle));
+        return erdRenderer.Render(model, new DiagramOptions(showTitle, false));
     }
 }

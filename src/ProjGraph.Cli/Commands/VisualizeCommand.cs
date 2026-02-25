@@ -23,11 +23,13 @@ namespace ProjGraph.Cli.Commands;
 /// <param name="renderers">The collection of diagram renderers for different output formats.</param>
 /// <param name="console">The output console for writing results and errors.</param>
 /// <param name="outputWriter">The helper for writing rendered output to file or console.</param>
+/// <param name="fileSystem">The file system abstraction for path and file validation.</param>
 internal sealed class VisualizeCommand(
     IGraphService graphService,
     IEnumerable<IDiagramRenderer<SolutionGraph>> renderers,
     IOutputConsole console,
-    DiagramOutputWriter outputWriter)
+    DiagramOutputWriter outputWriter,
+    IFileSystem fileSystem)
     : AsyncCommand<VisualizeCommand.Settings>
 {
     private const string FormatMermaid = "mermaid";
@@ -101,11 +103,6 @@ internal sealed class VisualizeCommand(
                 return ValidationResult.Error("Path is required");
             }
 
-            if (!File.Exists(Path))
-            {
-                return ValidationResult.Error($"File not found: {Path}");
-            }
-
             if (NormalizedFormat is not FormatFlat &&
                 NormalizedFormat is not FormatTree &&
                 NormalizedFormat is not FormatMermaid)
@@ -140,6 +137,19 @@ internal sealed class VisualizeCommand(
     {
         try
         {
+            if (!fileSystem.FileExists(settings.Path))
+            {
+                console.WriteError($"File not found: {settings.Path}");
+                return 1;
+            }
+
+            var extension = Path.GetExtension(settings.Path);
+            if (extension is not ".sln" and not ".slnx" and not ".csproj")
+            {
+                console.WriteError("File must be a .sln, .slnx, or .csproj file.");
+                return 1;
+            }
+
             SolutionGraph graph;
             if (settings.NormalizedFormat.Equals(FormatMermaid, StringComparison.OrdinalIgnoreCase))
             {

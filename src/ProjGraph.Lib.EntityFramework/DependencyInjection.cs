@@ -11,7 +11,7 @@ namespace ProjGraph.Lib.EntityFramework;
 /// <summary>
 /// Provides extension methods for registering Entity Framework ProjGraph services.
 /// </summary>
-public static class ServiceRegistration
+public static class EntityFrameworkServiceRegistration
 {
     /// <summary>
     /// Adds Entity Framework ProjGraph services to the service collection.

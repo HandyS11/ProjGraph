@@ -14,7 +14,7 @@ namespace ProjGraph.Lib.ClassDiagram.Application.UseCases;
 /// <param name="typeProcessor">The type processor for analyzing type symbols.</param>
 /// <param name="fileSystem">The file system abstraction.</param>
 public class AnalyzeDirectoryUseCase(
-    DiscoverCsFilesUseCase discoverCsFilesUseCase,
+    IDiscoverCsFilesUseCase discoverCsFilesUseCase,
     ICompilationFactory compilationFactory,
     ITypeProcessor typeProcessor,
     IFileSystem fileSystem)
