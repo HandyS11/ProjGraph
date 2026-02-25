@@ -144,7 +144,9 @@ internal sealed class VisualizeCommand(
             }
 
             var extension = Path.GetExtension(settings.Path);
-            if (extension is not ".sln" and not ".slnx" and not ".csproj")
+            if (!extension.Equals(".sln", StringComparison.OrdinalIgnoreCase)
+                && !extension.Equals(".slnx", StringComparison.OrdinalIgnoreCase)
+                && !extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
             {
                 console.WriteError("File must be a .sln, .slnx, or .csproj file.");
                 return 1;
