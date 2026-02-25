@@ -26,7 +26,7 @@ internal sealed class ClassDiagramCommand(
     IDiagramRenderer<ClassModel> mermaidRenderer,
     IOutputConsole console,
     DiagramOutputWriter outputWriter,
-    DiscoverCsFilesUseCase discoverCsFilesUseCase)
+    IDiscoverCsFilesUseCase discoverCsFilesUseCase)
     : AsyncCommand<ClassDiagramCommand.Settings>
 {
     /// <summary>

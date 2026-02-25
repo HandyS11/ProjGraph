@@ -8,14 +8,10 @@ namespace ProjGraph.Tests.Unit.ProjectGraph;
 /// Tests for <see cref="FlatGraphRenderer"/>.
 /// </summary>
 [Trait("Category", "Unit")]
-public sealed class FlatGraphRendererTests : IDisposable
+public sealed class FlatGraphRendererTests
 {
     private readonly FlatGraphRenderer _sut = new();
 
-    public void Dispose()
-    {
-        _sut.Dispose();
-    }
 
     private static SolutionGraph CreateGraph(
         string name,

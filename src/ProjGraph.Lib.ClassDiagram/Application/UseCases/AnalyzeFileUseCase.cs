@@ -36,11 +36,9 @@ public class AnalyzeFileUseCase(
         }
 
         var startDir = fileSystem.GetDirectoryName(filePath) ?? Environment.CurrentDirectory;
-#pragma warning disable CA1849, S6966 // Call async methods when in an async method
-        var code = fileSystem.ReadAllText(filePath);
-#pragma warning restore CA1849, S6966
-        var syntaxTree = CSharpSyntaxTree.ParseText(code, path: filePath);
+        var code = await fileSystem.ReadAllTextAsync(filePath);
 
+        var syntaxTree = CSharpSyntaxTree.ParseText(code, path: filePath);
         var compilation = (CSharpCompilation)compilationFactory.CreateCompilation([syntaxTree]);
 
         var context = new AnalysisContext

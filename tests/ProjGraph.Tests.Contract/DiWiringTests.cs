@@ -11,7 +11,7 @@ using ProjGraph.Lib.ProjectGraph.Application;
 namespace ProjGraph.Tests.Contract;
 
 /// <summary>
-/// Verifies that the DI container wired by <see cref="ServiceRegistration.AddProjGraphLib"/>
+/// Verifies that the DI container wired by <see cref="LibServiceRegistration.AddProjGraphLib"/>
 /// can resolve all critical service interfaces.
 /// </summary>
 public class DiWiringTests
@@ -22,7 +22,10 @@ public class DiWiringTests
     {
         var services = new ServiceCollection();
         services.AddProjGraphLib();
-        _provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true });
+        _provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true
+        });
     }
 
     [Theory]

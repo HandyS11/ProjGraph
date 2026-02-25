@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.EntityFramework.Application;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
@@ -16,7 +17,8 @@ namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 /// in a project. It includes functionality for extracting entity type names, building search directories,
 /// and processing source files to identify relevant entities and their relationships.
 /// </remarks>
-internal sealed class EntityFileDiscovery : IEntityFileDiscovery
+/// <param name="fileSystem">The file system abstraction for file operations.</param>
+internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileDiscovery
 {
     /// <summary>
     /// Maximum recursion depth when searching for base class files to prevent infinite recursion
@@ -45,9 +47,9 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
         string contextFilePath)
     {
         var entityFiles = new Dictionary<string, string>();
-        var normalizedContextPath = Path.GetFullPath(contextFilePath);
+        var normalizedContextPath = fileSystem.GetFullPath(contextFilePath);
 
-        foreach (var searchDir in searchDirectories.Where(Directory.Exists))
+        foreach (var searchDir in searchDirectories.Where(fileSystem.DirectoryExists))
         {
             await SearchDirectoryForEntitiesAsync(searchDir, entityTypeNames, normalizedContextPath, entityFiles);
 
@@ -108,7 +110,10 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     public IReadOnlyList<string> BuildSearchDirectories(
         string contextDirectory)
     {
-        var searchDirectories = new List<string> { contextDirectory };
+        var searchDirectories = new List<string>
+        {
+            contextDirectory
+        };
         var parentDir = Directory.GetParent(contextDirectory);
 
         if (parentDir is null)
@@ -181,7 +186,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// Any access errors encountered during directory traversal are ignored.
     /// Directories like bin, obj, .git, and node_modules are skipped during traversal for performance.
     /// </remarks>
-    private static async Task SearchDirectoryForEntitiesAsync(
+    private async Task SearchDirectoryForEntitiesAsync(
         string searchDir,
         HashSet<string> entityTypeNames,
         string normalizedContextPath,
@@ -205,7 +210,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// contain build artifacts or dependencies (bin, obj, .git, node_modules), improving performance
     /// for large projects.
     /// </remarks>
-    private static async Task SearchDirectoryRecursiveAsync(
+    private async Task SearchDirectoryRecursiveAsync(
         string currentDir,
         HashSet<string> entityTypeNames,
         string normalizedContextPath,
@@ -221,12 +226,12 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
                 AttributesToSkip = FileAttributes.System
             };
 
-            foreach (var csFile in Directory.EnumerateFiles(
+            foreach (var csFile in fileSystem.EnumerateFiles(
                          currentDir,
                          EfAnalysisConstants.FilePatterns.CSharpFiles,
                          options))
             {
-                var fullPath = Path.GetFullPath(csFile);
+                var fullPath = fileSystem.GetFullPath(csFile);
                 if (fullPath.Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
@@ -236,7 +241,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
             }
 
             // Recursively process subdirectories, skipping excluded directories
-            foreach (var subDir in Directory.EnumerateDirectories(currentDir, "*", options))
+            foreach (var subDir in fileSystem.EnumerateDirectories(currentDir, "*", options))
             {
                 if (DirectoryFilters.ShouldSkipDirectory(subDir))
                 {
@@ -267,12 +272,12 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// It then searches for class declarations that match the provided entity type names and adds their file paths
     /// to the dictionary if they are not already present.
     /// </remarks>
-    private static async Task ProcessSourceFileAsync(
+    private async Task ProcessSourceFileAsync(
         string filePath,
         HashSet<string> entityTypeNames,
         Dictionary<string, string> entityFiles)
     {
-        var fileCode = await File.ReadAllTextAsync(filePath);
+        var fileCode = await fileSystem.ReadAllTextAsync(filePath);
 
         // Performance optimization: skip heavy parsing if none of the entity names are present in the text
         if (!entityTypeNames.Any(name => fileCode.Contains(name, StringComparison.Ordinal)))
@@ -310,7 +315,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
 
         foreach (var entityFile in entityFiles.Values.Distinct())
         {
-            var entityCode = await File.ReadAllTextAsync(entityFile);
+            var entityCode = await fileSystem.ReadAllTextAsync(entityFile);
             var entityTree = CSharpSyntaxTree.ParseText(entityCode);
             var entityRoot = await entityTree.GetRootAsync();
 
@@ -422,7 +427,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
     /// contain build artifacts or dependencies (bin, obj, .git, node_modules), improving performance
     /// for large projects.
     /// </remarks>
-    private static void SearchForBaseClassFilesRecursive(
+    private void SearchForBaseClassFilesRecursive(
         string currentDir,
         HashSet<string> baseClassNames,
         Dictionary<string, string> baseClassFiles,
@@ -444,7 +449,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
             };
 
             // Process files in the current directory
-            foreach (var file in Directory.EnumerateFiles(
+            foreach (var file in fileSystem.EnumerateFiles(
                          currentDir,
                          EfAnalysisConstants.FilePatterns.CSharpFiles,
                          options))
@@ -455,7 +460,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
                     continue;
                 }
 
-                var fullPath = Path.GetFullPath(file);
+                var fullPath = fileSystem.GetFullPath(file);
                 baseClassFiles.TryAdd(fileName, fullPath);
 
                 if (baseClassFiles.Count == baseClassNames.Count)
@@ -465,7 +470,7 @@ internal sealed class EntityFileDiscovery : IEntityFileDiscovery
             }
 
             // Recursively process subdirectories, skipping excluded directories
-            foreach (var subDir in Directory.EnumerateDirectories(currentDir, "*", options))
+            foreach (var subDir in fileSystem.EnumerateDirectories(currentDir, "*", options))
             {
                 if (DirectoryFilters.ShouldSkipDirectory(subDir))
                 {

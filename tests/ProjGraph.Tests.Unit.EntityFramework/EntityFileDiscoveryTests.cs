@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.EntityFramework.Infrastructure;
 
 namespace ProjGraph.Tests.Unit.EntityFramework;
@@ -10,7 +11,7 @@ namespace ProjGraph.Tests.Unit.EntityFramework;
 [Trait("Category", "Unit")]
 public sealed class EntityFileDiscoveryTests : IDisposable
 {
-    private readonly EntityFileDiscovery _sut = new();
+    private readonly EntityFileDiscovery _sut = new(new PhysicalFileSystem());
     private readonly string _tempDir;
 
     public EntityFileDiscoveryTests()

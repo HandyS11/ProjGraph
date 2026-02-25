@@ -53,10 +53,11 @@ internal sealed class ProjGraphTools(
     IGraphService graphService,
     IEfAnalysisService efService,
     IClassAnalysisService classService,
-    DiscoverCsFilesUseCase discoverCsFilesUseCase,
+    IDiscoverCsFilesUseCase discoverCsFilesUseCase,
     MermaidGraphRenderer graphRenderer,
     IDiagramRenderer<ClassModel> classRenderer,
-    IDiagramRenderer<EfModel> erdRenderer)
+    IDiagramRenderer<EfModel> erdRenderer,
+    IFileSystem fileSystem)
 {
     [McpServerTool(Name = "get_class_diagram")]
     [Description(
@@ -73,7 +74,7 @@ internal sealed class ProjGraphTools(
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        if (!File.Exists(path) && !Directory.Exists(path))
+        if (!fileSystem.FileExists(path) && !fileSystem.DirectoryExists(path))
         {
             throw new FileNotFoundException($"Path not found: {path}", path);
         }
@@ -81,7 +82,7 @@ internal sealed class ProjGraphTools(
         ClassModel model;
         var warningMarkup = string.Empty;
 
-        if (Directory.Exists(path))
+        if (fileSystem.DirectoryExists(path))
         {
             var files = discoverCsFilesUseCase.Execute(path);
             if (files.Count > 50)
@@ -97,13 +98,13 @@ internal sealed class ProjGraphTools(
             model = await classService.AnalyzeFileAsync(path, options);
         }
 
-        var diagram = classRenderer.Render(model, new DiagramOptions(showTitle));
+        var diagram = classRenderer.Render(model, new DiagramOptions(showTitle, false));
         return warningMarkup + diagram;
     }
 
     [McpServerTool(Name = "get_project_graph")]
     [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
-    public Task<string> GetProjectGraphAsync(
+    public async Task<string> GetProjectGraphAsync(
         [Description("Absolute path to the project or solution file.")]
         string path,
         [Description("Whether to include the title in the diagram (default: true).")]
@@ -115,7 +116,7 @@ internal sealed class ProjGraphTools(
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        if (!File.Exists(path))
+        if (!fileSystem.FileExists(path))
         {
             throw new FileNotFoundException($"File not found: {path}", path);
         }
@@ -127,10 +128,10 @@ internal sealed class ProjGraphTools(
                 $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
         }
 
-        var graph = graphService.BuildGraph(path, includePackages);
+        var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
 
-        return Task.FromResult(graphRenderer.Render(graph,
-            new DiagramOptions(showTitle, IncludePackages: includePackages)));
+        return graphRenderer.Render(graph,
+            new DiagramOptions(showTitle, false, includePackages));
     }
 
     [McpServerTool(Name = "get_erd")]
@@ -148,7 +149,7 @@ internal sealed class ProjGraphTools(
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        if (!File.Exists(path))
+        if (!fileSystem.FileExists(path))
         {
             throw new FileNotFoundException($"File not found: {path}", path);
         }
@@ -178,6 +179,6 @@ internal sealed class ProjGraphTools(
             model = await efService.AnalyzeContextAsync(path, contextName);
         }
 
-        return erdRenderer.Render(model, new DiagramOptions(showTitle));
+        return erdRenderer.Render(model, new DiagramOptions(showTitle, false));
     }
 }

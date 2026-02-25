@@ -48,6 +48,16 @@ public class PhysicalFileSystem : IFileSystem
     }
 
     /// <summary>
+    /// Returns the extension (including the period ".") of the specified path string.
+    /// </summary>
+    /// <param name="path">The path string from which to get the extension.</param>
+    /// <returns>The extension of the specified path (including the period "."), or an empty string if no extension is present.</returns>
+    public string GetExtension(string path)
+    {
+        return Path.GetExtension(path);
+    }
+
+    /// <summary>
     /// Combines multiple path strings into a single path.
     /// </summary>
     /// <param name="paths">An array of parts of the path to combine.</param>
@@ -119,6 +129,32 @@ public class PhysicalFileSystem : IFileSystem
     public string[] GetFiles(string path, string searchPattern)
     {
         return Directory.GetFiles(path, searchPattern);
+    }
+
+    /// <summary>
+    /// Returns an enumerable collection of full file names that match a search pattern in a specified path,
+    /// using the specified enumeration options.
+    /// </summary>
+    /// <param name="path">The directory path.</param>
+    /// <param name="searchPattern">The search string to match against the names of files.</param>
+    /// <param name="options">The enumeration options to use.</param>
+    /// <returns>An enumerable collection of the full names of files that match the search pattern.</returns>
+    public IEnumerable<string> EnumerateFiles(string path, string searchPattern, EnumerationOptions options)
+    {
+        return Directory.EnumerateFiles(path, searchPattern, options);
+    }
+
+    /// <summary>
+    /// Returns an enumerable collection of directory full names that match a search pattern in a specified path,
+    /// using the specified enumeration options.
+    /// </summary>
+    /// <param name="path">The directory path.</param>
+    /// <param name="searchPattern">The search string to match against the names of directories.</param>
+    /// <param name="options">The enumeration options to use.</param>
+    /// <returns>An enumerable collection of the full names of directories that match the search pattern.</returns>
+    public IEnumerable<string> EnumerateDirectories(string path, string searchPattern, EnumerationOptions options)
+    {
+        return Directory.EnumerateDirectories(path, searchPattern, options);
     }
 
     /// <summary>

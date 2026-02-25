@@ -16,10 +16,10 @@ public sealed class ClassAnalysisDepthTests : IDisposable
     public ClassAnalysisDepthTests()
     {
         _tempRoot = _temp.DirectoryPath;
-        var workspaceTypeDiscovery = new WorkspaceTypeDiscovery();
-        var symbolResolver = new SymbolResolver(workspaceTypeDiscovery);
         var compilationFactory = new CompilationFactory();
         var fileSystem = new PhysicalFileSystem();
+        var workspaceTypeDiscovery = new WorkspaceTypeDiscovery(fileSystem);
+        var symbolResolver = new SymbolResolver(workspaceTypeDiscovery, fileSystem);
         var typeProcessor = new TypeProcessor(symbolResolver);
         var analyzeFileUseCase = new AnalyzeFileUseCase(compilationFactory, typeProcessor, fileSystem);
         var discoverCsFilesUseCase = new DiscoverCsFilesUseCase(fileSystem);

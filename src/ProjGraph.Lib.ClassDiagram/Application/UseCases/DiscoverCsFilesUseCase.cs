@@ -7,15 +7,10 @@ namespace ProjGraph.Lib.ClassDiagram.Application.UseCases;
 /// Use case for discovering all C# source files in a directory recursively, excluding standard artifact and noise folders.
 /// </summary>
 /// <param name="fileSystem">The file system abstraction.</param>
-public class DiscoverCsFilesUseCase(IFileSystem fileSystem)
+public class DiscoverCsFilesUseCase(IFileSystem fileSystem) : IDiscoverCsFilesUseCase
 {
-    /// <summary>
-    /// Executes the discovery of C# source files within the specified directory path.
-    /// </summary>
-    /// <param name="directoryPath">The root directory path to start the discovery from.</param>
-    /// <returns>An enumerable of absolute paths to discovered C# files.</returns>
-    /// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
-    public virtual IReadOnlyList<string> Execute(string directoryPath)
+    /// <inheritdoc />
+    public IReadOnlyList<string> Execute(string directoryPath)
     {
         if (!fileSystem.DirectoryExists(directoryPath))
         {
@@ -41,7 +36,7 @@ public class DiscoverCsFilesUseCase(IFileSystem fileSystem)
             try
             {
                 // Collect .cs files
-                discoveredFiles.AddRange(fileSystem.GetFiles(currentDir, $"*{DirectoryFilters.CSharpExtension}"));
+                discoveredFiles.AddRange(fileSystem.GetFiles(currentDir, $"*{FilePathGuard.CSharpExtension}"));
 
                 // Enqueue subdirectories
                 foreach (var dir in fileSystem.GetDirectories(currentDir))

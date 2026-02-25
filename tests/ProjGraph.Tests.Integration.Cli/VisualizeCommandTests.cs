@@ -234,11 +234,15 @@ public class VisualizeCommandTests
         var app = CliTestHelpers.CreateApp();
         var nonExistentPath = Path.Combine(Path.GetTempPath(), "this", "path", "does", "not", "exist.slnx");
 
-        // Act & Assert
-        var exception = Assert.Throws<CommandRuntimeException>(() =>
-            app.Run(["visualize", nonExistentPath]));
+        // Act
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+        {
+            var result = app.Run(["visualize", nonExistentPath]);
+            result.Should().Be(1);
+        });
 
-        exception.Message.Should().Contain("File not found");
+        // Assert
+        capturedOutput.Should().Contain("File not found");
     }
 
     [Fact]

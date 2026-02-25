@@ -11,9 +11,9 @@ namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 /// This class includes functionality to locate files containing specific type definitions
 /// by searching directories and analyzing C# source files using Roslyn.
 /// </summary>
-internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
+/// <param name="fileSystem">The file system abstraction for file operations.</param>
+internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspaceTypeDiscovery
 {
-
     /// <summary>
     /// Finds the file containing the definition of a specific type within a given directory or its subdirectories.
     /// The method first attempts to search in common subdirectories for better performance, and if not found,
@@ -30,10 +30,13 @@ internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
         var root = WorkspaceRootResolver.FindWorkspaceRoot(startDirectory) ?? startDirectory;
 
         // Common file patterns to search first (optimistic)
-        foreach (var dirName in new[] { "Models", "Entities", "Services", "Interfaces", "Common", "Data", "Internal" })
+        foreach (var dirName in new[]
+                 {
+                     "Models", "Entities", "Services", "Interfaces", "Common", "Data", "Internal"
+                 })
         {
-            var path = Path.Combine(root, dirName);
-            if (!Directory.Exists(path))
+            var path = fileSystem.Combine(root, dirName);
+            if (!fileSystem.DirectoryExists(path))
             {
                 continue;
             }
@@ -59,7 +62,7 @@ internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
     /// <returns>
     /// The full path of the file containing the type definition if found; otherwise, null.
     /// </returns>
-    private static async Task<string?> SearchDirectoryForTypeAsync(string directory, string typeName)
+    private async Task<string?> SearchDirectoryForTypeAsync(string directory, string typeName)
     {
         return await SearchDirectoryRecursiveAsync(directory, typeName);
     }
@@ -73,14 +76,19 @@ internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
     /// <returns>
     /// The full path of the file containing the type definition if found; otherwise, null.
     /// </returns>
-    private static async Task<string?> SearchDirectoryRecursiveAsync(string directory, string typeName)
+    private async Task<string?> SearchDirectoryRecursiveAsync(string directory, string typeName)
     {
+        var enumerationOptions = new EnumerationOptions
+        {
+            IgnoreInaccessible = true
+        };
+
         // Search files in the current directory
-        foreach (var file in Directory.EnumerateFiles(directory, FilePathGuard.CSharpFilesPattern,
-                     new EnumerationOptions { IgnoreInaccessible = true }))
+        foreach (var file in fileSystem.EnumerateFiles(directory, FilePathGuard.CSharpFilesPattern,
+                     enumerationOptions))
         {
             // Simple string check first for performance
-            var content = await File.ReadAllTextAsync(file);
+            var content = await fileSystem.ReadAllTextAsync(file);
             if (!content.Contains($"class {typeName}", StringComparison.Ordinal) &&
                 !content.Contains($"interface {typeName}", StringComparison.Ordinal) &&
                 !content.Contains($"struct {typeName}", StringComparison.Ordinal) &&
@@ -104,8 +112,8 @@ internal sealed class WorkspaceTypeDiscovery : IWorkspaceTypeDiscovery
         }
 
         // Recursively search subdirectories, skipping excluded directories
-        foreach (var subDir in Directory.EnumerateDirectories(directory, "*",
-                     new EnumerationOptions { IgnoreInaccessible = true }))
+        foreach (var subDir in fileSystem.EnumerateDirectories(directory, "*",
+                     enumerationOptions))
         {
             if (DirectoryFilters.ShouldSkipDirectory(subDir))
             {

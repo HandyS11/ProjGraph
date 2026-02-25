@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Application;
+using ProjGraph.Lib.Core.Abstractions;
 
 namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 
@@ -10,7 +11,9 @@ namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 /// Provides methods for resolving type symbols and loading their definitions from source files.
 /// </summary>
 /// <param name="workspaceTypeDiscovery">The workspace type discovery service.</param>
-internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscovery) : ISymbolResolver
+/// <param name="fileSystem">The file system abstraction for file operations.</param>
+internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscovery, IFileSystem fileSystem)
+    : ISymbolResolver
 {
     /// <summary>
     /// Resolves a related symbol by determining if it's already in the compilation or needs to be loaded from a file.
@@ -51,7 +54,7 @@ internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscov
     /// A task that represents the asynchronous operation. The task result contains the resolved <see cref="INamedTypeSymbol"/>
     /// if found, or the original <paramref name="relatedSymbol"/> if the symbol could not be resolved.
     /// </returns>
-    private static async Task<INamedTypeSymbol?> LoadAndResolveSymbolAsync(
+    private async Task<INamedTypeSymbol?> LoadAndResolveSymbolAsync(
         INamedTypeSymbol relatedSymbol,
         string foundFile,
         AnalysisContext context)
@@ -61,7 +64,7 @@ internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscov
 
         if (existingTree == null)
         {
-            var relatedCode = await File.ReadAllTextAsync(foundFile);
+            var relatedCode = await fileSystem.ReadAllTextAsync(foundFile);
             treeToUse = CSharpSyntaxTree.ParseText(relatedCode, path: foundFile);
             context.AddSyntaxTrees(treeToUse);
         }

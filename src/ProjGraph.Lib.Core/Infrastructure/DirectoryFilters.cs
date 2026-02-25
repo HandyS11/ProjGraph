@@ -8,11 +8,6 @@ namespace ProjGraph.Lib.Core.Infrastructure;
 public static class DirectoryFilters
 {
     /// <summary>
-    /// Standard extension for C# source files.
-    /// </summary>
-    public const string CSharpExtension = ".cs";
-
-    /// <summary>
     /// The name of the binary output directory.
     /// </summary>
     public const string Bin = "bin";

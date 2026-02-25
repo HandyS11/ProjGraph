@@ -25,7 +25,7 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
     /// </remarks>
     public override string Render(SolutionGraph model, DiagramOptions? options = null)
     {
-        OutputWriter.GetStringBuilder().Clear();
+        CreateRenderContext();
 
         RenderHeader(model, options);
 

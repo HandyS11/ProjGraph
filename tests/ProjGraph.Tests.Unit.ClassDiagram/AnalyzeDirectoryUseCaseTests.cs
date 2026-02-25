@@ -10,7 +10,7 @@ namespace ProjGraph.Tests.Unit.ClassDiagram;
 
 public class AnalyzeDirectoryUseCaseTests
 {
-    private readonly DiscoverCsFilesUseCase _discoverMock;
+    private readonly IDiscoverCsFilesUseCase _discoverMock;
     private readonly ICompilationFactory _compilationFactoryMock;
     private readonly ITypeProcessor _typeProcessorMock;
     private readonly IFileSystem _fileSystemMock;
@@ -18,7 +18,7 @@ public class AnalyzeDirectoryUseCaseTests
 
     public AnalyzeDirectoryUseCaseTests()
     {
-        _discoverMock = Substitute.For<DiscoverCsFilesUseCase>(Substitute.For<IFileSystem>());
+        _discoverMock = Substitute.For<IDiscoverCsFilesUseCase>();
         _compilationFactoryMock = Substitute.For<ICompilationFactory>();
         _typeProcessorMock = Substitute.For<ITypeProcessor>();
         _fileSystemMock = Substitute.For<IFileSystem>();
