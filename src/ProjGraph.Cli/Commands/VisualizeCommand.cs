@@ -143,7 +143,7 @@ internal sealed class VisualizeCommand(
                 return 1;
             }
 
-            var extension = Path.GetExtension(settings.Path);
+            var extension = fileSystem.GetExtension(settings.Path);
             if (!extension.Equals(".sln", StringComparison.OrdinalIgnoreCase)
                 && !extension.Equals(".slnx", StringComparison.OrdinalIgnoreCase)
                 && !extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))

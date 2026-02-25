@@ -47,7 +47,7 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
         string contextFilePath)
     {
         var entityFiles = new Dictionary<string, string>();
-        var normalizedContextPath = Path.GetFullPath(contextFilePath);
+        var normalizedContextPath = fileSystem.GetFullPath(contextFilePath);
 
         foreach (var searchDir in searchDirectories.Where(fileSystem.DirectoryExists))
         {

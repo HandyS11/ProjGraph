@@ -34,6 +34,13 @@ public interface IFileSystem
     string? GetDirectoryName(string path);
 
     /// <summary>
+    /// Returns the extension (including the period ".") of the specified path string.
+    /// </summary>
+    /// <param name="path">The path string from which to get the extension.</param>
+    /// <returns>The extension of the specified path (including the period "."), or an empty string if no extension is present.</returns>
+    string GetExtension(string path);
+
+    /// <summary>
     /// Combines multiple path strings into a single path.
     /// </summary>
     /// <param name="paths">An array of parts of the path to combine.</param>
