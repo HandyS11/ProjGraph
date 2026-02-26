@@ -193,7 +193,7 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
     /// Sanitizes a given string by replacing certain characters with underscores.
     /// </summary>
     /// <param name="name">The input string to be sanitized.</param>
-    /// <returns>A sanitized string where '.', '`', '&lt;', '&gt;', '[', ']', ',', '+', '?', and ' ' are replaced with '_'.</returns>
+    /// <returns>A sanitized string where '.', '`', '&lt;', '&gt;', '[', ']', ',', '+', '?', ':', and ' ' are replaced with '_'.</returns>
     private static string Sanitize(string name)
     {
         return name
@@ -206,6 +206,7 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
             .Replace(',', '_')
             .Replace('+', '_')
             .Replace('?', '_')
+            .Replace(':', '_')
             .Replace(' ', '_');
     }
 }

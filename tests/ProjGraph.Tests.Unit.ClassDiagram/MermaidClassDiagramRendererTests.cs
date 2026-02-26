@@ -252,6 +252,25 @@ public class MermaidClassDiagramRendererTests
     }
 
     [Fact]
+    public void Render_WithColonsInFullName_SanitizesCorrectly()
+    {
+        // Simulates the case where global:: remains inside a generic type argument
+        var type = new TypeDefinition(
+            "AbstractValidator<SomeInput>",
+            "FluentValidation",
+            "FluentValidation.AbstractValidator<global::App.SomeInput>",
+            TypeKind.Class,
+            []);
+        var model = new ClassModel(null, [type], []);
+
+        var result = _renderer.Render(model);
+
+        // Colons must be sanitized to underscores so Mermaid doesn't interpret :: as a style separator
+        result.Should().NotContain("::");
+        result.Should().Contain("FluentValidation_AbstractValidator_global__App_SomeInput_");
+    }
+
+    [Fact]
     public void Render_WithRecord_ShowsRecordStereotype()
     {
         var recordType = new TypeDefinition(
