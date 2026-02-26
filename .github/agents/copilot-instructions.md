@@ -4,6 +4,11 @@ Auto-generated from all feature plans. Last updated: 2026-01-13
 
 ## Active Technologies
 
+- .NET 10.0 (C# 14+) + `Spectre.Console.Cli` (CLI formatting), `ModelContextProtocol.Server` (MCP tool),
+  `System.Text.Json` (MCP response serialisation), `Microsoft.Extensions.DependencyInjection` (DI wiring) (
+  010-project-stats-mcp)
+- N/A — pure in-memory computation over `SolutionGraph` (010-project-stats-mcp)
+
 - N/A (Memory analysis) (009-directory-class-diagram)
 
 - .NET 10.0 (C# 14+) + Microsoft.Build.Construction (for project parsing), Spectre.Console (for rendering) (
@@ -43,12 +48,15 @@ tests/
 
 ## Recent Changes
 
+- 010-project-stats-mcp: Added .NET 10.0 (C# 14+) + `Spectre.Console.Cli` (CLI formatting),
+  `ModelContextProtocol.Server` (MCP tool), `System.Text.Json` (MCP response serialisation),
+  `Microsoft.Extensions.DependencyInjection` (DI wiring)
+
 - 009-directory-class-diagram: Added .NET 10.0 (C# 14+) + Microsoft.CodeAnalysis.CSharp (Roslyn)
 
 - 008-nuget-package-rendering: Added .NET 10.0 (C# 14+) + Microsoft.Build.Construction (for project parsing),
   Spectre.Console (for rendering)
 
-- 006-docfx-documentation: Added .NET 10.0 (C# 14+) for API metadata extraction + DocFX (v2.70+), Mermaid.js (v10+),
   GitHub Actions
 
 
