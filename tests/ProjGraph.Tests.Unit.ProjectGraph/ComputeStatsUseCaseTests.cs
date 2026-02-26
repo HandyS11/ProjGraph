@@ -155,7 +155,7 @@ public sealed class ComputeStatsUseCaseTests
         var stats2 = ComputeStatsUseCase.Execute(graph, 2);
         stats2.HotspotProjects.Should().HaveCount(1); // only ids[0] has in-degree > 0
 
-        var stats5 = ComputeStatsUseCase.Execute(graph, 5);
+        var stats5 = ComputeStatsUseCase.Execute(graph);
         stats5.HotspotProjects.Should().HaveCount(1);
     }
 

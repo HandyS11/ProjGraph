@@ -88,11 +88,12 @@ internal sealed class StatsCommand(
 
             // ── Metrics table ─────────────────────────────────────────────────
             var table = new Table
-                {
-                    Border = TableBorder.None,
-                    ShowHeaders = false
-                }
-                .AddColumn(new TableColumn("Metric").Width(30))
+            {
+                Border = TableBorder.None,
+                ShowHeaders = false
+            };
+
+            table.AddColumn(new TableColumn("Metric").Width(30))
                 .AddColumn(new TableColumn("Value").RightAligned())
                 .AddRow("[grey]Total projects[/]", $"[bold]{stats.TotalProjectCount}[/]")
                 .AddRow("  Libraries", $"{stats.TypeBreakdown["Library"]}")
