@@ -55,6 +55,7 @@ internal static class McpTestHelper
             discoverCsFilesUseCase,
             new DiagramRenderers(new MermaidGraphRenderer(), new MermaidClassDiagramRenderer(),
                 new MermaidErdRenderer()),
-            fs);
+            fs,
+            new StatsService(graphService));
     }
 }

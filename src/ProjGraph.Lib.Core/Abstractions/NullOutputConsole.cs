@@ -1,3 +1,5 @@
+using Spectre.Console.Rendering;
+
 namespace ProjGraph.Lib.Core.Abstractions;
 
 /// <summary>
@@ -5,11 +7,13 @@ namespace ProjGraph.Lib.Core.Abstractions;
 /// Useful in contexts where console output is not needed, such as MCP servers
 /// (where stdout is reserved for JSON-RPC transport) or unit tests.
 /// </summary>
-
 public sealed class NullOutputConsole : IOutputConsole
 {
     /// <inheritdoc />
     public void Write(string message) { }
+
+    /// <inheritdoc />
+    public void Write(IRenderable renderable) { }
 
     /// <inheritdoc />
     public void WriteLine(string message) { }

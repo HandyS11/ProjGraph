@@ -19,7 +19,7 @@
 
 **Purpose**: Confirm clean starting point — no new projects to scaffold.
 
-- [ ] T001 Verify solution builds clean on feature branch: `dotnet build ProjGraph.slnx --no-restore`
+- [X] T001 Verify solution builds clean on feature branch: `dotnet build ProjGraph.slnx --no-restore`
 
 ---
 
@@ -27,11 +27,11 @@
 
 **Purpose**: Domain models, core computation use case, service layer, and DI registration. All user stories depend on these.
 
-- [ ] T002 [P] Create `SolutionStats`, `DependencyDepthStats`, `HotspotProject` records with `[JsonPropertyName]` attributes in `src/ProjGraph.Core/Models/SolutionStats.cs`
-- [ ] T003 [P] Define `IStatsService` interface with `ComputeStatsAsync(string path, int topN, CancellationToken)` in `src/ProjGraph.Lib.ProjectGraph/Application/IStatsService.cs`
-- [ ] T004 Implement `ComputeStatsUseCase` (topological-sort depth DP, in-degree ranking, Tarjan cycle detection via existing `TarjanSccAlgorithm`, type breakdown) in `src/ProjGraph.Lib.ProjectGraph/Application/UseCases/ComputeStatsUseCase.cs`
-- [ ] T005 Implement `StatsService` wrapping `ComputeStatsUseCase` in `src/ProjGraph.Lib.ProjectGraph/Application/StatsService.cs`
-- [ ] T006 Register `ComputeStatsUseCase`, `IStatsService`/`StatsService` in `src/ProjGraph.Lib.ProjectGraph/DependencyInjection.cs`
+- [X] T002 [P] Create `SolutionStats`, `DependencyDepthStats`, `HotspotProject` records with `[JsonPropertyName]` attributes in `src/ProjGraph.Core/Models/SolutionStats.cs`
+- [X] T003 [P] Define `IStatsService` interface with `ComputeStatsAsync(string path, int topN, CancellationToken)` in `src/ProjGraph.Lib.ProjectGraph/Application/IStatsService.cs`
+- [X] T004 Implement `ComputeStatsUseCase` (topological-sort depth DP, in-degree ranking, Tarjan cycle detection via existing `TarjanSccAlgorithm`, type breakdown) in `src/ProjGraph.Lib.ProjectGraph/Application/UseCases/ComputeStatsUseCase.cs`
+- [X] T005 Implement `StatsService` wrapping `ComputeStatsUseCase` in `src/ProjGraph.Lib.ProjectGraph/Application/StatsService.cs`
+- [X] T006 Register `ComputeStatsUseCase`, `IStatsService`/`StatsService` in `src/ProjGraph.Lib.ProjectGraph/DependencyInjection.cs`
 
 **Checkpoint**: `dotnet build` passes with zero warnings; `IStatsService` is resolvable via DI.
 
@@ -47,14 +47,14 @@
 
 > **Write tests first — they must fail before implementation begins (Constitution IV)**
 
-- [ ] T007 [P] [US1] Unit tests for `ComputeStatsUseCase`: type breakdown counts, average/min/max depth, in-degree ranking, empty-graph edge case, cycle detection returns `HasCycles=true` — in `tests/ProjGraph.Tests.Unit.ProjectGraph/ComputeStatsUseCaseTests.cs`
-- [ ] T008 [P] [US1] Unit tests for `StatsService`: delegates to use case, passes `topN` and `cancellationToken` correctly — in `tests/ProjGraph.Tests.Unit.ProjectGraph/StatsServiceTests.cs`
+- [X] T007 [P] [US1] Unit tests for `ComputeStatsUseCase`: type breakdown counts, average/min/max depth, in-degree ranking, empty-graph edge case, cycle detection returns `HasCycles=true` — in `tests/ProjGraph.Tests.Unit.ProjectGraph/ComputeStatsUseCaseTests.cs`
+- [X] T008 [P] [US1] Unit tests for `StatsService`: delegates to use case, passes `topN` and `cancellationToken` correctly — in `tests/ProjGraph.Tests.Unit.ProjectGraph/StatsServiceTests.cs`
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement `StatsCommand` (Spectre.Console table + rule output, path argument, optional `--top` option defaulting to 5) in `src/ProjGraph.Cli/Commands/StatsCommand.cs`
-- [ ] T010 [US1] Register `stats` command and add CLI examples in `src/ProjGraph.Cli/Program.cs`
-- [ ] T011 [US1] CLI integration test for a valid solution path: verifies output contains project count, type labels, depth stats, and hotspot section; records elapsed time to manually validate SC-001 (<5s) — in `tests/ProjGraph.Tests.Integration.Cli/StatsCommandIntegrationTests.cs`
+- [X] T009 [US1] Implement `StatsCommand` (Spectre.Console table + rule output, path argument, optional `--top` option defaulting to 5) in `src/ProjGraph.Cli/Commands/StatsCommand.cs`
+- [X] T010 [US1] Register `stats` command and add CLI examples in `src/ProjGraph.Cli/Program.cs`
+- [X] T011 [US1] CLI integration test for a valid solution path: verifies output contains project count, type labels, depth stats, and hotspot section; records elapsed time to manually validate SC-001 (<5s) — in `tests/ProjGraph.Tests.Integration.Cli/StatsCommandIntegrationTests.cs`
 
 **Checkpoint**: `projgraph stats ProjGraph.slnx` prints a metrics table; all T007/T008 unit tests and T011 integration test pass.
 
@@ -68,11 +68,11 @@
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] Integration tests for error cases: invalid path exits non-zero, empty solution prints zero-project summary and exits 0 — add to `tests/ProjGraph.Tests.Integration.Cli/StatsCommandIntegrationTests.cs`
+- [X] T012 [P] [US2] Integration tests for error cases: invalid path exits non-zero, empty solution prints zero-project summary and exits 0 — add to `tests/ProjGraph.Tests.Integration.Cli/StatsCommandIntegrationTests.cs`
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Add `try/catch` error handling to `StatsCommand.ExecuteAsync` — invalid/missing path shows a clear stderr message and returns exit code 1; update `src/ProjGraph.Cli/Commands/StatsCommand.cs`
+- [X] T013 [US2] Add `try/catch` error handling to `StatsCommand.ExecuteAsync` — invalid/missing path shows a clear stderr message and returns exit code 1; update `src/ProjGraph.Cli/Commands/StatsCommand.cs`
 
 **Checkpoint**: All T012 error-case tests pass; `echo $LASTEXITCODE` (or `$?`) correctly reflects success/failure in a terminal script.
 
@@ -86,12 +86,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T014 [P] [US3] MCP contract tests: verify `GetProjectStatsAsync` method exists, has `[McpServerTool(Name = "get_project_stats")]` attribute, has `[Description]` attribute mentioning "metrics", accepts `path` (required string) and `topN` (optional int, default 5) parameters — in `tests/ProjGraph.Tests.Contract/McpProjectStatsContractTests.cs`
+- [X] T014 [P] [US3] MCP contract tests: verify `GetProjectStatsAsync` method exists, has `[McpServerTool(Name = "get_project_stats")]` attribute, has `[Description]` attribute mentioning "metrics", accepts `path` (required string) and `topN` (optional int, default 5) parameters — in `tests/ProjGraph.Tests.Contract/McpProjectStatsContractTests.cs`
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] Add `IStatsService` to `ProjGraphTools` constructor parameter list in `src/ProjGraph.Mcp/Program.cs`
-- [ ] T016 [US3] Add `GetProjectStatsAsync` to `ProjGraphTools` in `src/ProjGraph.Mcp/Program.cs`: calls `IStatsService.ComputeStatsAsync`, serialises result with `JsonSerializer.Serialize`, throws `FileNotFoundException` on invalid path (consistent with other tools)
+- [X] T015 [US3] Add `IStatsService` to `ProjGraphTools` constructor parameter list in `src/ProjGraph.Mcp/Program.cs`
+- [X] T016 [US3] Add `GetProjectStatsAsync` to `ProjGraphTools` in `src/ProjGraph.Mcp/Program.cs`: calls `IStatsService.ComputeStatsAsync`, serialises result with `JsonSerializer.Serialize`, throws `FileNotFoundException` on invalid path (consistent with other tools)
 
 **Checkpoint**: All T014 contract tests pass; calling the tool via the MCP test harness returns valid JSON with all fields from `contracts/get_project_stats.json`.
 
@@ -101,9 +101,9 @@
 
 **Purpose**: XML documentation, README updates.
 
-- [ ] T017 [P] Add XML `<summary>` and `<param>` doc comments to all public members in `src/ProjGraph.Core/Models/SolutionStats.cs` (zero-warning requirement)
-- [ ] T018 [P] Add XML doc comments to `src/ProjGraph.Lib.ProjectGraph/Application/IStatsService.cs`, `StatsService.cs`, and `UseCases/ComputeStatsUseCase.cs`
-- [ ] T019 [P] Add XML doc comments to `src/ProjGraph.Cli/Commands/StatsCommand.cs` and the new `GetProjectStatsAsync` method in `src/ProjGraph.Mcp/Program.cs`
+- [X] T017 [P] Add XML `<summary>` and `<param>` doc comments to all public members in `src/ProjGraph.Core/Models/SolutionStats.cs` (zero-warning requirement)
+- [X] T018 [P] Add XML doc comments to `src/ProjGraph.Lib.ProjectGraph/Application/IStatsService.cs`, `StatsService.cs`, and `UseCases/ComputeStatsUseCase.cs`
+- [X] T019 [P] Add XML doc comments to `src/ProjGraph.Cli/Commands/StatsCommand.cs` and the new `GetProjectStatsAsync` method in `src/ProjGraph.Mcp/Program.cs`
 
 **Final Checkpoint**: `dotnet build ProjGraph.slnx` — zero warnings; `dotnet test` — all tests green.
 

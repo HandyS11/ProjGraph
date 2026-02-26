@@ -26,6 +26,12 @@ Visualize your solution architecture.
 - **[Simple Dependencies](./visualize/simple-dependencies/README.md)**: Basic cross-project references.
 - **[Modular Architecture](./visualize/modular-architecture/README.md)**: Modern workspace using `.slnx` and multi-layered projects.
 
+### 📈 Solution Metrics
+
+Analyse solution health and architecture at a glance.
+
+- **[Solution Metrics](./stats/README.md)**: Project counts, type breakdown, dependency depth, and hotspot projects.
+
 ---
 
 ## 🚀 Quick Start
@@ -74,3 +80,4 @@ chmod +x ./samples/regenerate-samples.sh
 - **Ambiguous Contexts**: If a file contains multiple `DbContext` classes, use the `--context` flag to specify which one to render.
 - **Deep Hierarchies**: For multi-level inheritance, use `--depth` (e.g., `--depth 5`) to capture the full branch.
 - **Output Redirection**: The CLI tool outputs text to `stdout`. Use shell redirection (`>`) to save diagrams to files.
+- **Stats on an empty solution**: `projgraph stats` will report zero projects — ensure all `.csproj` files referenced by the solution exist on disk.

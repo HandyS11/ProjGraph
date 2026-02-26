@@ -13,6 +13,7 @@ using ProjGraph.Lib.ProjectGraph.Application;
 using ProjGraph.Lib.ProjectGraph.Rendering;
 using System.ComponentModel;
 using System.Reflection;
+using System.Text.Json;
 
 namespace ProjGraph.Mcp;
 
@@ -59,7 +60,8 @@ internal sealed class ProjGraphTools(
     IClassAnalysisService classService,
     IDiscoverCsFilesUseCase discoverCsFilesUseCase,
     DiagramRenderers renderers,
-    IFileSystem fileSystem)
+    IFileSystem fileSystem,
+    IStatsService statsService)
 {
     [McpServerTool(Name = "get_class_diagram")]
     [Description(
@@ -134,6 +136,35 @@ internal sealed class ProjGraphTools(
 
         return renderers.GraphRenderer.Render(graph,
             new DiagramOptions(showTitle, false, includePackages));
+    }
+
+    [McpServerTool(Name = "get_project_stats")]
+    [Description(
+        "Analyses a .NET solution or project file and returns key architectural metrics: project count, type breakdown, dependency depth statistics, most-referenced (hotspot) projects, and cycle detection.")]
+    public async Task<string> GetProjectStatsAsync(
+        [Description("Absolute path to a .NET solution (.sln/.slnx) or project (.csproj) file.")]
+        string path,
+        [Description("Number of top most-referenced projects to include. Defaults to 5.")]
+        int topN = 5,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        if (!fileSystem.FileExists(path))
+        {
+            throw new FileNotFoundException($"File not found: {path}", path);
+        }
+
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension is not (".sln" or ".slnx" or ".csproj"))
+        {
+            throw new ArgumentException(
+                $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
+        }
+
+        var stats = await statsService.ComputeStatsAsync(path, topN, cancellationToken);
+        return JsonSerializer.Serialize(stats);
     }
 
     [McpServerTool(Name = "get_erd")]

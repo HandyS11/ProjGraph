@@ -47,6 +47,11 @@ internal static class Program
                 .WithExample(classDiagramCommandName, "Models/User.cs", "--inheritance", "--dependencies", "--depth",
                     "10")
                 .WithExample(classDiagramCommandName, "Models/User.cs", "--output", "user-hierarchy.mmd");
+
+            config.AddCommand<StatsCommand>("stats")
+                .WithDescription("Analyse a solution and print key architectural metrics")
+                .WithExample("stats", "MySolution.slnx")
+                .WithExample("stats", "MySolution.slnx", "--top", "10");
         });
 
         return app.Run(args);

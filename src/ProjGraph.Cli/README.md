@@ -1,7 +1,7 @@
 # ProjGraph CLI
 
-Command-line tool for visualizing .NET project dependencies, generating Entity Relationship Diagrams, and visualizing
-class hierarchies.
+Command-line tool for visualizing .NET project dependencies, generating Entity Relationship Diagrams, visualizing
+class hierarchies, and computing key solution metrics.
 
 ## Installation
 
@@ -146,6 +146,49 @@ projgraph classdiagram ./Models/Person.cs --output docs/person.mmd
 - Simple heuristic workspace-wide discovery of missing types (scans for `.sln`, `.slnx`, or `.csproj`)
 - Support for generic types (sanitized for Mermaid as `~T~`)
 
+### `stats` - Solution Metrics
+
+Compute and display key architectural metrics for a .NET solution or project.
+
+```bash
+# Display metrics for a solution
+projgraph stats ./MySolution.sln
+
+# Show top 10 most-referenced projects instead of the default 5
+projgraph stats ./MySolution.slnx --top 10
+
+# Analyse a single project
+projgraph stats ./src/MyApp/MyApp.csproj
+```
+
+**Settings**:
+
+- `[path]`: Required path to `.sln`, `.slnx`, or `.csproj` file.
+- `--top <n>`: Number of most-referenced (hotspot) projects to show. Default: `5`.
+
+**Supports**: `.sln`, `.slnx`, `.csproj`
+
+**Example output**:
+
+```
+────────────── MySolution ──────────────
+ Total projects                      12
+   Libraries                          7
+   Executables                        2
+   Test projects                      3
+   Other                              0
+ Average depth                      2.5
+ Min depth                            1
+ Max depth                            4
+ Cycles detected                     No
+ Analysis time                     42 ms
+
+ Most-referenced projects:
+   1. MyApp.Core                   ← 8
+   2. MyApp.Shared                 ← 5
+   3. MyApp.Infrastructure         ← 4
+```
+
 ## Troubleshooting
 
 - **No output**: Ensure the provided path exists and is a valid C# file.
@@ -154,6 +197,8 @@ projgraph classdiagram ./Models/Person.cs --output docs/person.mmd
   ends with `DbContext`).
 - **Parsing errors**: If using new C# features (e.g., primary constructors), ensure you have the latest .NET SDK
   installed.
+- **Zero projects in `stats`**: Ensure the solution file is not empty and that all referenced `.csproj` files exist on
+  disk.
 
 ## Requirements
 
