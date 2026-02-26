@@ -69,11 +69,15 @@ jobs:
       - name: Authenticate to MCP Registry
         run: ./mcp-publisher login github-oidc
 
+      - name: Wait for NuGet.org validation
+        run: sleep 300
+
       - name: Publish to MCP Registry
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 5
-          max_attempts: 3
+          max_attempts: 5
+          retry_wait_seconds: 120
           command: ./mcp-publisher publish src/ProjGraph.Mcp/.mcp/server.json
 
       - name: Create GitHub Release
