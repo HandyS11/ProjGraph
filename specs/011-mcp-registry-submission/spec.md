@@ -9,8 +9,8 @@
 
 ### Session 2026-02-26
 
-- Q: How is the `mcp-publisher` tool installed in the CI environment? → A: npm package (e.g., `npm install -g mcp-publisher`)
-- Q: What authentication mechanism does the `mcp-publisher` command use? → A: GitHub Secret (e.g., `MCP_REGISTRY_TOKEN`)
+- Q: How is the `mcp-publisher` tool installed in the CI environment? → A: Pre-built binary downloaded from GitHub releases via `curl`
+- Q: What authentication mechanism does the `mcp-publisher` command use? → A: GitHub OIDC (no token required; workflow needs `id-token: write` permission) or GitHub PAT (`MCP_GITHUB_TOKEN` secret with `read:org` and `read:user` scopes)
 - Q: Where should the `server.json` file be located in the repository? → A: `src/ProjGraph.Mcp`
 
 ## User Scenarios & Testing *(mandatory)*
@@ -45,11 +45,11 @@ As a ProjGraph maintainer, I want to explicitly submit my server definition to t
 
 ---
 
-### User Story 3 - Release Process Integration (Priority: P2)
+### User Story 3 - Release Process Integration (Priority: P1)
 
 As a maintainer, I want the registry submission to be a standard part of every release so that users always have access to the latest version in the marketplace.
 
-**Why this priority**: Manual submission for every version is error-prone. Automation ensures the marketplace remains in sync with NuGet.
+**Why this priority**: Required to meet SC-004 (Zero manual intervention) and ensure the marketplace remains in sync with NuGet automatically.
 
 **Independent Test**: Can be tested by running the full release pipeline and checking if the registry reflects the new version number without manual intervention.
 
@@ -71,9 +71,10 @@ As a maintainer, I want the registry submission to be a standard part of every r
 
 - **FR-001**: The project MUST maintain a README file for the NuGet package that includes the ownership verification comment `<!-- mcp-name: io.github.handys11/projgraph -->`.
 - **FR-002**: The project MUST maintain a `server.json` file in `src/ProjGraph.Mcp` containing the necessary MCP server metadata for the registry.
-- **FR-003**: The project Release Workflow MUST include a step to execute the `mcp-publisher publish src/ProjGraph.Mcp/server.json` command.
+- **FR-003**: The project Release Workflow MUST include a step that installs the `mcp-publisher` binary, authenticates via GitHub OIDC (`mcp-publisher login github-oidc`), and runs `mcp-publisher publish src/ProjGraph.Mcp/.mcp/server.json`.
 - **FR-004**: The release process MUST fail if the `mcp-publisher` command returns a non-zero exit code.
 - **FR-005**: The `mcp-publisher` command MUST be executed after the NuGet package is successfully pushed to ensure ownership can be verified by the registry.
+- **FR-006**: The system MUST ensure the identifier in `server.json` matches the `mcp-name` in the README to prevent verification failures.
 
 ## Success Criteria *(mandatory)*
 
@@ -86,9 +87,9 @@ As a maintainer, I want the registry submission to be a standard part of every r
 
 ## Assumptions
 
-- **A-001**: The `mcp-publisher` tool is an npm package that can be installed in a CI environment via `npm install -g mcp-publisher`.
+- **A-001**: The `mcp-publisher` tool is a pre-built binary available from GitHub releases and installed in CI via `curl` from `https://github.com/modelcontextprotocol/registry/releases/latest`.
 - **A-002**: The `server.json` schema is stable and documented by the MCP Registry.
-- **A-003**: The MCP Registry provides an API token (stored as `MCP_REGISTRY_TOKEN`) for the `publish` command to authenticate the maintainer.
+- **A-003**: For `io.github.handys11/` namespaces, the MCP Registry uses GitHub OIDC authentication in CI (no token required; `id-token: write` permission grants access automatically). Alternatively, a GitHub PAT with `read:org` and `read:user` scopes can be stored as `MCP_GITHUB_TOKEN`.
 
 ## Dependencies
 

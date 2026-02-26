@@ -2,15 +2,15 @@
 
 ## Decision: `mcp-publisher` CLI usage
 
-- **Chosen**: `npx mcp-publisher publish <path-to-server.json>`
-- **Rationale**: Using `npx` ensures the tool is always at the latest version without requiring global installation in the CI environment.
-- **Alternatives considered**: `npm install -g mcp-publisher`. Rejected because global installation can be slower and more prone to version conflicts in shared CI environments.
+- **Chosen**: Download the pre-built binary from GitHub releases via `curl` and run `./mcp-publisher publish <path-to-server.json>`.
+- **Rationale**: `mcp-publisher` is not an npm package. It is a Go binary distributed via GitHub releases at `https://github.com/modelcontextprotocol/registry/releases/latest`.
+- **Alternatives considered**: `npx mcp-publisher`. Rejected — the tool is not on npm.
 
 ## Decision: Authentication for `mcp-publisher`
 
-- **Chosen**: Pass token via `MCP_REGISTRY_TOKEN` environment variable.
-- **Rationale**: Standard practice for GitHub Actions and most CLI tools.
-- **Alternatives considered**: Passing via `--token` flag. Rejected as it might expose secrets in logs if not handled carefully (though `WIK-001` suggests environment variables are safer).
+- **Chosen**: GitHub OIDC (`mcp-publisher login github-oidc`). Requires `id-token: write` permission in the workflow job. No secrets required.
+- **Rationale**: The registry validates namespace ownership. For `io.github.handys11/projgraph`, the workflow running on the `HandyS11` repository authenticates automatically via OIDC — the cleanest and most secure approach.
+- **Alternatives considered**: GitHub PAT (`MCP_GITHUB_TOKEN` secret with `read:org` and `read:user` scopes). Valid fallback but requires managing a long-lived secret.
 
 ## Decision: README Ownership Verification Comment
 
