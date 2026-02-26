@@ -41,6 +41,10 @@ internal static class Program
         // Override IOutputConsole with a no-op to prevent ANSI markup on stdout (JSON-RPC transport)
         builder.Services.AddSingleton<IOutputConsole, NullOutputConsole>();
 
+        builder.Services.AddSingleton<DiagramRenderers>(sp => new DiagramRenderers(
+            sp.GetRequiredService<MermaidGraphRenderer>(),
+            sp.GetRequiredService<IDiagramRenderer<ClassModel>>(),
+            sp.GetRequiredService<IDiagramRenderer<EfModel>>()));
         builder.Services.AddSingleton<ProjGraphTools>();
 
         var host = builder.Build();
@@ -54,9 +58,7 @@ internal sealed class ProjGraphTools(
     IEfAnalysisService efService,
     IClassAnalysisService classService,
     IDiscoverCsFilesUseCase discoverCsFilesUseCase,
-    MermaidGraphRenderer graphRenderer,
-    IDiagramRenderer<ClassModel> classRenderer,
-    IDiagramRenderer<EfModel> erdRenderer,
+    DiagramRenderers renderers,
     IFileSystem fileSystem)
 {
     [McpServerTool(Name = "get_class_diagram")]
@@ -98,7 +100,7 @@ internal sealed class ProjGraphTools(
             model = await classService.AnalyzeFileAsync(path, options);
         }
 
-        var diagram = classRenderer.Render(model, new DiagramOptions(showTitle, false));
+        var diagram = renderers.ClassRenderer.Render(model, new DiagramOptions(showTitle, false));
         return warningMarkup + diagram;
     }
 
@@ -130,7 +132,7 @@ internal sealed class ProjGraphTools(
 
         var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
 
-        return graphRenderer.Render(graph,
+        return renderers.GraphRenderer.Render(graph,
             new DiagramOptions(showTitle, false, includePackages));
     }
 
@@ -179,6 +181,11 @@ internal sealed class ProjGraphTools(
             model = await efService.AnalyzeContextAsync(path, contextName);
         }
 
-        return erdRenderer.Render(model, new DiagramOptions(showTitle, false));
+        return renderers.ErdRenderer.Render(model, new DiagramOptions(showTitle, false));
     }
 }
+
+internal sealed record DiagramRenderers(
+    IDiagramRenderer<SolutionGraph> GraphRenderer,
+    IDiagramRenderer<ClassModel> ClassRenderer,
+    IDiagramRenderer<EfModel> ErdRenderer);
