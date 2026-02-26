@@ -104,3 +104,35 @@ Class analysis uses Roslyn to:
 - **Central Package Management**: `Directory.Packages.props`
 - **Code Quality**: `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true`
 - **CI**: GitHub Actions on `ubuntu-latest` and `windows-latest`
+
+## Release & Distribution
+
+Releases are triggered by pushing a `v*` Git tag and are fully automated via `.github/workflows/publish.yml`.
+
+### Release Flow
+
+```none
+Tag push (v*)
+    │
+    ├── Update version in Directory.Build.props & server.json
+    ├── dotnet build + test
+    ├── dotnet pack → ./artifacts/*.nupkg
+    ├── dotnet nuget push → NuGet.org          (requires NUGET_API_KEY secret)
+    ├── dotnet nuget push → GitHub Packages    (uses GITHUB_TOKEN)
+    ├── mcp-publisher publish              (GitHub OIDC auth, no token required)
+    │       └── Submits src/ProjGraph.Mcp/.mcp/server.json to the Official MCP Registry
+    │           Retried up to 3× via nick-fields/retry@v3
+    └── Create GitHub Release with release notes
+```
+
+### MCP Registry Ownership Verification
+
+The Official MCP Registry verifies package ownership before accepting a submission by scanning the NuGet package
+README for a hidden HTML comment:
+
+```html
+<!-- mcp-name: io.github.handys11/projgraph -->
+```
+
+This comment must be present at the end of `src/ProjGraph.Mcp/README.md`. The identifier in the comment must exactly
+match the `"name"` field in `src/ProjGraph.Mcp/.mcp/server.json`.
