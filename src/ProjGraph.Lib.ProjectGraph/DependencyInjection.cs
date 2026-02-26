@@ -21,6 +21,7 @@ public static class ProjectGraphServiceRegistration
     {
         services.AddSingleton<BuildGraphUseCase>();
         services.AddSingleton<IGraphService, GraphService>();
+        services.AddSingleton<IStatsService, StatsService>();
 
         // Renderers
         services.AddTransient<TreeGraphRenderer>();

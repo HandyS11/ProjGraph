@@ -91,4 +91,21 @@ Invoke-ProjGraph `
     -Arguments "visualize ./samples/visualize/simple-dependencies/simple-dependencies.slnx --format mermaid --output ./samples/visualize/simple-dependencies/simple-dependencies.mmd" `
     -OutputPath "./samples/visualize/simple-dependencies/simple-dependencies.mmd"
 
+# 8. Stats: Modular Architecture
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+Write-Host "Running: stats (Modular Architecture)" -ForegroundColor Cyan
+Push-Location $root
+try {
+    & dotnet run --project "$cliProject" --no-build -- stats ./samples/visualize/modular-architecture/ModularArchitecture.slnx
+}
+finally {
+    Pop-Location
+}
+$stopwatch.Stop()
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "Stats sample completed in $($stopwatch.Elapsed.TotalSeconds.ToString("F2"))s." -ForegroundColor Green
+} else {
+    Write-Error "Failed to run stats sample."
+}
+
 Write-Host "`n--- All snapshots processed ---" -ForegroundColor Green

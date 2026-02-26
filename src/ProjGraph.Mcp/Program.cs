@@ -13,6 +13,7 @@ using ProjGraph.Lib.ProjectGraph.Application;
 using ProjGraph.Lib.ProjectGraph.Rendering;
 using System.ComponentModel;
 using System.Reflection;
+using System.Text.Json;
 
 namespace ProjGraph.Mcp;
 
@@ -41,6 +42,10 @@ internal static class Program
         // Override IOutputConsole with a no-op to prevent ANSI markup on stdout (JSON-RPC transport)
         builder.Services.AddSingleton<IOutputConsole, NullOutputConsole>();
 
+        builder.Services.AddSingleton<DiagramRenderers>(sp => new DiagramRenderers(
+            sp.GetRequiredService<MermaidGraphRenderer>(),
+            sp.GetRequiredService<IDiagramRenderer<ClassModel>>(),
+            sp.GetRequiredService<IDiagramRenderer<EfModel>>()));
         builder.Services.AddSingleton<ProjGraphTools>();
 
         var host = builder.Build();
@@ -54,10 +59,9 @@ internal sealed class ProjGraphTools(
     IEfAnalysisService efService,
     IClassAnalysisService classService,
     IDiscoverCsFilesUseCase discoverCsFilesUseCase,
-    MermaidGraphRenderer graphRenderer,
-    IDiagramRenderer<ClassModel> classRenderer,
-    IDiagramRenderer<EfModel> erdRenderer,
-    IFileSystem fileSystem)
+    DiagramRenderers renderers,
+    IFileSystem fileSystem,
+    IStatsService statsService)
 {
     [McpServerTool(Name = "get_class_diagram")]
     [Description(
@@ -98,7 +102,7 @@ internal sealed class ProjGraphTools(
             model = await classService.AnalyzeFileAsync(path, options);
         }
 
-        var diagram = classRenderer.Render(model, new DiagramOptions(showTitle, false));
+        var diagram = renderers.ClassRenderer.Render(model, new DiagramOptions(showTitle, false));
         return warningMarkup + diagram;
     }
 
@@ -130,8 +134,37 @@ internal sealed class ProjGraphTools(
 
         var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
 
-        return graphRenderer.Render(graph,
+        return renderers.GraphRenderer.Render(graph,
             new DiagramOptions(showTitle, false, includePackages));
+    }
+
+    [McpServerTool(Name = "get_project_stats")]
+    [Description(
+        "Analyses a .NET solution or project file and returns key architectural metrics: project count, type breakdown, dependency depth statistics, most-referenced (hotspot) projects, and cycle detection.")]
+    public async Task<string> GetProjectStatsAsync(
+        [Description("Absolute path to a .NET solution (.sln/.slnx) or project (.csproj) file.")]
+        string path,
+        [Description("Number of top most-referenced projects to include. Defaults to 5.")]
+        int topN = 5,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        if (!fileSystem.FileExists(path))
+        {
+            throw new FileNotFoundException($"File not found: {path}", path);
+        }
+
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension is not (".sln" or ".slnx" or ".csproj"))
+        {
+            throw new ArgumentException(
+                $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
+        }
+
+        var stats = await statsService.ComputeStatsAsync(path, topN, cancellationToken);
+        return JsonSerializer.Serialize(stats);
     }
 
     [McpServerTool(Name = "get_erd")]
@@ -179,6 +212,11 @@ internal sealed class ProjGraphTools(
             model = await efService.AnalyzeContextAsync(path, contextName);
         }
 
-        return erdRenderer.Render(model, new DiagramOptions(showTitle, false));
+        return renderers.ErdRenderer.Render(model, new DiagramOptions(showTitle, false));
     }
 }
+
+internal sealed record DiagramRenderers(
+    IDiagramRenderer<SolutionGraph> GraphRenderer,
+    IDiagramRenderer<ClassModel> ClassRenderer,
+    IDiagramRenderer<EfModel> ErdRenderer);

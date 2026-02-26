@@ -1,5 +1,6 @@
 using ProjGraph.Lib.Core.Abstractions;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 
 namespace ProjGraph.Lib.Core.Infrastructure;
 
@@ -58,6 +59,12 @@ public class SpectreOutputConsole : IOutputConsole
     public void Write(string message)
     {
         AnsiConsole.Write(message);
+    }
+
+    /// <inheritdoc />
+    public void Write(IRenderable renderable)
+    {
+        AnsiConsole.Write(renderable);
     }
 
     /// <summary>

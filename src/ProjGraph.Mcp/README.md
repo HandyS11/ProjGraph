@@ -30,6 +30,7 @@ MCP settings file:
 | `get_project_graph` | Analyzes .NET solution/project dependency graph.        | `path`             |
 | `get_erd`           | Generates Mermaid ERD from EF Core source or snapshots. | `path`             |
 | `get_class_diagram` | Generates Mermaid class diagram for C# files.           | `path`             |
+| `get_project_stats` | Returns key architectural metrics for a solution.       | `path`             |
 
 ### `get_project_graph`
 
@@ -114,6 +115,33 @@ inheritance and related types in the workspace.
 "Visualize the dependencies of the GuestUser class in Guest.cs"
 "Draw a class diagram for my domain model starting at ./Domain/Entity.cs with inheritance"
 "Generate a class diagram with all dependencies at depth 2"
+```
+
+### `get_project_stats`
+
+Analyses a .NET solution or project file and returns key architectural metrics as structured data, useful for
+reasoning about solution health and architecture without generating a diagram.
+
+**Parameters:**
+
+- `path` (string): Absolute path to `.sln`, `.slnx`, or `.csproj` file
+- `top_n` (number, optional): Number of top most-referenced (hotspot) projects to include (default: 5)
+
+**Returns:** Structured data containing:
+
+- Total project count
+- Breakdown by output type (library, executable, test, other)
+- Dependency depth statistics (average, min, max)
+- Whether circular dependencies exist
+- Ranked list of most-referenced (hotspot) projects with their in-degree counts
+
+**Example prompts:**
+
+```text
+"How many projects are in my solution and what types are they?"
+"Which projects are referenced the most in ./MySolution.slnx?"
+"Is there a circular dependency in my solution?"
+"Give me a health summary of ./src/MyApp/MyApp.sln"
 ```
 
 ## License

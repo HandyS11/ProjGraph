@@ -15,27 +15,27 @@ ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 cd "$ROOT"
 CLI_PROJECT="./src/ProjGraph.Cli/ProjGraph.Cli.csproj"
 
+# Detect dotnet command once at top level
+DOTNET_CMD="dotnet"
+if ! command -v dotnet &> /dev/null; then
+    if command -v dotnet.exe &> /dev/null; then
+        DOTNET_CMD="dotnet.exe"
+    fi
+fi
+
 invoke_projgraph() {
     local args=$1
     local output_path="$2"
-    
+
     # Make output path relative if it's within ROOT
     # This ensures we handle the path correctly regardless of where we are
     local output_rel="${output_path#"$ROOT"/}"
 
     echo -e "\033[0;36mRendering: $output_rel\033[0m"
-    
-    # Use dotnet or dotnet.exe
-    DOTNET_CMD="dotnet"
-    if ! command -v dotnet &> /dev/null; then
-        if command -v dotnet.exe &> /dev/null; then
-            DOTNET_CMD="dotnet.exe"
-        fi
-    fi
 
-    # Run the CLI tool and redirect output
+    # Run the CLI tool using --output so the tool handles file creation directly
     # Always execute from ROOT to ensure relative project paths in $args match
-    if (cd "$ROOT" && $DOTNET_CMD run --project "$CLI_PROJECT" --no-build -- "$args" > "$output_rel"); then
+    if (cd "$ROOT" && $DOTNET_CMD run --project "$CLI_PROJECT" --no-build -- $args --output "$output_rel"); then
         echo -e "\033[0;32mSuccessfully generated snapshot: $(basename "$output_path")\033[0m"
     else
         echo -e "\033[0;31mFailed to generate snapshot for: $args\033[0m"
@@ -79,5 +79,14 @@ invoke_projgraph \
 invoke_projgraph \
     "visualize ./samples/visualize/simple-dependencies/simple-dependencies.slnx --format mermaid" \
     "$ROOT/samples/visualize/simple-dependencies/simple-dependencies.mmd"
+
+# 8. Stats: Modular Architecture
+echo -e "\033[0;36mRunning: stats (Modular Architecture)\033[0m"
+if (cd "$ROOT" && $DOTNET_CMD run --project "$CLI_PROJECT" --no-build -- stats ./samples/visualize/modular-architecture/ModularArchitecture.slnx); then
+    echo -e "\033[0;32mStats sample completed successfully.\033[0m"
+else
+    echo -e "\033[0;31mFailed to run stats sample.\033[0m"
+    exit 1
+fi
 
 echo -e "\n\033[0;32m--- All snapshots processed ---\033[0m"

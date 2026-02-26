@@ -29,6 +29,9 @@ projgraph erd ./Data/MyDbContext.cs
 
 # Generate Class Diagram for a class and its hierarchy
 projgraph classdiagram ./Models/User.cs
+
+# Compute key solution metrics (project counts, depth, hotspots)
+projgraph stats ./MySolution.slnx
 ```
 
 📖 [Full CLI Documentation](./src/ProjGraph.Cli/README.md)
@@ -58,6 +61,7 @@ Configure your MCP client (e.g., GitHub Copilot, Claude) with the following sett
 - **📊 Multiple Output Formats**: ASCII tree and Mermaid.js diagrams
 - **🗄️ Entity Relationship Diagrams**: Generate ERDs from EF Core `DbContext` or `ModelSnapshot` files
 - **🏗️ Class Hierarchies**: Visualize class diagrams with inheritance and dependencies
+- **📈 Solution Metrics**: Project counts, type breakdown, dependency depth, and hotspot detection
 - **📁 Modern .NET Support**: Full support for `.slnx`, `.sln`, and `.csproj` files
 - **🤖 AI Integration**: MCP server for GitHub Copilot, Claude, and other AI assistants
 - **⚡ Fast & Reliable**: Efficient parsing and graph algorithms
@@ -73,6 +77,9 @@ Configure your MCP client (e.g., GitHub Copilot, Claude) with the following sett
 ```bash
 # CLI
 dotnet run --project src/ProjGraph.Cli -- visualize ./ProjGraph.slnx
+
+# Stats
+dotnet run --project src/ProjGraph.Cli -- stats ./ProjGraph.slnx
 
 # MCP Server
 dotnet run --project src/ProjGraph.Mcp
@@ -113,6 +120,16 @@ projgraph classdiagram ./Models/Admin.cs -i -d
 projgraph classdiagram ./Models/Admin.cs -i -d --depth 5
 ```
 
+### Analyze Solution Metrics
+
+```bash
+# Display project counts, depth stats, and hotspot projects
+projgraph stats ./MySolution.slnx
+
+# Show top 10 most-referenced projects
+projgraph stats ./MySolution.slnx --top 10
+```
+
 ### With AI Assistants
 
 Once the MCP server is configured:
@@ -126,6 +143,9 @@ AI: [Generates the class hierarchy]
 
 You: "Show me the entity relationships in my DbContext"
 AI: [Generates the database schema]
+
+You: "Give me a health summary of my solution"
+AI: [Returns project counts, depth stats, and hotspot projects]
 ```
 
 ## 🔗 Links
@@ -142,6 +162,7 @@ Available samples include:
 - **Design Patterns**: Deep class diagrams showing pattern implementation.
 - **Modular Architecture**: Project dependency visualization for modern solutions.
 - **Simple Hierarchy**: Easy entry-level examples for new users.
+- **Solution Metrics**: Architectural health summary with project counts, depth, and hotspots.
 
 ## 📚 Documentation
 

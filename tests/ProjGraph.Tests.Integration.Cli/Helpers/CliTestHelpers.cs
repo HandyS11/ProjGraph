@@ -35,6 +35,7 @@ public static class CliTestHelpers
             config.AddCommand<VisualizeCommand>("visualize");
             config.AddCommand<ErdCommand>("erd");
             config.AddCommand<ClassDiagramCommand>("classdiagram");
+            config.AddCommand<StatsCommand>("stats");
         });
         return app;
     }
