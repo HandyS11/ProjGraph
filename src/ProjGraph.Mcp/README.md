@@ -147,3 +147,5 @@ reasoning about solution health and architecture without generating a diagram.
 ## License
 
 Licensed under the terms specified in the [repository](https://github.com/HandyS11/ProjGraph).
+
+<!-- mcp-name: io.github.handys11/projgraph -->
