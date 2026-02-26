@@ -66,19 +66,18 @@ jobs:
         run: |
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar -xzf -
 
-      - name: Authenticate to MCP Registry
-        run: ./mcp-publisher login github-oidc
-
       - name: Wait for NuGet.org validation
         run: sleep 300
 
       - name: Publish to MCP Registry
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 15
           max_attempts: 5
           retry_wait_seconds: 120
-          command: ./mcp-publisher publish src/ProjGraph.Mcp/.mcp/server.json
+          command: |
+            ./mcp-publisher login github-oidc
+            ./mcp-publisher publish src/ProjGraph.Mcp/.mcp/server.json
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -41,5 +41,6 @@ curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/downlo
 
 - **Verification Failed**: Ensure the README in the `.nupkg` actually contains the tag. `dotnet nuget push` must complete before the registry can scan it. If in doubt, run `dotnet pack` and inspect the archive with a zip tool.
 - **Validation Failed**: Validate `server.json` against the official schema at the URL in the `$schema` field.
-- **Transient Network Failure**: The CI workflow uses `nick-fields/retry@v3` (3 attempts). If all 3 fail, check registry uptime at the official MCP Registry status page and re-run the workflow once it recovers.
+- **Transient Network Failure / NuGet Not Yet Indexed**: The CI workflow waits 5 minutes after the NuGet push and then uses `nick-fields/retry@v3` (5 attempts, 2 minutes apart). If all 5 fail, check registry uptime at the official MCP Registry status page and re-run the workflow once it recovers.
+- **JWT Token Expired (`token is expired`)**: The OIDC JWT issued by `mcp-publisher login github-oidc` is short-lived. The login command is intentionally placed **inside** the retry loop in CI so a fresh token is obtained on every attempt.
 - **Mismatched ID Rejected**: Ensure `"name"` in `src/ProjGraph.Mcp/.mcp/server.json` exactly equals the value after `mcp-name:` in the README comment. Both must be `io.github.handys11/projgraph`.
