@@ -55,6 +55,7 @@ internal static class TypeAnalyzer
                             MapAccessibility(field.DeclaredAccessibility),
                             MemberKind.Field));
                     }
+
                     break;
                 case IMethodSymbol { MethodKind: MethodKind.Ordinary } method when includeFunctions:
                     var parameters = method.Parameters
@@ -90,13 +91,9 @@ internal static class TypeAnalyzer
         // This ensures we get the full namespace even for symbols not yet in compilation
         var fullyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-        // Remove the leading "global::" prefix if present
-        if (fullyQualifiedName.StartsWith("global::", StringComparison.Ordinal))
-        {
-            fullyQualifiedName = fullyQualifiedName[8..];
-        }
-
-        return fullyQualifiedName;
+        // Remove all "global::" prefixes — the leading one and any inside generic type arguments
+        // e.g. "global::Ns.AbstractValidator<global::Ns.SomeType>" → "Ns.AbstractValidator<Ns.SomeType>"
+        return fullyQualifiedName.Replace("global::", string.Empty, StringComparison.Ordinal);
     }
 
     /// <summary>
