@@ -134,5 +134,5 @@ README for a hidden HTML comment:
 <!-- mcp-name: io.github.handys11/projgraph -->
 ```
 
-This comment is present at the end of `src/ProjGraph.Mcp/README.md`. The identifier in the comment must exactly match
-the `"name"` field in `src/ProjGraph.Mcp/.mcp/server.json`.
+This comment must be present at the end of `src/ProjGraph.Mcp/README.md`. The identifier in the comment must exactly
+match the `"name"` field in `src/ProjGraph.Mcp/.mcp/server.json`.
