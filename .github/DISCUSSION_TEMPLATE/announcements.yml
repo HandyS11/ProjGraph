@@ -1,0 +1,16 @@
+﻿title: "📢 Announcements"
+labels: [ ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Announcements from the ProjGraph maintainers about releases, breaking changes, and project news.
+
+  - type: textarea
+    id: announcement
+    attributes:
+      label: Announcement
+      description: What's new?
+    validations:
+      required: true
+

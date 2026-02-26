@@ -1,0 +1,50 @@
+﻿name: 📄 Documentation Issue
+description: Report missing, incorrect, or unclear documentation
+labels: [ "documentation", "triage" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the ProjGraph documentation!
+
+  - type: dropdown
+    id: doc-area
+    attributes:
+      label: Documentation Area
+      description: Which documentation is affected?
+      options:
+        - README
+        - CLI docs (`src/ProjGraph.Cli/README.md`)
+        - MCP docs (`src/ProjGraph.Mcp/README.md`)
+        - Architecture (`ARCHITECTURE.md`)
+        - Contributing guide (`CONTRIBUTING.md`)
+        - DocFX / API reference
+        - Samples
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is missing, incorrect, or unclear?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: How should it be improved?
+    validations:
+      required: false
+
+  - type: textarea
+    id: links
+    attributes:
+      label: Relevant Links
+      description: Link to the specific page or section, if applicable.
+    validations:
+      required: false
+

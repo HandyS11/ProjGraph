@@ -1,0 +1,32 @@
+﻿title: "🎉 Show and Tell"
+labels: [ ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Show off how you're using ProjGraph! Share diagrams, integrations, workflows, or anything cool you've built with it.
+
+  - type: textarea
+    id: showcase
+    attributes:
+      label: What did you build or visualize?
+      description: Describe your use case and share screenshots, diagrams, or Mermaid output.
+    validations:
+      required: true
+
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      description: How is your project structured? Are you using the CLI, MCP server, or both?
+    validations:
+      required: false
+
+  - type: textarea
+    id: tips
+    attributes:
+      label: Tips or Lessons Learned
+      description: Anything you learned along the way that might help others?
+    validations:
+      required: false
+

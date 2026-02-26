@@ -1,0 +1,50 @@
+﻿title: "💡 Ideas"
+labels: [ ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share an idea or brainstorm with the community!
+        This is the place for early-stage proposals before they become formal feature requests.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What area does your idea relate to?
+      options:
+        - New diagram type
+        - New output format
+        - CLI improvements
+        - MCP server / AI integration
+        - Performance
+        - Developer experience
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Describe Your Idea
+      description: What would you like to see in ProjGraph?
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why?
+      description: What problem does this solve or what workflow does it improve?
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or References
+      description: Links to similar tools, mockups, or example output that illustrate your idea.
+    validations:
+      required: false
+

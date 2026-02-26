@@ -1,0 +1,71 @@
+﻿name: ✨ Feature Request
+description: Suggest a new feature or enhancement for ProjGraph
+labels: [ "enhancement", "triage" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please describe your idea so we can evaluate and discuss it.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of ProjGraph does this relate to?
+      options:
+        - CLI (`projgraph`)
+        - MCP Server (`ProjGraph.Mcp`)
+        - Core Library (`ProjGraph.Core`)
+        - Project Graph (`Lib.ProjectGraph`)
+        - Class Diagram (`Lib.ClassDiagram`)
+        - Entity Framework / ERD (`Lib.EntityFramework`)
+        - New diagram type
+        - New output format
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What problem does this feature solve? Is it related to a frustration?
+      placeholder: I'm always frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature or change you'd like.
+      placeholder: |
+        I'd like a new `--format` option that outputs...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: If possible, provide example input/output, CLI commands, or mock diagrams.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or references (e.g., links to related tools or specs).
+    validations:
+      required: false
+

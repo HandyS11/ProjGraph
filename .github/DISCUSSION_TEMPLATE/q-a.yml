@@ -1,0 +1,56 @@
+﻿title: "💬 Q&A"
+labels: [ ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask a question about ProjGraph — CLI usage, MCP setup, integration, or anything else.
+        Please search existing discussions first to avoid duplicates.
+
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Topic
+      description: What is your question about?
+      options:
+        - CLI usage
+        - MCP server setup / configuration
+        - AI assistant integration (Copilot, Claude, etc.)
+        - Output formats (Mermaid, tree, flat)
+        - Entity Framework / ERD generation
+        - Class diagram generation
+        - Project graph / dependency analysis
+        - Solution metrics / stats
+        - Building from source
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: Describe your question in detail.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: What have you tried?
+      description: Share what you've already tried or any relevant context.
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (if relevant)
+      description: Include version info if your question is about specific behavior.
+      placeholder: |
+        - ProjGraph version:
+        - .NET SDK version:
+        - OS:
+    validations:
+      required: false
+

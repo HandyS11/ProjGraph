@@ -1,0 +1,97 @@
+﻿name: 🐛 Bug Report
+description: Report a bug in ProjGraph (CLI, MCP server, or library)
+labels: [ "bug", "triage" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the sections below so we can reproduce and fix the issue.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of ProjGraph is affected?
+      options:
+        - CLI (`projgraph`)
+        - MCP Server (`ProjGraph.Mcp`)
+        - Core Library (`ProjGraph.Core`)
+        - Project Graph (`Lib.ProjectGraph`)
+        - Class Diagram (`Lib.ClassDiagram`)
+        - Entity Framework / ERD (`Lib.EntityFramework`)
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: command
+    attributes:
+      label: CLI Command (if applicable)
+      description: Which CLI command were you running?
+      options:
+        - "N/A"
+        - "visualize"
+        - "erd"
+        - "classdiagram"
+        - "stats"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the behavior.
+      placeholder: |
+        1. Run `projgraph visualize ./MySolution.slnx --format mermaid`
+        2. Observe error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include error messages or output if possible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Please provide your environment details.
+      value: |
+        - **OS**: [e.g., Windows 11, Ubuntu 24.04, macOS 15]
+        - **ProjGraph version**: [e.g., 1.2.0]
+        - **.NET SDK version**: [output of `dotnet --version`]
+        - **MCP client** (if applicable): [e.g., GitHub Copilot, Claude Desktop]
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or file snippets that help explain the problem.
+    validations:
+      required: false
+
