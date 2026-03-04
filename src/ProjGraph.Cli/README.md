@@ -200,10 +200,6 @@ projgraph stats ./src/MyApp/MyApp.csproj
 - **Zero projects in `stats`**: Ensure the solution file is not empty and that all referenced `.csproj` files exist on
   disk.
 
-## Requirements
-
-- .NET 10.0 or later
-
 ## License
 
 Licensed under the terms specified in the [repository](https://github.com/HandyS11/ProjGraph).

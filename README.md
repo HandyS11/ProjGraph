@@ -1,12 +1,19 @@
+<div align="center">
+
 # ProjGraph
 
-![CI](https://github.com/HandyS11/ProjGraph/actions/workflows/ci.yml/badge.svg)
-![CD](https://github.com/HandyS11/ProjGraph/actions/workflows/publish.yml/badge.svg)
+**.NET tool ecosystem for visualizing project dependencies, database schemas, and class hierarchies.**
+
+[![CI](https://github.com/HandyS11/ProjGraph/actions/workflows/ci.yml/badge.svg)](https://github.com/HandyS11/ProjGraph/actions/workflows/ci.yml)
+[![CD](https://github.com/HandyS11/ProjGraph/actions/workflows/publish.yml/badge.svg)](https://github.com/HandyS11/ProjGraph/actions/workflows/publish.yml)
+[![License](https://img.shields.io/github/license/HandyS11/ProjGraph)](./LICENSE)
 
 [![ProjGraph.Cli NuGet](https://img.shields.io/nuget/v/ProjGraph.Cli?label=CLI&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Cli)
 [![ProjGraph.Cli Downloads](https://img.shields.io/nuget/dt/ProjGraph.Cli?label=CLI%20downloads&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Cli)
 [![ProjGraph.Mcp NuGet](https://img.shields.io/nuget/v/ProjGraph.Mcp?label=MCP&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Mcp)
 [![ProjGraph.Mcp Downloads](https://img.shields.io/nuget/dt/ProjGraph.Mcp?label=MCP%20downloads&logo=nuget)](https://www.nuget.org/packages/ProjGraph.Mcp)
+
+</div>
 
 **ProjGraph** is a .NET tool ecosystem for visualizing project dependencies, database schemas, and class hierarchies.
 It provides both a CLI for manual analysis and an MCP server for AI-assisted exploration of your codebase architecture.
