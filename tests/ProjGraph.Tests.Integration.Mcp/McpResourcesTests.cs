@@ -188,7 +188,9 @@ public class McpResourcesTests
         var cache = new DiagramResourceCache();
         var before = DateTimeOffset.UtcNow;
 
-        await cache.StoreAsync("erd", @"D:\Data\MyContext.cs", "text/plain",
+        // Use a forward-slash path so Path.GetFileName behaves consistently on Linux and Windows
+        const string path = "/data/MyContext.cs";
+        await cache.StoreAsync("erd", path, "text/plain",
             "erDiagram\n  A ||--o{ B : has", "ERD for MyContext", null, CancellationToken.None);
 
         var after = DateTimeOffset.UtcNow;
@@ -197,9 +199,9 @@ public class McpResourcesTests
         resources.Should().ContainSingle();
         var r = resources[0];
 
-        r.Uri.Should().Be($"projgraph://diagrams/erd/{Uri.EscapeDataString(@"D:\Data\MyContext.cs")}");
+        r.Uri.Should().Be($"projgraph://diagrams/erd/{Uri.EscapeDataString(path)}");
         r.AnalysisType.Should().Be("erd");
-        r.SourcePath.Should().Be(@"D:\Data\MyContext.cs");
+        r.SourcePath.Should().Be(path);
         r.MimeType.Should().Be("text/plain");
         r.Description.Should().Be("ERD for MyContext");
         r.Name.Should().Be("erd \u2014 MyContext.cs");
