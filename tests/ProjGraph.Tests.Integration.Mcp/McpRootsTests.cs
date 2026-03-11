@@ -11,7 +11,7 @@ public sealed class McpRootsTests : IDisposable
     public async Task TryResolve_AbsolutePath_ShouldPassThrough()
     {
         var service = new WorkspaceRootService();
-        const string absolutePath = @"D:\Projects\MySolution.slnx";
+        var absolutePath = Path.Combine(Path.GetTempPath(), "MySolution.slnx");
 
         var result = await service.TryResolveAsync(absolutePath, null!, CancellationToken.None);
 
@@ -33,9 +33,10 @@ public sealed class McpRootsTests : IDisposable
     }
 
     [Fact]
-    public void AbsolutePath_IsFullyQualified_Windows()
+    public void AbsolutePath_IsFullyQualified()
     {
-        Path.IsPathFullyQualified(@"D:\Projects\MySolution.slnx").Should().BeTrue();
+        var absolutePath = Path.Combine(Path.GetTempPath(), "MySolution.slnx");
+        Path.IsPathFullyQualified(absolutePath).Should().BeTrue();
     }
 
     [Fact]
