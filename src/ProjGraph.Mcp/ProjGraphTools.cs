@@ -195,8 +195,6 @@ internal sealed class ProjGraphTools(
                 $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
         }
 
-        var stats = await statsService.ComputeStatsAsync(path, topN, cancellationToken);
-
         progress?.Report(new ProgressNotificationValue
         {
             Progress = 2,
@@ -204,11 +202,7 @@ internal sealed class ProjGraphTools(
             Message = "Computing dependency metrics"
         });
 
-        var json = JsonSerializer.Serialize(stats);
-
-        var filename = Path.GetFileName(path);
-        await cache.StoreAsync("stats", path, "application/json", json,
-            $"Stats for {filename}", server, cancellationToken);
+        var stats = await statsService.ComputeStatsAsync(path, topN, cancellationToken);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -216,6 +210,12 @@ internal sealed class ProjGraphTools(
             Total = 3,
             Message = "Summarizing results"
         });
+
+        var json = JsonSerializer.Serialize(stats);
+
+        var filename = Path.GetFileName(path);
+        await cache.StoreAsync("stats", path, "application/json", json,
+            $"Stats for {filename}", server, cancellationToken);
 
         return json;
     }
