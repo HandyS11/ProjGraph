@@ -14,13 +14,10 @@ namespace ProjGraph.Mcp;
 
 [McpServerToolType]
 internal sealed class ProjGraphTools(
-    IGraphService graphService,
-    IEfAnalysisService efService,
-    IClassAnalysisService classService,
+    AnalysisServices analysisServices,
     IDiscoverCsFilesUseCase discoverCsFilesUseCase,
     DiagramRenderers renderers,
     IFileSystem fileSystem,
-    IStatsService statsService,
     DiagramResourceCache cache,
     McpServer server,
     WorkspaceRootService rootService)
@@ -38,15 +35,10 @@ internal sealed class ProjGraphTools(
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        path = await rootService.TryResolveAsync(path, server, cancellationToken);
+        path = await PreparePathAsync(path, cancellationToken);
 
         if (!fileSystem.FileExists(path) && !fileSystem.DirectoryExists(path))
-        {
             throw new FileNotFoundException($"Path not found: {path}", path);
-        }
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -73,7 +65,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing types and members"
             });
 
-            model = await classService.AnalyzeDirectoryAsync(path, options);
+            model = await analysisServices.ClassService.AnalyzeDirectoryAsync(path, options);
         }
         else
         {
@@ -86,7 +78,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing types and members"
             });
 
-            model = await classService.AnalyzeFileAsync(path, options);
+            model = await analysisServices.ClassService.AnalyzeFileAsync(path, options);
         }
 
         progress?.Report(new ProgressNotificationValue
@@ -119,10 +111,7 @@ internal sealed class ProjGraphTools(
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        path = await rootService.TryResolveAsync(path, server, cancellationToken);
+        path = await PreparePathAsync(path, cancellationToken);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -131,17 +120,8 @@ internal sealed class ProjGraphTools(
             Message = "Parsing solution file"
         });
 
-        if (!fileSystem.FileExists(path))
-        {
-            throw new FileNotFoundException($"File not found: {path}", path);
-        }
-
-        var extension = Path.GetExtension(path).ToLowerInvariant();
-        if (extension is not (".sln" or ".slnx" or ".csproj"))
-        {
-            throw new ArgumentException(
-                $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
-        }
+        RequireFileExists(path);
+        RequireSolutionExtension(path);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -150,7 +130,7 @@ internal sealed class ProjGraphTools(
             Message = "Building dependency graph"
         });
 
-        var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
+        var graph = await analysisServices.GraphService.BuildGraphAsync(path, includePackages, cancellationToken);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -181,10 +161,7 @@ internal sealed class ProjGraphTools(
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        path = await rootService.TryResolveAsync(path, server, cancellationToken);
+        path = await PreparePathAsync(path, cancellationToken);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -193,17 +170,8 @@ internal sealed class ProjGraphTools(
             Message = "Parsing solution"
         });
 
-        if (!fileSystem.FileExists(path))
-        {
-            throw new FileNotFoundException($"File not found: {path}", path);
-        }
-
-        var extension = Path.GetExtension(path).ToLowerInvariant();
-        if (extension is not (".sln" or ".slnx" or ".csproj"))
-        {
-            throw new ArgumentException(
-                $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
-        }
+        RequireFileExists(path);
+        RequireSolutionExtension(path);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -212,7 +180,7 @@ internal sealed class ProjGraphTools(
             Message = "Computing dependency metrics"
         });
 
-        var stats = await statsService.ComputeStatsAsync(path, topN, cancellationToken);
+        var stats = await analysisServices.StatsService.ComputeStatsAsync(path, topN, cancellationToken);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -244,16 +212,9 @@ internal sealed class ProjGraphTools(
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        path = await PreparePathAsync(path, cancellationToken);
 
-        path = await rootService.TryResolveAsync(path, server, cancellationToken);
-
-        if (!fileSystem.FileExists(path))
-        {
-            throw new FileNotFoundException($"File not found: {path}", path);
-        }
-
+        RequireFileExists(path);
         FilePathGuard.RequireCsFile(path);
 
         progress?.Report(new ProgressNotificationValue
@@ -267,7 +228,7 @@ internal sealed class ProjGraphTools(
 
         if (path.EndsWith($"ModelSnapshot{FilePathGuard.CSharpExtension}", StringComparison.OrdinalIgnoreCase))
         {
-            var snapshots = await efService.DiscoverSnapshotsAsync(path);
+            var snapshots = await analysisServices.EfService.DiscoverSnapshotsAsync(path);
 
             var snapshotName = !string.IsNullOrEmpty(contextName)
                 ? contextName
@@ -286,7 +247,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing entities and relationships"
             });
 
-            model = await efService.AnalyzeSnapshotAsync(path, snapshotName);
+            model = await analysisServices.EfService.AnalyzeSnapshotAsync(path, snapshotName);
         }
         else
         {
@@ -297,7 +258,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing entities and relationships"
             });
 
-            model = await efService.AnalyzeContextAsync(path, contextName);
+            model = await analysisServices.EfService.AnalyzeContextAsync(path, contextName);
         }
 
         progress?.Report(new ProgressNotificationValue
@@ -315,9 +276,40 @@ internal sealed class ProjGraphTools(
 
         return diagram;
     }
+
+    private async Task<string> PreparePathAsync(string path, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        return await rootService.TryResolveAsync(path, server, cancellationToken);
+    }
+
+    private void RequireFileExists(string path)
+    {
+        if (!fileSystem.FileExists(path))
+        {
+            throw new FileNotFoundException($"File not found: {path}", path);
+        }
+    }
+
+    private void RequireSolutionExtension(string path)
+    {
+        var extension = fileSystem.GetExtension(path).ToLowerInvariant();
+        if (extension is not (".sln" or ".slnx" or ".csproj"))
+        {
+            throw new ArgumentException(
+                $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
+        }
+    }
 }
 
 internal sealed record DiagramRenderers(
     IDiagramRenderer<SolutionGraph> GraphRenderer,
     IDiagramRenderer<ClassModel> ClassRenderer,
     IDiagramRenderer<EfModel> ErdRenderer);
+
+internal sealed record AnalysisServices(
+    IGraphService GraphService,
+    IEfAnalysisService EfService,
+    IClassAnalysisService ClassService,
+    IStatsService StatsService);

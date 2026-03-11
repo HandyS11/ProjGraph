@@ -153,4 +153,113 @@ public class McpResourcesTests
         var act = () => resources.ReadDiagram("graph", "nonexistent");
         act.Should().Throw<Exception>();
     }
+
+    [Fact]
+    public async Task Cache_TryRead_PromotesEntry_SoRecentlyReadEntryIsNotEvictedFirst()
+    {
+        var cache = new DiagramResourceCache();
+
+        // Fill cache to capacity
+        for (var i = 0; i < DiagramResourceCache.MaxCachedResources; i++)
+        {
+            await cache.StoreAsync("graph", $@"D:\file{i}.slnx", "text/plain",
+                $"content{i}", $"desc{i}", null, CancellationToken.None);
+        }
+
+        // Read file0 — promotes it to most-recently-used, file1 becomes the new LRU
+        var file0Uri = $"projgraph://diagrams/graph/{Uri.EscapeDataString(@"D:\file0.slnx")}";
+        cache.TryRead(file0Uri).Should().Be("content0");
+
+        // Add one more — should evict the current LRU (file1, not file0)
+        await cache.StoreAsync("graph", @"D:\file_new.slnx", "text/plain",
+            "new content", "new desc", null, CancellationToken.None);
+
+        // file0 was recently read so it should still be present
+        cache.TryRead(file0Uri).Should().Be("content0", "file0 was recently read and should not be evicted");
+
+        // file1 is now the LRU and should have been evicted
+        var file1Uri = $"projgraph://diagrams/graph/{Uri.EscapeDataString(@"D:\file1.slnx")}";
+        cache.TryRead(file1Uri).Should().BeNull("file1 is the LRU after file0 was promoted");
+    }
+
+    [Fact]
+    public async Task Cache_ListResources_ShouldReturnCorrectAllProperties()
+    {
+        var cache = new DiagramResourceCache();
+        var before = DateTimeOffset.UtcNow;
+
+        await cache.StoreAsync("erd", @"D:\Data\MyContext.cs", "text/plain",
+            "erDiagram\n  A ||--o{ B : has", "ERD for MyContext", null, CancellationToken.None);
+
+        var after = DateTimeOffset.UtcNow;
+        var resources = cache.ListResources();
+
+        resources.Should().ContainSingle();
+        var r = resources[0];
+
+        r.Uri.Should().Be($"projgraph://diagrams/erd/{Uri.EscapeDataString(@"D:\Data\MyContext.cs")}");
+        r.AnalysisType.Should().Be("erd");
+        r.SourcePath.Should().Be(@"D:\Data\MyContext.cs");
+        r.MimeType.Should().Be("text/plain");
+        r.Description.Should().Be("ERD for MyContext");
+        r.Name.Should().Be("erd \u2014 MyContext.cs");
+        r.GeneratedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
+        r.LastUpdatedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
+    }
+
+    [Fact]
+    public async Task Cache_Store_DifferentTypeSamePath_ShouldCreateDistinctEntries()
+    {
+        var cache = new DiagramResourceCache();
+        const string path = @"D:\Projects\Solution.slnx";
+
+        await cache.StoreAsync("graph", path, "text/plain", "graph content", "Graph", null, CancellationToken.None);
+        await cache.StoreAsync("class", path, "text/plain", "class content", "Class", null, CancellationToken.None);
+
+        cache.ListResources().Should().HaveCount(2, "different types with the same path are distinct resources");
+
+        var graphUri = $"projgraph://diagrams/graph/{Uri.EscapeDataString(path)}";
+        var classUri = $"projgraph://diagrams/class/{Uri.EscapeDataString(path)}";
+
+        cache.TryRead(graphUri).Should().Be("graph content");
+        cache.TryRead(classUri).Should().Be("class content");
+    }
+
+    [Fact]
+    public async Task Cache_Update_ShouldUpdateLastUpdatedAt_ButNotGeneratedAt()
+    {
+        var cache = new DiagramResourceCache();
+
+        await cache.StoreAsync("graph", @"D:\test.slnx", "text/plain",
+            "v1", "desc", null, CancellationToken.None);
+
+        var generatedAt = cache.ListResources()[0].GeneratedAt;
+
+        // Small delay to ensure timestamps differ
+        await Task.Delay(10);
+
+        await cache.StoreAsync("graph", @"D:\test.slnx", "text/plain",
+            "v2", "updated desc", null, CancellationToken.None);
+
+        var updated = cache.ListResources()[0];
+        updated.GeneratedAt.Should().Be(generatedAt, "GeneratedAt should not change on update");
+        updated.LastUpdatedAt.Should().BeAfter(generatedAt, "LastUpdatedAt should advance on update");
+        updated.Description.Should().Be("updated desc", "description should be updated");
+    }
+
+    [Fact]
+    public async Task Cache_Store_ShouldUseEscapedPathInUri()
+    {
+        var cache = new DiagramResourceCache();
+        const string path = @"D:\My Projects\Solution File.slnx";
+
+        await cache.StoreAsync("graph", path, "text/plain", "content", "desc", null, CancellationToken.None);
+
+        var expectedUri = $"projgraph://diagrams/graph/{Uri.EscapeDataString(path)}";
+        var resources = cache.ListResources();
+
+        resources.Should().ContainSingle();
+        resources[0].Uri.Should().Be(expectedUri);
+        cache.TryRead(expectedUri).Should().Be("content");
+    }
 }

@@ -4,7 +4,10 @@ using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib;
+using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.Core.Abstractions;
+using ProjGraph.Lib.EntityFramework.Application;
+using ProjGraph.Lib.ProjectGraph.Application;
 using ProjGraph.Lib.ProjectGraph.Rendering;
 using System.Reflection;
 
@@ -49,6 +52,11 @@ internal static class Program
             sp.GetRequiredService<MermaidGraphRenderer>(),
             sp.GetRequiredService<IDiagramRenderer<ClassModel>>(),
             sp.GetRequiredService<IDiagramRenderer<EfModel>>()));
+        builder.Services.AddSingleton<AnalysisServices>(sp => new AnalysisServices(
+            sp.GetRequiredService<IGraphService>(),
+            sp.GetRequiredService<IEfAnalysisService>(),
+            sp.GetRequiredService<IClassAnalysisService>(),
+            sp.GetRequiredService<IStatsService>()));
         builder.Services.AddSingleton<ProjGraphTools>();
 
         var host = builder.Build();

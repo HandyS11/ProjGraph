@@ -49,14 +49,11 @@ internal static class McpTestHelper
             new AnalyzeDirectoryUseCase(discoverCsFilesUseCase, compilationFactory, typeProcessor, fs));
 
         return new ProjGraphTools(
-            graphService,
-            efService,
-            classService,
+            new AnalysisServices(graphService, efService, classService, new StatsService(graphService)),
             discoverCsFilesUseCase,
             new DiagramRenderers(new MermaidGraphRenderer(), new MermaidClassDiagramRenderer(),
                 new MermaidErdRenderer()),
             fs,
-            new StatsService(graphService),
             new DiagramResourceCache(),
             null!,
             new WorkspaceRootService(fs));
