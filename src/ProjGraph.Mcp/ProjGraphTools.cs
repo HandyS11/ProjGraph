@@ -55,6 +55,13 @@ internal sealed class ProjGraphTools(
             throw new FileNotFoundException($"Path not found: {path}", path);
         }
 
+        progress?.Report(new ProgressNotificationValue
+        {
+            Progress = 2,
+            Total = 3,
+            Message = "Analyzing types and members"
+        });
+
         ClassModel model;
         var warningMarkup = string.Empty;
 
@@ -76,9 +83,9 @@ internal sealed class ProjGraphTools(
 
         progress?.Report(new ProgressNotificationValue
         {
-            Progress = 2,
+            Progress = 3,
             Total = 3,
-            Message = "Analyzing types and members"
+            Message = "Rendering class diagram"
         });
 
         var diagram = renderers.ClassRenderer.Render(model, new DiagramOptions(showTitle, false));
@@ -87,13 +94,6 @@ internal sealed class ProjGraphTools(
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("class", path, "text/plain", result,
             $"Class diagram for {filename}", server, cancellationToken);
-
-        progress?.Report(new ProgressNotificationValue
-        {
-            Progress = 3,
-            Total = 3,
-            Message = "Rendering class diagram"
-        });
 
         return result;
     }
@@ -134,13 +134,20 @@ internal sealed class ProjGraphTools(
                 $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
         }
 
-        var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
-
         progress?.Report(new ProgressNotificationValue
         {
             Progress = 2,
             Total = 3,
             Message = "Building dependency graph"
+        });
+
+        var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
+
+        progress?.Report(new ProgressNotificationValue
+        {
+            Progress = 3,
+            Total = 3,
+            Message = "Rendering diagram"
         });
 
         var diagram = renderers.GraphRenderer.Render(graph,
@@ -149,13 +156,6 @@ internal sealed class ProjGraphTools(
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("graph", path, "text/plain", diagram,
             $"Project graph for {filename}", server, cancellationToken);
-
-        progress?.Report(new ProgressNotificationValue
-        {
-            Progress = 3,
-            Total = 3,
-            Message = "Rendering diagram"
-        });
 
         return diagram;
     }
@@ -195,8 +195,6 @@ internal sealed class ProjGraphTools(
                 $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
         }
 
-        var stats = await statsService.ComputeStatsAsync(path, topN, cancellationToken);
-
         progress?.Report(new ProgressNotificationValue
         {
             Progress = 2,
@@ -204,11 +202,7 @@ internal sealed class ProjGraphTools(
             Message = "Computing dependency metrics"
         });
 
-        var json = JsonSerializer.Serialize(stats);
-
-        var filename = Path.GetFileName(path);
-        await cache.StoreAsync("stats", path, "application/json", json,
-            $"Stats for {filename}", server, cancellationToken);
+        var stats = await statsService.ComputeStatsAsync(path, topN, cancellationToken);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -216,6 +210,12 @@ internal sealed class ProjGraphTools(
             Total = 3,
             Message = "Summarizing results"
         });
+
+        var json = JsonSerializer.Serialize(stats);
+
+        var filename = Path.GetFileName(path);
+        await cache.StoreAsync("stats", path, "application/json", json,
+            $"Stats for {filename}", server, cancellationToken);
 
         return json;
     }
@@ -252,6 +252,13 @@ internal sealed class ProjGraphTools(
 
         FilePathGuard.RequireCsFile(path);
 
+        progress?.Report(new ProgressNotificationValue
+        {
+            Progress = 2,
+            Total = 3,
+            Message = "Analyzing entities and relationships"
+        });
+
         EfModel model;
 
         if (path.EndsWith($"ModelSnapshot{FilePathGuard.CSharpExtension}", StringComparison.OrdinalIgnoreCase))
@@ -277,9 +284,9 @@ internal sealed class ProjGraphTools(
 
         progress?.Report(new ProgressNotificationValue
         {
-            Progress = 2,
+            Progress = 3,
             Total = 3,
-            Message = "Analyzing entities and relationships"
+            Message = "Rendering entity diagram"
         });
 
         var diagram = renderers.ErdRenderer.Render(model, new DiagramOptions(showTitle, false));
@@ -287,13 +294,6 @@ internal sealed class ProjGraphTools(
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("erd", path, "text/plain", diagram,
             $"Entity diagram for {filename}", server, cancellationToken);
-
-        progress?.Report(new ProgressNotificationValue
-        {
-            Progress = 3,
-            Total = 3,
-            Message = "Rendering entity diagram"
-        });
 
         return diagram;
     }
