@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib;
@@ -18,6 +19,10 @@ internal static class Program
             ?.InformationalVersion ?? "0.0.0";
 
         var builder = Host.CreateApplicationBuilder(args);
+
+        builder.Logging.SetMinimumLevel(LogLevel.Warning);
+        builder.Logging.AddConsole(options =>
+            options.LogToStandardErrorThreshold = LogLevel.Trace);
 
         builder.Services.AddMcpServer(options =>
                 options.ServerInfo = new Implementation
