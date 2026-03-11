@@ -1,8 +1,11 @@
-﻿# ProjGraph Development Guidelines
+# ProjGraph Development Guidelines
 
 Auto-generated from all feature plans. Last updated: 2026-01-13
 
 ## Active Technologies
+
+- .NET 10.0 (C# 14+) + `ModelContextProtocol` v1.0.0, `Microsoft.Extensions.Hosting` (012-mcp-integration-primitives)
+- In-memory only (`DiagramResourceCache` singleton, max 50 entries, LRU eviction) (012-mcp-integration-primitives)
 
 - .NET 10.0 (C# 14+) + `mcp-publisher` (npm), GitHub Actions (011-mcp-registry-submission)
 
@@ -50,13 +53,15 @@ tests/
 
 ## Recent Changes
 
+- 012-mcp-integration-primitives: Added .NET 10.0 (C# 14+) + `ModelContextProtocol` v1.0.0,
+  `Microsoft.Extensions.Hosting`
+
 - 011-mcp-registry-submission: Added .NET 10.0 (C# 14+) + `mcp-publisher` (npm), GitHub Actions
 
 - 010-project-stats-mcp: Added .NET 10.0 (C# 14+) + `Spectre.Console.Cli` (CLI formatting),
   `ModelContextProtocol.Server` (MCP tool), `System.Text.Json` (MCP response serialisation),
   `Microsoft.Extensions.DependencyInjection` (DI wiring)
 
-- 009-directory-class-diagram: Added .NET 10.0 (C# 14+) + Microsoft.CodeAnalysis.CSharp (Roslyn)
 
   Spectre.Console (for rendering)
 

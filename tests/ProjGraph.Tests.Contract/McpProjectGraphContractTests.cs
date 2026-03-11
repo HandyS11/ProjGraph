@@ -59,9 +59,9 @@ public class McpProjectGraphContractTests
         var method = type.GetMethod("GetProjectGraphAsync");
         var parameters = method!.GetParameters();
 
-        // Assert parameters exist (path, showTitle, includePackages, cancellationToken)
-        parameters.Should().HaveCount(4,
-            "GetProjectGraph should have 'path', 'showTitle', 'includePackages', and 'cancellationToken' parameters");
+        // Assert parameters exist (path, showTitle, includePackages, progress, cancellationToken)
+        parameters.Should().HaveCount(5,
+            "GetProjectGraph should have 'path', 'showTitle', 'includePackages', 'progress', and 'cancellationToken' parameters");
 
         var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
         pathParam.ParameterType.Should().Be<string>();
