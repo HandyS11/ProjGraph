@@ -1,5 +1,6 @@
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using ProjGraph.Lib.Core.Infrastructure;
 using System.Reflection;
 
 namespace ProjGraph.Mcp;
@@ -91,15 +92,43 @@ internal sealed class WorkspaceRootService : IDisposable
 
     private static string? FindFileRecursively(string rootPath, string fileName)
     {
-        try
+        var stack = new Stack<string>();
+        stack.Push(rootPath);
+
+        while (stack.Count > 0)
         {
-            var files = Directory.GetFiles(rootPath, fileName, SearchOption.AllDirectories);
-            return files.Length > 0 ? files[0] : null;
+            var currentDir = stack.Pop();
+
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(currentDir, fileName))
+                {
+                    return file;
+                }
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException)
+            {
+                // Skip directories we cannot access
+                continue;
+            }
+
+            try
+            {
+                foreach (var subDir in Directory.EnumerateDirectories(currentDir))
+                {
+                    if (!DirectoryFilters.ShouldSkipDirectory(subDir))
+                    {
+                        stack.Push(subDir);
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException)
+            {
+                // Skip directories we cannot enumerate
+            }
         }
-        catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException)
-        {
-            return null;
-        }
+
+        return null;
     }
 
     public void Dispose()
