@@ -80,7 +80,15 @@ internal sealed class DiagramResourceCache
     {
         lock (_lock)
         {
-            return _entries.TryGetValue(uri, out var entry) ? entry.Content : null;
+            if (_entries.TryGetValue(uri, out var entry))
+            {
+                // Update LRU order on read: move this entry to the front
+                _lruOrder.Remove(entry.LruNode);
+                _lruOrder.AddFirst(entry.LruNode);
+                return entry.Content;
+            }
+
+            return null;
         }
     }
 
