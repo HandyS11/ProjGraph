@@ -134,13 +134,20 @@ internal sealed class ProjGraphTools(
                 $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
         }
 
-        var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
-
         progress?.Report(new ProgressNotificationValue
         {
             Progress = 2,
             Total = 3,
             Message = "Building dependency graph"
+        });
+
+        var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
+
+        progress?.Report(new ProgressNotificationValue
+        {
+            Progress = 3,
+            Total = 3,
+            Message = "Rendering diagram"
         });
 
         var diagram = renderers.GraphRenderer.Render(graph,
@@ -149,13 +156,6 @@ internal sealed class ProjGraphTools(
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("graph", path, "text/plain", diagram,
             $"Project graph for {filename}", server, cancellationToken);
-
-        progress?.Report(new ProgressNotificationValue
-        {
-            Progress = 3,
-            Total = 3,
-            Message = "Rendering diagram"
-        });
 
         return diagram;
     }
