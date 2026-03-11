@@ -1,10 +1,12 @@
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using ProjGraph.Lib.Core.Abstractions;
+using ProjGraph.Lib.Core.Infrastructure;
 using System.Reflection;
 
 namespace ProjGraph.Mcp;
 
-internal sealed class WorkspaceRootService : IDisposable
+internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IDisposable
 {
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private volatile RootsStatusKind _status = RootsStatusKind.Unknown;
@@ -89,17 +91,40 @@ internal sealed class WorkspaceRootService : IDisposable
         }
     }
 
-    private static string? FindFileRecursively(string rootPath, string fileName)
+    private string? FindFileRecursively(string rootPath, string fileName)
     {
-        try
+        var queue = new Queue<string>();
+        queue.Enqueue(rootPath);
+
+        while (queue.Count > 0)
         {
-            var files = Directory.GetFiles(rootPath, fileName, SearchOption.AllDirectories);
-            return files.Length > 0 ? files[0] : null;
+            var currentDir = queue.Dequeue();
+
+            if (DirectoryFilters.ShouldSkipDirectory(currentDir))
+            {
+                continue;
+            }
+
+            try
+            {
+                var match = fileSystem.GetFiles(currentDir, fileName).FirstOrDefault();
+                if (match is not null)
+                {
+                    return match;
+                }
+
+                foreach (var subDir in fileSystem.GetDirectories(currentDir))
+                {
+                    queue.Enqueue(subDir);
+                }
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException)
+            {
+                // Skip directories we cannot access
+            }
         }
-        catch (Exception ex) when (ex is UnauthorizedAccessException or DirectoryNotFoundException)
-        {
-            return null;
-        }
+
+        return null;
     }
 
     public void Dispose()

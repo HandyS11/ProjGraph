@@ -1,4 +1,5 @@
 using ModelContextProtocol;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace ProjGraph.Mcp;
@@ -16,6 +17,11 @@ internal sealed class DiagramResourceCache
     {
         var uri = $"projgraph://diagrams/{type}/{Uri.EscapeDataString(sourcePath)}";
         var now = DateTimeOffset.UtcNow;
+        var resourceCollection = server?.ServerOptions.ResourceCollection;
+
+        McpServerResource? newResource = null;
+        McpServerResource? evictedResource = null;
+        bool isUpdate;
 
         lock (_lock)
         {
@@ -30,20 +36,40 @@ internal sealed class DiagramResourceCache
                 // Move to front of LRU
                 _lruOrder.Remove(existing.LruNode);
                 _lruOrder.AddFirst(existing.LruNode);
+
+                isUpdate = true;
             }
             else
             {
+                isUpdate = false;
+
                 // Evict if at capacity
                 if (_entries.Count >= MaxCachedResources)
                 {
                     var lruUri = _lruOrder.Last!.Value;
+                    evictedResource = _entries[lruUri].ServerResource;
                     _lruOrder.RemoveLast();
                     _entries.Remove(lruUri);
                 }
 
+                // Create a concrete McpServerResource so this entry appears in resources/list
+                var filename = Path.GetFileName(sourcePath);
+                var entryName = $"{type} — {filename}";
+                if (resourceCollection is not null)
+                {
+                    newResource = McpServerResource.Create(
+                        (Func<ReadResourceResult>)(() => ReadForResource(uri)),
+                        new McpServerResourceCreateOptions
+                        {
+                            UriTemplate = uri,
+                            Name = entryName,
+                            Description = description,
+                            MimeType = mimeType
+                        });
+                }
+
                 // Add new entry
                 var node = _lruOrder.AddFirst(uri);
-                var filename = Path.GetFileName(sourcePath);
                 _entries[uri] = new CacheEntry
                 {
                     Uri = uri,
@@ -55,18 +81,35 @@ internal sealed class DiagramResourceCache
                     GeneratedAt = now,
                     LastUpdatedAt = now,
                     LruNode = node,
-                    Name = $"{type} — {filename}"
+                    Name = entryName,
+                    ServerResource = newResource
                 };
             }
         }
 
-        // Send notification outside the lock
-        if (server is not null)
+        // Outside the lock: mutate the server's resource collection.
+        // McpServerPrimitiveCollection.Add/Remove automatically fire notifications/resources/list_changed.
+        if (evictedResource is not null)
         {
+            resourceCollection?.Remove(evictedResource);
+        }
+
+        if (newResource is not null)
+        {
+            resourceCollection?.Add(newResource);
+        }
+        else if (isUpdate && server is not null)
+        {
+            // Notify clients that the resource content has changed (URI stays the same)
             try
             {
                 await server.SendNotificationAsync(
-                    "notifications/resources/list_changed",
+                    NotificationMethods.ResourceUpdatedNotification,
+                    new ResourceUpdatedNotificationParams
+                    {
+                        Uri = uri
+                    },
+                    null,
                     ct);
             }
             catch (McpException)
@@ -80,15 +123,15 @@ internal sealed class DiagramResourceCache
     {
         lock (_lock)
         {
-            if (_entries.TryGetValue(uri, out var entry))
+            if (!_entries.TryGetValue(uri, out var entry))
             {
-                // Update LRU order on read: move this entry to the front
-                _lruOrder.Remove(entry.LruNode);
-                _lruOrder.AddFirst(entry.LruNode);
-                return entry.Content;
+                return null;
             }
 
-            return null;
+            // Update LRU order on read: move this entry to the front
+            _lruOrder.Remove(entry.LruNode);
+            _lruOrder.AddFirst(entry.LruNode);
+            return entry.Content;
         }
     }
 
@@ -96,10 +139,40 @@ internal sealed class DiagramResourceCache
     {
         lock (_lock)
         {
-            return _entries.Values
-                .Select(e => new DiagramResource(e.Uri, e.Name, e.Description, e.MimeType, e.AnalysisType,
-                    e.SourcePath, e.GeneratedAt, e.LastUpdatedAt))
-                .ToList();
+            return
+            [
+                .. _entries.Values
+                    .Select(e => new DiagramResource(e.Uri, e.Name, e.Description, e.MimeType, e.AnalysisType,
+                        e.SourcePath, e.GeneratedAt, e.LastUpdatedAt))
+            ];
+        }
+    }
+
+    private ReadResourceResult ReadForResource(string uri)
+    {
+        lock (_lock)
+        {
+            if (!_entries.TryGetValue(uri, out var entry))
+            {
+                throw new McpException($"Resource not found: {uri}");
+            }
+
+            // Update LRU order on read
+            _lruOrder.Remove(entry.LruNode);
+            _lruOrder.AddFirst(entry.LruNode);
+
+            return new ReadResourceResult
+            {
+                Contents =
+                [
+                    new TextResourceContents
+                    {
+                        Uri = entry.Uri,
+                        MimeType = entry.MimeType,
+                        Text = entry.Content
+                    }
+                ]
+            };
         }
     }
 
@@ -115,6 +188,7 @@ internal sealed class DiagramResourceCache
         public required DateTimeOffset GeneratedAt { get; init; }
         public required DateTimeOffset LastUpdatedAt { get; set; }
         public required LinkedListNode<string> LruNode { get; init; }
+        public McpServerResource? ServerResource { get; init; }
     }
 }
 

@@ -1,3 +1,4 @@
+using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Shared.Helpers;
 
@@ -10,7 +11,7 @@ public sealed class McpRootsTests : IDisposable
     [Fact]
     public async Task TryResolve_AbsolutePath_ShouldPassThrough()
     {
-        var service = new WorkspaceRootService();
+        var service = new WorkspaceRootService(new PhysicalFileSystem());
         var absolutePath = Path.Combine(Path.GetTempPath(), "MySolution.slnx");
 
         var result = await service.TryResolveAsync(absolutePath, null!, CancellationToken.None);
@@ -21,7 +22,7 @@ public sealed class McpRootsTests : IDisposable
     [Fact]
     public async Task TryResolve_RelativePath_NoRootsCapability_ShouldThrow()
     {
-        var service = new WorkspaceRootService();
+        var service = new WorkspaceRootService(new PhysicalFileSystem());
 
         // Using a McpServer with null ClientCapabilities fails, so pass null
         // which exercises the Unsupported path when server capabilities are unavailable

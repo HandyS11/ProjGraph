@@ -59,6 +59,6 @@ internal static class McpTestHelper
             new StatsService(graphService),
             new DiagramResourceCache(),
             null!,
-            new WorkspaceRootService());
+            new WorkspaceRootService(fs));
     }
 }
