@@ -86,8 +86,8 @@ public class McpProjectStatsContractTests
         var method = typeof(ProjGraphTools).GetMethod("GetProjectStatsAsync");
         var parameters = method!.GetParameters();
 
-        // path, topN, cancellationToken = 3 parameters
-        parameters.Should().HaveCount(3,
-            "GetProjectStats should have 'path', 'topN', and 'cancellationToken' parameters");
+        // path, topN, progress, cancellationToken = 4 parameters
+        parameters.Should().HaveCount(4,
+            "GetProjectStats should have 'path', 'topN', 'progress', and 'cancellationToken' parameters");
     }
 }

@@ -83,9 +83,9 @@ public class McpErdContractTests
         var method = type.GetMethod("GetErdAsync");
         var parameters = method!.GetParameters();
 
-        // Assert parameters exist (path, contextName, showTitle, cancellationToken)
-        parameters.Should().HaveCount(4,
-            "GetErd should have 4 parameters: path, contextName, showTitle, and cancellationToken");
+        // Assert parameters exist (path, contextName, showTitle, progress, cancellationToken)
+        parameters.Should().HaveCount(5,
+            "GetErd should have 5 parameters: path, contextName, showTitle, progress, and cancellationToken");
 
         var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
         pathParam.ParameterType.Should().Be<string>();

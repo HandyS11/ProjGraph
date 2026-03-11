@@ -1,19 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
-using ModelContextProtocol.Server;
-using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib;
-using ProjGraph.Lib.ClassDiagram.Application;
-using ProjGraph.Lib.ClassDiagram.Application.UseCases;
 using ProjGraph.Lib.Core.Abstractions;
-using ProjGraph.Lib.EntityFramework.Application;
-using ProjGraph.Lib.ProjectGraph.Application;
 using ProjGraph.Lib.ProjectGraph.Rendering;
-using System.ComponentModel;
 using System.Reflection;
-using System.Text.Json;
 
 namespace ProjGraph.Mcp;
 
@@ -34,10 +26,16 @@ internal static class Program
                     Version = version
                 })
             .WithStdioServerTransport()
-            .WithTools<ProjGraphTools>();
+            .WithTools<ProjGraphTools>()
+            .WithPrompts<ProjGraphPrompts>()
+            .WithResources<ProjGraphResources>();
 
         // Register Library services
         builder.Services.AddProjGraphLib();
+
+        // Register MCP integration services
+        builder.Services.AddSingleton<DiagramResourceCache>();
+        builder.Services.AddSingleton<WorkspaceRootService>();
 
         // Override IOutputConsole with a no-op to prevent ANSI markup on stdout (JSON-RPC transport)
         builder.Services.AddSingleton<IOutputConsole, NullOutputConsole>();
@@ -52,171 +50,3 @@ internal static class Program
         await host.RunAsync();
     }
 }
-
-[McpServerToolType]
-internal sealed class ProjGraphTools(
-    IGraphService graphService,
-    IEfAnalysisService efService,
-    IClassAnalysisService classService,
-    IDiscoverCsFilesUseCase discoverCsFilesUseCase,
-    DiagramRenderers renderers,
-    IFileSystem fileSystem,
-    IStatsService statsService)
-{
-    [McpServerTool(Name = "get_class_diagram")]
-    [Description(
-        "Generates a Mermaid class diagram for the types defined in a specific C# file or directory, with options to discover inheritance and related types in the workspace.")]
-    public async Task<string> GetClassDiagramAsync(
-        [Description("Absolute path to the .cs file or directory to analyze.")]
-        string path,
-        [Description("Analysis and discovery options.")]
-        AnalysisOptions? options = null,
-        [Description("Whether to include the title in the diagram (default: true).")]
-        bool showTitle = true,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        if (!fileSystem.FileExists(path) && !fileSystem.DirectoryExists(path))
-        {
-            throw new FileNotFoundException($"Path not found: {path}", path);
-        }
-
-        ClassModel model;
-        var warningMarkup = string.Empty;
-
-        if (fileSystem.DirectoryExists(path))
-        {
-            var files = discoverCsFilesUseCase.Execute(path);
-            if (files.Count > 50)
-            {
-                warningMarkup = $"%% WARNING: Scanning {files.Count} files. Large diagrams may be hard to read.\n";
-            }
-
-            model = await classService.AnalyzeDirectoryAsync(path, options);
-        }
-        else
-        {
-            FilePathGuard.RequireCsFile(path);
-            model = await classService.AnalyzeFileAsync(path, options);
-        }
-
-        var diagram = renderers.ClassRenderer.Render(model, new DiagramOptions(showTitle, false));
-        return warningMarkup + diagram;
-    }
-
-    [McpServerTool(Name = "get_project_graph")]
-    [Description("Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.")]
-    public async Task<string> GetProjectGraphAsync(
-        [Description("Absolute path to the project or solution file.")]
-        string path,
-        [Description("Whether to include the title in the diagram (default: true).")]
-        bool showTitle = true,
-        [Description("Whether to include NuGet package dependencies in the graph (default: false).")]
-        bool includePackages = false,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        if (!fileSystem.FileExists(path))
-        {
-            throw new FileNotFoundException($"File not found: {path}", path);
-        }
-
-        var extension = Path.GetExtension(path).ToLowerInvariant();
-        if (extension is not (".sln" or ".slnx" or ".csproj"))
-        {
-            throw new ArgumentException(
-                $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
-        }
-
-        var graph = await graphService.BuildGraphAsync(path, includePackages, cancellationToken);
-
-        return renderers.GraphRenderer.Render(graph,
-            new DiagramOptions(showTitle, false, includePackages));
-    }
-
-    [McpServerTool(Name = "get_project_stats")]
-    [Description(
-        "Analyses a .NET solution or project file and returns key architectural metrics: project count, type breakdown, dependency depth statistics, most-referenced (hotspot) projects, and cycle detection.")]
-    public async Task<string> GetProjectStatsAsync(
-        [Description("Absolute path to a .NET solution (.sln/.slnx) or project (.csproj) file.")]
-        string path,
-        [Description("Number of top most-referenced projects to include. Defaults to 5.")]
-        int topN = 5,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        if (!fileSystem.FileExists(path))
-        {
-            throw new FileNotFoundException($"File not found: {path}", path);
-        }
-
-        var extension = Path.GetExtension(path).ToLowerInvariant();
-        if (extension is not (".sln" or ".slnx" or ".csproj"))
-        {
-            throw new ArgumentException(
-                $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
-        }
-
-        var stats = await statsService.ComputeStatsAsync(path, topN, cancellationToken);
-        return JsonSerializer.Serialize(stats);
-    }
-
-    [McpServerTool(Name = "get_erd")]
-    [Description(
-        "Generates a Mermaid Entity Relationship Diagram (ERD) from an Entity Framework Core DbContext or ModelSnapshot file, including entities, properties, relationships, constraints, and inherited properties from base classes.")]
-    public async Task<string> GetErdAsync(
-        [Description("Absolute path to a .cs file containing a DbContext or ModelSnapshot.")]
-        string path,
-        [Description("Specific DbContext or ModelSnapshot class name to use if multiple are present.")]
-        string? contextName = null,
-        [Description("Whether to include the title in the diagram (default: true).")]
-        bool showTitle = true,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        if (!fileSystem.FileExists(path))
-        {
-            throw new FileNotFoundException($"File not found: {path}", path);
-        }
-
-        FilePathGuard.RequireCsFile(path);
-
-        EfModel model;
-
-        if (path.EndsWith($"ModelSnapshot{FilePathGuard.CSharpExtension}", StringComparison.OrdinalIgnoreCase))
-        {
-            var snapshots = await efService.DiscoverSnapshotsAsync(path);
-
-            var snapshotName = !string.IsNullOrEmpty(contextName)
-                ? contextName
-                : snapshots.Count switch
-                {
-                    0 => throw new AnalysisException($"No ModelSnapshot found in '{path}'."),
-                    1 => snapshots[0],
-                    _ => throw new AnalysisException(
-                        $"Multiple ModelSnapshots found in '{path}': {string.Join(", ", snapshots)}. Specify one using the contextName parameter.")
-                };
-
-            model = await efService.AnalyzeSnapshotAsync(path, snapshotName);
-        }
-        else
-        {
-            model = await efService.AnalyzeContextAsync(path, contextName);
-        }
-
-        return renderers.ErdRenderer.Render(model, new DiagramOptions(showTitle, false));
-    }
-}
-
-internal sealed record DiagramRenderers(
-    IDiagramRenderer<SolutionGraph> GraphRenderer,
-    IDiagramRenderer<ClassModel> ClassRenderer,
-    IDiagramRenderer<EfModel> ErdRenderer);

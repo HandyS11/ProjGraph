@@ -56,6 +56,9 @@ internal static class McpTestHelper
             new DiagramRenderers(new MermaidGraphRenderer(), new MermaidClassDiagramRenderer(),
                 new MermaidErdRenderer()),
             fs,
-            new StatsService(graphService));
+            new StatsService(graphService),
+            new DiagramResourceCache(),
+            null!,
+            new WorkspaceRootService());
     }
 }
