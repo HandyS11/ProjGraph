@@ -2,6 +2,7 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
 using ProjGraph.Tests.Shared.Helpers;
+using System.Text;
 
 namespace ProjGraph.Tests.Unit.Core.Parsers;
 
@@ -314,5 +315,93 @@ public class ProjectParserTests
         // Assert
         project.FullPath.Should().Be(tempFile);
         project.RelativePath.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void Parse_ShouldHandleFileWithBom()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               <Project Sdk="Microsoft.NET.Sdk">
+                                 <PropertyGroup>
+                                   <TargetFramework>net10.0</TargetFramework>
+                                 </PropertyGroup>
+                                 <ItemGroup>
+                                   <ProjectReference Include="../Other/Other.csproj" />
+                                 </ItemGroup>
+                               </Project>
+                               """;
+
+        // Write file with UTF-8 BOM
+        var filePath = Path.Combine(temp.DirectoryPath, "bom.csproj");
+        File.WriteAllText(filePath, content, new UTF8Encoding(true));
+
+        // Act
+        var (project, references, _) = _parser.Parse(filePath);
+
+        // Assert
+        project.Name.Should().Be("bom");
+        project.Framework.Should().Be("net10.0");
+        references.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Parse_ShouldHandleConditionalItemGroup()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               <Project Sdk="Microsoft.NET.Sdk">
+                                 <PropertyGroup>
+                                   <TargetFramework>net10.0</TargetFramework>
+                                 </PropertyGroup>
+                                 <ItemGroup Condition="'$(Configuration)'=='Debug'">
+                                   <ProjectReference Include="../DebugOnly/DebugOnly.csproj" />
+                                 </ItemGroup>
+                                 <ItemGroup>
+                                   <ProjectReference Include="../Always/Always.csproj" />
+                                 </ItemGroup>
+                               </Project>
+                               """;
+
+        var tempFile = temp.CreateFile("conditional.csproj", content);
+
+        // Act
+        var (_, references, _) = _parser.Parse(tempFile);
+        var refList = references.ToList();
+
+        // Assert - both conditional and unconditional references are extracted
+        refList.Should().HaveCount(2);
+        refList.Should().Contain(r => r.Contains("DebugOnly"));
+        refList.Should().Contain(r => r.Contains("Always"));
+    }
+
+    [Fact]
+    public void Parse_ShouldHandlePackageVersionRangeSyntax()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               <Project Sdk="Microsoft.NET.Sdk">
+                                 <PropertyGroup>
+                                   <TargetFramework>net10.0</TargetFramework>
+                                 </PropertyGroup>
+                                 <ItemGroup>
+                                   <PackageReference Include="SomePackage" Version="[1.0,2.0)" />
+                                 </ItemGroup>
+                               </Project>
+                               """;
+
+        var tempFile = temp.CreateFile("range.csproj", content);
+
+        // Act
+        var (_, _, packages) = _parser.Parse(tempFile);
+        var pkgList = packages.ToList();
+
+        // Assert
+        pkgList.Should().ContainSingle();
+        pkgList[0].Name.Should().Be("SomePackage");
+        pkgList[0].Version.Should().Be("[1.0,2.0)");
     }
 }

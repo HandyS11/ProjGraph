@@ -22,6 +22,11 @@ internal sealed class ProjGraphTools(
     McpServer server,
     WorkspaceRootService rootService)
 {
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     [McpServerTool(Name = "get_class_diagram")]
     [Description(
         "Generates a Mermaid class diagram for the types defined in a specific C# file or directory, with options to discover inheritance and related types in the workspace.")]
@@ -189,7 +194,7 @@ internal sealed class ProjGraphTools(
             Message = "Summarizing results"
         });
 
-        var json = JsonSerializer.Serialize(stats);
+        var json = JsonSerializer.Serialize(stats, JsonSerializerOptions);
 
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("stats", path, "application/json", json,

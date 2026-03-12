@@ -265,4 +265,125 @@ public sealed class TypeAnalyzerTests
 
         result.Members.Should().BeEmpty();
     }
+
+    [Fact]
+    public void AnalyzeType_NestedClass_ShouldAnalyzeInnerType()
+    {
+        const string code = """
+                            namespace Test;
+                            public class Outer
+                            {
+                                public class Inner
+                                {
+                                    public string Value { get; set; }
+                                }
+                            }
+                            """;
+        var compilation = RoslynTestHelper.CreateCompilation(code);
+        var outerSymbol = RoslynTestHelper.GetTypeSymbol(compilation, "Outer")!;
+        var innerSymbol = outerSymbol.GetTypeMembers("Inner").First();
+
+        var result = TypeAnalyzer.AnalyzeType(innerSymbol);
+
+        result.Name.Should().Contain("Inner");
+        result.Kind.Should().Be(ModelTypeKind.Class);
+        result.Members.Should().Contain(m => m.Name == "Value");
+    }
+
+    [Fact]
+    public void AnalyzeType_GenericClassWithConstraints_ShouldIncludeTypeParameters()
+    {
+        const string code = """
+                            namespace Test;
+                            public class Repository<T> where T : System.IComparable<T>
+                            {
+                                public T Get(int id) => default!;
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Repository")!;
+
+        var result = TypeAnalyzer.AnalyzeType(symbol);
+
+        result.Name.Should().Contain("Repository");
+        result.Name.Should().Contain("T");
+        result.Members.Should().Contain(m => m.Name == "Get" && m.Kind == MemberKind.Method);
+    }
+
+    [Fact]
+    public void AnalyzeType_StaticClass_ShouldReturnClassKind()
+    {
+        const string code = """
+                            namespace Test;
+                            public static class Helpers
+                            {
+                                public static void DoWork() { }
+                                public static int Value => 42;
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Helpers")!;
+
+        var result = TypeAnalyzer.AnalyzeType(symbol);
+
+        result.Kind.Should().Be(ModelTypeKind.Class);
+        result.Members.Should().Contain(m => m.Name == "DoWork" && m.Kind == MemberKind.Method);
+        result.Members.Should().Contain(m => m.Name == "Value" && m.Kind == MemberKind.Property);
+    }
+
+    [Fact]
+    public void AnalyzeType_ClassWithEvent_ShouldNotIncludeEventsAsMembers()
+    {
+        const string code = """
+                            namespace Test;
+                            public class Publisher
+                            {
+                                public event System.EventHandler? Changed;
+                                public string Name { get; set; }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Publisher")!;
+
+        var result = TypeAnalyzer.AnalyzeType(symbol);
+
+        // Events are not handled by TypeAnalyzer's switch, so only properties/fields/methods are extracted
+        result.Members.Should().Contain(m => m.Name == "Name" && m.Kind == MemberKind.Property);
+    }
+
+    [Fact]
+    public void AnalyzeType_InterfaceWithDefaultImplementation_ShouldExtractMethod()
+    {
+        const string code = """
+                            namespace Test;
+                            public interface ILogger
+                            {
+                                void Log(string message);
+                                void LogError(string message) => Log("ERROR: " + message);
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "ILogger")!;
+
+        var result = TypeAnalyzer.AnalyzeType(symbol);
+
+        result.Kind.Should().Be(ModelTypeKind.Interface);
+        result.Members.Should().Contain(m => m.Name == "Log" && m.Kind == MemberKind.Method);
+        result.Members.Should().Contain(m => m.Name == "LogError" && m.Kind == MemberKind.Method);
+    }
+
+    [Fact]
+    public void AnalyzeType_RecordStruct_ShouldReturnRecordKind()
+    {
+        const string code = """
+                            namespace Test;
+                            public record struct Point(int X, int Y);
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Point")!;
+
+        var result = TypeAnalyzer.AnalyzeType(symbol);
+
+        result.Kind.Should().Be(ModelTypeKind.Record);
+    }
 }

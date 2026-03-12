@@ -533,4 +533,158 @@ public class EfAnalysisAdvancedTests
         rel.TargetEntity.Should().Be("PermissionEntry");
         rel.Type.Should().Be(EfRelationshipType.OneToMany);
     }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_KeylessEntity_ShouldExtractEntity()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               namespace Test;
+                               public class AppDbContext : DbContext 
+                               { 
+                                   public DbSet<BlogPostView> BlogPostViews { get; set; }
+                                   
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity<BlogPostView>().HasNoKey().ToView("vw_BlogPosts");
+                                   }
+                               }
+                               public class BlogPostView 
+                               { 
+                                   public string Title { get; set; }
+                                   public int PostCount { get; set; }
+                               }
+                               """;
+        var filePath = temp.CreateFile("ContextKeyless.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        model.Entities.Should().ContainSingle(e => e.Name == "BlogPostView");
+        var entity = model.Entities.First(e => e.Name == "BlogPostView");
+        entity.Properties.Should().Contain(p => p.Name == "Title");
+        entity.Properties.Should().Contain(p => p.Name == "PostCount");
+        // No primary key should be marked
+        entity.Properties.Should().NotContain(p => p.IsPrimaryKey);
+    }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_ValueConverter_ShouldExtractProperty()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               namespace Test;
+                               public class AppDbContext : DbContext 
+                               { 
+                                   public DbSet<Order> Orders { get; set; }
+                                   
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity<Order>()
+                                           .Property(o => o.Status)
+                                           .HasConversion<string>();
+                                   }
+                               }
+                               public enum OrderStatus { Pending, Shipped, Delivered }
+                               public class Order 
+                               { 
+                                   public int Id { get; set; }
+                                   public OrderStatus Status { get; set; }
+                               }
+                               """;
+        var filePath = temp.CreateFile("ContextConverter.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        var order = model.Entities.First(e => e.Name == "Order");
+        order.Properties.Should().Contain(p => p.Name == "Status");
+    }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_OwnedType_ShouldExtractOwnedEntity()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               namespace Test;
+                               public class AppDbContext : DbContext 
+                               { 
+                                   public DbSet<Customer> Customers { get; set; }
+                                   
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity<Customer>()
+                                           .OwnsOne(c => c.Address);
+                                   }
+                               }
+                               public class Customer 
+                               { 
+                                   public int Id { get; set; }
+                                   public string Name { get; set; }
+                                   public Address Address { get; set; }
+                               }
+                               public class Address
+                               {
+                                   public string Street { get; set; }
+                                   public string City { get; set; }
+                               }
+                               """;
+        var filePath = temp.CreateFile("ContextOwned.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        model.Entities.Should().Contain(e => e.Name == "Customer");
+        var customer = model.Entities.First(e => e.Name == "Customer");
+        customer.Properties.Should().Contain(p => p.Name == "Name");
+    }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_TptInheritance_ShouldExtractBothEntities()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               namespace Test;
+                               public class AppDbContext : DbContext 
+                               { 
+                                   public DbSet<Animal> Animals { get; set; }
+                                   
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity<Animal>().ToTable("Animals");
+                                       modelBuilder.Entity<Cat>().ToTable("Cats");
+                                   }
+                               }
+                               public class Animal 
+                               { 
+                                   public int Id { get; set; }
+                                   public string Name { get; set; }
+                               }
+                               public class Cat : Animal
+                               {
+                                   public string Color { get; set; }
+                               }
+                               """;
+        var filePath = temp.CreateFile("ContextTpt.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        model.Entities.Should().Contain(e => e.Name == "Animal");
+        var animal = model.Entities.First(e => e.Name == "Animal");
+        animal.Properties.Should().Contain(p => p.Name == "Id");
+        animal.TableName.Should().Be("Animals");
+    }
 }

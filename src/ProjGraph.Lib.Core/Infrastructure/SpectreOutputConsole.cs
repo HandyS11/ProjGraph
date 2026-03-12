@@ -61,8 +61,11 @@ public class SpectreOutputConsole : IOutputConsole
         AnsiConsole.Write(message);
     }
 
-    /// <inheritdoc />
-    public void Write(IRenderable renderable)
+    /// <summary>
+    /// Writes a Spectre.Console <see cref="IRenderable"/> object (e.g., a <c>Table</c> or <c>Rule</c>) to the console.
+    /// </summary>
+    /// <param name="renderable">The renderable to write.</param>
+    public static void Write(IRenderable renderable)
     {
         AnsiConsole.Write(renderable);
     }

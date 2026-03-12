@@ -1,4 +1,5 @@
 using ProjGraph.Lib.Core.Abstractions;
+using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.ProjectGraph.Application;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -84,7 +85,7 @@ internal sealed class StatsCommand(
             sw.Stop();
 
             // ── Header ────────────────────────────────────────────────────────
-            console.Write(new Rule($"[bold blue]{stats.SolutionName}[/]").LeftJustified());
+            SpectreOutputConsole.Write(new Rule($"[bold blue]{stats.SolutionName}[/]").LeftJustified());
 
             // ── Metrics table ─────────────────────────────────────────────────
             var table = new Table
@@ -117,7 +118,7 @@ internal sealed class StatsCommand(
                 .AddRow("[grey]Cycles detected[/]", stats.HasCycles ? "[red]Yes[/]" : "[green]No[/]")
                 .AddRow("[grey]Analysis time[/]", $"{sw.ElapsedMilliseconds} ms");
 
-            console.Write(table);
+            SpectreOutputConsole.Write(table);
 
             // ── Hotspot projects ──────────────────────────────────────────────
             if (stats.HotspotProjects.Count > 0)

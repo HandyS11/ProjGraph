@@ -71,14 +71,22 @@ public static class TarjanSccAlgorithm
     }
 
     /// <summary>
-    /// Recursively explores the graph to find strongly connected components using Tarjan's algorithm.
+    /// Represents a single frame on the explicit DFS stack used by the iterative Tarjan implementation.
     /// </summary>
-    /// <remarks>
-    /// This method uses unbounded recursion. Graphs with more than ~1,000 nodes in a single dependency
-    /// chain may cause a <see cref="StackOverflowException"/>. In practice, .NET solution graphs
-    /// rarely approach this depth.
-    /// </remarks>
-    /// <param name="v">The current node being visited.</param>
+    /// <param name="node">The graph node this frame represents.</param>
+    /// <param name="neighborIndex">The index into the node's neighbor list to resume iteration from.</param>
+    private readonly struct StackFrame(Guid node, int neighborIndex)
+    {
+        public Guid Node { get; } = node;
+        public int NeighborIndex { get; } = neighborIndex;
+    }
+
+    /// <summary>
+    /// Iteratively explores the graph to find strongly connected components using Tarjan's algorithm.
+    /// Uses an explicit stack instead of recursion to avoid <see cref="StackOverflowException"/>
+    /// on deep dependency chains.
+    /// </summary>
+    /// <param name="v">The starting node.</param>
     /// <param name="adjacencyList">The adjacency list representing the graph.</param>
     /// <param name="context">The context of the Tarjan's algorithm execution.</param>
     private static void StrongConnect(
@@ -86,41 +94,78 @@ public static class TarjanSccAlgorithm
         Dictionary<Guid, List<Guid>> adjacencyList,
         TarjanContext context)
     {
+        var dfsStack = new Stack<StackFrame>();
+
+        // Initialize the starting node
         context.Indices[v] = context.Index;
         context.Lowlink[v] = context.Index;
         context.Index++;
         context.Stack.Push(v);
         context.OnStack.Add(v);
 
-        if (adjacencyList.TryGetValue(v, out var neighbors))
+        dfsStack.Push(new StackFrame(v, 0));
+
+        while (dfsStack.Count > 0)
         {
-            foreach (var w in neighbors)
+            var frame = dfsStack.Pop();
+            var node = frame.Node;
+            var neighborIdx = frame.NeighborIndex;
+
+            var neighbors = adjacencyList.TryGetValue(node, out var list) ? list : [];
+
+            var pushed = false;
+            for (var i = neighborIdx; i < neighbors.Count; i++)
             {
-                if (!context.Indices.TryGetValue(w, out var index1))
+                var w = neighbors[i];
+                if (!context.Indices.TryGetValue(w, out var wIndex))
                 {
-                    StrongConnect(w, adjacencyList, context);
-                    context.Lowlink[v] = Math.Min(context.Lowlink[v], context.Lowlink[w]);
+                    // Save current frame (will resume at neighbor i+1 after w completes)
+                    dfsStack.Push(new StackFrame(node, i + 1));
+
+                    // Initialize w and push it
+                    context.Indices[w] = context.Index;
+                    context.Lowlink[w] = context.Index;
+                    context.Index++;
+                    context.Stack.Push(w);
+                    context.OnStack.Add(w);
+
+                    dfsStack.Push(new StackFrame(w, 0));
+                    pushed = true;
+                    break;
                 }
-                else if (context.OnStack.Contains(w))
+
+                if (context.OnStack.Contains(w))
                 {
-                    context.Lowlink[v] = Math.Min(context.Lowlink[v], index1);
+                    context.Lowlink[node] = Math.Min(context.Lowlink[node], wIndex);
                 }
             }
-        }
 
-        // ReSharper disable once InvertIf
-        if (context.Lowlink[v] == context.Indices[v])
-        {
-            var component = new List<Guid>();
-            Guid w;
-            do
+            if (pushed)
             {
-                w = context.Stack.Pop();
-                context.OnStack.Remove(w);
-                component.Add(w);
-            } while (w != v);
+                continue;
+            }
 
-            context.Sccs.Add(component);
+            // All neighbors processed — check for SCC root
+            if (context.Lowlink[node] == context.Indices[node])
+            {
+                var component = new List<Guid>();
+                Guid w;
+                do
+                {
+                    w = context.Stack.Pop();
+                    context.OnStack.Remove(w);
+                    component.Add(w);
+                } while (w != node);
+
+                context.Sccs.Add(component);
+            }
+
+            // Update parent's lowlink
+            if (dfsStack.Count > 0)
+            {
+                var parent = dfsStack.Peek();
+                context.Lowlink[parent.Node] = Math.Min(context.Lowlink[parent.Node], context.Lowlink[node]);
+            }
         }
     }
 }

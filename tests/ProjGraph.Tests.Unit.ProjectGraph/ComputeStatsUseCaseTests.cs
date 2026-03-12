@@ -211,9 +211,9 @@ public sealed class ComputeStatsUseCaseTests
         var stats = ComputeStatsUseCase.Execute(graph);
 
         stats.HasCycles.Should().BeTrue();
-        stats.DepthStats.Average.Should().Be(-1.0);
-        stats.DepthStats.Min.Should().Be(-1);
-        stats.DepthStats.Max.Should().Be(-1);
+        stats.DepthStats.Average.Should().BeNull();
+        stats.DepthStats.Min.Should().BeNull();
+        stats.DepthStats.Max.Should().BeNull();
     }
 
     [Fact]
@@ -230,5 +230,54 @@ public sealed class ComputeStatsUseCaseTests
         var stats = ComputeStatsUseCase.Execute(graph);
 
         stats.HasCycles.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Execute_SelfReferencingProject_ShouldNotCrash()
+    {
+        // A self-referencing project is a degenerate edge case.
+        // The algorithm should handle it without crashing.
+        var id = Guid.NewGuid();
+        var graph = new SolutionGraph("SelfRef", "/SelfRef.slnx",
+            [MakeProject(id, "SelfRef", ProjectType.Library)],
+            [ProjectRef(id, id)]);
+
+        var stats = ComputeStatsUseCase.Execute(graph);
+
+        stats.TotalProjectCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void Execute_DeepChain100Levels_ShouldComputeCorrectDepth()
+    {
+        const int depth = 100;
+        var ids = Enumerable.Range(0, depth + 1).Select(_ => Guid.NewGuid()).ToArray();
+        var projects = ids.Select((id, i) => MakeProject(id, $"P{i}", ProjectType.Library)).ToList();
+        var deps = Enumerable.Range(0, depth).Select(i => ProjectRef(ids[i], ids[i + 1])).ToList();
+        var graph = new SolutionGraph("Deep", "/Deep.slnx", projects, deps);
+
+        var stats = ComputeStatsUseCase.Execute(graph);
+
+        stats.HasCycles.Should().BeFalse();
+        stats.DepthStats.Max.Should().Be(depth);
+        stats.DepthStats.Min.Should().Be(0);
+    }
+
+    [Fact]
+    public void Execute_UnicodeProjectNames_ShouldHandleCorrectly()
+    {
+        var (a, b) = (Guid.NewGuid(), Guid.NewGuid());
+        var graph = new SolutionGraph("Unicode", "/Unicode.slnx",
+            [
+                MakeProject(a, "Ünïcödé.Lîb", ProjectType.Library),
+                MakeProject(b, "日本語プロジェクト", ProjectType.Library)
+            ],
+            [ProjectRef(a, b)]);
+
+        var stats = ComputeStatsUseCase.Execute(graph);
+
+        stats.TotalProjectCount.Should().Be(2);
+        stats.HasCycles.Should().BeFalse();
+        stats.DepthStats.Max.Should().Be(1);
     }
 }

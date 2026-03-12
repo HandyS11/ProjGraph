@@ -1,14 +1,17 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Patterns;
+using System.Text.RegularExpressions;
 
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
 /// <summary>
 /// Shared utility methods used by relationship and property configuration parsers.
 /// </summary>
-internal static class FluentApiParsingUtilities
+internal static partial class FluentApiParsingUtilities
 {
+    [GeneratedRegex(@"""[^""]*""")]
+    private static partial Regex StringLiteralStripRegex();
     /// <summary>
     /// Extracts the generic type from a method name like "Property&lt;T&gt;".
     /// </summary>
@@ -177,8 +180,12 @@ internal static class FluentApiParsingUtilities
         }
 
         var textBetween = configSection[lastUsingEntity..matchIndex];
-        var openParens = textBetween.Count(c => c == '(');
-        var closeParens = textBetween.Count(c => c == ')');
+
+        // Strip string literals to avoid counting parentheses inside strings like .ToTable("Name()")
+        var stripped = StringLiteralStripRegex().Replace(textBetween, "");
+
+        var openParens = stripped.Count(c => c == '(');
+        var closeParens = stripped.Count(c => c == ')');
 
         return openParens > closeParens;
     }

@@ -1,6 +1,8 @@
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
 using ProjGraph.Tests.Shared.Helpers;
+using System.Text;
 
 namespace ProjGraph.Tests.Unit.Core.Parsers;
 
@@ -126,7 +128,8 @@ public class SlnxParserTests
 
         // Act & Assert
         var act = () => _parser.GetProjectPaths(tempSlnx).ToList();
-        act.Should().Throw<Exception>();
+        act.Should().Throw<ParsingException>()
+            .WithMessage("*Malformed .slnx file*");
     }
 
     [Fact]
@@ -174,5 +177,28 @@ public class SlnxParserTests
         // Assert
         paths.Should().HaveCount(5);
         paths.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public void GetProjectPaths_ShouldHandleFileWithBom()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        const string content = """
+                               <Solution>
+                                 <Project Path="src/ProjA/ProjA.csproj" />
+                               </Solution>
+                               """;
+
+        // Write file with UTF-8 BOM
+        var filePath = Path.Combine(temp.DirectoryPath, "bom.slnx");
+        File.WriteAllText(filePath, content, new UTF8Encoding(true));
+
+        // Act
+        var paths = _parser.GetProjectPaths(filePath).ToList();
+
+        // Assert
+        paths.Should().ContainSingle();
+        paths[0].Should().EndWith("ProjA.csproj");
     }
 }

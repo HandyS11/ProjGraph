@@ -303,4 +303,30 @@ public sealed class BuildGraphUseCaseTests
         result.Projects.Should().NotContain(p => p.Type == ProjectType.Package);
         result.Dependencies.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Execute_SelfReferencingProject_ShouldCreateDependencyToSelf()
+    {
+        const string slnPath = "/test/solution.sln";
+        const string pathA = "/test/a.csproj";
+
+        _fileSystem.FileExists(slnPath).Returns(true);
+        _slnParser.GetProjectPaths(slnPath).Returns([pathA]);
+
+        _fileSystem.GetFullPath(pathA).Returns(pathA);
+        _fileSystem.FileExists(pathA).Returns(true);
+        _discoveryService.NormalizePath(pathA).Returns(pathA);
+        _discoveryService.ResolveProjectReferencePath(pathA, "../a.csproj").Returns(pathA);
+
+        var idA = Guid.NewGuid();
+        var projectA = new Project(idA, "A", pathA, "a.csproj", "net10.0", ProjectType.Library);
+        _projectParser.Parse(pathA).Returns((projectA, (IEnumerable<string>)["../a.csproj"],
+            Enumerable.Empty<PackageReference>()));
+
+        var result = _sut.Execute(slnPath);
+
+        result.Dependencies.Should().HaveCount(1);
+        result.Dependencies[0].SourceId.Should().Be(idA);
+        result.Dependencies[0].TargetId.Should().Be(idA);
+    }
 }

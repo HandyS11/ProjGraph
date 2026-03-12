@@ -80,6 +80,15 @@ public sealed class NullOutputConsoleTests
     }
 
     [Fact]
+    public async Task PromptSelectionAsync_EmptyChoices_ShouldThrowInvalidOperationException()
+    {
+        var act = () => _sut.PromptSelectionAsync("Pick one", Array.Empty<string>());
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*No choices available*");
+    }
+
+    [Fact]
     public async Task RunWithStatusAsync_ShouldExecuteAction()
     {
         var executed = false;

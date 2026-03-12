@@ -1,4 +1,6 @@
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Lib.Core.Abstractions;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace ProjGraph.Lib.Core.Parsers;
@@ -17,6 +19,7 @@ public sealed class SlnxParser(IFileSystem fileSystem) : ISlnxParser
     /// An enumerable collection of project file paths contained in the `.slnx` file.
     /// If the `.slnx` file does not exist, an empty collection is returned.
     /// </returns>
+    /// <exception cref="ParsingException">Thrown when the `.slnx` file contains malformed XML.</exception>
     public IEnumerable<string> GetProjectPaths(string path)
     {
         if (!fileSystem.FileExists(path))
@@ -24,7 +27,16 @@ public sealed class SlnxParser(IFileSystem fileSystem) : ISlnxParser
             return [];
         }
 
-        var doc = XDocument.Load(path);
+        XDocument doc;
+        try
+        {
+            doc = XDocument.Load(path);
+        }
+        catch (XmlException ex)
+        {
+            throw new ParsingException($"Malformed .slnx file: {path}", ex);
+        }
+
         var solutionDir = fileSystem.GetDirectoryName(path) ?? "";
 
         return doc.Descendants("Project")

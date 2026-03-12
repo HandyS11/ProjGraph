@@ -46,7 +46,7 @@ public static class ComputeStatsUseCase
 
         // 3. Dependency depth stats
         var depthStats = hasCycles
-            ? new DependencyDepthStats(-1.0, -1, -1)
+            ? new DependencyDepthStats(null, null, null)
             : ComputeDepths(projects, projectRefs);
 
         // 4. Hotspot ranking — direct in-degree (how many projects reference each project)
