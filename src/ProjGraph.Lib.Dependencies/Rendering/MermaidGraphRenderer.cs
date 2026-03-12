@@ -3,7 +3,7 @@ using ProjGraph.Lib.Core.Abstractions;
 using System.Globalization;
 using System.Text;
 
-namespace ProjGraph.Lib.ProjectGraph.Rendering;
+namespace ProjGraph.Lib.Dependencies.Rendering;
 
 /// <summary>
 /// Provides functionality to render a solution graph in Mermaid.js format.

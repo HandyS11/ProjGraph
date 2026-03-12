@@ -1,7 +1,7 @@
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.ProjectGraph.Application.UseCases;
+using ProjGraph.Lib.Dependencies.Application.UseCases;
 
-namespace ProjGraph.Lib.ProjectGraph.Application;
+namespace ProjGraph.Lib.Dependencies.Application;
 
 /// <summary>
 /// Service responsible for building a solution graph from a given file path.

@@ -6,9 +6,9 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib;
 using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.Core.Abstractions;
+using ProjGraph.Lib.Dependencies.Application;
+using ProjGraph.Lib.Dependencies.Rendering;
 using ProjGraph.Lib.EntityFramework.Application;
-using ProjGraph.Lib.ProjectGraph.Application;
-using ProjGraph.Lib.ProjectGraph.Rendering;
 using System.Reflection;
 
 namespace ProjGraph.Mcp;

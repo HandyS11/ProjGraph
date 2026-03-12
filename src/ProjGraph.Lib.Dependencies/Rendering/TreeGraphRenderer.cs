@@ -2,7 +2,7 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using Spectre.Console;
 
-namespace ProjGraph.Lib.ProjectGraph.Rendering;
+namespace ProjGraph.Lib.Dependencies.Rendering;
 
 /// <summary>
 /// Renders a solution graph as a tree structure using Spectre.Console.

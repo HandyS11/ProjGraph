@@ -1,6 +1,6 @@
 using ProjGraph.Core.Models;
 
-namespace ProjGraph.Lib.ProjectGraph.Application;
+namespace ProjGraph.Lib.Dependencies.Application;
 
 /// <summary>
 /// Service responsible for computing architectural statistics for a .NET solution or project.

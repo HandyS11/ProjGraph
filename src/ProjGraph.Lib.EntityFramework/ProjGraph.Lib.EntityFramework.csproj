@@ -1,5 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <!-- Package metadata -->
+    <IsPackable>true</IsPackable>
+    <PackageId>ProjGraph.Lib.EntityFramework</PackageId>
+    <Title>ProjGraph Library Entity Framework</Title>
+    <PackageIcon>icon.png</PackageIcon>
+    <Description>Entity Framework Core DbContext and ModelSnapshot analysis with Mermaid ERD generation for .NET projects.</Description>
+    <PackageTags>graph;erd;entityframework;efcore;mermaid;visualization;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- Include README and icon in package -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="..\..\icon.png" Pack="true" PackagePath=""/>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\ProjGraph.Lib.Core\ProjGraph.Lib.Core.csproj"/>
   </ItemGroup>

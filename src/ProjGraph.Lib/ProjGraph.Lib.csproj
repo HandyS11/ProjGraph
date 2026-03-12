@@ -1,7 +1,24 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Package metadata -->
+    <IsPackable>true</IsPackable>
+    <PackageId>ProjGraph.Lib</PackageId>
+    <Title>ProjGraph Library</Title>
+    <PackageIcon>icon.png</PackageIcon>
+    <Description>Meta-package that bundles all ProjGraph libraries: project graph, class diagram, and Entity Framework analysis with a single DI registration.</Description>
+    <PackageTags>graph;dependencies;classdiagram;erd;entityframework;mermaid;visualization;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- Include README and icon in package -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="..\..\icon.png" Pack="true" PackagePath=""/>
+  </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ProjGraph.Lib.ProjectGraph\ProjGraph.Lib.ProjectGraph.csproj"/>
+    <ProjectReference Include="..\ProjGraph.Lib.Dependencies\ProjGraph.Lib.Dependencies.csproj"/>
     <ProjectReference Include="..\ProjGraph.Lib.EntityFramework\ProjGraph.Lib.EntityFramework.csproj"/>
     <ProjectReference Include="..\ProjGraph.Lib.ClassDiagram\ProjGraph.Lib.ClassDiagram.csproj"/>
   </ItemGroup>

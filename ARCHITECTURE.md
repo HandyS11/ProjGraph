@@ -7,31 +7,31 @@ exposes two entry points — a CLI and an MCP server — both backed by a shared
 
 ## Solution Structure
 
-```none
+```sh
 ProjGraph.slnx
 ├── src/
-│   ├── ProjGraph.Cli          # Spectre.Console CLI entry point
-│   ├── ProjGraph.Mcp          # MCP server entry point (JSON-RPC over stdio)
-│   ├── ProjGraph.Lib          # Composition root — wires all sub-libraries via DI
-│   ├── ProjGraph.Lib.Core     # Shared abstractions, parsers, infrastructure
-│   ├── ProjGraph.Lib.ProjectGraph   # Solution/project dependency graph analysis
-│   ├── ProjGraph.Lib.ClassDiagram   # C# class hierarchy analysis (Roslyn)
-│   ├── ProjGraph.Lib.EntityFramework # EF Core DbContext/ModelSnapshot ERD analysis
-│   └── ProjGraph.Core         # Shared domain models (SolutionGraph, ClassModel, EfModel)
+│   ├── ProjGraph.Cli                   # Spectre.Console CLI entry point
+│   ├── ProjGraph.Mcp                   # MCP server entry point (JSON-RPC over stdio)
+│   ├── ProjGraph.Lib                   # Composition root — wires all sub-libraries via DI
+│   ├── ProjGraph.Lib.Core              # Shared abstractions, parsers, infrastructure
+│   ├── ProjGraph.Lib.Dependencies      # Solution/project dependency graph analysis
+│   ├── ProjGraph.Lib.ClassDiagram      # C# class hierarchy analysis (Roslyn)
+│   ├── ProjGraph.Lib.EntityFramework   # EF Core DbContext/ModelSnapshot ERD analysis
+│   └── ProjGraph.Core                  # Shared domain models (SolutionGraph, ClassModel, EfModel)
 ├── tests/
-│   ├── ProjGraph.Tests.Unit.*         # Unit tests per library
-│   ├── ProjGraph.Tests.Integration.*  # Integration tests for CLI and MCP
-│   ├── ProjGraph.Tests.Contract       # MCP contract & DI wiring tests
-│   └── ProjGraph.Tests.Shared         # Shared test helpers
-└── samples/                           # Sample projects used by integration tests
+│   ├── ProjGraph.Tests.Unit.*          # Unit tests per library
+│   ├── ProjGraph.Tests.Integration.*   # Integration tests for CLI and MCP
+│   ├── ProjGraph.Tests.Contract        # MCP contract & DI wiring tests
+│   └── ProjGraph.Tests.Shared          # Shared test helpers
+└── samples/                            # Sample projects used by integration tests
 ```
 
 ## Dependency Graph
 
-```none
+```sh
 Cli ──┐
       ├──► Lib ──► Lib.Core ──► Core
-Mcp ──┘       ├──► Lib.ProjectGraph ──► Lib.Core
+Mcp ──┘       ├──► Lib.Dependencies ──► Lib.Core
               ├──► Lib.ClassDiagram ──► Lib.Core
               └──► Lib.EntityFramework ──► Lib.Core
 ```
@@ -111,7 +111,7 @@ Releases are triggered by pushing a `v*` Git tag and are fully automated via `.g
 
 ### Release Flow
 
-```none
+```sh
 Tag push (v*)
     │
     ├── Update version in Directory.Build.props & server.json

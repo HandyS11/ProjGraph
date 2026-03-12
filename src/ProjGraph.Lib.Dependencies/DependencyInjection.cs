@@ -1,11 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
-using ProjGraph.Lib.ProjectGraph.Application;
-using ProjGraph.Lib.ProjectGraph.Application.UseCases;
-using ProjGraph.Lib.ProjectGraph.Rendering;
+using ProjGraph.Lib.Dependencies.Application;
+using ProjGraph.Lib.Dependencies.Application.UseCases;
+using ProjGraph.Lib.Dependencies.Rendering;
 
-namespace ProjGraph.Lib.ProjectGraph;
+namespace ProjGraph.Lib.Dependencies;
 
 /// <summary>
 /// Provides extension methods for registering ProjectGraph services.
@@ -17,7 +17,7 @@ public static class ProjectGraphServiceRegistration
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddProjGraphProjectGraph(this IServiceCollection services)
+    public static IServiceCollection AddProjGraphDependencies(this IServiceCollection services)
     {
         services.AddSingleton<BuildGraphUseCase>();
         services.AddSingleton<IGraphService, GraphService>();

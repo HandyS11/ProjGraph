@@ -5,8 +5,8 @@ using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.ClassDiagram.Application.UseCases;
 using ProjGraph.Lib.Core.Abstractions;
+using ProjGraph.Lib.Dependencies.Application;
 using ProjGraph.Lib.EntityFramework.Application;
-using ProjGraph.Lib.ProjectGraph.Application;
 using System.ComponentModel;
 using System.Text.Json;
 

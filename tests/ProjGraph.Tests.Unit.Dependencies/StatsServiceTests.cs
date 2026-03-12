@@ -1,8 +1,8 @@
 using NSubstitute;
 using ProjGraph.Core.Models;
-using ProjGraph.Lib.ProjectGraph.Application;
+using ProjGraph.Lib.Dependencies.Application;
 
-namespace ProjGraph.Tests.Unit.ProjectGraph;
+namespace ProjGraph.Tests.Unit.Dependencies;
 
 /// <summary>
 /// Tests for <see cref="StatsService"/>.
