@@ -22,7 +22,7 @@ for dependency injection setup.
 | Package                                                                                         | Description                                                             |
 |-------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
 | [`ProjGraph.Lib.Core`](https://www.nuget.org/packages/ProjGraph.Lib.Core)                       | Solution/project parsers, Roslyn compilation factory, core abstractions |
-| [`ProjGraph.Lib.ProjectGraph`](https://www.nuget.org/packages/ProjGraph.Lib.ProjectGraph)       | Dependency graph analysis and Mermaid/tree rendering                    |
+| [`ProjGraph.Lib.Dependencies`](https://www.nuget.org/packages/ProjGraph.Lib.Dependencies)       | Dependency graph analysis and Mermaid/tree rendering                    |
 | [`ProjGraph.Lib.ClassDiagram`](https://www.nuget.org/packages/ProjGraph.Lib.ClassDiagram)       | Roslyn class hierarchy analysis and Mermaid class diagrams              |
 | [`ProjGraph.Lib.EntityFramework`](https://www.nuget.org/packages/ProjGraph.Lib.EntityFramework) | EF Core DbContext/snapshot analysis and Mermaid ERDs                    |
 
@@ -42,8 +42,8 @@ var provider = services.BuildServiceProvider();
 ### Project dependency graph
 
 ```csharp
-using ProjGraph.Lib.ProjectGraph.Application;
-using ProjGraph.Lib.ProjectGraph.Rendering;
+using ProjGraph.Lib.Dependencies.Application;
+using ProjGraph.Lib.Dependencies.Rendering;
 
 var graphService = provider.GetRequiredService<IGraphService>();
 var graph = await graphService.GetGraphAsync("MySolution.slnx", includePackages: false);

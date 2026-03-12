@@ -4,7 +4,7 @@
     <!-- Package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>ProjGraph.Lib.Dependencies</PackageId>
-    <Title>ProjGraph Library Project Graph</Title>
+    <Title>ProjGraph Library Dependency</Title>
     <PackageIcon>icon.png</PackageIcon>
     <Description>Project dependency graph analysis, solution statistics, and ASCII/Mermaid rendering for .NET solutions.</Description>
     <PackageTags>graph;dependencies;visualization;mermaid;stats;dotnet</PackageTags>

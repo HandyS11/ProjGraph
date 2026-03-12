@@ -18,7 +18,7 @@ enumerations, and exception types consumed by all higher-level ProjGraph librari
 
 This package is typically not referenced directly — prefer one of the higher-level packages:
 
-- [`ProjGraph.Lib.ProjectGraph`](https://www.nuget.org/packages/ProjGraph.Lib.ProjectGraph) — project dependency graph
+- [`ProjGraph.Lib.Dependencies`](https://www.nuget.org/packages/ProjGraph.Lib.Dependencies) — project dependency graph
 - [`ProjGraph.Lib.ClassDiagram`](https://www.nuget.org/packages/ProjGraph.Lib.ClassDiagram) — class hierarchy analysis
 - [`ProjGraph.Lib.EntityFramework`](https://www.nuget.org/packages/ProjGraph.Lib.EntityFramework) — EF Core ERD
   generation

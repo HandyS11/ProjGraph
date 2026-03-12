@@ -131,7 +131,7 @@ The Official MCP Registry verifies package ownership before accepting a submissi
 README for a hidden HTML comment:
 
 ```html
-<!-- mcp-name: io.github.handys11/projgraph -->
+<!-- mcp-name: io.github.HandyS11/projgraph -->
 ```
 
 This comment must be present at the end of `src/ProjGraph.Mcp/README.md`. The identifier in the comment must exactly

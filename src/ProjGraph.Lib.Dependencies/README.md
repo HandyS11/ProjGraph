@@ -43,7 +43,7 @@ using ProjGraph.Lib.Dependencies.Rendering;
 
 var graphService = provider.GetRequiredService<IGraphService>();
 
-var result = await graphService.GetGraphAsync("MySolution.slnx", includePackages: false);
+var result = await graphService.BuildGraphAsync("MySolution.slnx", includePackages: false);
 var renderer = provider.GetRequiredService<MermaidGraphRenderer>();
 string diagram = renderer.Render(result);
 ```
@@ -60,7 +60,7 @@ graph TD
 
 ```csharp
 var statsService = provider.GetRequiredService<IStatsService>();
-var stats = await statsService.GetStatsAsync("MySolution.slnx");
+var stats = await statsService.ComputeStatsAsync("MySolution.slnx");
 
 Console.WriteLine($"Projects : {stats.ProjectCount}");
 Console.WriteLine($"Packages : {stats.PackageCount}");

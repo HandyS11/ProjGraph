@@ -24,7 +24,7 @@ dotnet add package ProjGraph.Lib.Core
 This package is the foundation for all other `ProjGraph.Lib.*` packages. It is not usually referenced
 on its own — use a purpose-specific package instead:
 
-- [`ProjGraph.Lib.ProjectGraph`](https://www.nuget.org/packages/ProjGraph.Lib.ProjectGraph)
+- [`ProjGraph.Lib.Dependencies`](https://www.nuget.org/packages/ProjGraph.Lib.Dependencies)
 - [`ProjGraph.Lib.ClassDiagram`](https://www.nuget.org/packages/ProjGraph.Lib.ClassDiagram)
 - [`ProjGraph.Lib.EntityFramework`](https://www.nuget.org/packages/ProjGraph.Lib.EntityFramework)
 - [`ProjGraph.Lib`](https://www.nuget.org/packages/ProjGraph.Lib) — meta-package (all of the above)
