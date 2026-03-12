@@ -109,38 +109,8 @@ public static class TarjanSccAlgorithm
         {
             var frame = dfsStack.Pop();
             var node = frame.Node;
-            var neighborIdx = frame.NeighborIndex;
 
-            var neighbors = adjacencyList.TryGetValue(node, out var list) ? list : [];
-
-            var pushed = false;
-            for (var i = neighborIdx; i < neighbors.Count; i++)
-            {
-                var w = neighbors[i];
-                if (!context.Indices.TryGetValue(w, out var wIndex))
-                {
-                    // Save current frame (will resume at neighbor i+1 after w completes)
-                    dfsStack.Push(new StackFrame(node, i + 1));
-
-                    // Initialize w and push it
-                    context.Indices[w] = context.Index;
-                    context.Lowlink[w] = context.Index;
-                    context.Index++;
-                    context.Stack.Push(w);
-                    context.OnStack.Add(w);
-
-                    dfsStack.Push(new StackFrame(w, 0));
-                    pushed = true;
-                    break;
-                }
-
-                if (context.OnStack.Contains(w))
-                {
-                    context.Lowlink[node] = Math.Min(context.Lowlink[node], wIndex);
-                }
-            }
-
-            if (pushed)
+            if (TryPushNeighbor(node, frame.NeighborIndex, adjacencyList, dfsStack, context))
             {
                 continue;
             }
@@ -148,16 +118,7 @@ public static class TarjanSccAlgorithm
             // All neighbors processed — check for SCC root
             if (context.Lowlink[node] == context.Indices[node])
             {
-                var component = new List<Guid>();
-                Guid w;
-                do
-                {
-                    w = context.Stack.Pop();
-                    context.OnStack.Remove(w);
-                    component.Add(w);
-                } while (w != node);
-
-                context.Sccs.Add(component);
+                CollectSccComponent(node, context);
             }
 
             // Update parent's lowlink
@@ -167,5 +128,72 @@ public static class TarjanSccAlgorithm
                 context.Lowlink[parent.Node] = Math.Min(context.Lowlink[parent.Node], context.Lowlink[node]);
             }
         }
+    }
+
+    /// <summary>
+    /// Iterates over the neighbors of <paramref name="node"/> starting at <paramref name="neighborIdx"/>,
+    /// and pushes the first unvisited neighbor onto the DFS stack.
+    /// </summary>
+    /// <param name="node">The node whose neighbors to iterate.</param>
+    /// <param name="neighborIdx">The index into the neighbor list to resume iteration from.</param>
+    /// <param name="adjacencyList">The adjacency list representing the graph.</param>
+    /// <param name="dfsStack">The explicit DFS stack used by the iterative algorithm.</param>
+    /// <param name="context">The context of the Tarjan's algorithm execution.</param>
+    /// <returns><see langword="true"/> if an unvisited neighbor was pushed; otherwise <see langword="false"/>.</returns>
+    private static bool TryPushNeighbor(
+        Guid node,
+        int neighborIdx,
+        Dictionary<Guid, List<Guid>> adjacencyList,
+        Stack<StackFrame> dfsStack,
+        TarjanContext context)
+    {
+        var neighbors = adjacencyList.TryGetValue(node, out var list) ? list : [];
+
+        for (var i = neighborIdx; i < neighbors.Count; i++)
+        {
+            var w = neighbors[i];
+            if (!context.Indices.TryGetValue(w, out var wIndex))
+            {
+                // Save current frame (will resume at neighbor i+1 after w completes)
+                dfsStack.Push(new StackFrame(node, i + 1));
+
+                // Initialize w and push it
+                context.Indices[w] = context.Index;
+                context.Lowlink[w] = context.Index;
+                context.Index++;
+                context.Stack.Push(w);
+                context.OnStack.Add(w);
+
+                dfsStack.Push(new StackFrame(w, 0));
+                return true;
+            }
+
+            if (context.OnStack.Contains(w))
+            {
+                context.Lowlink[node] = Math.Min(context.Lowlink[node], wIndex);
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Pops nodes from the Tarjan stack until <paramref name="node"/> is reached,
+    /// forming a strongly connected component and adding it to the results.
+    /// </summary>
+    /// <param name="node">The root node of the strongly connected component.</param>
+    /// <param name="context">The context of the Tarjan's algorithm execution.</param>
+    private static void CollectSccComponent(Guid node, TarjanContext context)
+    {
+        var component = new List<Guid>();
+        Guid w;
+        do
+        {
+            w = context.Stack.Pop();
+            context.OnStack.Remove(w);
+            component.Add(w);
+        } while (w != node);
+
+        context.Sccs.Add(component);
     }
 }
