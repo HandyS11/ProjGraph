@@ -1,8 +1,8 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
-using ProjGraph.Lib.ProjectGraph.Rendering;
+using ProjGraph.Lib.Dependencies.Rendering;
 
-namespace ProjGraph.Tests.Unit.ProjectGraph;
+namespace ProjGraph.Tests.Unit.Dependencies;
 
 /// <summary>
 /// Tests for <see cref="FlatGraphRenderer"/>.

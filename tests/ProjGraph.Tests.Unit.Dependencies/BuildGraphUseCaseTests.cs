@@ -3,9 +3,9 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
-using ProjGraph.Lib.ProjectGraph.Application.UseCases;
+using ProjGraph.Lib.Dependencies.Application.UseCases;
 
-namespace ProjGraph.Tests.Unit.ProjectGraph;
+namespace ProjGraph.Tests.Unit.Dependencies;
 
 /// <summary>
 /// Tests for <see cref="BuildGraphUseCase"/>.

@@ -3,7 +3,7 @@ using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Core.Domain.Algorithms;
 using Spectre.Console;
 
-namespace ProjGraph.Lib.ProjectGraph.Rendering;
+namespace ProjGraph.Lib.Dependencies.Rendering;
 
 /// <summary>
 /// Base class for rendering solution graphs with ANSI console support.

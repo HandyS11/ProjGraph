@@ -1,7 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <ProjectReference Include="..\ProjGraph.Lib.Core\ProjGraph.Lib.Core.csproj"/>
-  </ItemGroup>
-
-</Project>

@@ -3,10 +3,8 @@
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that enables AI assistants to analyze .NET
 solution architectures, generate Entity Relationship Diagrams, and visualize class hierarchies.
 
-**ProjGraph** is a .NET tool ecosystem for visualizing project dependencies, database schemas, and class hierarchies.
-It provides both a [CLI](https://www.nuget.org/packages/ProjGraph.Cli) for manual analysis and this MCP server for
-AI-assisted exploration of your codebase architecture. See the
-[full documentation](https://handys11.github.io/ProjGraph/) for more details.
+[![NuGet](https://img.shields.io/nuget/v/ProjGraph.Mcp)](https://www.nuget.org/packages/ProjGraph.Mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Setup
 

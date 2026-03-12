@@ -1,3 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <!-- Package metadata -->
+    <IsPackable>true</IsPackable>
+    <PackageId>ProjGraph.Core</PackageId>
+    <Title>ProjGraph Core</Title>
+    <PackageIcon>icon.png</PackageIcon>
+    <Description>Core domain models, exceptions, and shared abstractions for the ProjGraph ecosystem.</Description>
+    <PackageTags>graph;dependencies;models;core;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- Include README and icon in package -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="..\..\icon.png" Pack="true" PackagePath=""/>
+  </ItemGroup>
+
 </Project>

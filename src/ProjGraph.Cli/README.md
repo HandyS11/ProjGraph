@@ -3,6 +3,9 @@
 Command-line tool for visualizing .NET project dependencies, generating Entity Relationship Diagrams, visualizing
 class hierarchies, and computing key solution metrics.
 
+[![NuGet](https://img.shields.io/nuget/v/ProjGraph.Cli)](https://www.nuget.org/packages/ProjGraph.Cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Installation
 
 ```bash
@@ -170,7 +173,7 @@ projgraph stats ./src/MyApp/MyApp.csproj
 
 **Example output**:
 
-```
+```sh
 ────────────── MySolution ──────────────
  Total projects                      12
    Libraries                          7

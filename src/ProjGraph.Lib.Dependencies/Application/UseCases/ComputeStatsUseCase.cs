@@ -1,7 +1,7 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Domain.Algorithms;
 
-namespace ProjGraph.Lib.ProjectGraph.Application.UseCases;
+namespace ProjGraph.Lib.Dependencies.Application.UseCases;
 
 /// <summary>
 /// Use case responsible for computing architectural statistics from a pre-built <see cref="SolutionGraph"/>.

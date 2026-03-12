@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using ProjGraph.Lib.ClassDiagram;
 using ProjGraph.Lib.Core;
+using ProjGraph.Lib.Dependencies;
 using ProjGraph.Lib.EntityFramework;
-using ProjGraph.Lib.ProjectGraph;
 
 namespace ProjGraph.Lib;
 
@@ -24,7 +24,7 @@ public static class LibServiceRegistration
         services.AddProjGraphCore();
 
         // ProjectGraph services
-        services.AddProjGraphProjectGraph();
+        services.AddProjGraphDependencies();
 
         // EntityFramework services
         services.AddProjGraphEntityFramework();

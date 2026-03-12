@@ -34,7 +34,7 @@
     <Project Path="src/ProjGraph.Lib.ClassDiagram/ProjGraph.Lib.ClassDiagram.csproj"/>
     <Project Path="src/ProjGraph.Lib.Core/ProjGraph.Lib.Core.csproj"/>
     <Project Path="src/ProjGraph.Lib.EntityFramework/ProjGraph.Lib.EntityFramework.csproj"/>
-    <Project Path="src/ProjGraph.Lib.ProjectGraph/ProjGraph.Lib.ProjectGraph.csproj"/>
+    <Project Path="src/ProjGraph.Lib.Dependencies/ProjGraph.Lib.Dependencies.csproj"/>
     <Project Path="src/ProjGraph.Lib/ProjGraph.Lib.csproj"/>
     <Project Path="src/ProjGraph.Cli/ProjGraph.Cli.csproj"/>
     <Project Path="src/ProjGraph.Mcp/ProjGraph.Mcp.csproj"/>
@@ -47,6 +47,6 @@
     <Project Path="tests/ProjGraph.Tests.Unit.ClassDiagram/ProjGraph.Tests.Unit.ClassDiagram.csproj"/>
     <Project Path="tests/ProjGraph.Tests.Unit.Core/ProjGraph.Tests.Unit.Core.csproj"/>
     <Project Path="tests/ProjGraph.Tests.Unit.EntityFramework/ProjGraph.Tests.Unit.EntityFramework.csproj"/>
-    <Project Path="tests/ProjGraph.Tests.Unit.ProjectGraph/ProjGraph.Tests.Unit.ProjectGraph.csproj"/>
+    <Project Path="tests/ProjGraph.Tests.Unit.Dependencies/ProjGraph.Tests.Unit.Dependencies.csproj"/>
   </Folder>
 </Solution>

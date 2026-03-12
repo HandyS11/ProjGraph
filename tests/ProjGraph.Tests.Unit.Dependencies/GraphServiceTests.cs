@@ -2,11 +2,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
-using ProjGraph.Lib.ProjectGraph.Application;
-using ProjGraph.Lib.ProjectGraph.Application.UseCases;
+using ProjGraph.Lib.Dependencies.Application;
+using ProjGraph.Lib.Dependencies.Application.UseCases;
 using ProjGraph.Tests.Shared.Helpers;
 
-namespace ProjGraph.Tests.Unit.ProjectGraph;
+namespace ProjGraph.Tests.Unit.Dependencies;
 
 [Trait("Category", "ProjectGraph")]
 public class GraphServiceTests

@@ -40,6 +40,12 @@
           "SECURITY.md",
           "src/ProjGraph.Cli/README.md",
           "src/ProjGraph.Mcp/README.md",
+          "src/ProjGraph.Lib/README.md",
+          "src/ProjGraph.Lib.Core/README.md",
+          "src/ProjGraph.Lib.ClassDiagram/README.md",
+          "src/ProjGraph.Lib.EntityFramework/README.md",
+          "src/ProjGraph.Lib.Dependencies/README.md",
+          "src/ProjGraph.Core/README.md",
           "samples/**/*.md",
           "specs/**/*.md"
         ]

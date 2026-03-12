@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\ProjGraph.Lib.ProjectGraph\ProjGraph.Lib.ProjectGraph.csproj"/>
+    <ProjectReference Include="..\..\src\ProjGraph.Lib.Dependencies\ProjGraph.Lib.Dependencies.csproj"/>
     <ProjectReference Include="..\ProjGraph.Tests.Shared\ProjGraph.Tests.Shared.csproj"/>
   </ItemGroup>
 

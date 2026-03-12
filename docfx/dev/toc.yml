@@ -9,3 +9,17 @@
   href: ../../SECURITY.md
 - name: 📜 License
   href: ../license.md
+
+- name: 📦 Libraries
+- name: ProjGraph.Lib
+  href: ../../src/ProjGraph.Lib/README.md
+- name: ProjGraph.Core
+  href: ../../src/ProjGraph.Core/README.md
+- name: ProjGraph.Lib.Core
+  href: ../../src/ProjGraph.Lib.Core/README.md
+- name: ProjGraph.Lib.Dependencies
+  href: ../../src/ProjGraph.Lib.Dependencies/README.md
+- name: ProjGraph.Lib.ClassDiagram
+  href: ../../src/ProjGraph.Lib.ClassDiagram/README.md
+- name: ProjGraph.Lib.EntityFramework
+  href: ../../src/ProjGraph.Lib.EntityFramework/README.md

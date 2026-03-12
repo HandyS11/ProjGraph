@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Package metadata -->
+    <IsPackable>true</IsPackable>
+    <PackageId>ProjGraph.Lib.Dependencies</PackageId>
+    <Title>ProjGraph Library Dependency</Title>
+    <PackageIcon>icon.png</PackageIcon>
+    <Description>Project dependency graph analysis, solution statistics, and ASCII/Mermaid rendering for .NET solutions.</Description>
+    <PackageTags>graph;dependencies;visualization;mermaid;stats;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- Include README and icon in package -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="..\..\icon.png" Pack="true" PackagePath=""/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProjGraph.Lib.Core\ProjGraph.Lib.Core.csproj"/>
+  </ItemGroup>
+
+</Project>

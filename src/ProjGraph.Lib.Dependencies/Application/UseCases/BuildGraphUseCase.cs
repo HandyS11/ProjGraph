@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 
-namespace ProjGraph.Lib.ProjectGraph.Application.UseCases;
+namespace ProjGraph.Lib.Dependencies.Application.UseCases;
 
 /// <summary>
 /// Use case for building a solution graph from a given file path.

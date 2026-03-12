@@ -1,5 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <!-- Package metadata -->
+    <IsPackable>true</IsPackable>
+    <PackageId>ProjGraph.Lib.Core</PackageId>
+    <Title>ProjGraph Library Core</Title>
+    <PackageIcon>icon.png</PackageIcon>
+    <Description>Core abstractions, parsers, and infrastructure for analyzing .NET solutions, projects, and source files.</Description>
+    <PackageTags>graph;dependencies;core;roslyn;msbuild;parser;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- Include README and icon in package -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="..\..\icon.png" Pack="true" PackagePath=""/>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\ProjGraph.Core\ProjGraph.Core.csproj"/>
   </ItemGroup>

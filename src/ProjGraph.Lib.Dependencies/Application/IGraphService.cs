@@ -1,6 +1,6 @@
 using ProjGraph.Core.Models;
 
-namespace ProjGraph.Lib.ProjectGraph.Application;
+namespace ProjGraph.Lib.Dependencies.Application;
 
 /// <summary>
 /// Defines the interface for building a solution or project graph.
