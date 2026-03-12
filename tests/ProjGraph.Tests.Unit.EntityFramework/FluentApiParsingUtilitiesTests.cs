@@ -261,4 +261,26 @@ public sealed class FluentApiParsingUtilitiesTests
 
         FluentApiParsingUtilities.IsInsideUsingEntityBlock(configSection, 0).Should().BeFalse();
     }
+
+    [Fact]
+    public void IsInsideUsingEntityBlock_StringLiteralWithParens_ShouldNotBeConfused()
+    {
+        // The string literal ".ToTable("Name()")" contains parentheses that should be ignored
+        const string configSection =
+            """.HasMany().WithMany().UsingEntity(j => { j.ToTable("Name()"); j.HasKey(x => x.Id); })""";
+        var matchIndex = configSection.IndexOf("HasKey", StringComparison.Ordinal);
+
+        FluentApiParsingUtilities.IsInsideUsingEntityBlock(configSection, matchIndex).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsInsideUsingEntityBlock_ClosedBlockWithStringParens_ShouldReturnFalse()
+    {
+        // UsingEntity block is closed despite string literal containing parens
+        const string configSection =
+            """.HasMany().WithMany().UsingEntity(j => { j.ToTable("T()"); }).HasOne()""";
+        var matchIndex = configSection.IndexOf("HasOne", StringComparison.Ordinal);
+
+        FluentApiParsingUtilities.IsInsideUsingEntityBlock(configSection, matchIndex).Should().BeFalse();
+    }
 }

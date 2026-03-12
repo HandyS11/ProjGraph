@@ -204,4 +204,31 @@ public class TarjanSccAlgorithmTests
         sccs.Should().HaveCount(3);
         sccs.Should().OnlyContain(scc => scc.Count == 1);
     }
+
+    [Fact]
+    public void FindStronglyConnectedComponents_DeepChain_ShouldNotStackOverflow()
+    {
+        // Arrange – 2000-node linear chain, would overflow with recursive implementation
+        const int depth = 2000;
+        var guids = Enumerable.Range(0, depth).Select(_ => Guid.NewGuid()).ToList();
+
+        var projects = guids
+            .Select((g, i) => new Project(g, $"P{i}", $"P{i}.csproj", $"P{i}.csproj", "net10.0", ProjectType.Library))
+            .ToList();
+
+        var dependencies = new List<Dependency>();
+        for (var i = 0; i < depth - 1; i++)
+        {
+            dependencies.Add(new Dependency(guids[i], guids[i + 1], DependencyType.ProjectReference));
+        }
+
+        var graph = new SolutionGraph("Deep", "Deep.sln", projects, dependencies);
+
+        // Act — should complete without StackOverflowException
+        var sccs = TarjanSccAlgorithm.FindStronglyConnectedComponents(graph);
+
+        // Assert — all nodes are individual SCCs (no cycles)
+        sccs.Should().HaveCount(depth);
+        sccs.Should().OnlyContain(scc => scc.Count == 1);
+    }
 }

@@ -1,5 +1,3 @@
-using Spectre.Console.Rendering;
-
 namespace ProjGraph.Lib.Core.Abstractions;
 
 /// <summary>
@@ -11,9 +9,6 @@ public sealed class NullOutputConsole : IOutputConsole
 {
     /// <inheritdoc />
     public void Write(string message) { }
-
-    /// <inheritdoc />
-    public void Write(IRenderable renderable) { }
 
     /// <inheritdoc />
     public void WriteLine(string message) { }
@@ -34,11 +29,13 @@ public sealed class NullOutputConsole : IOutputConsole
     public void WriteMarkup(string markup) { }
 
     /// <inheritdoc />
-    /// <remarks>Returns the first available choice without prompting.</remarks>
+    /// <remarks>Returns the first available choice without prompting, or throws if no choices are available.</remarks>
     public Task<string> PromptSelectionAsync(string title, IEnumerable<string> choices,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(choices.First());
+        var first = choices.FirstOrDefault()
+                    ?? throw new InvalidOperationException($"No choices available for prompt '{title}'.");
+        return Task.FromResult(first);
     }
 
     /// <inheritdoc />

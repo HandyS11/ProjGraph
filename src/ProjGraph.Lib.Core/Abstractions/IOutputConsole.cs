@@ -1,5 +1,3 @@
-using Spectre.Console.Rendering;
-
 namespace ProjGraph.Lib.Core.Abstractions;
 
 /// <summary>
@@ -12,12 +10,6 @@ public interface IOutputConsole
     /// </summary>
     /// <param name="message">The message to write.</param>
     void Write(string message);
-
-    /// <summary>
-    /// Writes a <see cref="IRenderable"/> object (e.g. a Spectre.Console <c>Table</c> or <c>Rule</c>) to the console.
-    /// </summary>
-    /// <param name="renderable">The renderable to write.</param>
-    void Write(IRenderable renderable);
 
     /// <summary>
     /// Writes a message to the console followed by a newline.

@@ -34,15 +34,16 @@ public record SolutionStats(
 
 /// <summary>
 /// Aggregate dependency depth statistics across all projects in the graph.
+/// When cycles are detected, all values are <c>null</c>.
 /// </summary>
-/// <param name="Average">Mean longest-path depth across all projects; -1.0 if cycles are detected.</param>
-/// <param name="Min">Minimum depth (0 for leaf projects with no dependencies); -1 if cycles are detected.</param>
-/// <param name="Max">Maximum depth (the longest dependency chain in the graph); -1 if cycles are detected.</param>
+/// <param name="Average">Mean longest-path depth across all projects; <c>null</c> if cycles are detected.</param>
+/// <param name="Min">Minimum depth (0 for leaf projects with no dependencies); <c>null</c> if cycles are detected.</param>
+/// <param name="Max">Maximum depth (the longest dependency chain in the graph); <c>null</c> if cycles are detected.</param>
 public record DependencyDepthStats(
     [property: JsonPropertyName("average")]
-    double Average,
-    [property: JsonPropertyName("min")] int Min,
-    [property: JsonPropertyName("max")] int Max
+    double? Average,
+    [property: JsonPropertyName("min")] int? Min,
+    [property: JsonPropertyName("max")] int? Max
 );
 
 /// <summary>

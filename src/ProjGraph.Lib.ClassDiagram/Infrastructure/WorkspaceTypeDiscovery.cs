@@ -64,19 +64,27 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
     /// </returns>
     private async Task<string?> SearchDirectoryForTypeAsync(string directory, string typeName)
     {
-        return await SearchDirectoryRecursiveAsync(directory, typeName);
+        var matches = new List<string>();
+        await CollectTypeMatchesAsync(directory, typeName, matches);
+
+        if (matches.Count <= 1)
+        {
+            return matches.FirstOrDefault();
+        }
+
+        // Multiple files define the same type name — sort by path for deterministic results
+        matches.Sort(StringComparer.OrdinalIgnoreCase);
+        return matches[0];
     }
 
     /// <summary>
-    /// Recursively searches a directory and its subdirectories for a C# file containing a specific type definition.
-    /// This method manually handles recursion to avoid descending into common non-source directories for better performance.
+    /// Recursively searches a directory and its subdirectories for C# files containing a specific type definition,
+    /// collecting all matches for deterministic resolution.
     /// </summary>
     /// <param name="directory">The path of the directory to search.</param>
     /// <param name="typeName">The name of the type to search for.</param>
-    /// <returns>
-    /// The full path of the file containing the type definition if found; otherwise, null.
-    /// </returns>
-    private async Task<string?> SearchDirectoryRecursiveAsync(string directory, string typeName)
+    /// <param name="matches">The list to collect matching file paths into.</param>
+    private async Task CollectTypeMatchesAsync(string directory, string typeName, List<string> matches)
     {
         var enumerationOptions = new EnumerationOptions
         {
@@ -107,7 +115,7 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
 
             if (hasType)
             {
-                return file;
+                matches.Add(file);
             }
         }
 
@@ -120,13 +128,7 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
                 continue;
             }
 
-            var result = await SearchDirectoryRecursiveAsync(subDir, typeName);
-            if (result != null)
-            {
-                return result;
-            }
+            await CollectTypeMatchesAsync(subDir, typeName, matches);
         }
-
-        return null;
     }
 }
