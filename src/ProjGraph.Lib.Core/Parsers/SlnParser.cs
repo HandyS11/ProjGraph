@@ -24,7 +24,8 @@ public sealed class SlnParser(IFileSystem fileSystem) : ISlnParser
             return [];
         }
 
-        var slnFile = SolutionFile.Parse(path);
+        var fullPath = fileSystem.GetFullPath(path);
+        var slnFile = SolutionFile.Parse(fullPath);
 
         return slnFile.ProjectsInOrder
             .Where(p => p.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
