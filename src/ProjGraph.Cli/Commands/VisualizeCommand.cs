@@ -130,7 +130,7 @@ internal sealed class VisualizeCommand(
     /// <returns>
     /// An integer representing the exit code of the command. Returns 0 if successful, 1 otherwise.
     /// </returns>
-    public override async Task<int> ExecuteAsync(
+    protected override async Task<int> ExecuteAsync(
         CommandContext context,
         Settings settings,
         CancellationToken cancellationToken)
