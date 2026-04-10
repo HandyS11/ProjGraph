@@ -137,7 +137,7 @@ internal sealed class ClassDiagramCommand(
     /// A task that represents the asynchronous operation. The task result contains an integer
     /// indicating the exit code of the command (0 for success, 1 for failure).
     /// </returns>
-    public override async Task<int> ExecuteAsync(
+    protected override async Task<int> ExecuteAsync(
         CommandContext context,
         Settings settings,
         CancellationToken cancellationToken)
