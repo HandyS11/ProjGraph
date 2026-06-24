@@ -103,9 +103,7 @@ public sealed class AnalyzeFileUseCaseTests
 
         _fileSystem.FileExists(filePath).Returns(true);
         _fileSystem.GetDirectoryName(filePath).Returns((string?)null);
-#pragma warning disable CA1849, S6966
-        _fileSystem.ReadAllText(filePath).Returns(code);
-#pragma warning restore CA1849, S6966
+        _fileSystem.ReadAllTextAsync(filePath).Returns(code);
         SetupCompilationFactory();
 
         _typeProcessor.ProcessTypeQueueAsync(
@@ -123,9 +121,7 @@ public sealed class AnalyzeFileUseCaseTests
     {
         _fileSystem.FileExists(filePath).Returns(true);
         _fileSystem.GetDirectoryName(filePath).Returns("/test");
-#pragma warning disable CA1849, S6966
-        _fileSystem.ReadAllText(filePath).Returns(code);
-#pragma warning restore CA1849, S6966
+        _fileSystem.ReadAllTextAsync(filePath).Returns(code);
     }
 
     private void SetupCompilationFactory()
