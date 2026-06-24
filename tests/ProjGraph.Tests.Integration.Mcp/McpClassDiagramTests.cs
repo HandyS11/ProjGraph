@@ -450,9 +450,7 @@ public sealed class McpClassDiagramTests : IDisposable
                                 public void M5() {}
                             }
                             """;
-#pragma warning disable CA1849, S6966
-        File.WriteAllText(complexFile, code);
-#pragma warning restore CA1849, S6966
+        await File.WriteAllTextAsync(complexFile, code);
 
         // Act
         var resultWithMembers =

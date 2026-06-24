@@ -97,9 +97,7 @@ public sealed class EfUseCaseTests
                             using Microsoft.EntityFrameworkCore;
                             public class AppDbContext : DbContext { }
                             """;
-#pragma warning disable CA1849, S6966
-        _fileSystem.ReadAllText(path).Returns(code);
-#pragma warning restore CA1849, S6966
+        _fileSystem.ReadAllTextAsync(path).Returns(code);
         _modelAnalyzer.DiscoverDbContexts(Arg.Any<SyntaxNode>())
             .Returns(["AppDbContext"]);
         var sut = new DiscoverContextsUseCase(_modelAnalyzer, _fileSystem);
@@ -127,9 +125,7 @@ public sealed class EfUseCaseTests
                             using Microsoft.EntityFrameworkCore.Infrastructure;
                             public class AppModelSnapshot : ModelSnapshot { }
                             """;
-#pragma warning disable CA1849, S6966
-        _fileSystem.ReadAllText(path).Returns(code);
-#pragma warning restore CA1849, S6966
+        _fileSystem.ReadAllTextAsync(path).Returns(code);
         _modelAnalyzer.DiscoverModelSnapshots(Arg.Any<SyntaxNode>())
             .Returns(["AppModelSnapshot"]);
         var sut = new DiscoverSnapshotsUseCase(_modelAnalyzer, _fileSystem);

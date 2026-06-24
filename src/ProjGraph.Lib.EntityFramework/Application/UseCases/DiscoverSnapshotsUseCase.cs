@@ -21,9 +21,7 @@ public class DiscoverSnapshotsUseCase(IEfModelAnalyzer modelAnalyzer, IFileSyste
         FilePathGuard.RequireCsFile(path);
 
         var syntaxTree = CSharpSyntaxTree.ParseText(
-#pragma warning disable CA1849, S6966
-            fileSystem.ReadAllText(path));
-#pragma warning restore CA1849, S6966
+            await fileSystem.ReadAllTextAsync(path));
         var root = await syntaxTree.GetRootAsync();
 
         return [.. modelAnalyzer.DiscoverModelSnapshots(root)];
