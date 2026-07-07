@@ -23,7 +23,7 @@
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.28.0.143324"/>
     <PackageVersion Include="Spectre.Console" Version="0.57.2"/>
     <PackageVersion Include="Spectre.Console.Cli" Version="0.55.0"/>
-    <PackageVersion Include="Spectre.Console.Testing" Version="0.57.1"/>
+    <PackageVersion Include="Spectre.Console.Testing" Version="0.57.2"/>
     <PackageVersion Include="xunit" Version="2.9.3"/>
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5"/>
   </ItemGroup>
