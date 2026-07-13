@@ -29,20 +29,19 @@ internal static class FluentRelationshipWalker
         EfModel model,
         Compilation compilation)
     {
-        var semanticModel = compilation.GetSemanticModel(method.SyntaxTree);
         var existingKeys = model.Relationships.Select(r => r.GenerateKey()).ToHashSet();
 
         foreach (var hasInvocation in FindRelationshipRoots(method))
         {
             var chain = new FluentChain(hasInvocation);
 
-            var sourceEntity = ResolveSourceEntity(chain, entities);
+            var sourceEntity = ResolveSourceEntity(chain);
             if (sourceEntity is null)
             {
                 continue;
             }
 
-            var relationship = BuildRelationship(chain, sourceEntity, entities, compilation, semanticModel);
+            var relationship = BuildRelationship(chain, sourceEntity, entities, compilation);
             if (relationship is null)
             {
                 continue;
@@ -68,10 +67,7 @@ internal static class FluentRelationshipWalker
 
     /// <summary>Resolves the entity that owns a fluent chain from its receiver expression.</summary>
     /// <param name="chain">The fluent chain.</param>
-    /// <param name="entities">The known entities (reserved for a future task's semantic resolution).</param>
-#pragma warning disable RCS1163, S1172 // entities is reserved for a later task's semantic resolution
-    private static string? ResolveSourceEntity(FluentChain chain, Dictionary<string, EfEntity> entities)
-#pragma warning restore RCS1163, S1172
+    private static string? ResolveSourceEntity(FluentChain chain)
     {
         // modelBuilder.Entity<T>().HasMany(...): the Entity call is part of this chain's spine.
         foreach (var (name, invocation) in chain.Calls)
@@ -96,15 +92,11 @@ internal static class FluentRelationshipWalker
     /// <param name="sourceEntity">The owning entity name.</param>
     /// <param name="entities">The known entities.</param>
     /// <param name="compilation">The compilation for semantic resolution.</param>
-    /// <param name="semanticModel">The semantic model for the method's tree (reserved for a future task's semantic resolution).</param>
-#pragma warning disable RCS1163, S1172 // semanticModel is reserved for a later task's semantic resolution
     private static EfRelationship? BuildRelationship(
         FluentChain chain,
         string sourceEntity,
         Dictionary<string, EfEntity> entities,
-        Compilation compilation,
-        SemanticModel semanticModel)
-#pragma warning restore RCS1163, S1172
+        Compilation compilation)
     {
         var (hasMethod, hasInvocation) = chain.Calls
             .First(c => c.Name is EfAnalysisConstants.EfMethods.HasOne or EfAnalysisConstants.EfMethods.HasMany);
