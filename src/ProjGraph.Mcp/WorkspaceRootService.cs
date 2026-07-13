@@ -100,7 +100,18 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IDisposable
     private static bool IsWithinRoot(string candidate, string root)
     {
         var relative = Path.GetRelativePath(root, candidate);
-        return !relative.StartsWith("..", StringComparison.Ordinal) && !Path.IsPathRooted(relative);
+
+        // A rooted result means the candidate is on a different volume — outside the root.
+        if (Path.IsPathRooted(relative))
+        {
+            return false;
+        }
+
+        // Reject only a genuine parent-directory segment ("..", "../", "..\"), not a legitimate
+        // in-root name that merely starts with ".." (e.g. "..data").
+        return relative != ".."
+               && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+               && !relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal);
     }
 
     internal async Task RefreshRootsAsync(McpServer server, CancellationToken ct)

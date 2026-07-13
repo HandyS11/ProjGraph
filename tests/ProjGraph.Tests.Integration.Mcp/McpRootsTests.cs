@@ -75,6 +75,22 @@ public sealed class McpRootsTests : IDisposable
     }
 
     [Fact]
+    public void ResolveMatches_DotDotPrefixedName_ResolvesWithinRoot()
+    {
+        // A legitimate directory/file whose name merely starts with ".." (e.g. "..data") lives
+        // inside the root and must resolve; only a real parent segment ("..") is traversal.
+        var service = new WorkspaceRootService(new PhysicalFileSystem());
+        var root = _temp.DirectoryPath;
+        Directory.CreateDirectory(Path.Combine(root, "..data"));
+        var file = Path.Combine(root, "..data", "Foo.cs");
+        File.WriteAllText(file, "// x");
+
+        var matches = service.ResolveMatches([root], Path.Combine("..data", "Foo.cs"));
+
+        matches.Should().ContainSingle().Which.Should().Be(file);
+    }
+
+    [Fact]
     public void ResolveMatches_WildcardPattern_ShouldThrow()
     {
         var service = new WorkspaceRootService(new PhysicalFileSystem());
