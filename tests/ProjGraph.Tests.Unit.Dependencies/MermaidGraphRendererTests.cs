@@ -10,6 +10,49 @@ public class MermaidGraphRendererTests
     private readonly MermaidGraphRenderer _renderer = new();
 
     [Fact]
+    public void Render_SameNamedProjects_ProduceDistinctNodeIds()
+    {
+        // Two different projects that share a file name (e.g. Tests.csproj in two folders) must
+        // become two distinct Mermaid nodes, not collapse into one via a name-based id.
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        var projects = new List<Project>
+        {
+            new(a, "Tests", "/x/Tests.csproj", "x/Tests.csproj", "net10.0", ProjectType.Test),
+            new(b, "Tests", "/y/Tests.csproj", "y/Tests.csproj", "net10.0", ProjectType.Test)
+        };
+        var graph = new SolutionGraph("S", "/s.slnx", projects, []);
+
+        var result = _renderer.Render(graph);
+
+        var ids = result.Split('\n')
+            .Select(l => l.Trim())
+            .Where(l => l.Contains("[\"Tests", StringComparison.Ordinal))
+            .Select(l => l[..l.IndexOf('[', StringComparison.Ordinal)])
+            .ToList();
+        ids.Should().HaveCount(2);
+        ids.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public void Render_ProjectNameWithQuote_EscapesLabel()
+    {
+        // A project name containing a double quote (legal on Linux) must not break the Mermaid
+        // label by terminating the quoted string early.
+        var a = Guid.NewGuid();
+        var projects = new List<Project>
+        {
+            new(a, "My\"Proj", "/My\"Proj.csproj", "My\"Proj.csproj", "net10.0", ProjectType.Library)
+        };
+        var graph = new SolutionGraph("S", "/s.slnx", projects, []);
+
+        var result = _renderer.Render(graph);
+
+        result.Should().NotContain("[\"My\"Proj\"]");
+        result.Should().Contain("#quot;");
+    }
+
+    [Fact]
     public void Render_ShouldGenerateValidMermaidSyntax()
     {
         // Arrange

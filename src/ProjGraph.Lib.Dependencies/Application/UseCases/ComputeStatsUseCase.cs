@@ -40,9 +40,12 @@ public static class ComputeStatsUseCase
             t => t.ToString(),
             t => projects.Count(p => p.Type == t));
 
-        // 2. Cycle detection — Tarjan SCC; any SCC with >1 member indicates a cycle
+        // 2. Cycle detection — Tarjan SCC; any SCC with >1 member indicates a cycle. Tarjan
+        // reports a self-referencing project as a single-node SCC, so a self-loop edge
+        // (SourceId == TargetId) must also count as a cycle.
         var sccs = TarjanSccAlgorithm.FindStronglyConnectedComponents(graph);
-        var hasCycles = sccs.Any(scc => scc.Count > 1);
+        var hasSelfLoop = projectRefs.Any(d => d.SourceId == d.TargetId);
+        var hasCycles = hasSelfLoop || sccs.Any(scc => scc.Count > 1);
 
         // 3. Dependency depth stats
         var depthStats = hasCycles

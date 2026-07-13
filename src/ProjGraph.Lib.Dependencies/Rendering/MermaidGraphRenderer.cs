@@ -27,6 +27,10 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
 
         sb.AppendLine("graph TD");
 
+        // Map each project to a unique node id so that same-named projects (or names that
+        // sanitize to the same string) do not collapse into a single Mermaid node.
+        var nodeIds = BuildNodeIds(model.Projects);
+
         var hasPackages = model.Projects.Any(p => p.Type == ProjectType.Package);
         if (hasPackages)
         {
@@ -35,13 +39,13 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
 
         foreach (var project in model.Projects.OrderBy(p => p.Name))
         {
-            var safeId = SanitizeId(project.Name);
+            var safeId = nodeIds[project.Id];
             string nodeDef;
             if (project.Type == ProjectType.Package)
             {
                 // Version is stored in FullPath for package nodes
                 // Hexagon shape: id{{"label"}} — use concatenation to avoid brace-escape complexity
-                nodeDef = "    " + safeId + "{{\"" + project.Name + " " + project.FullPath + "\"}}";
+                nodeDef = "    " + safeId + "{{\"" + EscapeLabel(project.Name + " " + project.FullPath) + "\"}}";
             }
             else
             {
@@ -51,7 +55,7 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
                     ProjectType.Test => " (Test)",
                     _ => ""
                 };
-                nodeDef = $"    {safeId}[\"{project.Name}{typeLabel}\"]";
+                nodeDef = $"    {safeId}[\"{EscapeLabel(project.Name + typeLabel)}\"]";
             }
 
             sb.AppendLine(nodeDef);
@@ -61,7 +65,7 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
         {
             foreach (var pkg in model.Projects.Where(p => p.Type == ProjectType.Package).OrderBy(p => p.Name))
             {
-                sb.AppendLine(CultureInfo.InvariantCulture, $"    class {SanitizeId(pkg.Name)} pkg");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"    class {nodeIds[pkg.Id]} pkg");
             }
         }
 
@@ -81,12 +85,37 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
         {
             var arrow = dep.Type == DependencyType.PackageReference ? "-.->" : "-->";
             sb.AppendLine(CultureInfo.InvariantCulture,
-                $"    {SanitizeId(dep.Source!.Name)} {arrow} {SanitizeId(dep.Target!.Name)}");
+                $"    {nodeIds[dep.Source!.Id]} {arrow} {nodeIds[dep.Target!.Id]}");
         }
 
         MermaidFenceHelper.AppendFenceEnd(sb, options);
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Builds a map from each project's id to a unique Mermaid node id. The sanitized name is used
+    /// as-is when unique; colliding names are disambiguated with a short suffix from the project id
+    /// so distinct projects never share a node while readable ids are kept in the common case.
+    /// </summary>
+    /// <param name="projects">The projects to assign node ids to.</param>
+    /// <returns>A map from project id to node id.</returns>
+    private static Dictionary<Guid, string> BuildNodeIds(IReadOnlyCollection<Project> projects)
+    {
+        var baseIdCounts = projects
+            .GroupBy(p => SanitizeId(p.Name), StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+
+        var nodeIds = new Dictionary<Guid, string>();
+        foreach (var project in projects)
+        {
+            var baseId = SanitizeId(project.Name);
+            nodeIds[project.Id] = baseIdCounts[baseId] > 1
+                ? $"{baseId}_{project.Id:N}"[..(baseId.Length + 9)]
+                : baseId;
+        }
+
+        return nodeIds;
     }
 
     /// <summary>
@@ -101,5 +130,16 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
             .Replace(".", "_", StringComparison.Ordinal)
             .Replace("-", "_", StringComparison.Ordinal)
             .Replace(" ", "_", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Escapes a Mermaid quoted-label value so that a double quote in the text cannot terminate
+    /// the label early. Mermaid renders the <c>#quot;</c> entity code as a double quote.
+    /// </summary>
+    /// <param name="label">The raw label text.</param>
+    /// <returns>The label with double quotes replaced by the Mermaid entity code.</returns>
+    private static string EscapeLabel(string label)
+    {
+        return label.Replace("\"", "#quot;", StringComparison.Ordinal);
     }
 }

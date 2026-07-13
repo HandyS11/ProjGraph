@@ -217,6 +217,22 @@ public sealed class ComputeStatsUseCaseTests
     }
 
     [Fact]
+    public void Execute_SelfReferencingProject_HasCyclesTrue()
+    {
+        // A project that references itself is a cycle. Tarjan reports it as a single-node SCC,
+        // so a "SCC size > 1" check misses it; the self-loop edge must still mark HasCycles.
+        var a = Guid.NewGuid();
+        var graph = new SolutionGraph("SelfLoop", "/SelfLoop.slnx",
+            [MakeProject(a, "A", ProjectType.Library)],
+            [ProjectRef(a, a)]);
+
+        var stats = ComputeStatsUseCase.Execute(graph);
+
+        stats.HasCycles.Should().BeTrue();
+        stats.DepthStats.Average.Should().BeNull();
+    }
+
+    [Fact]
     public void Execute_NoCycle_HasCyclesFalse()
     {
         var (a, b) = (Guid.NewGuid(), Guid.NewGuid());

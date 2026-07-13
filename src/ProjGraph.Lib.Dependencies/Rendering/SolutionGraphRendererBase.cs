@@ -109,11 +109,17 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     protected static HashSet<Guid> GetCyclicProjectIds(SolutionGraph graph)
     {
         var cycles = TarjanSccAlgorithm.FindStronglyConnectedComponents(graph);
-        return
-        [
-            .. cycles
-                .Where(c => c.Count > 1)
-                .SelectMany(c => c)
-        ];
+        var cyclic = new HashSet<Guid>(cycles.Where(c => c.Count > 1).SelectMany(c => c));
+
+        // A self-referencing project forms a single-node SCC that the size check above misses.
+        foreach (var dependency in graph.Dependencies)
+        {
+            if (dependency.SourceId == dependency.TargetId)
+            {
+                cyclic.Add(dependency.SourceId);
+            }
+        }
+
+        return cyclic;
     }
 }
