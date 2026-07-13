@@ -1,3 +1,4 @@
+using ModelContextProtocol;
 using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Integration.Mcp.Helpers;
@@ -169,6 +170,21 @@ public sealed class McpClassDiagramTests : IDisposable
 
         // Assert
         await act.Should().ThrowAsync<Exception>();
+    }
+
+    [Fact]
+    public async Task GetClassDiagram_NonCsFile_ShouldThrowMcpException()
+    {
+        // Arrange
+        using var temp = new TestDirectory();
+        var tools = CreateTools();
+        var nonCsFile = temp.CreateFile("notes.txt", "not C# source");
+
+        // Act
+        var act = async () => await tools.GetClassDiagramAsync(nonCsFile);
+
+        // Assert - McpException so the guidance reaches the client instead of a generic error
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain(".cs");
     }
 
 

@@ -1,3 +1,4 @@
+using ModelContextProtocol;
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Integration.Mcp.Helpers;
 using ProjGraph.Tests.Shared.Helpers;
@@ -217,7 +218,7 @@ public sealed class McpErdTests : IDisposable
     }
 
     [Fact]
-    public async Task GetErd_NonCsFile_ShouldThrow()
+    public async Task GetErd_NonCsFile_ShouldThrowMcpException()
     {
         // Arrange
         var tools = CreateTools();
@@ -227,8 +228,8 @@ public sealed class McpErdTests : IDisposable
         // Act
         var act = async () => await tools.GetErdAsync(nonCsFile);
 
-        // Assert
-        await act.Should().ThrowAsync<Exception>();
+        // Assert - McpException so the guidance reaches the client instead of a generic error
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain(".cs");
     }
 
     public void Dispose()

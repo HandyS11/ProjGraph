@@ -238,6 +238,41 @@ public sealed class BuildGraphUseCaseTests
     }
 
     [Fact]
+    public void Execute_CaseVariantDuplicatePaths_ShouldDeduplicateById()
+    {
+        // On case-insensitive file systems the same project can be listed with different casing.
+        // Separator-only path normalization then yields two distinct dictionary keys, but the
+        // parser's deterministic Id (case-folded on those platforms) is identical — the graph
+        // must still contain a single node, never two projects sharing one Id.
+        const string slnPath = "/test/solution.sln";
+        const string pathLower = "/test/a.csproj";
+        const string pathUpper = "/test/A.csproj";
+
+        _fileSystem.FileExists(slnPath).Returns(true);
+        _slnParser.GetProjectPaths(slnPath).Returns([pathLower, pathUpper]);
+
+        _fileSystem.GetFullPath(pathLower).Returns(pathLower);
+        _fileSystem.GetFullPath(pathUpper).Returns(pathUpper);
+        _fileSystem.FileExists(pathLower).Returns(true);
+        _fileSystem.FileExists(pathUpper).Returns(true);
+        _discoveryService.NormalizePath(pathLower).Returns(pathLower);
+        _discoveryService.NormalizePath(pathUpper).Returns(pathUpper);
+
+        var sharedId = Guid.NewGuid();
+        var projectLower = new Project(sharedId, "A", pathLower, "a.csproj", "net10.0", ProjectType.Library);
+        var projectUpper = new Project(sharedId, "A", pathUpper, "A.csproj", "net10.0", ProjectType.Library);
+        _projectParser.Parse(pathLower)
+            .Returns((projectLower, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
+        _projectParser.Parse(pathUpper)
+            .Returns((projectUpper, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
+
+        var result = _sut.Execute(slnPath);
+
+        result.Projects.Should().ContainSingle();
+        result.Projects.Select(p => p.Id).Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
     public void Execute_ProjectFileDoesNotExist_ShouldSkipProject()
     {
         const string slnPath = "/test/solution.sln";

@@ -73,7 +73,7 @@ internal sealed class ProjGraphTools(
         }
         else
         {
-            FilePathGuard.RequireCsFile(path);
+            RequireCsFile(path);
 
             progress?.Report(new ProgressNotificationValue
             {
@@ -219,7 +219,7 @@ internal sealed class ProjGraphTools(
         path = await PreparePathAsync(path, cancellationToken);
 
         RequireFileExists(path);
-        FilePathGuard.RequireCsFile(path);
+        RequireCsFile(path);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -286,6 +286,20 @@ internal sealed class ProjGraphTools(
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         return await rootService.TryResolveAsync(path, server, cancellationToken);
+    }
+
+    private static void RequireCsFile(string path)
+    {
+        try
+        {
+            FilePathGuard.RequireCsFile(path);
+        }
+        catch (ArgumentException ex)
+        {
+            // McpException so the actionable message reaches the client; the SDK strips the
+            // message from any other exception type.
+            throw new McpException(ex.Message);
+        }
     }
 
     private void RequireFileExists(string path)

@@ -268,16 +268,35 @@ internal static class RelationshipConfigParser
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
             var nextMethod = matches[j].Groups[1].Value;
-            if (nextMethod is not EfAnalysisConstants.EfMethods.IsRequired)
+            if (nextMethod is EfAnalysisConstants.EfMethods.IsRequired)
             {
-                continue;
+                var arg = matches[j].Groups[2].Value.Trim();
+                return string.IsNullOrEmpty(arg) || arg.Equals("true", StringComparison.OrdinalIgnoreCase);
             }
 
-            var arg = matches[j].Groups[2].Value.Trim();
-            return string.IsNullOrEmpty(arg) || arg.Equals("true", StringComparison.OrdinalIgnoreCase);
+            if (IsChainBoundary(nextMethod))
+            {
+                return null;
+            }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Determines whether a method call starts a new fluent chain, meaning a forward scan for
+    /// chain members of the current relationship must stop to avoid associating configuration
+    /// from an unrelated statement.
+    /// </summary>
+    /// <param name="methodName">The method name from the match.</param>
+    private static bool IsChainBoundary(string methodName)
+    {
+        return methodName.Contains(EfAnalysisConstants.EfMethods.Entity, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.HasMany, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.HasKey, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.Property, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.ToTable, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -294,10 +313,7 @@ internal static class RelationshipConfigParser
             var nextMethodMatch = matches[j].Groups[1].Value;
             if (!nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasForeignKey, StringComparison.Ordinal))
             {
-                if (nextMethodMatch.Contains(EfAnalysisConstants.EfMethods.Entity, StringComparison.Ordinal) ||
-                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasOne, StringComparison.Ordinal) ||
-                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasMany, StringComparison.Ordinal) ||
-                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.ToTable, StringComparison.Ordinal))
+                if (IsChainBoundary(nextMethodMatch))
                 {
                     break;
                 }
@@ -327,6 +343,11 @@ internal static class RelationshipConfigParser
                 nextMethod.StartsWith(EfAnalysisConstants.EfMethods.WithMany, StringComparison.Ordinal))
             {
                 return nextMethod;
+            }
+
+            if (IsChainBoundary(nextMethod))
+            {
+                return null;
             }
         }
 
