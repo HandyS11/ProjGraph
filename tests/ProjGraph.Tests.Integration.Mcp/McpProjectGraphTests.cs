@@ -1,3 +1,4 @@
+using ModelContextProtocol;
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Integration.Mcp.Helpers;
 using ProjGraph.Tests.Shared.Helpers;
@@ -6,6 +7,30 @@ namespace ProjGraph.Tests.Integration.Mcp;
 
 public class McpProjectGraphTests
 {
+    [Fact]
+    public async Task GetProjectGraph_NonExistentFile_ShouldThrowMcpExceptionWithPath()
+    {
+        // Validation errors must surface as McpException so the message reaches the client;
+        // the SDK strips the message from any other exception type.
+        var tools = CreateTools();
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), "no", "such.slnx");
+
+        var act = async () => await tools.GetProjectGraphAsync(nonExistentPath);
+
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain("not found");
+    }
+
+    [Fact]
+    public async Task GetProjectGraph_UnsupportedExtension_ShouldThrowMcpException()
+    {
+        var tools = CreateTools();
+        var invalidPath = GetRootPath("README.md");
+
+        var act = async () => await tools.GetProjectGraphAsync(invalidPath);
+
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain("Unsupported file type");
+    }
+
     [Fact]
     public async Task GetProjectGraph_SimpleDependencies_Slnx_ShouldReturnValidMermaid()
     {

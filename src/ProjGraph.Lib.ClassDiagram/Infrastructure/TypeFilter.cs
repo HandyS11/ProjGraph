@@ -80,23 +80,43 @@ internal static class TypeFilter
     /// </remarks>
     public static bool IsSystemType(INamedTypeSymbol type)
     {
-        var ns = type.ContainingNamespace?.ToDisplayString();
+        var containingNamespace = type.ContainingNamespace;
+        var ns = containingNamespace?.ToDisplayString();
 
-        // Check if it's in a system namespace
-        if (ns != null && (ns.StartsWith("System", StringComparison.Ordinal) ||
-                           ns.StartsWith("Microsoft.Extensions", StringComparison.Ordinal)))
+        // Check if it's in a system namespace (dot-bounded so 'Systems.Combat' is not treated
+        // as being under 'System').
+        if (ns != null && (IsInNamespace(ns, "System") || IsInNamespace(ns, "Microsoft.Extensions")))
         {
             return true;
         }
 
-        // Check if it's a well-known system type
-        if (IsWellKnownSystemType(type.Name))
+        // Special types (int, string, etc.) are always system types.
+        if (type.SpecialType != SpecialType.None)
         {
             return true;
         }
 
-        // Check if it's a special type (int, string, etc.)
-        return type.SpecialType != SpecialType.None;
+        // Fall back to the well-known-name list ONLY for types we could not attribute to a real
+        // namespace — unresolved/error symbols or types in the global namespace. A user-defined
+        // type living in a real namespace (e.g. MyApp.Task) must NOT be filtered just because its
+        // simple name collides with a BCL type.
+        var isUnattributed = type.TypeKind == TypeKind.Error
+                             || (containingNamespace?.IsGlobalNamespace ?? true);
+
+        return isUnattributed && IsWellKnownSystemType(type.Name);
+    }
+
+    /// <summary>
+    /// Determines whether a namespace display string is, or is nested under, the given root
+    /// namespace, using a dot boundary to avoid false prefix matches (e.g. 'Systems' vs 'System').
+    /// </summary>
+    /// <param name="ns">The namespace display string to test.</param>
+    /// <param name="root">The root namespace to match against.</param>
+    /// <returns><c>true</c> if <paramref name="ns"/> equals or is nested under <paramref name="root"/>.</returns>
+    private static bool IsInNamespace(string ns, string root)
+    {
+        return ns.Equals(root, StringComparison.Ordinal) ||
+               ns.StartsWith(root + ".", StringComparison.Ordinal);
     }
 
     /// <summary>

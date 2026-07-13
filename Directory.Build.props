@@ -13,7 +13,10 @@
     <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);NU1901;NU1902;NU1903;NU1904</NoWarn>
+    <!-- Surface high/critical NuGet advisories (NU1903/NU1904) as build failures; only
+         low/moderate informational advisories (NU1901/NU1902) are suppressed. -->
+    <NoWarn>$(NoWarn);NU1901;NU1902</NoWarn>
+    <NuGetAuditLevel>high</NuGetAuditLevel>
 
     <!-- Package Metadata -->
     <Version>0.4.0</Version>

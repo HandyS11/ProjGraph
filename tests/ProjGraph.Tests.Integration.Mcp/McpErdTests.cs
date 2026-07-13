@@ -147,9 +147,11 @@ public sealed class McpErdTests : IDisposable
         var result = await tools.GetErdAsync(contextPath);
 
         // Assert
-        result.Should().Contain("||--o{"); // One-to-Many notation
+        result.Should().Contain("||--o{"); // Required one-to-many notation
+        // Publisher -> Book has a non-nullable FK and no explicit config: required one-to-many.
         result.Should().Contain("Publisher ||--o{ Book");
-        result.Should().Contain("Book ||--o{ Review");
+        // Review -> Book is configured .IsRequired(false): optional one-to-many.
+        result.Should().Contain("Book |o--o{ Review");
     }
 
     [Fact]

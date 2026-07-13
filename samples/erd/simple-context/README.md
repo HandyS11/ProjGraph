@@ -82,7 +82,7 @@ erDiagram
   Book ||--o{ AuthorBook : ""
   Book ||--o{ BookCategory : ""
   Book ||--|| BookDetail : ""
-  Book ||--o{ Review : ""
+  Book |o--o{ Review : ""
   Category ||--o{ BookCategory : ""
   Publisher ||--o{ Book : ""
 ```
@@ -173,7 +173,7 @@ erDiagram
   Book ||--o{ AuthorBook : ""
   Book ||--o{ BookCategory : ""
   Book ||--|| BookDetail : ""
-  Book ||--o{ Review : ""
+  Book |o--o{ Review : ""
   Category ||--o{ BookCategory : ""
   Publisher ||--o{ Book : ""
 ```

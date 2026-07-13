@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- Allow the global tool to start on a newer major runtime than it was built against. -->
+    <RollForward>LatestMajor</RollForward>
 
     <!-- Package configuration -->
     <IsPackable>true</IsPackable>

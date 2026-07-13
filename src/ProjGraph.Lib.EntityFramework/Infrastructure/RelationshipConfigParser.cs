@@ -40,6 +40,8 @@ internal static class RelationshipConfigParser
                 continue;
             }
 
+            // Shadow relationships carry no explicit .IsRequired() configuration, so the convention
+            // default for the relationship kind is applied (required for one-to-many).
             var rel = CreateShadowRelationship(entityName, targetEntityName, hasMethod, withMethod);
             shadowRelationships.Add(rel);
         }
@@ -137,8 +139,8 @@ internal static class RelationshipConfigParser
             return null;
         }
 
-        var isRequired = IsRelationshipRequired(matches, startIndex);
-        return CreateShadowRelationship(entityName, targetEntityName, methodName, method, isRequired);
+        var explicitRequired = FindExplicitRequired(matches, startIndex);
+        return CreateShadowRelationship(entityName, targetEntityName, methodName, method, explicitRequired);
     }
 
     /// <summary>
@@ -252,7 +254,16 @@ internal static class RelationshipConfigParser
         }
     }
 
-    private static bool IsRelationshipRequired(MatchCollection matches, int startIndex)
+    /// <summary>
+    /// Detects an explicit <c>.IsRequired(...)</c> configuration in the chain following a relationship.
+    /// </summary>
+    /// <param name="matches">The collection of regex matches.</param>
+    /// <param name="startIndex">The index of the relationship's Has method.</param>
+    /// <returns>
+    /// <see langword="true"/> or <see langword="false"/> when an explicit <c>.IsRequired(...)</c> call is
+    /// found; <see langword="null"/> when none is present, so the caller can apply the convention default.
+    /// </returns>
+    private static bool? FindExplicitRequired(MatchCollection matches, int startIndex)
     {
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
@@ -266,7 +277,7 @@ internal static class RelationshipConfigParser
             return string.IsNullOrEmpty(arg) || arg.Equals("true", StringComparison.OrdinalIgnoreCase);
         }
 
-        return false;
+        return null;
     }
 
     /// <summary>
@@ -329,9 +340,12 @@ internal static class RelationshipConfigParser
     /// <param name="targetEntity">The target entity name.</param>
     /// <param name="hasMethod">The Has method name (HasOne/HasMany).</param>
     /// <param name="withMethod">The With method name (WithOne/WithMany).</param>
-    /// <param name="isRequired">Whether the relationship is required.</param>
+    /// <param name="explicitRequired">
+    /// The explicit <c>.IsRequired(...)</c> value when configured, or <see langword="null"/> to apply the
+    /// EF convention default for the relationship kind (required for one-to-many, optional otherwise).
+    /// </param>
     public static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
-        string withMethod, bool isRequired = false)
+        string withMethod, bool? explicitRequired = null)
     {
         return (hasMethod, withMethod) switch
         {
@@ -340,35 +354,35 @@ internal static class RelationshipConfigParser
                 SourceEntity = targetEntity,
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
-                IsRequired = true
+                IsRequired = explicitRequired ?? true
             },
             (EfAnalysisConstants.EfMethods.HasMany, EfAnalysisConstants.EfMethods.WithOne) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToMany,
-                IsRequired = true
+                IsRequired = explicitRequired ?? true
             },
             (EfAnalysisConstants.EfMethods.HasOne, EfAnalysisConstants.EfMethods.WithOne) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToOne,
-                IsRequired = isRequired
+                IsRequired = explicitRequired ?? false
             },
             (EfAnalysisConstants.EfMethods.HasMany, EfAnalysisConstants.EfMethods.WithMany) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.ManyToMany,
-                IsRequired = isRequired
+                IsRequired = explicitRequired ?? false
             },
             _ => new EfRelationship
             {
                 SourceEntity = targetEntity,
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
-                IsRequired = true
+                IsRequired = explicitRequired ?? true
             }
         };
     }

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Dependencies.Application.UseCases;
@@ -179,6 +180,61 @@ public sealed class BuildGraphUseCaseTests
 
         result.Projects.Should().BeEmpty();
         _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Skipped")));
+    }
+
+    [Fact]
+    public void Execute_ProjectParseThrowsParsingException_ShouldSkipProject()
+    {
+        // A malformed .csproj surfaces as ParsingException from the parser; it must be
+        // skipped-and-warned, not allowed to abort the entire graph build.
+        const string slnPath = "/test/solution.sln";
+        const string pathA = "/test/broken.csproj";
+        const string pathB = "/test/good.csproj";
+
+        _fileSystem.FileExists(slnPath).Returns(true);
+        _slnParser.GetProjectPaths(slnPath).Returns([pathA, pathB]);
+
+        _fileSystem.GetFullPath(pathA).Returns(pathA);
+        _fileSystem.GetFullPath(pathB).Returns(pathB);
+        _fileSystem.FileExists(pathA).Returns(true);
+        _fileSystem.FileExists(pathB).Returns(true);
+        _discoveryService.NormalizePath(pathA).Returns(pathA);
+        _discoveryService.NormalizePath(pathB).Returns(pathB);
+
+        _projectParser.Parse(pathA).Throws(new ParsingException("malformed project"));
+        var projectB = new Project(Guid.NewGuid(), "Good", pathB, "good.csproj", "net10.0", ProjectType.Library);
+        _projectParser.Parse(pathB)
+            .Returns((projectB, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
+
+        var result = _sut.Execute(slnPath);
+
+        result.Projects.Should().ContainSingle(p => p.Name == "Good");
+        _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Skipped")));
+    }
+
+    [Fact]
+    public void Execute_DuplicateProjectPaths_ShouldDeduplicate()
+    {
+        // A solution listing the same project twice must not produce two Project records
+        // with the same deterministic Id (which would crash downstream ToDictionary(p => p.Id)).
+        const string slnPath = "/test/solution.sln";
+        const string pathA = "/test/a.csproj";
+
+        _fileSystem.FileExists(slnPath).Returns(true);
+        _slnParser.GetProjectPaths(slnPath).Returns([pathA, pathA]);
+
+        _fileSystem.GetFullPath(pathA).Returns(pathA);
+        _fileSystem.FileExists(pathA).Returns(true);
+        _discoveryService.NormalizePath(pathA).Returns(pathA);
+
+        var project = new Project(Guid.NewGuid(), "A", pathA, "a.csproj", "net10.0", ProjectType.Library);
+        _projectParser.Parse(pathA)
+            .Returns((project, Enumerable.Empty<string>(), Enumerable.Empty<PackageReference>()));
+
+        var result = _sut.Execute(slnPath);
+
+        result.Projects.Should().ContainSingle();
+        result.Projects.Select(p => p.Id).Should().OnlyHaveUniqueItems();
     }
 
     [Fact]

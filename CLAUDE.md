@@ -39,14 +39,14 @@ ProjGraph is a .NET 10 tool ecosystem with two entry points — a **CLI** (`Spec
 ```sh
 Cli ──┐
       ├──► Lib ──► Lib.Core ──► Core
-Mcp ──┘       ├──► Lib.ProjectGraph ──► Lib.Core
+Mcp ──┘       ├──► Lib.Dependencies ──► Lib.Core
               ├──► Lib.ClassDiagram ──► Lib.Core
               └──► Lib.EntityFramework ──► Lib.Core
 ```
 
 - **`ProjGraph.Core`** — Pure domain models (`SolutionGraph`, `ClassModel`, `EfModel`, `SolutionStats`) and exceptions. No dependencies.
-- **`ProjGraph.Lib.Core`** — Cross-cutting abstractions (`IFileSystem`, `IOutputConsole`, `ICompilationFactory`, `IDiagramRenderer<T>`), solution parsers (`.sln`/`.slnx`), and infrastructure utilities.
-- **`ProjGraph.Lib.ProjectGraph`** — Builds dependency graphs from solution/project files using Buildalyzer; computes stats via `TarjanSccAlgorithm` for cycle detection.
+- **`ProjGraph.Lib.Core`** — Cross-cutting abstractions (`IFileSystem`, `IOutputConsole`, `ICompilationFactory`, `IDiagramRenderer<T>`), solution parsers (`.sln`/`.slnx`), and infrastructure utilities. Also hosts the `TarjanSccAlgorithm` (in `Domain/Algorithms/`) used for cycle detection.
+- **`ProjGraph.Lib.Dependencies`** — Builds dependency graphs from solution/project files by parsing them directly via `Microsoft.Build.Construction` (the in-house `SlnParser`/`SlnxParser`/`ProjectParser` in `Lib.Core`); computes stats using `TarjanSccAlgorithm` for cycle detection.
 - **`ProjGraph.Lib.ClassDiagram`** — Roslyn-based C# class hierarchy analysis. Accepts a file or directory; optionally discovers related types across the workspace via `IWorkspaceTypeDiscovery`.
 - **`ProjGraph.Lib.EntityFramework`** — Roslyn semantic analysis of EF Core `DbContext` files and `ModelSnapshot` files; includes a multi-class Fluent API parser.
 - **`ProjGraph.Lib`** — Composition root only. Exposes `AddProjGraphLib()` which wires all sub-library services via DI.
@@ -87,4 +87,4 @@ Application/
 
 ### Release
 
-Releases are triggered by pushing a `v*` tag. The publish workflow builds, packs, pushes to NuGet.org and GitHub Packages, submits to the MCP Registry via `mcp-publisher`, and creates a GitHub Release. The MCP Registry ownership comment (`<!-- mcp-name: io.github.handys11/projgraph -->`) must remain at the end of `src/ProjGraph.Mcp/README.md`.
+Releases are triggered by pushing a `v*` tag. The publish workflow builds, packs, pushes to NuGet.org and GitHub Packages, submits to the MCP Registry via `mcp-publisher`, and creates a GitHub Release. The MCP Registry ownership comment (`<!-- mcp-name: io.github.HandyS11/projgraph -->`) must remain at the end of `src/ProjGraph.Mcp/README.md`.

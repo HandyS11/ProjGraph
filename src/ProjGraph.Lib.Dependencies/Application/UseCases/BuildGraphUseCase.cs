@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using System.Security.Cryptography;
@@ -64,6 +65,13 @@ public partial class BuildGraphUseCase(
 
         foreach (var (fullPath, normalizedPath) in processedPaths)
         {
+            // Skip duplicate solution entries: parsing the same path twice would produce two
+            // Project records sharing one deterministic Id, crashing downstream ToDictionary(p => p.Id).
+            if (pathToProject.ContainsKey(normalizedPath))
+            {
+                continue;
+            }
+
             try
             {
                 var (project, refs, packages) = projectParser.Parse(fullPath);
@@ -101,7 +109,8 @@ public partial class BuildGraphUseCase(
                     }
                 }
             }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException or XmlException)
+            catch (Exception ex) when (ex is ParsingException or IOException or InvalidOperationException
+                                           or XmlException)
             {
                 LogProjectSkipped(logger, ex, Path.GetFileName(fullPath));
                 console.WriteWarning($"Skipped project '{Path.GetFileName(fullPath)}': {ex.Message}");

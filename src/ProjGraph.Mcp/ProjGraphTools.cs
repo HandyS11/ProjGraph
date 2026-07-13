@@ -1,6 +1,5 @@
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
-using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.ClassDiagram.Application.UseCases;
@@ -43,7 +42,7 @@ internal sealed class ProjGraphTools(
         path = await PreparePathAsync(path, cancellationToken);
 
         if (!fileSystem.FileExists(path) && !fileSystem.DirectoryExists(path))
-            throw new FileNotFoundException($"Path not found: {path}", path);
+            throw new McpException($"Path not found: {path}");
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -239,9 +238,9 @@ internal sealed class ProjGraphTools(
                 ? contextName
                 : snapshots.Count switch
                 {
-                    0 => throw new AnalysisException($"No ModelSnapshot found in '{path}'."),
+                    0 => throw new McpException($"No ModelSnapshot found in '{path}'."),
                     1 => snapshots[0],
-                    _ => throw new AnalysisException(
+                    _ => throw new McpException(
                         $"Multiple ModelSnapshots found in '{path}': {string.Join(", ", snapshots)}. Specify one using the contextName parameter.")
                 };
 
@@ -293,7 +292,9 @@ internal sealed class ProjGraphTools(
     {
         if (!fileSystem.FileExists(path))
         {
-            throw new FileNotFoundException($"File not found: {path}", path);
+            // McpException so the actionable message reaches the client; the SDK strips the
+            // message from any other exception type.
+            throw new McpException($"File not found: {path}");
         }
     }
 
@@ -302,8 +303,8 @@ internal sealed class ProjGraphTools(
         var extension = fileSystem.GetExtension(path).ToLowerInvariant();
         if (extension is not (".sln" or ".slnx" or ".csproj"))
         {
-            throw new ArgumentException(
-                $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.", nameof(path));
+            throw new McpException(
+                $"Unsupported file type '{extension}'. Expected .sln, .slnx, or .csproj.");
         }
     }
 }
