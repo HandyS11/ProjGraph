@@ -258,6 +258,26 @@ public sealed class FluentPropertyWalkerTests
     }
 
     [Fact]
+    public void Apply_HasKey_StringArray_MarksAllPrimaryKeys()
+    {
+        // The regex parser scanned string literals anywhere in the args, so array forms must work too.
+        const string source = """
+            public class ProductSupplier { public int ProductId { get; set; } public int SupplierId { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                    => modelBuilder.Entity<ProductSupplier>().HasKey(new[] { "ProductId", "SupplierId" });
+            }
+            """;
+        var (method, compilation, entities) = Build(source, "ProductSupplier");
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        Property(entities, "ProductSupplier", "ProductId").IsPrimaryKey.Should().BeTrue();
+        Property(entities, "ProductSupplier", "SupplierId").IsPrimaryKey.Should().BeTrue();
+    }
+
+    [Fact]
     public void Apply_HasKeyInsideUsingEntity_IsIgnored()
     {
         // Join-entity key config inside UsingEntity belongs to the join builder, not the outer entity (Slice 3).

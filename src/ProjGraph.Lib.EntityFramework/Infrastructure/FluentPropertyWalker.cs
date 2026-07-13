@@ -156,20 +156,27 @@ internal static class FluentPropertyWalker
     /// <param name="invocation">The <c>HasKey</c> invocation.</param>
     private static IEnumerable<string> KeyPropertyNames(InvocationExpressionSyntax invocation)
     {
-        foreach (var argument in invocation.ArgumentList.Arguments)
+        foreach (var expression in invocation.ArgumentList.Arguments.Select(argument => argument.Expression))
         {
-            switch (argument.Expression)
+            if (expression is LambdaExpressionSyntax lambda)
             {
-                case LambdaExpressionSyntax lambda:
-                    foreach (var member in lambda.Body.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>())
-                    {
-                        yield return member.Name.Identifier.Text;
-                    }
+                foreach (var member in lambda.Body.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>())
+                {
+                    yield return member.Name.Identifier.Text;
+                }
 
-                    break;
-                case LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression):
-                    yield return literal.Token.ValueText;
-                    break;
+                continue;
+            }
+
+            // Non-lambda argument: collect every string literal in its subtree. This matches the regex
+            // parser's argument-wide literal scan, so both HasKey("A", "B") and array forms such as
+            // HasKey(new[] { "A", "B" }) / HasKey(new string[] { "A", "B" }) yield their key names.
+            var stringLiterals = expression.DescendantNodesAndSelf()
+                .OfType<LiteralExpressionSyntax>()
+                .Where(literal => literal.IsKind(SyntaxKind.StringLiteralExpression));
+            foreach (var literal in stringLiterals)
+            {
+                yield return literal.Token.ValueText;
             }
         }
     }
@@ -287,7 +294,10 @@ internal static class FluentPropertyWalker
     /// <param name="name">The name syntax.</param>
     private static string SimpleName(SimpleNameSyntax name) => name.Identifier.Text;
 
-    /// <summary>Returns the simple name of a type syntax (last dotted segment, generics dropped).</summary>
+    /// <summary>
+    /// Returns the name of a type syntax: the bare identifier for a simple name, otherwise the last
+    /// dotted segment of its text (namespace qualification stripped; any generic argument list is retained).
+    /// </summary>
     /// <param name="type">The type syntax.</param>
     private static string TypeName(TypeSyntax type)
     {
