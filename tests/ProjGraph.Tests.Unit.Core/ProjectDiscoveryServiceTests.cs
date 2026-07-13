@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Core.Infrastructure;
@@ -115,6 +116,21 @@ public sealed class ProjectDiscoveryServiceTests
         var result = _sut.DiscoverProjectsRecursively(rootPath).ToList();
 
         result.Should().HaveCount(1); // Root is still in discoveredFullPaths
+        _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Failed to parse")));
+    }
+
+    [Fact]
+    public void DiscoverProjectsRecursively_ParsingException_ShouldSkipAndWarn()
+    {
+        const string rootPath = "/src/malformed.csproj";
+
+        _fileSystem.GetFullPath(rootPath).Returns(rootPath);
+        _fileSystem.FileExists(rootPath).Returns(true);
+        _projectParser.Parse(rootPath).Throws(new ParsingException("malformed project"));
+
+        var result = _sut.DiscoverProjectsRecursively(rootPath).ToList();
+
+        result.Should().HaveCount(1);
         _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Failed to parse")));
     }
 

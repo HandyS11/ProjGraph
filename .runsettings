@@ -5,7 +5,7 @@
       <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
           <Format>cobertura</Format>
-          <Exclude>[ProjGraph.Tests.*]*,[ProjGraph.Cli]Program,[ProjGraph.Mcp]Program</Exclude>
+          <Exclude>[ProjGraph.Tests.*]*,[ProjGraph.Cli]*Program,[ProjGraph.Mcp]*Program</Exclude>
           <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
           <SingleHit>false</SingleHit>
           <UseSourceLink>true</UseSourceLink>

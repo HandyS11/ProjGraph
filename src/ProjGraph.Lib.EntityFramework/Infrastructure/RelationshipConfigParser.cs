@@ -40,6 +40,8 @@ internal static class RelationshipConfigParser
                 continue;
             }
 
+            // Shadow relationships carry no explicit .IsRequired() configuration, so the convention
+            // default for the relationship kind is applied (required for one-to-many).
             var rel = CreateShadowRelationship(entityName, targetEntityName, hasMethod, withMethod);
             shadowRelationships.Add(rel);
         }
@@ -137,8 +139,8 @@ internal static class RelationshipConfigParser
             return null;
         }
 
-        var isRequired = IsRelationshipRequired(matches, startIndex);
-        return CreateShadowRelationship(entityName, targetEntityName, methodName, method, isRequired);
+        var explicitRequired = FindExplicitRequired(matches, startIndex);
+        return CreateShadowRelationship(entityName, targetEntityName, methodName, method, explicitRequired);
     }
 
     /// <summary>
@@ -252,21 +254,49 @@ internal static class RelationshipConfigParser
         }
     }
 
-    private static bool IsRelationshipRequired(MatchCollection matches, int startIndex)
+    /// <summary>
+    /// Detects an explicit <c>.IsRequired(...)</c> configuration in the chain following a relationship.
+    /// </summary>
+    /// <param name="matches">The collection of regex matches.</param>
+    /// <param name="startIndex">The index of the relationship's Has method.</param>
+    /// <returns>
+    /// <see langword="true"/> or <see langword="false"/> when an explicit <c>.IsRequired(...)</c> call is
+    /// found; <see langword="null"/> when none is present, so the caller can apply the convention default.
+    /// </returns>
+    private static bool? FindExplicitRequired(MatchCollection matches, int startIndex)
     {
         for (var j = startIndex + 1; j < Math.Min(startIndex + 10, matches.Count); j++)
         {
             var nextMethod = matches[j].Groups[1].Value;
-            if (nextMethod is not EfAnalysisConstants.EfMethods.IsRequired)
+            if (nextMethod is EfAnalysisConstants.EfMethods.IsRequired)
             {
-                continue;
+                var arg = matches[j].Groups[2].Value.Trim();
+                return string.IsNullOrEmpty(arg) || arg.Equals("true", StringComparison.OrdinalIgnoreCase);
             }
 
-            var arg = matches[j].Groups[2].Value.Trim();
-            return string.IsNullOrEmpty(arg) || arg.Equals("true", StringComparison.OrdinalIgnoreCase);
+            if (IsChainBoundary(nextMethod))
+            {
+                return null;
+            }
         }
 
-        return false;
+        return null;
+    }
+
+    /// <summary>
+    /// Determines whether a method call starts a new fluent chain, meaning a forward scan for
+    /// chain members of the current relationship must stop to avoid associating configuration
+    /// from an unrelated statement.
+    /// </summary>
+    /// <param name="methodName">The method name from the match.</param>
+    private static bool IsChainBoundary(string methodName)
+    {
+        return methodName.Contains(EfAnalysisConstants.EfMethods.Entity, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.HasOne, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.HasMany, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.HasKey, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.Property, StringComparison.Ordinal) ||
+               methodName.StartsWith(EfAnalysisConstants.EfMethods.ToTable, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -283,10 +313,7 @@ internal static class RelationshipConfigParser
             var nextMethodMatch = matches[j].Groups[1].Value;
             if (!nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasForeignKey, StringComparison.Ordinal))
             {
-                if (nextMethodMatch.Contains(EfAnalysisConstants.EfMethods.Entity, StringComparison.Ordinal) ||
-                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasOne, StringComparison.Ordinal) ||
-                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.HasMany, StringComparison.Ordinal) ||
-                    nextMethodMatch.StartsWith(EfAnalysisConstants.EfMethods.ToTable, StringComparison.Ordinal))
+                if (IsChainBoundary(nextMethodMatch))
                 {
                     break;
                 }
@@ -317,6 +344,11 @@ internal static class RelationshipConfigParser
             {
                 return nextMethod;
             }
+
+            if (IsChainBoundary(nextMethod))
+            {
+                return null;
+            }
         }
 
         return null;
@@ -329,9 +361,12 @@ internal static class RelationshipConfigParser
     /// <param name="targetEntity">The target entity name.</param>
     /// <param name="hasMethod">The Has method name (HasOne/HasMany).</param>
     /// <param name="withMethod">The With method name (WithOne/WithMany).</param>
-    /// <param name="isRequired">Whether the relationship is required.</param>
+    /// <param name="explicitRequired">
+    /// The explicit <c>.IsRequired(...)</c> value when configured, or <see langword="null"/> to apply the
+    /// EF convention default for the relationship kind (required for one-to-many, optional otherwise).
+    /// </param>
     public static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity, string hasMethod,
-        string withMethod, bool isRequired = false)
+        string withMethod, bool? explicitRequired = null)
     {
         return (hasMethod, withMethod) switch
         {
@@ -340,35 +375,35 @@ internal static class RelationshipConfigParser
                 SourceEntity = targetEntity,
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
-                IsRequired = true
+                IsRequired = explicitRequired ?? true
             },
             (EfAnalysisConstants.EfMethods.HasMany, EfAnalysisConstants.EfMethods.WithOne) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToMany,
-                IsRequired = true
+                IsRequired = explicitRequired ?? true
             },
             (EfAnalysisConstants.EfMethods.HasOne, EfAnalysisConstants.EfMethods.WithOne) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.OneToOne,
-                IsRequired = isRequired
+                IsRequired = explicitRequired ?? false
             },
             (EfAnalysisConstants.EfMethods.HasMany, EfAnalysisConstants.EfMethods.WithMany) => new EfRelationship
             {
                 SourceEntity = sourceEntity,
                 TargetEntity = targetEntity,
                 Type = EfRelationshipType.ManyToMany,
-                IsRequired = isRequired
+                IsRequired = explicitRequired ?? false
             },
             _ => new EfRelationship
             {
                 SourceEntity = targetEntity,
                 TargetEntity = sourceEntity,
                 Type = EfRelationshipType.OneToMany,
-                IsRequired = true
+                IsRequired = explicitRequired ?? true
             }
         };
     }

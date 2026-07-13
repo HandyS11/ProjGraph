@@ -148,6 +148,45 @@ public class EfAnalysisAdvancedTests
     }
 
     [Fact]
+    public async Task AnalyzeContextAsync_ExplicitOptionalOneToMany_ShouldNotBeRequired()
+    {
+        // A HasOne(...).WithMany(...).IsRequired(false) relationship must render as optional.
+        // Regression: CreateShadowRelationship hard-coded IsRequired = true for OneToMany,
+        // discarding the value computed from the explicit .IsRequired(false) call.
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               using System.Collections.Generic;
+                               namespace Test;
+                               public class AppDbContext : DbContext
+                               {
+                                   public DbSet<Blog> Blogs { get; set; }
+                                   public DbSet<Post> Posts { get; set; }
+
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity<Post>()
+                                           .HasOne(p => p.Blog)
+                                           .WithMany(b => b.Posts)
+                                           .IsRequired(false);
+                                   }
+                               }
+                               public class Blog { public int Id { get; set; } public List<Post> Posts { get; set; } }
+                               public class Post { public int Id { get; set; } public Blog Blog { get; set; } }
+                               """;
+        var filePath = temp.CreateFile("OptionalContext.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        var rel = model.Relationships.Should()
+            .ContainSingle(r => r.Type == EfRelationshipType.OneToMany
+                                && (r.SourceEntity == "Blog" || r.TargetEntity == "Blog")).Which;
+        rel.IsRequired.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task AnalyzeContextAsync_ShouldHandleFluentApiPrecisionConfig()
     {
         // Arrange

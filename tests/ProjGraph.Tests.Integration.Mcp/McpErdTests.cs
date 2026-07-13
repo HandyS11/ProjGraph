@@ -1,3 +1,4 @@
+using ModelContextProtocol;
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Integration.Mcp.Helpers;
 using ProjGraph.Tests.Shared.Helpers;
@@ -147,9 +148,11 @@ public sealed class McpErdTests : IDisposable
         var result = await tools.GetErdAsync(contextPath);
 
         // Assert
-        result.Should().Contain("||--o{"); // One-to-Many notation
+        result.Should().Contain("||--o{"); // Required one-to-many notation
+        // Publisher -> Book has a non-nullable FK and no explicit config: required one-to-many.
         result.Should().Contain("Publisher ||--o{ Book");
-        result.Should().Contain("Book ||--o{ Review");
+        // Review -> Book is configured .IsRequired(false): optional one-to-many.
+        result.Should().Contain("Book |o--o{ Review");
     }
 
     [Fact]
@@ -215,7 +218,7 @@ public sealed class McpErdTests : IDisposable
     }
 
     [Fact]
-    public async Task GetErd_NonCsFile_ShouldThrow()
+    public async Task GetErd_NonCsFile_ShouldThrowMcpException()
     {
         // Arrange
         var tools = CreateTools();
@@ -225,8 +228,8 @@ public sealed class McpErdTests : IDisposable
         // Act
         var act = async () => await tools.GetErdAsync(nonCsFile);
 
-        // Assert
-        await act.Should().ThrowAsync<Exception>();
+        // Assert - McpException so the guidance reaches the client instead of a generic error
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain(".cs");
     }
 
     public void Dispose()

@@ -1,4 +1,5 @@
 using Microsoft.Build.Construction;
+using Microsoft.Build.Exceptions;
 using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
@@ -36,8 +37,17 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
     public (Project Project, IEnumerable<string> ProjectReferences, IEnumerable<PackageReference> PackageReferences)
         Parse(string projectPath)
     {
-        var root = ProjectRootElement.Open(projectPath)
+        ProjectRootElement root;
+        try
+        {
+            root = ProjectRootElement.Open(projectPath)
                    ?? throw new ParsingException($"Failed to parse project file: {projectPath}");
+        }
+        catch (Exception ex) when (ex is InvalidProjectFileException or IOException or XmlException
+                                       or InvalidOperationException)
+        {
+            throw new ParsingException($"Failed to parse project file: {projectPath}", ex);
+        }
 
         var name = Path.GetFileNameWithoutExtension(projectPath);
         var relativePath = Path.GetRelativePath(fileSystem.GetCurrentDirectory(), projectPath);
@@ -115,7 +125,8 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
                         return version;
                     }
                 }
-                catch (Exception ex) when (ex is IOException or InvalidOperationException or XmlException)
+                catch (Exception ex) when (ex is InvalidProjectFileException or IOException
+                                               or InvalidOperationException or XmlException)
                 {
                     // If we can't read the props file, continue searching up
                 }

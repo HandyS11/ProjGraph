@@ -1,3 +1,4 @@
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
@@ -217,9 +218,9 @@ public class ProjectParserTests
 
         var tempFile = temp.CreateFile("invalid.csproj", content);
 
-        // Act & Assert
+        // Act & Assert - the documented contract is ParsingException, not a raw MSBuild exception
         var act = () => _parser.Parse(tempFile);
-        act.Should().Throw<Exception>();
+        act.Should().Throw<ParsingException>();
     }
 
     [Fact]

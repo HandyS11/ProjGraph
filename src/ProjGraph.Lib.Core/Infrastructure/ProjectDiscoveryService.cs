@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Lib.Core.Abstractions;
 
 namespace ProjGraph.Lib.Core.Infrastructure;
@@ -61,7 +62,7 @@ public partial class ProjectDiscoveryService(
                     toProcess.Enqueue(absoluteRefPath);
                 }
             }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException)
+            catch (Exception ex) when (ex is ParsingException or IOException or InvalidOperationException)
             {
                 LogProjectParseFailure(logger, ex, Path.GetFileName(currentFullPath));
                 console.WriteWarning($"Failed to parse project '{Path.GetFileName(currentFullPath)}': {ex.Message}");

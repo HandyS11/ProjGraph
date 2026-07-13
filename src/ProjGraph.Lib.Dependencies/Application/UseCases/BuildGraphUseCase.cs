@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using System.Security.Cryptography;
@@ -53,7 +54,14 @@ public partial class BuildGraphUseCase(
 
         var projects = new List<Project>();
         var dependencies = new List<Dependency>();
-        var pathToProject = new Dictionary<string, Project>();
+
+        // Match the parser's deterministic-Id semantics: paths are case-folded on the
+        // case-insensitive file systems (Windows/macOS) and kept exact on Linux.
+        var pathComparer = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
+        var pathToProject = new Dictionary<string, Project>(pathComparer);
+        var seenProjectIds = new HashSet<Guid>();
         var packageToProject = new Dictionary<(string Name, string Version), Project>();
         var rawDependencies = new List<(string sourcePath, string targetPath)>();
 
@@ -64,11 +72,27 @@ public partial class BuildGraphUseCase(
 
         foreach (var (fullPath, normalizedPath) in processedPaths)
         {
+            // Skip duplicate solution entries: parsing the same path twice would produce two
+            // Project records sharing one deterministic Id, crashing downstream ToDictionary(p => p.Id).
+            if (pathToProject.ContainsKey(normalizedPath))
+            {
+                continue;
+            }
+
             try
             {
                 var (project, refs, packages) = projectParser.Parse(fullPath);
-                projects.Add(project);
                 pathToProject[normalizedPath] = project;
+
+                // Second-level dedupe on the deterministic Id: case-variant spellings of the same
+                // path can slip past the key check yet still case-fold to the same Id. The path
+                // mapping above is kept so edges from either spelling resolve to the single node.
+                if (!seenProjectIds.Add(project.Id))
+                {
+                    continue;
+                }
+
+                projects.Add(project);
 
                 rawDependencies.AddRange(refs
                     .Select(r => discoveryService.ResolveProjectReferencePath(fullPath, r))
@@ -101,7 +125,8 @@ public partial class BuildGraphUseCase(
                     }
                 }
             }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException or XmlException)
+            catch (Exception ex) when (ex is ParsingException or IOException or InvalidOperationException
+                                           or XmlException)
             {
                 LogProjectSkipped(logger, ex, Path.GetFileName(fullPath));
                 console.WriteWarning($"Skipped project '{Path.GetFileName(fullPath)}': {ex.Message}");
