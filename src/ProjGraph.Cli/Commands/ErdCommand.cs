@@ -199,7 +199,7 @@ internal sealed class ErdCommand(
     /// <returns>The file path.</returns>
     private static string HandleSingleFileFound(string filePath, IOutputConsole console)
     {
-        console.WriteMarkup($"[grey]Using [white]{Path.GetFileName(filePath)}[/]...[/]");
+        console.WriteMarkup($"[grey]Using [white]{Markup.Escape(Path.GetFileName(filePath))}[/]...[/]");
         return filePath;
     }
 
@@ -213,11 +213,36 @@ internal sealed class ErdCommand(
     private static async Task<string> HandleMultipleFilesFoundAsync(List<string> files,
         IOutputConsole console, CancellationToken cancellationToken)
     {
-        var selectedFileName = await console.PromptSelectionAsync(
+        var choices = BuildFileChoices(files, Directory.GetCurrentDirectory());
+
+        var selectedDisplay = await console.PromptSelectionAsync(
             "Multiple files found. Please select one:",
-            files.Select(f => Path.GetFileName(f)),
+            choices.Keys,
             cancellationToken);
-        return files.First(f => Path.GetFileName(f) == selectedFileName);
+        return choices[selectedDisplay];
+    }
+
+    /// <summary>
+    /// Builds the selection choices for the multiple-files prompt, mapping a unique display label
+    /// (the path relative to <paramref name="currentDirectory"/>) to each full file path. Using a
+    /// unique display keeps two files that share the same file name distinguishable, so the
+    /// selection resolves to the correct path instead of always the first same-named file.
+    /// </summary>
+    /// <param name="files">The discovered file paths.</param>
+    /// <param name="currentDirectory">The directory to make the display labels relative to.</param>
+    /// <returns>A map from display label to full file path.</returns>
+    internal static Dictionary<string, string> BuildFileChoices(
+        IEnumerable<string> files,
+        string currentDirectory)
+    {
+        var choices = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var file in files)
+        {
+            var display = Path.GetRelativePath(currentDirectory, file);
+            choices[display] = file;
+        }
+
+        return choices;
     }
 
     /// <summary>

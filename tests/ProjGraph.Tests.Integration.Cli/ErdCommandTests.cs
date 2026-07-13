@@ -1,3 +1,4 @@
+using ProjGraph.Cli.Commands;
 using ProjGraph.Tests.Integration.Cli.Helpers;
 using Spectre.Console.Cli;
 using System.Text.RegularExpressions;
@@ -7,6 +8,24 @@ namespace ProjGraph.Tests.Integration.Cli;
 [Collection("CLI Tests")]
 public partial class ErdCommandTests
 {
+    [Fact]
+    public void BuildFileChoices_SameFileNameInDifferentDirectories_MapsEachToItsOwnPath()
+    {
+        // Two files sharing the same file name must remain distinguishable, and each display
+        // label must resolve back to its own full path — not collapse onto the first one.
+        var root = Path.Combine("repo", "root");
+        var first = Path.Combine(root, "ProjectA", "AppDbContext.cs");
+        var second = Path.Combine(root, "ProjectB", "AppDbContext.cs");
+        string[] files = [first, second];
+
+        var choices = ErdCommand.BuildFileChoices(files, root);
+
+        choices.Should().HaveCount(2);
+        choices.Should().ContainValue(first);
+        choices.Should().ContainValue(second);
+        choices.Values.Should().OnlyHaveUniqueItems();
+    }
+
     [Fact]
     public void ErdCommand_SimpleContext_ShouldGenerateCompleteErDiagram()
     {

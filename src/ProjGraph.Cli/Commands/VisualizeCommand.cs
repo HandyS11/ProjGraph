@@ -163,7 +163,7 @@ internal sealed class VisualizeCommand(
             else
             {
                 SolutionGraph? result = null;
-                await console.RunWithStatusAsync($"Analyzing [blue]{settings.Path}[/]...",
+                await console.RunWithStatusAsync($"Analyzing [blue]{Markup.Escape(settings.Path)}[/]...",
                     async () => result =
                         await graphService.BuildGraphAsync(settings.Path, settings.IncludePackages,
                             cancellationToken),

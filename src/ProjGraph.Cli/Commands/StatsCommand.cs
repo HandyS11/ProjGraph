@@ -85,7 +85,7 @@ internal sealed class StatsCommand(
             sw.Stop();
 
             // ── Header ────────────────────────────────────────────────────────
-            SpectreOutputConsole.Write(new Rule($"[bold blue]{stats.SolutionName}[/]").LeftJustified());
+            SpectreOutputConsole.Write(new Rule($"[bold blue]{Markup.Escape(stats.SolutionName)}[/]").LeftJustified());
 
             // ── Metrics table ─────────────────────────────────────────────────
             var table = new Table
