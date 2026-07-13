@@ -102,6 +102,49 @@ public sealed class ClassAnalysisServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AnalyzeFileAsync_UnresolvedInterfaceBase_ResolvesAsRealization()
+    {
+        // Roslyn parks an unresolved base-list item in BaseType, so a single-file view of
+        // `class Service : IGreeter` initially looks like class inheritance. Once workspace
+        // discovery resolves IGreeter to an interface, the relationship must be reclassified as
+        // Realization (dashed <|..) rather than Inheritance (solid <|--).
+        var root = Path.Combine(_temp.DirectoryPath, "realization");
+        Directory.CreateDirectory(root);
+        var serviceFile = Path.Combine(root, "Service.cs");
+        await File.WriteAllTextAsync(Path.Combine(root, "IGreeter.cs"),
+            "namespace App; public interface IGreeter { void Greet(); }");
+        await File.WriteAllTextAsync(serviceFile,
+            "namespace App; public class Service : IGreeter { public void Greet() {} }");
+        await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
+
+        var result = await _service.AnalyzeFileAsync(serviceFile, new AnalysisOptions(IncludeInheritance: true));
+
+        var rel = result.Relationships.Should()
+            .ContainSingle(r => r.To == "App.IGreeter" && r.From == "App.Service").Which;
+        rel.Kind.Should().Be(RelationshipKind.Realization);
+    }
+
+    [Fact]
+    public async Task AnalyzeFileAsync_UnresolvedGenericBase_EdgeTargetsDeclaredNode()
+    {
+        // An unresolved generic base is registered as an external node under its open-generic
+        // definition (Ghost<T>). The relationship edge must target that same node, not the
+        // constructed Ghost<Order>, otherwise Mermaid renders a dangling empty node.
+        const string code = """
+                            namespace App;
+                            public class Order {}
+                            public class OrderRepo : Ghost<Order> {}
+                            """;
+        await File.WriteAllTextAsync(_tempFile, code);
+
+        var result = await _service.AnalyzeFileAsync(_tempFile, new AnalysisOptions(IncludeInheritance: true));
+
+        var rel = result.Relationships.Should().ContainSingle(r => r.From == "App.OrderRepo").Which;
+        result.Types.Should().Contain(t => t.FullName == rel.To,
+            "the inheritance edge must point at a declared node, not an auto-created empty one");
+    }
+
+    [Fact]
     public async Task AnalyzeFileAsync_WithWorkspaceDiscovery_FindsRelatedType()
     {
         var root = Path.Combine(_temp.DirectoryPath, "workspace");

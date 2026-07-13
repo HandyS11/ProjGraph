@@ -146,7 +146,10 @@ public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcess
                 resolvedSymbolsCache[relatedSymbol] = resolvedSymbol;
             }
 
-            var symbolToUse = resolvedSymbol ?? relatedSymbol;
+            // When resolution fails, the symbol is registered as an external node under its
+            // OriginalDefinition (e.g. the open generic Ghost<T>), so the edge must target the
+            // OriginalDefinition too — not the constructed Ghost<Order> — to hit that node.
+            var symbolToUse = resolvedSymbol ?? relatedSymbol.OriginalDefinition;
 
             // Skip system types - don't create relationships to them
             if (TypeFilter.IsSystemType(symbolToUse))
@@ -162,7 +165,15 @@ public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcess
                 continue;
             }
 
-            context.Relationships.Add(new Relationship(fullName, relatedFullName, kind, label, cardinality));
+            // Roslyn parks an unresolved base-list item in BaseType, so an interface base only
+            // discernible after resolution is initially classified as Inheritance. Once the
+            // resolved symbol is known to be an interface, reclassify it as Realization.
+            var effectiveKind = kind == RelationshipKind.Inheritance
+                                && symbolToUse.TypeKind == Microsoft.CodeAnalysis.TypeKind.Interface
+                ? RelationshipKind.Realization
+                : kind;
+
+            context.Relationships.Add(new Relationship(fullName, relatedFullName, effectiveKind, label, cardinality));
 
             // Only enqueue if we haven't analyzed this type yet
             if (context.AnalyzedTypeFullNames.Contains(relatedFullName))
