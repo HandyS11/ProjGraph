@@ -47,6 +47,11 @@ internal static class FluentPropertyWalker
         {
             ApplyPropertyChain(propertyRoot, entities, compilation);
         }
+
+        foreach (var keyRoot in FindConfigRoots(method, EfAnalysisConstants.EfMethods.HasKey))
+        {
+            ApplyKey(keyRoot, entities);
+        }
     }
 
     /// <summary>
@@ -119,6 +124,53 @@ internal static class FluentPropertyWalker
 
             ReplaceProperty(entity, current, updated);
             current = updated;
+        }
+    }
+
+    /// <summary>
+    /// Resolves the owning entity for a <c>HasKey</c> call and marks each named property as a primary key.
+    /// </summary>
+    /// <param name="keyRoot">The <c>HasKey</c> invocation.</param>
+    /// <param name="entities">The known entities.</param>
+    private static void ApplyKey(InvocationExpressionSyntax keyRoot, Dictionary<string, EfEntity> entities)
+    {
+        var entityName = ResolveOwningEntity(keyRoot);
+        if (entityName is null || !entities.TryGetValue(entityName, out var entity))
+        {
+            return;
+        }
+
+        foreach (var propertyName in KeyPropertyNames(keyRoot))
+        {
+            var property = FluentApiParsingUtilities.GetOrCreateProperty(entity, propertyName, "");
+            var updated = EfPropertyFactory.CopyWith(property, new EfPropertyOverrides { IsPrimaryKey = true });
+            ReplaceProperty(entity, property, updated);
+        }
+    }
+
+    /// <summary>
+    /// Extracts primary-key property names from a <c>HasKey</c> argument: a single lambda member access
+    /// (<c>a =&gt; a.Id</c>, including the parenthesized-parameter form <c>(a) =&gt; a.Id</c>), an
+    /// anonymous-object lambda (<c>a =&gt; new { a.X, a.Y }</c>), or string literals.
+    /// </summary>
+    /// <param name="invocation">The <c>HasKey</c> invocation.</param>
+    private static IEnumerable<string> KeyPropertyNames(InvocationExpressionSyntax invocation)
+    {
+        foreach (var argument in invocation.ArgumentList.Arguments)
+        {
+            switch (argument.Expression)
+            {
+                case LambdaExpressionSyntax lambda:
+                    foreach (var member in lambda.Body.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>())
+                    {
+                        yield return member.Name.Identifier.Text;
+                    }
+
+                    break;
+                case LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression):
+                    yield return literal.Token.ValueText;
+                    break;
+            }
         }
     }
 

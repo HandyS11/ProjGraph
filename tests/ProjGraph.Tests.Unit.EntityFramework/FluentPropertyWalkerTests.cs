@@ -219,4 +219,86 @@ public sealed class FluentPropertyWalkerTests
 
         Property(entities, "Account", "Name").MaxLength.Should().Be(75);
     }
+
+    [Fact]
+    public void Apply_HasKey_SingleProperty_MarksPrimaryKey()
+    {
+        const string source = """
+            public class Account { public int Id { get; set; } public int LegacyId { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                    => modelBuilder.Entity<Account>(e => e.HasKey(a => a.LegacyId));
+            }
+            """;
+        var (method, compilation, entities) = Build(source, "Account");
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        Property(entities, "Account", "LegacyId").IsPrimaryKey.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Apply_HasKey_CompositeAnonymousObject_MarksAllPrimaryKeys()
+    {
+        const string source = """
+            public class ProductSupplier { public int ProductId { get; set; } public int SupplierId { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                    => modelBuilder.Entity<ProductSupplier>().HasKey(ps => new { ps.ProductId, ps.SupplierId });
+            }
+            """;
+        var (method, compilation, entities) = Build(source, "ProductSupplier");
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        Property(entities, "ProductSupplier", "ProductId").IsPrimaryKey.Should().BeTrue();
+        Property(entities, "ProductSupplier", "SupplierId").IsPrimaryKey.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Apply_HasKeyInsideUsingEntity_IsIgnored()
+    {
+        // Join-entity key config inside UsingEntity belongs to the join builder, not the outer entity (Slice 3).
+        const string source = """
+            using System.Collections.Generic;
+            public class Product { public int Id { get; set; } public List<Customer> Customers { get; set; } = []; }
+            public class Customer { public int Id { get; set; } public List<Product> Products { get; set; } = []; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                    => modelBuilder.Entity<Customer>(e =>
+                        e.HasMany(c => c.Products).WithMany(p => p.Customers)
+                            .UsingEntity<Dictionary<string, object>>("CustomerProduct",
+                                j => j.HasOne<Product>().WithMany().HasForeignKey("ProductId"),
+                                j => j.HasOne<Customer>().WithMany().HasForeignKey("CustomerId"),
+                                j => j.HasKey("ProductId", "CustomerId")));
+            }
+            """;
+        var (method, compilation, entities) = Build(source, "Customer", "Product");
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        entities["Customer"].Properties.Should().NotContain(p => p.Name == "ProductId");
+        entities["Customer"].Properties.Should().NotContain(p => p.Name == "CustomerId");
+    }
+
+    [Fact]
+    public void Apply_HasKey_ParenthesizedLambda_MarksPrimaryKey()
+    {
+        const string source = """
+            public class Account { public int Id { get; set; } public int LegacyId { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                    => modelBuilder.Entity<Account>(e => e.HasKey((a) => a.LegacyId));
+            }
+            """;
+        var (method, compilation, entities) = Build(source, "Account");
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        Property(entities, "Account", "LegacyId").IsPrimaryKey.Should().BeTrue();
+    }
 }
