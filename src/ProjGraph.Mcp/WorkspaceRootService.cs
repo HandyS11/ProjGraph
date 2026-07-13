@@ -34,16 +34,84 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IDisposable
                 "Client does not support workspace roots. Please provide an absolute path.");
         }
 
-        var matches = _rootPaths.Select(rootPath => FindFileRecursively(rootPath, path)).OfType<string>().ToList();
+        var matches = ResolveMatches(_rootPaths, path);
 
         return matches.Count switch
         {
             0 => throw new FileNotFoundException(
-                $"File '{path}' not found under any workspace root"),
+                $"'{path}' not found under any workspace root"),
             1 => matches[0],
             _ => throw new AmbiguousMatchException(
                 $"'{path}' matches multiple roots: {string.Join(", ", matches)}. Provide an absolute path.")
         };
+    }
+
+    /// <summary>
+    /// Resolves a relative path against the given workspace roots, matching either a file or a
+    /// directory. The direct combined path (root + relative) is tried first — resolving paths with
+    /// subdirectories and directory paths — guarded against escaping the root with "..". A bare
+    /// name falls back to a recursive search for a matching file or directory.
+    /// </summary>
+    /// <param name="rootPaths">The workspace root directories.</param>
+    /// <param name="path">The relative path to resolve. Must not contain wildcard characters.</param>
+    /// <returns>The distinct set of matching absolute paths across all roots.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> contains a wildcard.</exception>
+    internal List<string> ResolveMatches(IEnumerable<string> rootPaths, string path)
+    {
+        // The input is a path, not a glob: reject wildcards so it cannot match an arbitrary file
+        // (e.g. "*.slnx") under a root.
+        if (path.IndexOfAny(['*', '?']) >= 0)
+        {
+            throw new ArgumentException(
+                $"Path '{path}' must not contain wildcard characters. Provide a specific relative path.",
+                nameof(path));
+        }
+
+        return rootPaths
+            .Select(rootPath => ResolveWithinRoot(rootPath, path))
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private string? ResolveWithinRoot(string rootPath, string relativePath)
+    {
+        var normalizedRoot = fileSystem.GetFullPath(rootPath);
+
+        // Prefer the direct combined path: resolves relative paths with subdirectories and
+        // directory paths, while the traversal guard prevents escaping the root with "..".
+        var combined = fileSystem.GetFullPath(fileSystem.Combine(normalizedRoot, relativePath));
+        if (IsWithinRoot(combined, normalizedRoot) &&
+            (fileSystem.FileExists(combined) || fileSystem.DirectoryExists(combined)))
+        {
+            return combined;
+        }
+
+        // A path with directory separators must resolve via the direct combine above; only a bare
+        // file or directory name is searched for recursively.
+        if (relativePath.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]) >= 0)
+        {
+            return null;
+        }
+
+        return FindByNameRecursively(normalizedRoot, relativePath);
+    }
+
+    private static bool IsWithinRoot(string candidate, string root)
+    {
+        var relative = Path.GetRelativePath(root, candidate);
+
+        // A rooted result means the candidate is on a different volume — outside the root.
+        if (Path.IsPathRooted(relative))
+        {
+            return false;
+        }
+
+        // Reject only a genuine parent-directory segment ("..", "../", "..\"), not a legitimate
+        // in-root name that merely starts with ".." (e.g. "..data").
+        return relative != ".."
+               && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+               && !relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal);
     }
 
     internal async Task RefreshRootsAsync(McpServer server, CancellationToken ct)
@@ -91,7 +159,7 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IDisposable
         }
     }
 
-    private string? FindFileRecursively(string rootPath, string fileName)
+    private string? FindByNameRecursively(string rootPath, string name)
     {
         var queue = new Queue<string>();
         queue.Enqueue(rootPath);
@@ -107,14 +175,20 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IDisposable
 
             try
             {
-                var match = fileSystem.GetFiles(currentDir, fileName).FirstOrDefault();
-                if (match is not null)
+                // 'name' is a literal (wildcards were rejected up front), so this is an exact match.
+                var fileMatch = fileSystem.GetFiles(currentDir, name).FirstOrDefault();
+                if (fileMatch is not null)
                 {
-                    return match;
+                    return fileMatch;
                 }
 
                 foreach (var subDir in fileSystem.GetDirectories(currentDir))
                 {
+                    if (string.Equals(Path.GetFileName(subDir), name, StringComparison.Ordinal))
+                    {
+                        return subDir;
+                    }
+
                     queue.Enqueue(subDir);
                 }
             }
