@@ -179,7 +179,7 @@ public sealed class BuildGraphUseCaseTests
         var result = _sut.Execute(slnPath);
 
         result.Projects.Should().BeEmpty();
-        _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Skipped")));
+        _console.Received(1).WriteWarning(Arg.Is<string>(s => s != null && s.Contains("Skipped")));
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public sealed class BuildGraphUseCaseTests
         var result = _sut.Execute(slnPath);
 
         result.Projects.Should().ContainSingle(p => p.Name == "Good");
-        _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Skipped")));
+        _console.Received(1).WriteWarning(Arg.Is<string>(s => s != null && s.Contains("Skipped")));
     }
 
     [Fact]

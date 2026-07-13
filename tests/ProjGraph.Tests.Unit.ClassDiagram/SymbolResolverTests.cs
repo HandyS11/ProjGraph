@@ -123,7 +123,7 @@ public sealed class SymbolResolverTests
 
         await resolver.DidNotReceive()
             .ResolveRelatedSymbolAsync(
-                Arg.Is<INamedTypeSymbol>(s => s.Name == "ValueType" || s.Name == "Enum"),
+                Arg.Is<INamedTypeSymbol>(s => s != null && (s.Name == "ValueType" || s.Name == "Enum")),
                 Arg.Any<AnalysisContext>());
     }
 }

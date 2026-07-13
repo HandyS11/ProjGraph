@@ -91,7 +91,7 @@ public class AnalyzeDirectoryUseCaseTests
         await _fileSystemMock.Received(1).ReadAllTextAsync("C:/Project/A.cs");
         await _fileSystemMock.Received(1).ReadAllTextAsync("C:/Project/B.cs");
         _compilationFactoryMock.Received(1)
-            .CreateCompilation(Arg.Is<IEnumerable<SyntaxTree>>(trees => trees.Count() == 2));
+            .CreateCompilation(Arg.Is<IEnumerable<SyntaxTree>>(trees => trees != null && trees.Count() == 2));
         await _typeProcessorMock.Received(1).ProcessTypeQueueAsync(
             Arg.Any<Queue<(INamedTypeSymbol Symbol, int Depth)>>(),
             Arg.Any<AnalysisContext>(),
@@ -132,7 +132,7 @@ public class AnalyzeDirectoryUseCaseTests
         // Assert
         // We verify that the queue contains 2 symbols: N1.C and N2.C
         await _typeProcessorMock.Received(1).ProcessTypeQueueAsync(
-            Arg.Is<Queue<(INamedTypeSymbol Symbol, int Depth)>>(q => q.Count == 2),
+            Arg.Is<Queue<(INamedTypeSymbol Symbol, int Depth)>>(q => q != null && q.Count == 2),
             Arg.Any<AnalysisContext>(),
             Arg.Any<AnalysisOptions>());
     }
