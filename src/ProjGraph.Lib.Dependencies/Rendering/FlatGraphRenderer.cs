@@ -25,9 +25,10 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
     /// </remarks>
     public override string Render(SolutionGraph model, DiagramOptions? options = null)
     {
-        CreateRenderContext();
+        var context = CreateRenderContext();
+        var console = context.Console;
 
-        RenderHeader(model, options);
+        RenderHeader(console, model, options);
 
         var cyclicProjectIds = GetCyclicProjectIds(model);
 
@@ -41,18 +42,19 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
             var project = sortedProjects[i];
             var isLastProject = i == sortedProjects.Count - 1;
 
-            RenderProject(project, isLastProject, cyclicProjectIds);
-            RenderDependencies(model, project, isLastProject, cyclicProjectIds);
+            RenderProject(console, project, isLastProject, cyclicProjectIds);
+            RenderDependencies(console, model, project, isLastProject, cyclicProjectIds);
         }
 
-        RenderCycleWarning(cyclicProjectIds);
+        RenderCycleWarning(console, cyclicProjectIds);
 
-        return OutputWriter.ToString();
+        return context.Writer.ToString();
     }
 
     /// <summary>
     /// Renders a single <see cref="Project"/> with appropriate visual formatting and color coding.
     /// </summary>
+    /// <param name="console">The console to render to.</param>
     /// <param name="project">The <see cref="Project"/> to render.</param>
     /// <param name="isLastProject">A value indicating whether this is the last project in the list.</param>
     /// <param name="cyclicProjectIds">A <see cref="HashSet{T}"/> of <see cref="Guid"/>s representing projects involved in cycles.</param>
@@ -60,7 +62,8 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
     /// The project is displayed with a tree connector prefix (└── for last, ├── for others), a type icon obtained from
     /// <see cref="SolutionGraphRendererBase.GetProjectTypeIcon"/>, and color-coded based on whether it's part of a cycle.
     /// </remarks>
-    private void RenderProject(Project project, bool isLastProject, HashSet<Guid> cyclicProjectIds)
+    private static void RenderProject(IAnsiConsole console, Project project, bool isLastProject,
+        HashSet<Guid> cyclicProjectIds)
     {
         var pPrefix = isLastProject ? "└── " : "├── ";
         var typeIcon = GetProjectTypeIcon(project.Type);
@@ -80,12 +83,13 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
             label = $"{pPrefix}{typeIcon} [{color}]{projectName}[/]";
         }
 
-        RenderConsole.MarkupLine(label);
+        console.MarkupLine(label);
     }
 
     /// <summary>
     /// Renders all direct dependencies of the specified <see cref="Project"/>.
     /// </summary>
+    /// <param name="console">The console to render to.</param>
     /// <param name="model">The <see cref="SolutionGraph"/> containing project relationships.</param>
     /// <param name="project">The <see cref="Project"/> whose dependencies should be rendered.</param>
     /// <param name="isLastProject">A value indicating whether the parent project is the last in the list.</param>
@@ -94,7 +98,8 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
     /// Dependencies are rendered in sorted order by project name. The visual formatting is adjusted based on whether
     /// the parent project is the last in its list using the <see cref="RenderDependency"/> method.
     /// </remarks>
-    private void RenderDependencies(
+    private static void RenderDependencies(
+        IAnsiConsole console,
         SolutionGraph model,
         Project project,
         bool isLastProject,
@@ -112,13 +117,14 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
             var dep = dependencies[j]!;
             var isLastDep = j == dependencies.Count - 1;
 
-            RenderDependency(dep, isLastProject, isLastDep, cyclicProjectIds);
+            RenderDependency(console, dep, isLastProject, isLastDep, cyclicProjectIds);
         }
     }
 
     /// <summary>
     /// Renders a single dependency with appropriate tree formatting and color coding.
     /// </summary>
+    /// <param name="console">The console to render to.</param>
     /// <param name="dependency">The <see cref="Project"/> representing the dependency to render.</param>
     /// <param name="isLastProject">A value indicating whether the parent project is the last in the list.</param>
     /// <param name="isLastDep">A value indicating whether this is the last dependency in the parent's dependency list.</param>
@@ -127,7 +133,8 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
     /// Dependencies are rendered with appropriate indentation and tree connectors (└── for last, ├── for others).
     /// Colors are determined by whether the dependency is involved in a cycle (red) or not (grey).
     /// </remarks>
-    private void RenderDependency(
+    private static void RenderDependency(
+        IAnsiConsole console,
         Project dependency,
         bool isLastProject,
         bool isLastDep,
@@ -150,6 +157,6 @@ public sealed class FlatGraphRenderer : SolutionGraphRendererBase
             label = $"{dPrefix}{dConnector}[italic {depColor}]→ {depName}[/]";
         }
 
-        RenderConsole.MarkupLine(label);
+        console.MarkupLine(label);
     }
 }

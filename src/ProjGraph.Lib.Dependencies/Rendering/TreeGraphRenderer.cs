@@ -25,9 +25,10 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
     /// </remarks>
     public override string Render(SolutionGraph model, DiagramOptions? options = null)
     {
-        CreateRenderContext();
+        var context = CreateRenderContext();
+        var console = context.Console;
 
-        RenderHeader(model, options);
+        RenderHeader(console, model, options);
 
         // Identify incoming dependency counts to find roots
         var incomingCounts = model.Projects.ToDictionary(p => p.Id, _ => 0);
@@ -41,7 +42,7 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
         var globalVisited = new HashSet<Guid>();
 
         // 1. Print the Solution Name as the main header
-        RenderConsole.MarkupLine($"[bold blue]{Markup.Escape(model.Name.Trim())}[/]");
+        console.MarkupLine($"[bold blue]{Markup.Escape(model.Name.Trim())}[/]");
 
         // 2. Identify "Root" projects: projects with 0 incoming dependencies
         var rootProjects = model.Projects
@@ -53,12 +54,12 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
         // 3. Render each root branch as a separate tree
         foreach (var project in rootProjects)
         {
-            RenderConsole.WriteLine(); // Spacing line between branches
+            console.WriteLine(); // Spacing line between branches
             var rootLabel = GetProjectMarkup(project, cyclicProjectIds);
             var tree = new Tree(rootLabel);
 
             AddChildrenRecursive(tree, project, model, [], globalVisited, cyclicProjectIds);
-            RenderConsole.Write(tree);
+            console.Write(tree);
         }
 
         // 4. Add remaining projects (those not reachable from roots)
@@ -69,17 +70,17 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
 
         foreach (var project in remainingProjects.Where(project => !globalVisited.Contains(project.Id)))
         {
-            RenderConsole.WriteLine();
+            console.WriteLine();
             var rootLabel = GetProjectMarkup(project, cyclicProjectIds);
             var tree = new Tree(rootLabel);
 
             AddChildrenRecursive(tree, project, model, [], globalVisited, cyclicProjectIds);
-            RenderConsole.Write(tree);
+            console.Write(tree);
         }
 
-        RenderCycleWarning(cyclicProjectIds);
+        RenderCycleWarning(console, cyclicProjectIds);
 
-        return OutputWriter.ToString();
+        return context.Writer.ToString();
     }
 
     /// <summary>
@@ -124,6 +125,16 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
             {
                 var depName = Markup.Escape(dep.Name.Trim());
                 parent.AddNode($"[red]{depName}[/] [italic red](cycle detected)[/]");
+                continue;
+            }
+
+            // A node already rendered elsewhere in the tree is shown as a collapsed reference
+            // rather than re-expanded. Re-expanding shared subtrees is redundant and, on layered
+            // graphs, grows exponentially (and can overflow the stack on deep chains).
+            if (globalVisited.Contains(dep.Id))
+            {
+                var depName = Markup.Escape(dep.Name.Trim());
+                parent.AddNode($"{typeIcon} [dim]{depName} (see above)[/]");
                 continue;
             }
 
