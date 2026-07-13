@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using ProjGraph.Lib.Core.Abstractions;
@@ -19,8 +20,9 @@ public static class CoreServiceRegistration
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddProjGraphCore(this IServiceCollection services)
     {
-        // Logging - default to NullLogger (consumers can override with real logging)
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        // Logging - fall back to NullLogger only when the host has not configured logging.
+        // TryAdd ensures a real ILogger<> registered by AddLogging() is not overridden.
+        services.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
 
         // Infrastructure - General
         services.AddSingleton<IFileSystem, PhysicalFileSystem>();

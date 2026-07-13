@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib;
 using ProjGraph.Lib.ClassDiagram.Application;
@@ -55,5 +56,20 @@ public class DiWiringTests
         var renderers = _provider.GetServices<IDiagramRenderer<SolutionGraph>>().ToList();
         renderers.Should().HaveCountGreaterThanOrEqualTo(3,
             "TreeGraphRenderer, FlatGraphRenderer, and MermaidGraphRenderer should all be registered");
+    }
+
+    [Fact]
+    public void AddProjGraphLib_WhenHostConfiguresLogging_DoesNotOverrideRealLogger()
+    {
+        // The MCP/CLI host configures logging before AddProjGraphLib; the library's NullLogger
+        // fallback must be registered via TryAdd so it does not replace the host's real logger.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddProjGraphLib();
+
+        using var provider = services.BuildServiceProvider();
+        var logger = provider.GetRequiredService<ILogger<DiWiringTests>>();
+
+        logger.Should().NotBeOfType<NullLogger<DiWiringTests>>();
     }
 }
