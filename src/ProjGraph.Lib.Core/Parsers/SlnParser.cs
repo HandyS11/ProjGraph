@@ -36,9 +36,9 @@ public sealed class SlnParser(IFileSystem fileSystem) : ISlnParser
             slnFile = SolutionFile.Parse(fullPath);
         }
         catch (Exception ex) when (ex is InvalidProjectFileException or IOException or XmlException
-                                       or InvalidOperationException)
+                                       or InvalidOperationException or UnauthorizedAccessException)
         {
-            throw new ParsingException($"Malformed .sln file: {path}", ex);
+            throw new ParsingException($"Failed to read or parse .sln file: {path}", ex);
         }
 
         return slnFile.ProjectsInOrder
