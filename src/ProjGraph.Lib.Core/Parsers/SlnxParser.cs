@@ -30,9 +30,11 @@ public sealed class SlnxParser(IFileSystem fileSystem) : ISlnxParser
         XDocument doc;
         try
         {
-            doc = XDocument.Load(path);
+            // Read through the file-system abstraction rather than XDocument.Load(path) so the
+            // parser honours the injected IFileSystem and I/O errors are wrapped consistently.
+            doc = XDocument.Parse(fileSystem.ReadAllText(path));
         }
-        catch (XmlException ex)
+        catch (Exception ex) when (ex is XmlException or IOException)
         {
             throw new ParsingException($"Malformed .slnx file: {path}", ex);
         }

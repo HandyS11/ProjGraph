@@ -140,7 +140,7 @@ inheritance and related types in the workspace.
   - `includeDependencies` (boolean): Include classes used as properties or fields (default: false)
   - `includeProperties` (boolean): Display properties and fields (default: true)
   - `includeFunctions` (boolean): Display methods (default: true)
-  - `depth` (number): Levels of relationships to follow (default: 1)
+  - `maxDepth` (number): Levels of relationships to follow (default: 1)
 - `showTitle` (boolean, optional): Include diagram title (default: true)
 
 **Example prompts:**

@@ -2,6 +2,7 @@ using ProjGraph.Cli.Infrastructure;
 using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
+using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.EntityFramework.Application;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -164,11 +165,20 @@ internal sealed class ErdCommand(
             return providedPath;
         }
 
-        var files = Directory.GetFiles(Directory.GetCurrentDirectory(), $"*DbContext{FilePathGuard.CSharpExtension}",
-                SearchOption.AllDirectories)
-            .Concat(Directory.GetFiles(Directory.GetCurrentDirectory(),
-                $"*ModelSnapshot{FilePathGuard.CSharpExtension}",
-                SearchOption.AllDirectories))
+        var currentDirectory = Directory.GetCurrentDirectory();
+        // IgnoreInaccessible avoids crashing on an unreadable subdirectory, and excluded output
+        // directories (bin/obj/.git/node_modules) are filtered out to avoid generated duplicates.
+        var enumerationOptions = new EnumerationOptions
+        {
+            RecurseSubdirectories = true,
+            IgnoreInaccessible = true
+        };
+
+        var files = Directory
+            .EnumerateFiles(currentDirectory, $"*DbContext{FilePathGuard.CSharpExtension}", enumerationOptions)
+            .Concat(Directory.EnumerateFiles(currentDirectory,
+                $"*ModelSnapshot{FilePathGuard.CSharpExtension}", enumerationOptions))
+            .Where(f => !IsUnderExcludedDirectory(f, currentDirectory))
             .ToList();
 
         return files.Count switch
@@ -201,6 +211,23 @@ internal sealed class ErdCommand(
     {
         console.WriteMarkup($"[grey]Using [white]{Markup.Escape(Path.GetFileName(filePath))}[/]...[/]");
         return filePath;
+    }
+
+    /// <summary>
+    /// Determines whether a discovered file lives under an excluded directory (bin/obj/.git/etc.)
+    /// relative to the search root, so generated copies are not offered during auto-discovery.
+    /// </summary>
+    /// <param name="filePath">The discovered file path.</param>
+    /// <param name="root">The root directory the search started from.</param>
+    /// <returns><c>true</c> if any directory segment between the root and the file is excluded.</returns>
+    private static bool IsUnderExcludedDirectory(string filePath, string root)
+    {
+        var relative = Path.GetRelativePath(root, filePath)
+            .Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        var segments = relative.Split(Path.DirectorySeparatorChar);
+
+        // The final segment is the file name; test only the directory segments.
+        return segments.Take(segments.Length - 1).Any(DirectoryFilters.ShouldSkipDirectory);
     }
 
     /// <summary>

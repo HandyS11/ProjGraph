@@ -11,6 +11,13 @@ namespace ProjGraph.Lib.Core.Infrastructure;
 public sealed class CompilationFactory : ICompilationFactory
 {
     /// <summary>
+    /// The BCL/EF metadata reference set, built once and reused across compilations: it is
+    /// immutable for the process lifetime and building it re-reads several assemblies from disk.
+    /// </summary>
+    private static readonly Lazy<IReadOnlyList<MetadataReference>> CachedReferences =
+        new(BuildMetadataReferences);
+
+    /// <summary>
     /// Creates a new Roslyn <see cref="CSharpCompilation"/> object using the provided syntax trees and necessary metadata references.
     /// </summary>
     /// <param name="syntaxTrees">A collection of <see cref="SyntaxTree"/> objects to include in the compilation.</param>
@@ -32,7 +39,7 @@ public sealed class CompilationFactory : ICompilationFactory
     /// <param name="syntaxTrees">The syntax trees to compile.</param>
     private static CSharpCompilation CreateCSharpCompilation(IEnumerable<SyntaxTree> syntaxTrees)
     {
-        var references = BuildMetadataReferences();
+        var references = CachedReferences.Value;
         var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             .WithNullableContextOptions(NullableContextOptions.Enable);
 

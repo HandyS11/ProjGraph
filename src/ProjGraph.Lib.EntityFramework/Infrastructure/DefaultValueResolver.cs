@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using ProjGraph.Core.Models;
+using System.Globalization;
 
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
@@ -107,9 +108,9 @@ internal static class DefaultValueResolver
         if (parts.Length == 1)
         {
             var name = parts[0];
-            return compilation.GetSymbolsWithName(name, SymbolFilter.Member)
+            return FormatConstant(compilation.GetSymbolsWithName(name, SymbolFilter.Member)
                 .OfType<IFieldSymbol>()
-                .FirstOrDefault(f => f.HasConstantValue)?.ConstantValue?.ToString();
+                .FirstOrDefault(f => f.HasConstantValue)?.ConstantValue);
         }
 
         // Case 2: Qualified name (e.g., "MyClass.MyConst" or "Namespace.MyClass.MyConst")
@@ -126,10 +127,21 @@ internal static class DefaultValueResolver
             var member = typeSymbol?.GetMembers(memberName).FirstOrDefault();
             if (member is IFieldSymbol { HasConstantValue: true } field)
             {
-                return field.ConstantValue?.ToString();
+                return FormatConstant(field.ConstantValue);
             }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Formats a compile-time constant value invariantly, so numeric and date literals are not
+    /// rendered with the host machine's culture (e.g. "0.5" rather than "0,5" on fr-FR).
+    /// </summary>
+    /// <param name="value">The constant value, or <see langword="null"/>.</param>
+    /// <returns>The invariant string form, or <see langword="null"/> when the value is null.</returns>
+    private static string? FormatConstant(object? value)
+    {
+        return value is null ? null : Convert.ToString(value, CultureInfo.InvariantCulture);
     }
 }

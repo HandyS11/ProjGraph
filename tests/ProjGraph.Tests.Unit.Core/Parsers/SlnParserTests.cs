@@ -1,3 +1,4 @@
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Lib.Core.Parsers;
 using ProjGraph.Tests.Shared.Helpers;
@@ -8,6 +9,19 @@ namespace ProjGraph.Tests.Unit.Core.Parsers;
 public class SlnParserTests
 {
     private readonly SlnParser _parser = new(new PhysicalFileSystem());
+
+    [Fact]
+    public void GetProjectPaths_MalformedSln_ShouldThrowParsingException()
+    {
+        // A malformed .sln must surface as ParsingException, consistent with SlnxParser, rather
+        // than leaking a raw MSBuild exception.
+        using var temp = new TestDirectory();
+        var slnPath = temp.CreateFile("Broken.sln", "This is not a valid solution file {{{");
+
+        var act = () => _parser.GetProjectPaths(slnPath).ToList();
+
+        act.Should().Throw<ParsingException>();
+    }
 
     [Fact]
     public void GetProjectPaths_ShouldExtractPathsFromSln()
