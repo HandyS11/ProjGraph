@@ -34,7 +34,10 @@ public static class FluentApiConfigurationParser
             return;
         }
 
-        ApplyConstraintsFromMethod(methodSyntax, entities, model, compilation);
+        // Context path: parse property/table config from text (Slices 2/3 still), but derive
+        // relationships and foreign keys from the Roslyn syntax walker instead of RelationshipConfigParser.
+        ApplyConstraintsFromMethod(methodSyntax, entities, model, compilation, includeRelationships: false);
+        FluentRelationshipWalker.Apply(methodSyntax, entities, model, compilation);
     }
 
     /// <summary>
@@ -45,11 +48,17 @@ public static class FluentApiConfigurationParser
     /// <param name="entities">The dictionary of entities in the model.</param>
     /// <param name="model">The EF model to apply constraints to.</param>
     /// <param name="compilation">The Roslyn compilation for symbol resolution.</param>
+    /// <param name="includeRelationships">
+    /// When <see langword="true"/> (the default, used by the snapshot path), relationships are parsed via
+    /// <see cref="RelationshipConfigParser"/>. The context path passes <see langword="false"/> and derives
+    /// relationships from <see cref="FluentRelationshipWalker"/> instead.
+    /// </param>
     public static void ApplyConstraintsFromMethod(
         MethodDeclarationSyntax methodSyntax,
         Dictionary<string, EfEntity> entities,
         EfModel model,
-        Compilation compilation)
+        Compilation compilation,
+        bool includeRelationships = true)
     {
         // Accept both block-bodied ({ ... }) and expression-bodied (=> ...) methods; ToString()
         // includes the expression body text in either case.
@@ -64,7 +73,7 @@ public static class FluentApiConfigurationParser
         // Skip the first part (before the first .Entity)
         for (var i = 1; i < entityConfigSections.Length; i++)
         {
-            ProcessEntityConfigSection(entityConfigSections[i], entities, model, compilation);
+            ProcessEntityConfigSection(entityConfigSections[i], entities, model, compilation, includeRelationships);
         }
     }
 
@@ -82,7 +91,8 @@ public static class FluentApiConfigurationParser
         string sectionContent,
         Dictionary<string, EfEntity> entities,
         EfModel model,
-        Compilation compilation)
+        Compilation compilation,
+        bool includeRelationships)
     {
         // Add back "Entity" which was removed by the split
         var section = EfAnalysisConstants.EfMethods.Entity + sectionContent;
@@ -94,7 +104,7 @@ public static class FluentApiConfigurationParser
             section = section[..entityConfigEnd];
         }
 
-        var shadowRelationships = ParseEntityConfiguration(section, entities, model, compilation);
+        var shadowRelationships = ParseEntityConfiguration(section, entities, model, compilation, includeRelationships);
         AddUniqueRelationships(shadowRelationships, model);
     }
 
@@ -115,7 +125,8 @@ public static class FluentApiConfigurationParser
         string configSection,
         Dictionary<string, EfEntity> entities,
         EfModel model,
-        Compilation compilation)
+        Compilation compilation,
+        bool includeRelationships)
     {
         var shadowRelationships = new List<EfRelationship>();
 
@@ -158,9 +169,13 @@ public static class FluentApiConfigurationParser
             }
         }
 
-        RelationshipConfigParser.ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
-        RelationshipConfigParser.ParseExplicitRelationships(configSection, entityName, entities, shadowRelationships,
-            compilation);
+        if (includeRelationships)
+        {
+            RelationshipConfigParser.ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
+            RelationshipConfigParser.ParseExplicitRelationships(configSection, entityName, entities, shadowRelationships,
+                compilation);
+        }
+
         PropertyConfigParser.ParsePropertyConfigurations(configSection, entity, compilation);
 
         // Parse table mapping
