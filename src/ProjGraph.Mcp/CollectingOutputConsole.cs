@@ -8,10 +8,14 @@ namespace ProjGraph.Mcp;
 /// can be drained and surfaced in a tool's result, so skipped/partial analysis is no longer silent.
 /// All other output is discarded, exactly like <c>NullOutputConsole</c>.
 /// </summary>
+/// <remarks>
+/// The warning buffer is stored in an <see cref="AsyncLocal{T}"/> so that each request's async flow
+/// collects into its own list. This keeps concurrent tool invocations isolated — one request cannot
+/// clear or drain another's warnings — even though the console is registered as a singleton.
+/// </remarks>
 internal sealed class CollectingOutputConsole : IOutputConsole
 {
-    private readonly Lock _gate = new();
-    private readonly List<string> _warnings = [];
+    private readonly AsyncLocal<List<string>?> _warnings = new();
 
     /// <inheritdoc />
     public void Write(string message) { }
@@ -28,10 +32,9 @@ internal sealed class CollectingOutputConsole : IOutputConsole
     /// <inheritdoc />
     public void WriteWarning(string message)
     {
-        lock (_gate)
-        {
-            _warnings.Add(message);
-        }
+        // Only collected when a scope is active for the current flow (after ClearWarnings); the
+        // list reference is stable within the flow, so mutating it is visible to the drainer.
+        _warnings.Value?.Add(message);
     }
 
     /// <inheritdoc />
@@ -57,28 +60,22 @@ internal sealed class CollectingOutputConsole : IOutputConsole
     }
 
     /// <summary>
-    /// Clears any collected warnings. Call before an operation to scope the subsequent
-    /// <see cref="DrainWarnings"/> to that operation.
+    /// Starts a fresh warning collection for the current async flow. Call before an operation to
+    /// scope the subsequent <see cref="DrainWarnings"/> to that operation.
     /// </summary>
     public void ClearWarnings()
     {
-        lock (_gate)
-        {
-            _warnings.Clear();
-        }
+        _warnings.Value = [];
     }
 
     /// <summary>
-    /// Returns the collected warnings and clears the buffer.
+    /// Returns the warnings collected for the current async flow and ends the collection.
     /// </summary>
-    /// <returns>The warnings collected since the last clear/drain.</returns>
+    /// <returns>The warnings collected since the last <see cref="ClearWarnings"/>.</returns>
     public IReadOnlyList<string> DrainWarnings()
     {
-        lock (_gate)
-        {
-            var drained = _warnings.ToArray();
-            _warnings.Clear();
-            return drained;
-        }
+        var collected = _warnings.Value;
+        _warnings.Value = null;
+        return collected is null ? [] : collected.ToArray();
     }
 }

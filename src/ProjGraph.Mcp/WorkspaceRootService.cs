@@ -137,7 +137,8 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IAsyncDispo
             return;
         }
 
-        _notificationHandlerRegistered = true;
+        // Only mark as registered after a successful call, so a failed registration can be retried
+        // on the next initialization instead of permanently disabling roots invalidation.
         _rootsChangedRegistration = server.RegisterNotificationHandler(
             NotificationMethods.RootsListChangedNotification,
             (_, _) =>
@@ -145,6 +146,7 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IAsyncDispo
                 InvalidateRoots();
                 return default;
             });
+        _notificationHandlerRegistered = true;
     }
 
     internal async Task RefreshRootsAsync(McpServer server, CancellationToken ct)

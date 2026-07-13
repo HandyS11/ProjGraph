@@ -52,6 +52,28 @@ public sealed class McpWarningsTests : IDisposable
         result.Should().NotContain("%% WARNING");
     }
 
+    [Fact]
+    public async Task CollectingOutputConsole_ScopesWarningsToAsyncFlow()
+    {
+        // Two independent async flows using the same (singleton) console must not see each other's
+        // warnings — the buffer is scoped per async flow, not shared process-wide.
+        var console = new CollectingOutputConsole();
+
+        async Task<IReadOnlyList<string>> CollectAsync(string message)
+        {
+            console.ClearWarnings();
+            await Task.Yield();
+            console.WriteWarning(message);
+            await Task.Yield();
+            return console.DrainWarnings();
+        }
+
+        var results = await Task.WhenAll(CollectAsync("first"), CollectAsync("second"));
+
+        results.Should().OnlyContain(r => r.Count == 1);
+        results.SelectMany(r => r).Should().Contain("first").And.Contain("second");
+    }
+
     public void Dispose()
     {
         _temp.Dispose();

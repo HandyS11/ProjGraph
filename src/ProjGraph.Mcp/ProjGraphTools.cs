@@ -305,7 +305,7 @@ internal sealed class ProjGraphTools(
             return diagram;
         }
 
-        var builder = new StringBuilder(diagram.TrimEnd('\n'));
+        var builder = new StringBuilder(diagram.TrimEnd('\r', '\n'));
         foreach (var warning in warnings)
         {
             builder.Append(CultureInfo.InvariantCulture, $"\n%% WARNING: {warning.ReplaceLineEndings(" ")}");

@@ -122,7 +122,7 @@ public sealed class McpRootsTests : IDisposable
         var statusField = typeof(WorkspaceRootService)
             .GetField("_status", BindingFlags.NonPublic | BindingFlags.Instance)!;
         var statusEnum = typeof(WorkspaceRootService).GetNestedType("RootsStatusKind", BindingFlags.NonPublic)!;
-        statusField.SetValue(service, Enum.ToObject(statusEnum, 2)); // Ready
+        statusField.SetValue(service, Enum.Parse(statusEnum, "Ready"));
 
         service.InvalidateRoots();
 
