@@ -188,12 +188,19 @@ internal static class FluentPropertyWalker
     {
         return invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression switch
         {
-            SimpleLambdaExpressionSyntax lambda => (lambda.Body as MemberAccessExpressionSyntax)?.Name.Identifier.Text,
+            SimpleLambdaExpressionSyntax lambda => LambdaMemberName(lambda.Body),
+            ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters.Count: 1 } lambda
+                => LambdaMemberName(lambda.Body),
             LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression)
                 => literal.Token.ValueText,
             _ => null
         };
     }
+
+    /// <summary>Returns the member name of a lambda body of the form <c>x =&gt; x.Prop</c>, else <see langword="null"/>.</summary>
+    /// <param name="body">The lambda body.</param>
+    private static string? LambdaMemberName(CSharpSyntaxNode body)
+        => (body as MemberAccessExpressionSyntax)?.Name.Identifier.Text;
 
     /// <summary>Returns the entity name from an <c>Entity&lt;T&gt;()</c> or <c>Entity("NS.T")</c> invocation.</summary>
     /// <param name="invocation">The Entity invocation.</param>

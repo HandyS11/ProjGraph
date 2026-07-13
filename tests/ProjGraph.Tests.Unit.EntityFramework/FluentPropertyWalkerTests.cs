@@ -201,4 +201,22 @@ public sealed class FluentPropertyWalkerTests
         act.Should().NotThrow();
         entities["Account"].Properties.Should().NotContain(p => p.Name == "Name" && p.MaxLength == 10);
     }
+
+    [Fact]
+    public void Apply_ParenthesizedLambda_AppliesConfig()
+    {
+        const string source = """
+            public class Account { public int Id { get; set; } public string Name { get; set; } = ""; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                    => modelBuilder.Entity<Account>(e => e.Property((a) => a.Name).HasMaxLength(75));
+            }
+            """;
+        var (method, compilation, entities) = Build(source, "Account");
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        Property(entities, "Account", "Name").MaxLength.Should().Be(75);
+    }
 }
