@@ -7,7 +7,10 @@ using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Dependencies.Application;
 using ProjGraph.Lib.EntityFramework.Application;
 using System.ComponentModel;
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace ProjGraph.Mcp;
 
@@ -19,7 +22,8 @@ internal sealed class ProjGraphTools(
     IFileSystem fileSystem,
     DiagramResourceCache cache,
     McpServer server,
-    WorkspaceRootService rootService)
+    WorkspaceRootService rootService,
+    CollectingOutputConsole outputConsole)
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {
@@ -134,7 +138,9 @@ internal sealed class ProjGraphTools(
             Message = "Building dependency graph"
         });
 
+        outputConsole.ClearWarnings();
         var graph = await analysisServices.GraphService.BuildGraphAsync(path, includePackages, cancellationToken);
+        var warnings = outputConsole.DrainWarnings();
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -143,8 +149,9 @@ internal sealed class ProjGraphTools(
             Message = "Rendering diagram"
         });
 
-        var diagram = renderers.GraphRenderer.Render(graph,
-            new DiagramOptions(showTitle, false, includePackages));
+        var diagram = AppendWarningComments(
+            renderers.GraphRenderer.Render(graph, new DiagramOptions(showTitle, false, includePackages)),
+            warnings);
 
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("graph", path, "text/plain", diagram,
@@ -184,7 +191,9 @@ internal sealed class ProjGraphTools(
             Message = "Computing dependency metrics"
         });
 
+        outputConsole.ClearWarnings();
         var stats = await analysisServices.StatsService.ComputeStatsAsync(path, topN, cancellationToken);
+        var warnings = outputConsole.DrainWarnings();
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -193,7 +202,7 @@ internal sealed class ProjGraphTools(
             Message = "Summarizing results"
         });
 
-        var json = JsonSerializer.Serialize(stats, JsonSerializerOptions);
+        var json = SerializeStatsWithWarnings(stats, warnings);
 
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("stats", path, "application/json", json,
@@ -279,6 +288,60 @@ internal sealed class ProjGraphTools(
             $"Entity diagram for {filename}", server, cancellationToken);
 
         return diagram;
+    }
+
+    /// <summary>
+    /// Appends any collected analysis warnings to a Mermaid diagram as trailing <c>%% WARNING</c>
+    /// comment lines so partial/skipped analysis is visible to the client. Comments are appended
+    /// after the diagram body to avoid disturbing the leading YAML front-matter.
+    /// </summary>
+    /// <param name="diagram">The rendered Mermaid diagram.</param>
+    /// <param name="warnings">The collected warnings to append.</param>
+    /// <returns>The diagram with trailing warning comments, or the original diagram when there are none.</returns>
+    private static string AppendWarningComments(string diagram, IReadOnlyList<string> warnings)
+    {
+        if (warnings.Count == 0)
+        {
+            return diagram;
+        }
+
+        var builder = new StringBuilder(diagram.TrimEnd('\r', '\n'));
+        foreach (var warning in warnings)
+        {
+            builder.Append(CultureInfo.InvariantCulture, $"\n%% WARNING: {warning.ReplaceLineEndings(" ")}");
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Serializes the stats object, attaching a top-level <c>warnings</c> array when any analysis
+    /// warnings were collected. The stats fields stay at the root, so existing consumers that
+    /// deserialize the stats object are unaffected.
+    /// </summary>
+    /// <param name="stats">The computed solution statistics.</param>
+    /// <param name="warnings">The collected warnings to attach.</param>
+    /// <returns>The stats JSON, with a <c>warnings</c> array when any were collected.</returns>
+    private static string SerializeStatsWithWarnings(SolutionStats stats, IReadOnlyList<string> warnings)
+    {
+        var node = JsonSerializer.SerializeToNode(stats, JsonSerializerOptions)?.AsObject();
+        if (node is null)
+        {
+            return JsonSerializer.Serialize(stats, JsonSerializerOptions);
+        }
+
+        if (warnings.Count > 0)
+        {
+            var array = new JsonArray();
+            foreach (var warning in warnings)
+            {
+                array.Add(warning);
+            }
+
+            node["warnings"] = array;
+        }
+
+        return node.ToJsonString(JsonSerializerOptions);
     }
 
     private async Task<string> PreparePathAsync(string path, CancellationToken cancellationToken)

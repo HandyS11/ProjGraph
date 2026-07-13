@@ -21,8 +21,12 @@ internal static class McpTestHelper
 {
     public static ProjGraphTools CreateTools()
     {
+        return CreateTools(new CollectingOutputConsole());
+    }
+
+    public static ProjGraphTools CreateTools(CollectingOutputConsole console)
+    {
         var fs = new PhysicalFileSystem();
-        var console = new NullOutputConsole();
         var slnParser = new SlnParser(fs);
         var slnxParser = new SlnxParser(fs);
         var projectParser = new ProjectParser(fs);
@@ -56,6 +60,7 @@ internal static class McpTestHelper
             fs,
             new DiagramResourceCache(),
             null!,
-            new WorkspaceRootService(fs));
+            new WorkspaceRootService(fs),
+            console);
     }
 }
