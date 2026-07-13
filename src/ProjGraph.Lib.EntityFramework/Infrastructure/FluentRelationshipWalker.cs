@@ -47,6 +47,11 @@ internal static class FluentRelationshipWalker
                 continue;
             }
 
+            var hasMethod = chain.Calls
+                .First(c => c.Name is EfAnalysisConstants.EfMethods.HasOne or EfAnalysisConstants.EfMethods.HasMany)
+                .Name;
+            ApplyForeignKey(chain, hasMethod, sourceEntity, relationship.TargetEntity, entities);
+
             if (existingKeys.Add(relationship.GenerateKey()))
             {
                 model.Relationships.Add(relationship);
@@ -115,8 +120,9 @@ internal static class FluentRelationshipWalker
             return null;
         }
 
+        var explicitRequired = ExtractExplicitRequired(chain);
         return RelationshipConfigParser.CreateShadowRelationship(
-            sourceEntity, target, hasMethod, withMethod, explicitRequired: null);
+            sourceEntity, target, hasMethod, withMethod, explicitRequired);
     }
 
     /// <summary>Extracts the target entity of a <c>HasOne</c>/<c>HasMany</c> call from its generic arg or first argument.</summary>
@@ -238,6 +244,94 @@ internal static class FluentRelationshipWalker
     /// <param name="value">The dotted name.</param>
     private static string LastSegment(string value)
         => value.Contains('.', StringComparison.Ordinal) ? value.Split('.')[^1] : value;
+
+    /// <summary>Reads an explicit <c>.IsRequired(...)</c> from the chain: <c>true</c> for no-arg or <c>true</c>, <c>false</c> otherwise; <see langword="null"/> when absent.</summary>
+    /// <param name="chain">The fluent chain.</param>
+    private static bool? ExtractExplicitRequired(FluentChain chain)
+    {
+        var call = chain.Calls.FirstOrDefault(c => c.Name == EfAnalysisConstants.EfMethods.IsRequired);
+        if (call.Name is null)
+        {
+            return null;
+        }
+
+        var arguments = call.Invocation.ArgumentList.Arguments;
+        return arguments.Count == 0 || arguments[0].Expression.IsKind(SyntaxKind.TrueLiteralExpression);
+    }
+
+    /// <summary>Marks the foreign-key properties declared by a <c>HasForeignKey(...)</c> call on the dependent entity.</summary>
+    /// <param name="chain">The fluent chain.</param>
+    /// <param name="hasMethod">The Has method name (selects the default dependent entity).</param>
+    /// <param name="sourceEntity">The owning entity name.</param>
+    /// <param name="targetEntity">The relationship target entity name.</param>
+    /// <param name="entities">The known entities.</param>
+    private static void ApplyForeignKey(
+        FluentChain chain,
+        string hasMethod,
+        string sourceEntity,
+        string targetEntity,
+        Dictionary<string, EfEntity> entities)
+    {
+        var call = chain.Calls.FirstOrDefault(c => c.Name == EfAnalysisConstants.EfMethods.HasForeignKey);
+        if (call.Name is null)
+        {
+            return;
+        }
+
+        var propertyNames = ForeignKeyPropertyNames(call.Invocation);
+        if (propertyNames.Count == 0)
+        {
+            return;
+        }
+
+        var dependentEntity = GenericTypeArgumentName(call.Invocation)
+                              ?? (hasMethod == EfAnalysisConstants.EfMethods.HasOne ? sourceEntity : targetEntity);
+
+        if (entities.TryGetValue(dependentEntity, out var entity))
+        {
+            MarkForeignKeys(entity, propertyNames);
+        }
+    }
+
+    /// <summary>Extracts the property names from a <c>HasForeignKey</c> call (lambda member access, anonymous object, or string literals).</summary>
+    /// <param name="invocation">The HasForeignKey invocation.</param>
+    private static List<string> ForeignKeyPropertyNames(InvocationExpressionSyntax invocation)
+    {
+        var names = new List<string>();
+        foreach (var argument in invocation.ArgumentList.Arguments)
+        {
+            switch (argument.Expression)
+            {
+                case SimpleLambdaExpressionSyntax lambda:
+                    names.AddRange(lambda.Body.DescendantNodesAndSelf()
+                        .OfType<MemberAccessExpressionSyntax>()
+                        .Select(m => m.Name.Identifier.Text));
+                    break;
+                case LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression):
+                    names.Add(literal.Token.ValueText);
+                    break;
+            }
+        }
+
+        return names;
+    }
+
+    /// <summary>Sets <see cref="EfProperty.IsForeignKey"/> on the named properties, creating them if missing (parity with the regex parser).</summary>
+    /// <param name="entity">The dependent entity.</param>
+    /// <param name="propertyNames">The FK property names.</param>
+    private static void MarkForeignKeys(EfEntity entity, List<string> propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            var property = FluentApiParsingUtilities.GetOrCreateProperty(entity, propertyName, "");
+            var updated = EfPropertyFactory.CopyWith(property, new EfPropertyOverrides { IsForeignKey = true });
+            var index = entity.Properties.IndexOf(property);
+            if (index >= 0)
+            {
+                entity.Properties[index] = updated;
+            }
+        }
+    }
 
     /// <summary>
     /// A single left-to-right fluent chain, captured as its ordered method calls plus the

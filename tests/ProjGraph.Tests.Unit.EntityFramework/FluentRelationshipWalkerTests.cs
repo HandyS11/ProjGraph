@@ -163,4 +163,75 @@ public sealed class FluentRelationshipWalkerTests
         rel.TargetEntity.Should().Be("Post");
         rel.Type.Should().Be(EfRelationshipType.OneToMany);
     }
+
+    [Fact]
+    public void Apply_HasForeignKeyLambda_MarksDependentForeignKeyProperty()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            public class Blog { public int Id { get; set; } public List<Post> Posts { get; set; } = []; }
+            public class Post { public int Id { get; set; } public int BlogId { get; set; } public Blog Blog { get; set; } = null!; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Post>().HasOne(p => p.Blog).WithMany(b => b.Posts).HasForeignKey(p => p.BlogId);
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Blog", "Post");
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        // HasOne on Post => dependent entity is the source (Post); BlogId is its FK.
+        entities["Post"].Properties.Should().Contain(p => p.Name == "BlogId" && p.IsForeignKey);
+    }
+
+    [Fact]
+    public void Apply_HasManyForeignKey_MarksForeignKeyOnTargetEntity()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            public class Blog { public int Id { get; set; } public List<Post> Posts { get; set; } = []; }
+            public class Post { public int Id { get; set; } public int BlogId { get; set; } public Blog Blog { get; set; } = null!; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Blog>().HasMany(b => b.Posts).WithOne(p => p.Blog).HasForeignKey(p => p.BlogId);
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Blog", "Post");
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        // HasMany on Blog => dependent entity is the target (Post); BlogId is its FK.
+        entities["Post"].Properties.Should().Contain(p => p.Name == "BlogId" && p.IsForeignKey);
+    }
+
+    [Fact]
+    public void Apply_ExplicitIsRequiredFalse_MakesOneToManyOptional()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            public class Blog { public int Id { get; set; } public List<Post> Posts { get; set; } = []; }
+            public class Post { public int Id { get; set; } public int? BlogId { get; set; } public Blog Blog { get; set; } = null!; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Post>().HasOne(p => p.Blog).WithMany(b => b.Posts)
+                        .HasForeignKey(p => p.BlogId).IsRequired(false);
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Blog", "Post");
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        var rel = model.Relationships.Should().ContainSingle().Which;
+        rel.Type.Should().Be(EfRelationshipType.OneToMany);
+        rel.IsRequired.Should().BeFalse();
+    }
 }
