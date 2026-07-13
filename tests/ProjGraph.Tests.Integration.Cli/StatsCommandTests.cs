@@ -1,10 +1,27 @@
 using ProjGraph.Tests.Integration.Cli.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
 
 namespace ProjGraph.Tests.Integration.Cli;
 
 [Collection("CLI Tests")]
 public class StatsCommandTests
 {
+    [Fact]
+    public void StatsCommand_PathWithMarkupBrackets_ShouldNotCrash()
+    {
+        // A legal solution file name containing '[' or ']' must not be interpreted as Spectre
+        // markup when rendered in the header; the value must be escaped.
+        using var temp = new TestDirectory();
+        var slnxPath = temp.CreateFile("[archive].slnx", "<Solution></Solution>");
+        var app = CliTestHelpers.CreateApp();
+
+        var result = -1;
+        var output = CliTestHelpers.CaptureConsoleOutput(() => result = app.Run(["stats", slnxPath]));
+
+        result.Should().Be(0);
+        output.Should().Contain("[archive]", "the bracketed name should render literally, not as markup");
+    }
+
     // ── T011: Valid path renders all metric sections ──────────────────────────
 
     [Fact]

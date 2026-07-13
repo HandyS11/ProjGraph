@@ -1,3 +1,4 @@
+using ProjGraph.Cli.Commands;
 using ProjGraph.Tests.Integration.Cli.Helpers;
 using Spectre.Console.Cli;
 using System.Text.RegularExpressions;
@@ -7,6 +8,54 @@ namespace ProjGraph.Tests.Integration.Cli;
 [Collection("CLI Tests")]
 public partial class ErdCommandTests
 {
+    [Fact]
+    public void BuildFileChoices_SameFileNameInDifferentDirectories_MapsEachToItsOwnPath()
+    {
+        // Two files sharing the same file name must remain distinguishable, and each display
+        // label must resolve back to its own full path — not collapse onto the first one.
+        var root = Path.Combine("repo", "root");
+        var first = Path.Combine(root, "ProjectA", "AppDbContext.cs");
+        var second = Path.Combine(root, "ProjectB", "AppDbContext.cs");
+        string[] files = [first, second];
+
+        var choices = ErdCommand.BuildFileChoices(files, root);
+
+        choices.Should().HaveCount(2);
+        choices.Should().ContainValue(first);
+        choices.Should().ContainValue(second);
+        choices.Values.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public void BuildFileChoices_NameWithMarkupBrackets_EscapesDisplayLabel()
+    {
+        // The selection prompt renders labels as Spectre markup, so a bracketed path must be
+        // escaped ('[' -> '[[') to avoid being parsed as a style tag.
+        var root = Path.Combine("repo", "root");
+        var file = Path.Combine(root, "[archive]", "AppDbContext.cs");
+        string[] files = [file];
+
+        var choices = ErdCommand.BuildFileChoices(files, root);
+
+        choices.Should().ContainValue(file);
+        choices.Keys.Should().OnlyContain(k => k.Contains("[[", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BuildFileChoices_CollidingLabels_KeepsEveryFileSelectable()
+    {
+        // If two entries would produce the same label, each must still get a distinct key so no
+        // file is silently dropped from the prompt.
+        var root = Path.Combine("repo", "root");
+        var file = Path.Combine(root, "App", "AppDbContext.cs");
+        string[] files = [file, file];
+
+        var choices = ErdCommand.BuildFileChoices(files, root);
+
+        choices.Should().HaveCount(2);
+        choices.Values.Should().AllBe(file);
+    }
+
     [Fact]
     public void ErdCommand_SimpleContext_ShouldGenerateCompleteErDiagram()
     {
