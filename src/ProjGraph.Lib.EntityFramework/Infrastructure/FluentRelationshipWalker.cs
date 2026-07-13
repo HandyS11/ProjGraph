@@ -59,7 +59,7 @@ internal static class FluentRelationshipWalker
         }
     }
 
-    /// <summary>Finds every <c>HasOne</c>/<c>HasMany</c> invocation in the method (roots of relationship chains).</summary>
+    /// <summary>Finds every <c>HasOne</c>/<c>HasMany</c> invocation, excluding those inside a <c>UsingEntity(...)</c> call.</summary>
     /// <param name="method">The method to scan.</param>
     private static IEnumerable<InvocationExpressionSyntax> FindRelationshipRoots(MethodDeclarationSyntax method)
     {
@@ -67,7 +67,25 @@ internal static class FluentRelationshipWalker
             .OfType<InvocationExpressionSyntax>()
             .Where(inv => inv.Expression is MemberAccessExpressionSyntax ma
                           && SimpleName(ma.Name) is EfAnalysisConstants.EfMethods.HasOne
-                              or EfAnalysisConstants.EfMethods.HasMany);
+                              or EfAnalysisConstants.EfMethods.HasMany
+                          && !IsInsideUsingEntity(inv));
+    }
+
+    /// <summary>
+    /// Determines whether a node is lexically inside the argument list of a <c>UsingEntity(...)</c> invocation.
+    /// Checked against <see cref="InvocationExpressionSyntax.ArgumentList"/> specifically (not the whole
+    /// invocation), since a <c>UsingEntity</c> call is itself chained onto the very <c>HasMany</c>/<c>HasOne</c>
+    /// invocation that seeds the outer relationship (e.g. <c>.HasMany(...).WithMany(...).UsingEntity(...)</c>),
+    /// which would otherwise make that outer call falsely match as an ancestor of itself.
+    /// </summary>
+    /// <param name="node">The node to test.</param>
+    private static bool IsInsideUsingEntity(SyntaxNode node)
+    {
+        return node.Ancestors()
+            .OfType<InvocationExpressionSyntax>()
+            .Any(inv => inv.Expression is MemberAccessExpressionSyntax ma
+                        && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.UsingEntity
+                        && inv.ArgumentList.Span.Contains(node.Span));
     }
 
     /// <summary>Resolves the entity that owns a fluent chain from its receiver expression.</summary>

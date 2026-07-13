@@ -234,4 +234,59 @@ public sealed class FluentRelationshipWalkerTests
         rel.Type.Should().Be(EfRelationshipType.OneToMany);
         rel.IsRequired.Should().BeFalse();
     }
+
+    [Fact]
+    public void Apply_ManyToManyWithUsingEntity_IgnoresJoinConfigurationChains()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            public class Customer { public int Id { get; set; } public List<Product> Products { get; set; } = []; }
+            public class Product { public int Id { get; set; } public List<Customer> Customers { get; set; } = []; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Customer>()
+                        .HasMany(c => c.Products).WithMany(p => p.Customers)
+                        .UsingEntity<Dictionary<string, object>>("CustomerProduct",
+                            j => j.HasOne<Product>().WithMany().HasForeignKey("ProductId"),
+                            j => j.HasOne<Customer>().WithMany().HasForeignKey("CustomerId"));
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Customer", "Product");
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        // Only the outer many-to-many is produced; the two inner UsingEntity chains are ignored.
+        var rel = model.Relationships.Should().ContainSingle().Which;
+        rel.Type.Should().Be(EfRelationshipType.ManyToMany);
+    }
+
+    [Fact]
+    public void Apply_NavigationNameDiffersFromEntity_ResolvesTargetViaSymbol()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            public class Blog { public int Id { get; set; } public int OwnerId { get; set; } public Author Owner { get; set; } = null!; }
+            public class Author { public int Id { get; set; } public List<Blog> Blogs { get; set; } = []; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Blog>().HasOne(b => b.Owner).WithMany().HasForeignKey(b => b.OwnerId);
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Blog", "Author");
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        // HasOne(b => b.Owner): nav "Owner" resolves to entity "Author"; HasOne/WithMany swaps.
+        var rel = model.Relationships.Should().ContainSingle().Which;
+        rel.SourceEntity.Should().Be("Author");
+        rel.TargetEntity.Should().Be("Blog");
+        rel.Type.Should().Be(EfRelationshipType.OneToMany);
+        entities["Blog"].Properties.Should().Contain(p => p.Name == "OwnerId" && p.IsForeignKey);
+    }
 }
