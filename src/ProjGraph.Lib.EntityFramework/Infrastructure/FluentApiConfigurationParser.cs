@@ -34,9 +34,12 @@ public static class FluentApiConfigurationParser
             return;
         }
 
-        // Context path: parse property/table config from text (Slices 2/3 still), but derive
-        // relationships and foreign keys from the Roslyn syntax walker instead of RelationshipConfigParser.
-        ApplyConstraintsFromMethod(methodSyntax, entities, model, compilation, includeRelationships: false);
+        // Context path: parse table config and materialize fluent-only entities from text (Slice 3 still
+        // handles ToTable/owned/join), but derive property config, primary keys, relationships, and
+        // foreign keys from the Roslyn syntax walkers instead of the regex parsers.
+        ApplyConstraintsFromMethod(
+            methodSyntax, entities, model, compilation, includeRelationships: false, includeProperties: false);
+        FluentPropertyWalker.Apply(methodSyntax, entities, compilation);
         FluentRelationshipWalker.Apply(methodSyntax, entities, model, compilation);
     }
 
@@ -53,12 +56,18 @@ public static class FluentApiConfigurationParser
     /// <see cref="RelationshipConfigParser"/>. The context path passes <see langword="false"/> and derives
     /// relationships from <see cref="FluentRelationshipWalker"/> instead.
     /// </param>
+    /// <param name="includeProperties">
+    /// When <see langword="true"/> (the default, used by the snapshot path), property and key config is
+    /// parsed via <see cref="PropertyConfigParser"/>. The context path passes <see langword="false"/> and
+    /// derives it from <see cref="FluentPropertyWalker"/> instead.
+    /// </param>
     public static void ApplyConstraintsFromMethod(
         MethodDeclarationSyntax methodSyntax,
         Dictionary<string, EfEntity> entities,
         EfModel model,
         Compilation compilation,
-        bool includeRelationships = true)
+        bool includeRelationships = true,
+        bool includeProperties = true)
     {
         // Accept both block-bodied ({ ... }) and expression-bodied (=> ...) methods; ToString()
         // includes the expression body text in either case.
@@ -73,7 +82,8 @@ public static class FluentApiConfigurationParser
         // Skip the first part (before the first .Entity)
         for (var i = 1; i < entityConfigSections.Length; i++)
         {
-            ProcessEntityConfigSection(entityConfigSections[i], entities, model, compilation, includeRelationships);
+            ProcessEntityConfigSection(
+                entityConfigSections[i], entities, model, compilation, includeRelationships, includeProperties);
         }
     }
 
@@ -92,7 +102,8 @@ public static class FluentApiConfigurationParser
         Dictionary<string, EfEntity> entities,
         EfModel model,
         Compilation compilation,
-        bool includeRelationships)
+        bool includeRelationships,
+        bool includeProperties)
     {
         // Add back "Entity" which was removed by the split
         var section = EfAnalysisConstants.EfMethods.Entity + sectionContent;
@@ -104,7 +115,8 @@ public static class FluentApiConfigurationParser
             section = section[..entityConfigEnd];
         }
 
-        var shadowRelationships = ParseEntityConfiguration(section, entities, model, compilation, includeRelationships);
+        var shadowRelationships = ParseEntityConfiguration(
+            section, entities, model, compilation, includeRelationships, includeProperties);
         AddUniqueRelationships(shadowRelationships, model);
     }
 
@@ -126,7 +138,8 @@ public static class FluentApiConfigurationParser
         Dictionary<string, EfEntity> entities,
         EfModel model,
         Compilation compilation,
-        bool includeRelationships)
+        bool includeRelationships,
+        bool includeProperties)
     {
         var shadowRelationships = new List<EfRelationship>();
 
@@ -176,7 +189,10 @@ public static class FluentApiConfigurationParser
                 compilation);
         }
 
-        PropertyConfigParser.ParsePropertyConfigurations(configSection, entity, compilation);
+        if (includeProperties)
+        {
+            PropertyConfigParser.ParsePropertyConfigurations(configSection, entity, compilation);
+        }
 
         // Parse table mapping
         var tableMatch = EfAnalysisRegexPatterns.ToTableRegex().Match(configSection);
