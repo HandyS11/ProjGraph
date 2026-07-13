@@ -47,4 +47,11 @@ public sealed class AnalysisContext
     /// The starting directory for the analysis process.
     /// </summary>
     public required string StartDirectory { get; init; }
+
+    /// <summary>
+    /// Caches workspace type-definition lookups by type name for the duration of this analysis,
+    /// so repeated references to the same unresolved type trigger a single workspace search.
+    /// A null value records a completed search that found no file.
+    /// </summary>
+    public Dictionary<string, string?> TypeFileLookupCache { get; } = [];
 }

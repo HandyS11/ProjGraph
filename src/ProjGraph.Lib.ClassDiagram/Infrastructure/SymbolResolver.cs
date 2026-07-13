@@ -32,8 +32,20 @@ internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscov
         // Ensure we are working with the original definition (e.g., strip nullability markers)
         var symbolToResolve = relatedSymbol.OriginalDefinition;
 
-        var foundFile =
-            await workspaceTypeDiscovery.FindTypeDefinitionFileAsync(symbolToResolve.Name, context.StartDirectory);
+        // A symbol declared in the current compilation is already fully resolved. Searching the
+        // workspace again would waste a full directory scan and could bind a same-named type
+        // from an unrelated file instead of this exact declaration.
+        if (symbolToResolve.Locations.Any(l => l.IsInSource))
+        {
+            return symbolToResolve;
+        }
+
+        if (!context.TypeFileLookupCache.TryGetValue(symbolToResolve.Name, out var foundFile))
+        {
+            foundFile = await workspaceTypeDiscovery.FindTypeDefinitionFileAsync(
+                symbolToResolve.Name, context.StartDirectory);
+            context.TypeFileLookupCache[symbolToResolve.Name] = foundFile;
+        }
 
         if (foundFile is not null)
         {
