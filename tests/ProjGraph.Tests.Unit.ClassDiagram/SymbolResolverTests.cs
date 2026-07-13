@@ -84,8 +84,8 @@ public sealed class SymbolResolverTests
     [Fact]
     public async Task ResolveRelatedSymbolAsync_SameExternalTypeTwice_ShouldAddSingleNode()
     {
-        // The same external type referenced by two source types must yield exactly one external
-        // node, not a duplicate per reference.
+        // Resolving the same external type more than once (as happens when several source types
+        // reference it) must yield exactly one external node, not a duplicate per reference.
         var compilation = RoslynTestHelper.CreateCompilation(
             """
             using Microsoft.Win32.SafeHandles;
