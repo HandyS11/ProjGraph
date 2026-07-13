@@ -82,6 +82,31 @@ public sealed class SymbolResolverTests
     }
 
     [Fact]
+    public async Task ResolveRelatedSymbolAsync_SameExternalTypeTwice_ShouldAddSingleNode()
+    {
+        // The same external type referenced by two source types must yield exactly one external
+        // node, not a duplicate per reference.
+        var compilation = RoslynTestHelper.CreateCompilation(
+            """
+            using Microsoft.Win32.SafeHandles;
+            namespace MyApp;
+            public class A { public SafeFileHandle? Handle { get; set; } }
+            """);
+        var holder = RoslynTestHelper.GetTypeSymbol(compilation, "A")!;
+        var handleSymbol = (INamedTypeSymbol)holder.GetMembers().OfType<IPropertySymbol>()
+            .First(p => p.Name == "Handle").Type;
+        var sut = new SymbolResolver(_discovery, _fileSystem);
+        var context = CreateContext(compilation);
+        _discovery.FindTypeDefinitionFileAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult<string?>(null));
+
+        await sut.ResolveRelatedSymbolAsync(handleSymbol, context);
+        await sut.ResolveRelatedSymbolAsync(handleSymbol, context);
+
+        context.Types.Should().ContainSingle(t => t.Name == "SafeFileHandle");
+    }
+
+    [Fact]
     public async Task ResolveRelatedSymbolAsync_RepeatedUnresolvedType_ShouldSearchWorkspaceOnce()
     {
         // Multiple references to the same unresolved external type within one analysis run must

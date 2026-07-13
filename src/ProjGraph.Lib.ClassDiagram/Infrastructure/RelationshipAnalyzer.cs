@@ -110,22 +110,44 @@ internal static class RelationshipAnalyzer
         List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)> relatedSymbols,
         HashSet<(string TypeName, string? Label)> seenCombinations)
     {
-        if (type is not INamedTypeSymbol { SpecialType: SpecialType.None } namedType)
+        string cardinality;
+        List<INamedTypeSymbol> extractedTypes;
+
+        // An array (T[], including jagged arrays) is a collection, exactly like List<T>:
+        // unwrap to the innermost element type and treat it as a '*' association.
+        if (type is IArrayTypeSymbol)
+        {
+            var elementType = type;
+            while (elementType is IArrayTypeSymbol arrayType)
+            {
+                elementType = arrayType.ElementType;
+            }
+
+            if (elementType is not INamedTypeSymbol { SpecialType: SpecialType.None } arrayElement)
+            {
+                return;
+            }
+
+            cardinality = "*";
+            extractedTypes = ExtractTypesFromGeneric(arrayElement);
+        }
+        else if (type is INamedTypeSymbol { SpecialType: SpecialType.None } namedType)
+        {
+            // Detect if this is a collection type
+            var isCollection = namedType.IsGenericType &&
+                               (namedType.Name.Contains("List", StringComparison.Ordinal) ||
+                                namedType.Name.Contains("Collection", StringComparison.Ordinal) ||
+                                namedType.Name.Contains("IEnumerable", StringComparison.Ordinal) ||
+                                namedType.Name.Contains("Array", StringComparison.Ordinal) ||
+                                namedType.Name.Contains("Set", StringComparison.Ordinal));
+
+            cardinality = isCollection ? "*" : "1";
+            extractedTypes = ExtractTypesFromGeneric(namedType);
+        }
+        else
         {
             return;
         }
-
-        // Detect if this is a collection type
-        var isCollection = namedType.IsGenericType &&
-                           (namedType.Name.Contains("List", StringComparison.Ordinal) ||
-                            namedType.Name.Contains("Collection", StringComparison.Ordinal) ||
-                            namedType.Name.Contains("IEnumerable", StringComparison.Ordinal) ||
-                            namedType.Name.Contains("Array", StringComparison.Ordinal) ||
-                            namedType.Name.Contains("Set", StringComparison.Ordinal));
-
-        var cardinality = isCollection ? "*" : "1";
-
-        var extractedTypes = ExtractTypesFromGeneric(namedType);
 
         relatedSymbols.AddRange(
             extractedTypes

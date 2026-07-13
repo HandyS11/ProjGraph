@@ -147,16 +147,17 @@ public sealed class MermaidClassDiagramRenderer : IDiagramRenderer<ClassModel>
         }
         else
         {
-            // Association/Dependency: owner on left, referenced type on right
-            relationshipStr = $"{from}";
+            // Association/Dependency: owner on left, referenced type on right.
+            // The multiplicity describes the target (owned) end, so in Mermaid it is placed
+            // immediately before the target class: {from} {op} "{cardinality}" {to}.
+            relationshipStr = $"{from} {op}";
 
-            // Add cardinality on target (To) side if present
             if (!string.IsNullOrEmpty(relationship.Cardinality))
             {
                 relationshipStr += $" \"{relationship.Cardinality}\"";
             }
 
-            relationshipStr += $" {op} {to}";
+            relationshipStr += $" {to}";
 
             // Add label if present
             if (!string.IsNullOrEmpty(relationship.Label))

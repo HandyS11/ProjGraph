@@ -128,6 +128,14 @@ internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscov
         }
 
         var fullName = TypeAnalyzer.GetFullyQualifiedName(relatedSymbol);
+
+        // Add the external node only once; the same external type may be referenced by many
+        // source types, and each reference would otherwise produce a duplicate node.
+        if (!context.AnalyzedTypeFullNames.Add(fullName))
+        {
+            return;
+        }
+
         context.Types.Add(new TypeDefinition(
             relatedSymbol.Name,
             relatedSymbol.ContainingNamespace.ToDisplayString(),
@@ -135,6 +143,5 @@ internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscov
             TypeAnalyzer.MapKind(relatedSymbol),
             [],
             relatedSymbol.IsAbstract));
-        context.AnalyzedTypeFullNames.Add(fullName);
     }
 }
