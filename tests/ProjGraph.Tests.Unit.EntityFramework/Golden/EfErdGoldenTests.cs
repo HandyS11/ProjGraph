@@ -19,7 +19,8 @@ public sealed class EfErdGoldenTests
 {
     public static IEnumerable<object?[]> Cases =>
     [
-        [@"erd\simple-context\EntityFramework\MyDbContext.cs", "MyDbContext", "simple-context"]
+        [@"erd\simple-context\EntityFramework\MyDbContext.cs", "MyDbContext", "simple-context"],
+        [@"erd\complex-ecommerce\Data\MyDbContext.cs", "MyDbContext", "complex-ecommerce"]
     ];
 
     [Theory]

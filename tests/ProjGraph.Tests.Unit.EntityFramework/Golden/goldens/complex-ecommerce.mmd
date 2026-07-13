@@ -1,0 +1,156 @@
+---
+title: MyDbContext
+---
+erDiagram
+  Address {
+    int Id PK
+    int CustomerId FK
+    string City "required"
+    string Country "required"
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+    string Line1 "required"
+    string Line2
+    string State "required"
+    string ZipCode "required"
+  }
+  Category {
+    int Id PK
+    int ParentCategoryId FK
+    DateTime CreatedAt
+    string Description
+    DateTime LastModifiedAt
+    string Name "required"
+  }
+  CreditCardPayment {
+    int Id PK
+    string CardHolderName "required"
+    string CardNumberMasked "required"
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+    int OrderId
+    DateTime TransactionDate
+  }
+  Customer {
+    int Id PK
+    DateTime CreatedAt
+    string Email "required"
+    string FirstName "required"
+    DateTime LastModifiedAt
+    string LastName "required"
+    string Phone
+  }
+  DigitalProduct {
+    int Id PK
+    int CategoryId
+    DateTime CreatedAt
+    string Description
+    string DownloadUrl "required"
+    string FileExtension
+    long FileSizeInBytes
+    DateTime LastModifiedAt
+    string Name "required"
+    string SKU "required"
+  }
+  Order {
+    int Id PK
+    int CustomerId FK
+    int ShippingAddressId FK
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+    DateTime OrderDate
+  }
+  OrderItem {
+    int Id PK
+    int OrderId FK
+    int ProductId FK
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+    int Quantity
+  }
+  Payment {
+    int Id PK
+    int OrderId FK
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+    DateTime TransactionDate
+  }
+  PayPalPayment {
+    int Id PK
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+    int OrderId
+    string PayerEmail "required"
+    string PayPalTransactionId "required"
+    DateTime TransactionDate
+  }
+  PhysicalProduct {
+    int Id PK
+    int CategoryId
+    DateTime CreatedAt
+    string Description
+    string Dimensions "required"
+    DateTime LastModifiedAt
+    string Name "required"
+    bool RequiresInsurance
+    string SKU "required"
+    double WeightInKg
+  }
+  Product {
+    int Id PK
+    int CategoryId FK
+    DateTime CreatedAt
+    string Description
+    DateTime LastModifiedAt
+    string Name "required"
+    string SKU "required"
+  }
+  ProductSupplier {
+    int ProductId PK,FK
+    int SupplierId PK,FK
+  }
+  Review {
+    int Id PK
+    int CustomerId FK
+    int ProductId FK
+    string Comment
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+    int Rating
+  }
+  ShoppingCart {
+    int Id PK
+    int CustomerId FK
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+  }
+  ShoppingCartItem {
+    int Id PK
+    int ProductId FK
+    int ShoppingCartId FK
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+    int Quantity
+  }
+  Supplier {
+    int Id PK
+    string ContactPerson "required"
+    DateTime CreatedAt
+    DateTime LastModifiedAt
+    string Name "required"
+  }
+  Address |o--o{ Order : ""
+  Category ||--o{ Category : ""
+  Category ||--o{ Product : ""
+  Customer ||--o{ Address : ""
+  Customer ||--o{ Order : ""
+  Customer ||--o{ Review : ""
+  Customer |o--|| ShoppingCart : ""
+  Order ||--o{ OrderItem : ""
+  Order |o--|| Payment : ""
+  Product ||--o{ OrderItem : ""
+  Product ||--o{ ProductSupplier : ""
+  Product ||--o{ Review : ""
+  Product ||--o{ ShoppingCartItem : ""
+  ShoppingCart ||--o{ ShoppingCartItem : ""
+  Supplier ||--o{ ProductSupplier : ""
