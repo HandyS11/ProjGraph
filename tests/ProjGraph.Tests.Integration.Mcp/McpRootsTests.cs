@@ -35,6 +35,69 @@ public sealed class McpRootsTests : IDisposable
     }
 
     [Fact]
+    public void ResolveMatches_RelativeDirectory_ResolvesToDirectory()
+    {
+        var service = new WorkspaceRootService(new PhysicalFileSystem());
+        var root = _temp.DirectoryPath;
+        var modelsDir = Directory.CreateDirectory(Path.Combine(root, "Models")).FullName;
+
+        var matches = service.ResolveMatches([root], "Models");
+
+        matches.Should().ContainSingle().Which.Should().Be(modelsDir);
+    }
+
+    [Fact]
+    public void ResolveMatches_RelativeFileWithSubdirectory_ResolvesToFile()
+    {
+        var service = new WorkspaceRootService(new PhysicalFileSystem());
+        var root = _temp.DirectoryPath;
+        Directory.CreateDirectory(Path.Combine(root, "Models"));
+        var file = Path.Combine(root, "Models", "Foo.cs");
+        File.WriteAllText(file, "// x");
+
+        var matches = service.ResolveMatches([root], Path.Combine("Models", "Foo.cs"));
+
+        matches.Should().ContainSingle().Which.Should().Be(file);
+    }
+
+    [Fact]
+    public void ResolveMatches_BareFilename_ResolvesRecursively()
+    {
+        var service = new WorkspaceRootService(new PhysicalFileSystem());
+        var root = _temp.DirectoryPath;
+        Directory.CreateDirectory(Path.Combine(root, "nested"));
+        var file = Path.Combine(root, "nested", "Bar.cs");
+        File.WriteAllText(file, "// x");
+
+        var matches = service.ResolveMatches([root], "Bar.cs");
+
+        matches.Should().ContainSingle().Which.Should().Be(file);
+    }
+
+    [Fact]
+    public void ResolveMatches_WildcardPattern_ShouldThrow()
+    {
+        var service = new WorkspaceRootService(new PhysicalFileSystem());
+
+        var act = () => service.ResolveMatches([_temp.DirectoryPath], "*.cs");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void ResolveMatches_ParentTraversal_DoesNotEscapeRoot()
+    {
+        var service = new WorkspaceRootService(new PhysicalFileSystem());
+        var root = Directory.CreateDirectory(Path.Combine(_temp.DirectoryPath, "workspace")).FullName;
+        // A file that exists just outside the root must not be resolvable via "..".
+        File.WriteAllText(Path.Combine(_temp.DirectoryPath, "outside.cs"), "// x");
+
+        var matches = service.ResolveMatches([root], Path.Combine("..", "outside.cs"));
+
+        matches.Should().BeEmpty();
+    }
+
+    [Fact]
     public void AbsolutePath_IsFullyQualified()
     {
         var absolutePath = Path.Combine(Path.GetTempPath(), "MySolution.slnx");
