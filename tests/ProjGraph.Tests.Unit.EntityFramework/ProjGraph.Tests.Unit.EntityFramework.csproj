@@ -23,6 +23,10 @@
     <ProjectReference Include="..\ProjGraph.Tests.Shared\ProjGraph.Tests.Shared.csproj"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Golden/goldens/**/*.mmd" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
 
 
