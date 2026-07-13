@@ -27,6 +27,93 @@ public class EfAnalysisAdvancedTests
     }
 
     [Fact]
+    public async Task AnalyzeContextAsync_ExpressionBodiedOnModelCreating_AppliesConfiguration()
+    {
+        // An expression-bodied OnModelCreating (using =>) exposes a null Body but a non-null
+        // expression body, so its Fluent API configuration must still be parsed, not dropped.
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               namespace Test;
+                               public class AppDbContext : DbContext
+                               {
+                                   public DbSet<User> Users { get; set; }
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                       => modelBuilder.Entity<User>().Property(u => u.Name).HasMaxLength(150);
+                               }
+                               public class User { public int Id { get; set; } public string Name { get; set; } }
+                               """;
+        var filePath = temp.CreateFile("ExprContext.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        var user = model.Entities.First(e => e.Name == "User");
+        user.Properties.First(p => p.Name == "Name").MaxLength.Should().Be(150);
+    }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_BareFilename_DoesNotThrow()
+    {
+        // A path with no directory component makes GetDirectoryName return an empty string
+        // (not null); the base-class search must fall back to the current directory instead of
+        // crashing on new DirectoryInfo("") / Directory.GetParent("").
+        var fileName = $"BareCtx_{Guid.NewGuid():N}.cs";
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               namespace Test;
+                               public class AppDbContext : DbContext
+                               {
+                                   public DbSet<User> Users { get; set; }
+                               }
+                               public class User { public int Id { get; set; } public string Name { get; set; } }
+                               """;
+        await File.WriteAllTextAsync(fileName, content);
+
+        try
+        {
+            var model = await _service.AnalyzeContextAsync(fileName, "AppDbContext");
+            model.Entities.Should().Contain(e => e.Name == "User");
+        }
+        finally
+        {
+            File.Delete(fileName);
+        }
+    }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_OwnsOneBuilder_DoesNotCreatePhantomOwnerProperty()
+    {
+        // Property configuration inside an OwnsOne(...) builder lambda configures the OWNED type,
+        // not the owner. It must not fabricate a top-level property (e.g. "City") on the owner.
+        using var temp = new TestDirectory();
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               namespace Test;
+                               public class AppDbContext : DbContext
+                               {
+                                   public DbSet<Customer> Customers { get; set; }
+                                   protected override void OnModelCreating(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity<Customer>()
+                                           .OwnsOne(c => c.Address, a => a.Property(p => p.City).HasMaxLength(50));
+                                   }
+                               }
+                               public class Customer { public int Id { get; set; } public Address Address { get; set; } }
+                               public class Address { public string City { get; set; } }
+                               """;
+        var filePath = temp.CreateFile("OwnsContext.cs", content);
+
+        // Act
+        var model = await _service.AnalyzeContextAsync(filePath, "AppDbContext");
+
+        // Assert
+        var customer = model.Entities.First(e => e.Name == "Customer");
+        customer.Properties.Should().NotContain(p => p.Name == "City");
+    }
+
+    [Fact]
     public async Task AnalyzeContextAsync_ShouldHandleManyToManyRelationships()
     {
         // Arrange
