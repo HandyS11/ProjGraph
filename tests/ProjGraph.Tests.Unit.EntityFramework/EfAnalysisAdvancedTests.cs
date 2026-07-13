@@ -56,8 +56,8 @@ public class EfAnalysisAdvancedTests
     [Fact]
     public async Task AnalyzeContextAsync_BareFilename_DoesNotThrow()
     {
-        // A path with no directory component makes GetDirectoryName return an empty string
-        // (not null); the base-class search must fall back to the current directory instead of
+        // A path with no directory component makes GetDirectoryName return null or an empty
+        // string; the base-class search must fall back to the current directory instead of
         // crashing on new DirectoryInfo("") / Directory.GetParent("").
         var fileName = $"BareCtx_{Guid.NewGuid():N}.cs";
         const string content = """

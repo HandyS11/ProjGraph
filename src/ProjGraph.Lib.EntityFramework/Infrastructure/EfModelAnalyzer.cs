@@ -127,7 +127,7 @@ public class EfModelAnalyzer(
 
     /// <summary>
     /// Resolves the directory that contains the given file. <see cref="IFileSystem.GetDirectoryName"/>
-    /// returns an empty string (not null) for a bare filename with no directory component, which
+    /// can return null or an empty string for a bare filename with no directory component, which
     /// would crash <c>new DirectoryInfo("")</c> / <c>Directory.GetParent("")</c> downstream; fall
     /// back to the current directory in that case.
     /// </summary>
@@ -136,7 +136,7 @@ public class EfModelAnalyzer(
     private string ResolveDirectory(string path)
     {
         var directory = fileSystem.GetDirectoryName(path);
-        return string.IsNullOrEmpty(directory) ? Environment.CurrentDirectory : directory;
+        return string.IsNullOrEmpty(directory) ? fileSystem.GetCurrentDirectory() : directory;
     }
 
     /// <summary>
