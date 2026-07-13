@@ -1,0 +1,23 @@
+---
+title: RelationshipsContext
+---
+erDiagram
+  Author {
+    int Id PK
+  }
+  AuthorPost {
+    int AuthorId PK,FK
+    int PostId PK,FK
+  }
+  Blog {
+    int Id PK
+    int OwnerId FK
+  }
+  Post {
+    int Id PK
+    int BlogId FK
+  }
+  Author ||--o{ AuthorPost : ""
+  Author ||--o{ Blog : ""
+  Blog |o--o{ Post : ""
+  Post ||--o{ AuthorPost : ""

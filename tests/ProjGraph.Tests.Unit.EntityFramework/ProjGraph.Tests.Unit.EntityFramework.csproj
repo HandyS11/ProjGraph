@@ -23,6 +23,16 @@
     <ProjectReference Include="..\ProjGraph.Tests.Shared\ProjGraph.Tests.Shared.csproj"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Goldens are already default None items; Update (not Include) sets copy metadata without duplicating them. -->
+    <None Update="Golden/goldens/**/*.mmd" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Golden/fixtures/**/*.cs" />
+    <None Include="Golden/fixtures/**/*.cs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
 
 

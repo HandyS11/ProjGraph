@@ -1,0 +1,10 @@
+---
+title: PropertyConfigContext
+---
+erDiagram
+  Account {
+    int Id PK
+    decimal Balance "precision(18,2), default:0"
+    string Code "required, max:8"
+    string Name "required, max:200"
+  }

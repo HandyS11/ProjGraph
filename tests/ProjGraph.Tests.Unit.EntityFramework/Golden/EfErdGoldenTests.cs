@@ -1,0 +1,109 @@
+using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
+using ProjGraph.Lib.Core.Infrastructure;
+using ProjGraph.Lib.EntityFramework.Application;
+using ProjGraph.Lib.EntityFramework.Application.UseCases;
+using ProjGraph.Lib.EntityFramework.Infrastructure;
+using ProjGraph.Lib.EntityFramework.Rendering;
+using ProjGraph.Tests.Shared.Helpers;
+using System.Runtime.CompilerServices;
+
+namespace ProjGraph.Tests.Unit.EntityFramework.Golden;
+
+/// <summary>
+/// Characterization tests: every EF sample context's rendered ERD is pinned to a committed
+/// golden file. Set the environment variable UPDATE_EF_GOLDENS=1 to (re)generate the goldens
+/// instead of asserting against them.
+/// </summary>
+[Trait("Category", "Golden")]
+public sealed class EfErdGoldenTests
+{
+    public static IEnumerable<object?[]> Cases =>
+    [
+        [@"erd\simple-context\EntityFramework\MyDbContext.cs", "MyDbContext", "simple-context"],
+        [@"erd\complex-ecommerce\Data\MyDbContext.cs", "MyDbContext", "complex-ecommerce"],
+        [FixturePath("RelationshipsContext.cs"), "RelationshipsContext", "fixture-relationships"],
+        [FixturePath("OwnedAndJoinContext.cs"), "OwnedAndJoinContext", "fixture-owned-join"],
+        [FixturePath("PropertyConfigContext.cs"), "PropertyConfigContext", "fixture-property-config"],
+        [FixturePath("ConfigClassContext.cs"), "ConfigClassContext", "fixture-config-class"],
+        [FixturePath("BaseContext.cs"), "BaseContext", "fixture-base-dbset"]
+    ];
+
+    private static string FixturePath(string fileName) =>
+        Path.Combine(AppContext.BaseDirectory, "Golden", "fixtures", fileName);
+
+    [Theory]
+    [MemberData(nameof(Cases))]
+    public void Erd_MatchesGolden(string contextPath, string? contextName, string goldenName)
+    {
+        var absolute = Path.IsPathFullyQualified(contextPath)
+            ? contextPath
+            : TestPathHelper.GetSamplePath(contextPath);
+        var actual = EfGoldenRunner.RenderContext(absolute, contextName);
+        EfGoldenRunner.Verify(goldenName, actual);
+    }
+}
+
+/// <summary>
+/// Shared machinery for the EF golden tests: renders a context's ERD and compares (or regenerates)
+/// the committed golden file.
+/// </summary>
+internal static class EfGoldenRunner
+{
+    private static readonly bool UpdateMode =
+        Environment.GetEnvironmentVariable("UPDATE_EF_GOLDENS") == "1";
+
+    public static string RenderContext(string samplePath, string? contextName)
+    {
+        var fs = new PhysicalFileSystem();
+        var analyzer = new EfModelAnalyzer(new CompilationFactory(), fs, new EntityFileDiscovery(fs));
+        var service = new EfAnalysisService(
+            new AnalyzeContextUseCase(analyzer),
+            new DiscoverContextsUseCase(analyzer, fs),
+            new AnalyzeSnapshotUseCase(analyzer),
+            new DiscoverSnapshotsUseCase(analyzer, fs));
+
+#pragma warning disable VSTHRD002 // Deliberate sync-over-async bridge: harness API is pinned to a synchronous
+        // signature (see task brief); no SynchronizationContext deadlock risk under xUnit.
+        var model = service.AnalyzeContextAsync(samplePath, contextName).GetAwaiter().GetResult();
+#pragma warning restore VSTHRD002
+        var rendered = new MermaidErdRenderer().Render(model, new DiagramOptions(true, false));
+        return Normalize(rendered);
+    }
+
+    public static void Verify(string goldenName, string actual)
+    {
+        if (UpdateMode)
+        {
+            // Write straight into the committed source tree so the regenerated baseline shows up in
+            // `git diff` and can be reviewed/committed — no manual copy-back from the bin output.
+            var sourcePath = Path.Combine(SourceGoldenDirectory(), $"{goldenName}.mmd");
+            Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+            File.WriteAllText(sourcePath, actual);
+            return;
+        }
+
+        var goldenPath = Path.Combine(GoldenDirectory(), $"{goldenName}.mmd");
+        File.Exists(goldenPath).Should().BeTrue(
+            $"golden '{goldenName}.mmd' must exist; run with UPDATE_EF_GOLDENS=1 to generate it");
+        var expected = Normalize(File.ReadAllText(goldenPath));
+        actual.Should().Be(expected,
+            $"rendered ERD must match golden '{goldenName}.mmd'; if this change is intended, " +
+            "regenerate with UPDATE_EF_GOLDENS=1 and review the diff");
+    }
+
+    private static string Normalize(string text) => text.ReplaceLineEndings("\n").TrimEnd('\n');
+
+    private static string GoldenDirectory()
+    {
+        // Assert mode reads the goldens copied next to the test assembly (see csproj None copy metadata).
+        return Path.Combine(AppContext.BaseDirectory, "Golden", "goldens");
+    }
+
+    private static string SourceGoldenDirectory([CallerFilePath] string callerFilePath = "")
+    {
+        // Resolved from this file's compile-time path (this file lives in Golden/), so update mode
+        // writes to the committed tests/.../Golden/goldens directory rather than the bin output copy.
+        return Path.Combine(Path.GetDirectoryName(callerFilePath)!, "goldens");
+    }
+}

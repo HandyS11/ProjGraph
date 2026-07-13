@@ -1,0 +1,16 @@
+---
+title: OwnedAndJoinContext
+---
+erDiagram
+  Customer {
+    int Id PK
+  }
+  CustomerProduct {
+    int CustomerId PK,FK
+    int ProductId PK,FK
+  }
+  Product {
+    int Id PK
+  }
+  Customer ||--o{ CustomerProduct : ""
+  Product ||--o{ CustomerProduct : ""
