@@ -51,7 +51,7 @@ internal static class PropertyConfigParser
             }
             else if (currentProperty is not null)
             {
-                var updated = ApplyPropertyConfiguration(currentProperty, methodName, args, compilation);
+                var updated = ApplyConfiguration(currentProperty, methodName, args, compilation);
                 if (ReferenceEquals(updated, currentProperty))
                 {
                     continue;
@@ -129,13 +129,15 @@ internal static class PropertyConfigParser
     }
 
     /// <summary>
-    /// Applies a specific configuration to a given property based on the provided configuration method.
+    /// Applies a single property-configuration call to a property, dispatching on the fluent method name.
+    /// Shared by the text parser (snapshot path) and <see cref="FluentPropertyWalker"/> (context path);
+    /// returns the same instance for unrecognized methods.
     /// </summary>
     /// <param name="property">The property to configure.</param>
-    /// <param name="configMethod">The configuration method name.</param>
-    /// <param name="configArg">The configuration argument value.</param>
-    /// <param name="compilation">The Roslyn compilation for symbol resolution.</param>
-    private static EfProperty ApplyPropertyConfiguration(EfProperty property, string configMethod, string configArg,
+    /// <param name="configMethod">The configuration method name (e.g. <c>HasMaxLength</c>).</param>
+    /// <param name="configArg">The raw argument text captured between the call's parentheses.</param>
+    /// <param name="compilation">The Roslyn compilation for constant/enum resolution.</param>
+    internal static EfProperty ApplyConfiguration(EfProperty property, string configMethod, string configArg,
         Compilation compilation)
     {
         return configMethod switch

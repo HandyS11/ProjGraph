@@ -109,6 +109,8 @@ public static class EfAnalysisConstants
         public const string HasDefaultValueSql = "HasDefaultValueSql";
 
         public const string UsingEntity = "UsingEntity";
+        public const string OwnsOne = "OwnsOne";
+        public const string OwnsMany = "OwnsMany";
 
         /// <summary>
         /// DbContext methods.
