@@ -85,6 +85,7 @@ public sealed class AnalyzeFileUseCaseTests
             Arg.Any<Queue<(INamedTypeSymbol Symbol, int Depth)>>(),
             Arg.Any<AnalysisContext>(),
             Arg.Is<AnalysisOptions>(o =>
+                o != null &&
                 o.MaxDepth == 3 &&
                 !o.IncludeInheritance &&
                 o.IncludeDependencies &&

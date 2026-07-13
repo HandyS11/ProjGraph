@@ -116,7 +116,7 @@ public sealed class ProjectDiscoveryServiceTests
         var result = _sut.DiscoverProjectsRecursively(rootPath).ToList();
 
         result.Should().HaveCount(1); // Root is still in discoveredFullPaths
-        _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Failed to parse")));
+        _console.Received(1).WriteWarning(Arg.Is<string>(s => s != null && s.Contains("Failed to parse")));
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public sealed class ProjectDiscoveryServiceTests
         var result = _sut.DiscoverProjectsRecursively(rootPath).ToList();
 
         result.Should().HaveCount(1);
-        _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Failed to parse")));
+        _console.Received(1).WriteWarning(Arg.Is<string>(s => s != null && s.Contains("Failed to parse")));
     }
 
     [Fact]
@@ -159,7 +159,7 @@ public sealed class ProjectDiscoveryServiceTests
         var result = _sut.DiscoverProjectsRecursively(rootPath).ToList();
 
         result.Should().HaveCount(1);
-        _console.Received(1).WriteWarning(Arg.Is<string>(s => s.Contains("Failed to parse")));
+        _console.Received(1).WriteWarning(Arg.Is<string>(s => s != null && s.Contains("Failed to parse")));
     }
 
     [Fact]
