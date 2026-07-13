@@ -205,7 +205,9 @@ internal static class FluentRelationshipWalker
         }
 
         return NavigationPropertyAnalyzer.IsNavigationProperty(navigationProperty, out var targetType, out _)
-            ? targetType?.Name ?? navigationPropertyName
+               && targetType is not null
+               && entities.ContainsKey(targetType.Name)
+            ? targetType.Name
             : navigationPropertyName;
     }
 

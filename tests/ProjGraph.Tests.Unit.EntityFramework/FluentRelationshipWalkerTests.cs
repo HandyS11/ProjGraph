@@ -264,6 +264,65 @@ public sealed class FluentRelationshipWalkerTests
     }
 
     [Fact]
+    public void Apply_NavigationTargetTypeNotAKnownEntity_FallsBackToNavigationName()
+    {
+        const string source = """
+            public class Blog { public int Id { get; set; } public Person Owner { get; set; } = null!; }
+            public class Person { public int Id { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Blog>().HasOne(b => b.Owner).WithMany();
+                }
+            }
+            """;
+        // Only "Blog" is registered as a known entity; "Person" is a real class but unknown to the walker.
+        var (method, compilation, entities, model) = Build(source, "Blog");
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        // Person is not a known entity so the nav falls back to the raw property name Owner,
+        // then HasOne WithMany swaps that fallback target into SourceEntity.
+        var rel = model.Relationships.Should().ContainSingle().Which;
+        rel.SourceEntity.Should().Be("Owner");
+        rel.TargetEntity.Should().Be("Blog");
+        rel.Type.Should().Be(EfRelationshipType.OneToMany);
+    }
+
+    [Fact]
+    public void Apply_LambdaNestedUsingEntity_IgnoresJoinConfigurationChains()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            public class Customer { public int Id { get; set; } public List<Product> Products { get; set; } = []; }
+            public class Product { public int Id { get; set; } public List<Customer> Customers { get; set; } = []; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Customer>(e =>
+                    {
+                        e.HasMany(c => c.Products).WithMany(p => p.Customers)
+                            .UsingEntity<Dictionary<string, object>>("CustomerProduct",
+                                j => j.HasOne<Product>().WithMany().HasForeignKey("ProductId"),
+                                j => j.HasOne<Customer>().WithMany().HasForeignKey("CustomerId"));
+                    });
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Customer", "Product");
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        // Only the outer many-to-many is produced; the two inner UsingEntity chains are ignored
+        // even though the whole construct is nested inside the Entity<Customer>(e => ...) lambda,
+        // which routes source resolution through ResolveSourceEntity's ancestor-fallback branch.
+        var rel = model.Relationships.Should().ContainSingle().Which;
+        rel.Type.Should().Be(EfRelationshipType.ManyToMany);
+    }
+
+    [Fact]
     public void Apply_NavigationNameDiffersFromEntity_ResolvesTargetViaSymbol()
     {
         const string source = """
