@@ -226,7 +226,9 @@ internal sealed class ErdCommand(
     /// Builds the selection choices for the multiple-files prompt, mapping a unique display label
     /// (the path relative to <paramref name="currentDirectory"/>) to each full file path. Using a
     /// unique display keeps two files that share the same file name distinguishable, so the
-    /// selection resolves to the correct path instead of always the first same-named file.
+    /// selection resolves to the correct path instead of always the first same-named file. Labels
+    /// are escaped because the selection prompt renders them as Spectre markup, and any label
+    /// collision is disambiguated with a counter so every file remains selectable.
     /// </summary>
     /// <param name="files">The discovered file paths.</param>
     /// <param name="currentDirectory">The directory to make the display labels relative to.</param>
@@ -236,10 +238,20 @@ internal sealed class ErdCommand(
         string currentDirectory)
     {
         var choices = new Dictionary<string, string>(StringComparer.Ordinal);
+        var labelCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var file in files)
         {
-            var display = Path.GetRelativePath(currentDirectory, file);
-            choices[display] = file;
+            // The selection prompt renders each label as markup, so escape '[' / ']' to keep a
+            // legal path such as "[archive]/Foo.cs" from being parsed as a style tag.
+            var display = Markup.Escape(Path.GetRelativePath(currentDirectory, file));
+
+            // Disambiguate any colliding label with an occurrence counter so every file stays
+            // selectable instead of being silently overwritten.
+            var occurrence = labelCounts.GetValueOrDefault(display);
+            labelCounts[display] = occurrence + 1;
+            var uniqueDisplay = occurrence == 0 ? display : $"{display} ({occurrence + 1})";
+
+            choices[uniqueDisplay] = file;
         }
 
         return choices;

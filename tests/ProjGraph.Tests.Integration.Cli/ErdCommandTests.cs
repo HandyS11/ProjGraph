@@ -27,6 +27,36 @@ public partial class ErdCommandTests
     }
 
     [Fact]
+    public void BuildFileChoices_NameWithMarkupBrackets_EscapesDisplayLabel()
+    {
+        // The selection prompt renders labels as Spectre markup, so a bracketed path must be
+        // escaped ('[' -> '[[') to avoid being parsed as a style tag.
+        var root = Path.Combine("repo", "root");
+        var file = Path.Combine(root, "[archive]", "AppDbContext.cs");
+        string[] files = [file];
+
+        var choices = ErdCommand.BuildFileChoices(files, root);
+
+        choices.Should().ContainValue(file);
+        choices.Keys.Should().OnlyContain(k => k.Contains("[[", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BuildFileChoices_CollidingLabels_KeepsEveryFileSelectable()
+    {
+        // If two entries would produce the same label, each must still get a distinct key so no
+        // file is silently dropped from the prompt.
+        var root = Path.Combine("repo", "root");
+        var file = Path.Combine(root, "App", "AppDbContext.cs");
+        string[] files = [file, file];
+
+        var choices = ErdCommand.BuildFileChoices(files, root);
+
+        choices.Should().HaveCount(2);
+        choices.Values.Should().AllBe(file);
+    }
+
+    [Fact]
     public void ErdCommand_SimpleContext_ShouldGenerateCompleteErDiagram()
     {
         // Arrange
