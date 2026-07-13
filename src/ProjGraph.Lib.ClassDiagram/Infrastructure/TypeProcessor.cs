@@ -131,6 +131,14 @@ public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcess
 
         foreach (var (relatedSymbol, kind, label, cardinality) in relatedSymbols)
         {
+            // Skip system types before resolution: no relationship is created for them anyway,
+            // and resolving one triggers a pointless workspace scan (e.g. System.ValueType for
+            // every struct, System.Enum for every enum).
+            if (TypeFilter.IsSystemType(relatedSymbol))
+            {
+                continue;
+            }
+
             // Resolve symbol only once per unique type
             if (!resolvedSymbolsCache.TryGetValue(relatedSymbol, out var resolvedSymbol))
             {
