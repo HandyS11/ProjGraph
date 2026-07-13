@@ -29,7 +29,7 @@ public static class FluentApiConfigurationParser
         Compilation compilation)
     {
         var methodSyntax = FindOnModelCreatingMethod(contextType);
-        if (methodSyntax?.Body is null)
+        if (methodSyntax is null || (methodSyntax.Body is null && methodSyntax.ExpressionBody is null))
         {
             return;
         }
@@ -51,7 +51,9 @@ public static class FluentApiConfigurationParser
         EfModel model,
         Compilation compilation)
     {
-        if (methodSyntax.Body is null)
+        // Accept both block-bodied ({ ... }) and expression-bodied (=> ...) methods; ToString()
+        // includes the expression body text in either case.
+        if (methodSyntax.Body is null && methodSyntax.ExpressionBody is null)
         {
             return;
         }

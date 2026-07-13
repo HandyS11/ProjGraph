@@ -74,7 +74,7 @@ public class EfModelAnalyzer(
         var snapshotClass = DbContextIdentifier.FindSnapshotClass(classDeclarations, snapshotName)
                             ?? throw new AnalysisException("ModelSnapshot not found in file");
 
-        var snapshotDirectory = fileSystem.GetDirectoryName(snapshotPath) ?? Environment.CurrentDirectory;
+        var snapshotDirectory = ResolveDirectory(snapshotPath);
 
         var syntaxTrees =
             await BuildSnapshotSyntaxTreesAsync(snapshotPath, snapshotClass, snapshotDirectory, syntaxTree);
@@ -113,7 +113,7 @@ public class EfModelAnalyzer(
         var contextClass = DbContextIdentifier.FindContextClass(classDeclarations, contextName)
                            ?? throw new AnalysisException("DbContext not found in file");
 
-        var contextDirectory = fileSystem.GetDirectoryName(path) ?? Environment.CurrentDirectory;
+        var contextDirectory = ResolveDirectory(path);
 
         var syntaxTrees = await BuildSyntaxTreesAsync(path, contextClass, contextDirectory, syntaxTree);
         var compilation = compilationFactory.CreateCompilation(syntaxTrees);
@@ -123,6 +123,20 @@ public class EfModelAnalyzer(
                           ?? throw new AnalysisException("Could not get semantic symbol for context");
 
         return BuildEfModel(contextType, compilation);
+    }
+
+    /// <summary>
+    /// Resolves the directory that contains the given file. <see cref="IFileSystem.GetDirectoryName"/>
+    /// can return null or an empty string for a bare filename with no directory component, which
+    /// would crash <c>new DirectoryInfo("")</c> / <c>Directory.GetParent("")</c> downstream; fall
+    /// back to the current directory in that case.
+    /// </summary>
+    /// <param name="path">The file path.</param>
+    /// <returns>The containing directory, or the current directory when the path has no directory component.</returns>
+    private string ResolveDirectory(string path)
+    {
+        var directory = fileSystem.GetDirectoryName(path);
+        return string.IsNullOrEmpty(directory) ? fileSystem.GetCurrentDirectory() : directory;
     }
 
     /// <summary>
