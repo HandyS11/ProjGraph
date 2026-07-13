@@ -110,8 +110,12 @@ public sealed class MermaidGraphRenderer : IDiagramRenderer<SolutionGraph>
         foreach (var project in projects)
         {
             var baseId = SanitizeId(project.Name);
+
+            // On collision, append the full project id (guaranteed unique) rather than a truncated
+            // slice that could itself collide. Node ids are internal — Mermaid renders the label —
+            // so readability only matters for the common, non-colliding case.
             nodeIds[project.Id] = baseIdCounts[baseId] > 1
-                ? $"{baseId}_{project.Id:N}"[..(baseId.Length + 9)]
+                ? $"{baseId}_{project.Id:N}"
                 : baseId;
         }
 
