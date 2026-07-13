@@ -6,6 +6,7 @@ using ProjGraph.Lib.EntityFramework.Application.UseCases;
 using ProjGraph.Lib.EntityFramework.Infrastructure;
 using ProjGraph.Lib.EntityFramework.Rendering;
 using ProjGraph.Tests.Shared.Helpers;
+using System.Runtime.CompilerServices;
 
 namespace ProjGraph.Tests.Unit.EntityFramework.Golden;
 
@@ -72,15 +73,17 @@ internal static class EfGoldenRunner
 
     public static void Verify(string goldenName, string actual)
     {
-        var goldenPath = Path.Combine(GoldenDirectory(), $"{goldenName}.mmd");
-
         if (UpdateMode)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(goldenPath)!);
-            File.WriteAllText(goldenPath, actual);
+            // Write straight into the committed source tree so the regenerated baseline shows up in
+            // `git diff` and can be reviewed/committed — no manual copy-back from the bin output.
+            var sourcePath = Path.Combine(SourceGoldenDirectory(), $"{goldenName}.mmd");
+            Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);
+            File.WriteAllText(sourcePath, actual);
             return;
         }
 
+        var goldenPath = Path.Combine(GoldenDirectory(), $"{goldenName}.mmd");
         File.Exists(goldenPath).Should().BeTrue(
             $"golden '{goldenName}.mmd' must exist; run with UPDATE_EF_GOLDENS=1 to generate it");
         var expected = Normalize(File.ReadAllText(goldenPath));
@@ -93,7 +96,14 @@ internal static class EfGoldenRunner
 
     private static string GoldenDirectory()
     {
-        // Golden files are copied next to the test assembly (see csproj content include).
+        // Assert mode reads the goldens copied next to the test assembly (see csproj None copy metadata).
         return Path.Combine(AppContext.BaseDirectory, "Golden", "goldens");
+    }
+
+    private static string SourceGoldenDirectory([CallerFilePath] string callerFilePath = "")
+    {
+        // Resolved from this file's compile-time path (this file lives in Golden/), so update mode
+        // writes to the committed tests/.../Golden/goldens directory rather than the bin output copy.
+        return Path.Combine(Path.GetDirectoryName(callerFilePath)!, "goldens");
     }
 }
