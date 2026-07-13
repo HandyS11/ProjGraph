@@ -2,6 +2,8 @@ name: Docs Publish
 
 on:
   push:
+    branches:
+      - develop
     paths:
       - 'docfx/**'
       - '**/*.md'
@@ -14,7 +16,8 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  # Do not cancel an in-flight production Pages deployment.
+  cancel-in-progress: false
 
 jobs:
   build:

@@ -69,7 +69,8 @@ jobs:
           files: artifacts/*
           generate_release_notes: true
           draft: false
-          prerelease: false
+          # Treat a tag with a pre-release suffix (e.g. v1.0.0-rc.1) as a pre-release.
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
       - name: Install mcp-publisher
         run: |
