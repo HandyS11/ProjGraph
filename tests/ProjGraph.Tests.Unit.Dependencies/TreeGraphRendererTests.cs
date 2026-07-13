@@ -40,6 +40,62 @@ public sealed class TreeGraphRendererTests
     }
 
     [Fact]
+    public async Task Render_ConcurrentCalls_ProduceIndependentResults()
+    {
+        // The renderer is registered as a singleton, so concurrent Render calls on one instance
+        // must not share mutable state (the console/writer are now per-call, not instance fields).
+        var graphA = CreateGraph("SolutionA",
+            [new Project(Guid.NewGuid(), "AlphaProj", "/a.csproj", "a.csproj", "net10.0", ProjectType.Library)], []);
+        var graphB = CreateGraph("SolutionB",
+            [new Project(Guid.NewGuid(), "BetaProj", "/b.csproj", "b.csproj", "net10.0", ProjectType.Library)], []);
+
+        var tasks = Enumerable.Range(0, 50)
+            .Select(i => Task.Run(() => i % 2 == 0 ? _sut.Render(graphA) : _sut.Render(graphB)))
+            .ToArray();
+        var results = await Task.WhenAll(tasks);
+
+        for (var i = 0; i < results.Length; i++)
+        {
+            if (i % 2 == 0)
+            {
+                results[i].Should().Contain("AlphaProj").And.NotContain("BetaProj");
+            }
+            else
+            {
+                results[i].Should().Contain("BetaProj").And.NotContain("AlphaProj");
+            }
+        }
+    }
+
+    [Fact]
+    public void Render_SharedSubtree_IsNotReExpanded()
+    {
+        // Diamond: App -> Lib1, App -> Lib2; Lib1 -> Shared, Lib2 -> Shared; Shared -> Deep.
+        // The Shared subtree must be expanded once and shown as a reference on the second path, so
+        // its descendant "Deep" appears exactly once — no exponential re-expansion of shared nodes.
+        var (app, lib1, lib2, shared, deep) =
+            (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+
+        static Project P(Guid id, string n) =>
+            new(id, n, $"/{n}.csproj", $"{n}.csproj", "net10.0", ProjectType.Library);
+
+        var graph = CreateGraph("S",
+            [P(app, "App"), P(lib1, "Lib1"), P(lib2, "Lib2"), P(shared, "Shared"), P(deep, "Deep")],
+            [
+                new Dependency(app, lib1, DependencyType.ProjectReference),
+                new Dependency(app, lib2, DependencyType.ProjectReference),
+                new Dependency(lib1, shared, DependencyType.ProjectReference),
+                new Dependency(lib2, shared, DependencyType.ProjectReference),
+                new Dependency(shared, deep, DependencyType.ProjectReference)
+            ]);
+
+        var result = _sut.Render(graph);
+
+        var deepOccurrences = result.Split("Deep", StringSplitOptions.None).Length - 1;
+        deepOccurrences.Should().Be(1);
+    }
+
+    [Fact]
     public void Render_WithDependency_ShouldContainBothProjects()
     {
         var idA = Guid.NewGuid();

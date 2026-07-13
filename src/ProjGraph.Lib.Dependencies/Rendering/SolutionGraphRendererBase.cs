@@ -14,35 +14,41 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     public abstract string Format { get; }
 
     /// <summary>
-    /// Gets the ANSI console used for rendering output.
-    /// Set per <see cref="Render"/> call via <see cref="CreateRenderContext"/>.
+    /// A per-render pair of an isolated ANSI console and the string writer that captures its output.
+    /// Passing this through the call chain (instead of storing it on the renderer) keeps the
+    /// renderers free of mutable instance state, so a single singleton instance is safe to use from
+    /// multiple threads concurrently.
     /// </summary>
-    protected IAnsiConsole RenderConsole { get; private set; } = null!;
+    protected sealed class RenderContext
+    {
+        /// <summary>Gets the isolated ANSI console to write rendered output to.</summary>
+        public required IAnsiConsole Console { get; init; }
+
+        /// <summary>Gets the writer capturing the console output; its final text is the render result.</summary>
+        public required StringWriter Writer { get; init; }
+    }
 
     /// <summary>
-    /// Gets the string writer that captures rendered output.
-    /// Set per <see cref="Render"/> call via <see cref="CreateRenderContext"/>.
-    /// </summary>
-    protected StringWriter OutputWriter { get; private set; } = null!;
-
-    /// <summary>
-    /// Creates a fresh <see cref="OutputWriter"/> and <see cref="RenderConsole"/> pair for a single render pass.
+    /// Creates a fresh, isolated <see cref="RenderContext"/> for a single render pass.
     /// Must be called at the start of every <see cref="Render"/> implementation.
     /// </summary>
-    protected void CreateRenderContext()
+    /// <returns>A new render context.</returns>
+    protected static RenderContext CreateRenderContext()
     {
-        OutputWriter = new StringWriter();
+        var writer = new StringWriter();
         var globalConsole = AnsiConsole.Console;
-        RenderConsole = AnsiConsole.Create(new AnsiConsoleSettings
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = globalConsole.Profile.Capabilities.Ansi ? AnsiSupport.Yes : AnsiSupport.No,
             ColorSystem = ColorSystemSupport.Detect,
-            Out = new AnsiConsoleOutput(OutputWriter)
+            Out = new AnsiConsoleOutput(writer)
         });
 
         // Inherit capabilities from the global console (like Unicode support)
-        RenderConsole.Profile.Capabilities.Unicode = globalConsole.Profile.Capabilities.Unicode;
-        RenderConsole.Profile.Width = globalConsole.Profile.Width;
+        console.Profile.Capabilities.Unicode = globalConsole.Profile.Capabilities.Unicode;
+        console.Profile.Width = globalConsole.Profile.Width;
+
+        return new RenderContext { Console = console, Writer = writer };
     }
 
     /// <summary>
@@ -56,20 +62,21 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     /// <summary>
     /// Renders the header section of the solution graph visualization.
     /// </summary>
+    /// <param name="console">The console to render to.</param>
     /// <param name="graph">The solution graph to render the header for.</param>
     /// <param name="options">The options for rendering the diagram.</param>
-    protected void RenderHeader(SolutionGraph graph, DiagramOptions? options = null)
+    protected static void RenderHeader(IAnsiConsole console, SolutionGraph graph, DiagramOptions? options = null)
     {
         if (options?.ShowTitle ?? true)
         {
             var graphName = Markup.Escape(graph.Name.Trim());
-            RenderConsole.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]")
+            console.Write(new Rule($"[yellow]Dependency Graph: {graphName}[/]")
             {
                 Justification = Justify.Left
             });
         }
 
-        RenderConsole.MarkupLine("[bold blue]Projects[/]");
+        console.MarkupLine("[bold blue]Projects[/]");
     }
 
     /// <summary>
@@ -91,12 +98,13 @@ public abstract class SolutionGraphRendererBase : IDiagramRenderer<SolutionGraph
     /// <summary>
     /// Renders a warning message if cyclic dependencies are detected in the solution graph.
     /// </summary>
+    /// <param name="console">The console to render to.</param>
     /// <param name="cyclicProjectIds">A set of project IDs that are part of cyclic dependencies.</param>
-    protected void RenderCycleWarning(HashSet<Guid> cyclicProjectIds)
+    protected static void RenderCycleWarning(IAnsiConsole console, HashSet<Guid> cyclicProjectIds)
     {
         if (cyclicProjectIds.Count is not 0)
         {
-            RenderConsole.MarkupLine(
+            console.MarkupLine(
                 "\n[red]⚠ Cycles detected![/] The projects in [red]red[/] are part of a circular dependency.");
         }
     }
