@@ -52,18 +52,36 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
         var name = Path.GetFileNameWithoutExtension(projectPath);
         var relativePath = Path.GetRelativePath(fileSystem.GetCurrentDirectory(), projectPath);
 
-        // Fast extraction of properties
-        var framework = root.Properties.FirstOrDefault(p => p.Name == "TargetFramework")?.Value ??
-                        root.Properties.FirstOrDefault(p => p.Name == "TargetFrameworks")?.Value ?? "unknown";
-        var outputType = root.Properties.FirstOrDefault(p => p.Name == "OutputType")?.Value ?? "";
+        // Fast extraction of properties from the project itself.
+        var ownFramework = root.Properties.FirstOrDefault(p => p.Name == "TargetFramework")?.Value ??
+                           root.Properties.FirstOrDefault(p => p.Name == "TargetFrameworks")?.Value;
+        var ownOutputType = root.Properties.FirstOrDefault(p => p.Name == "OutputType")?.Value;
+        var ownIsTestProject = root.Properties.FirstOrDefault(p => p.Name == "IsTestProject")?.Value;
+
+        // Repos commonly set these centrally in Directory.Build.props; fall back to it (a single
+        // walk up the tree) only for the values the project does not define locally.
+        Dictionary<string, string>? inherited = null;
+        if (ownFramework is null || string.IsNullOrEmpty(ownOutputType) || ownIsTestProject is null)
+        {
+            inherited = ResolveInheritedProperties(projectPath,
+                ["TargetFramework", "TargetFrameworks", "OutputType", "IsTestProject"]);
+        }
+
+        var framework = ownFramework
+                        ?? inherited?.GetValueOrDefault("TargetFramework")
+                        ?? inherited?.GetValueOrDefault("TargetFrameworks")
+                        ?? "unknown";
+        var outputType = (string.IsNullOrEmpty(ownOutputType)
+            ? inherited?.GetValueOrDefault("OutputType")
+            : ownOutputType) ?? "";
+        var isTestProject = ownIsTestProject ?? inherited?.GetValueOrDefault("IsTestProject");
 
         var type = outputType.Contains("Exe", StringComparison.OrdinalIgnoreCase)
             ? ProjectType.Executable
             : ProjectType.Library;
 
         if (name.Contains("Test", StringComparison.OrdinalIgnoreCase) ||
-            root.Properties.Any(p =>
-                p.Name == "IsTestProject" && p.Value.Equals("true", StringComparison.OrdinalIgnoreCase)))
+            string.Equals(isTestProject, "true", StringComparison.OrdinalIgnoreCase))
         {
             type = ProjectType.Test;
         }
@@ -91,6 +109,60 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
             .ToList();
 
         return (project, projectReferences, packageReferences);
+    }
+
+    /// <summary>
+    /// Resolves MSBuild properties inherited from <c>Directory.Build.props</c> for a project that
+    /// does not define them locally. Walks up the directory tree from the project file, nearest
+    /// first, recording the first value found for each requested property.
+    /// </summary>
+    /// <param name="projectPath">The path to the project file.</param>
+    /// <param name="names">The property names to resolve.</param>
+    /// <returns>A map of the resolved property names to their inherited values.</returns>
+    private Dictionary<string, string> ResolveInheritedProperties(
+        string projectPath,
+        IReadOnlyCollection<string> names)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
+
+        while (directory is not null && result.Count < names.Count)
+        {
+            var propsFile = Path.Combine(directory, "Directory.Build.props");
+            if (fileSystem.FileExists(propsFile))
+            {
+                try
+                {
+                    var propsRoot = ProjectRootElement.Open(propsFile);
+                    if (propsRoot is not null)
+                    {
+                        foreach (var propertyName in names)
+                        {
+                            if (result.ContainsKey(propertyName))
+                            {
+                                continue;
+                            }
+
+                            var value = propsRoot.Properties
+                                .FirstOrDefault(p => p.Name == propertyName)?.Value;
+                            if (!string.IsNullOrEmpty(value))
+                            {
+                                result[propertyName] = value;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex) when (ex is InvalidProjectFileException or IOException
+                                               or InvalidOperationException or XmlException)
+                {
+                    // If we can't read the props file, continue searching up
+                }
+            }
+
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        return result;
     }
 
     /// <summary>
