@@ -128,28 +128,16 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
                 continue;
             }
 
+            var label = BuildDependencyLabel(dep, typeIcon, isCyclicProject);
+
             // A node already rendered elsewhere in the tree is shown as a collapsed reference
-            // rather than re-expanded. Re-expanding shared subtrees is redundant and, on layered
-            // graphs, grows exponentially (and can overflow the stack on deep chains).
+            // (its normal label plus a marker) rather than re-expanded. Re-expanding shared
+            // subtrees is redundant and, on layered graphs, grows exponentially (and can overflow
+            // the stack on deep chains).
             if (globalVisited.Contains(dep.Id))
             {
-                var depName = Markup.Escape(dep.Name.Trim());
-                parent.AddNode($"{typeIcon} [dim]{depName} (see above)[/]");
+                parent.AddNode($"{label} [dim](see above)[/]");
                 continue;
-            }
-
-            string label;
-            if (dep.Type == ProjectType.Package)
-            {
-                var version = Markup.Escape(dep.FullPath.Trim());
-                var depName = Markup.Escape(dep.Name.Trim());
-                label = $"{typeIcon} [yellow]{depName}[/] [dim yellow]({version})[/]";
-            }
-            else
-            {
-                var color = isCyclicProject ? "red" : "green";
-                var depName = Markup.Escape(dep.Name.Trim());
-                label = $"[{color}]{depName}[/]";
             }
 
             var node = parent.AddNode(label);
@@ -158,6 +146,27 @@ public sealed class TreeGraphRenderer : SolutionGraphRendererBase
         }
 
         currentPath.Remove(project.Id);
+    }
+
+    /// <summary>
+    /// Builds the Spectre markup label for a dependency node, matching the styling used when the
+    /// node is fully rendered so that a collapsed reference stays visually consistent.
+    /// </summary>
+    /// <param name="dependency">The dependency project.</param>
+    /// <param name="typeIcon">The icon for the dependency's project type.</param>
+    /// <param name="isCyclicProject">Whether the dependency participates in a cycle.</param>
+    /// <returns>The markup label for the dependency.</returns>
+    private static string BuildDependencyLabel(Project dependency, string typeIcon, bool isCyclicProject)
+    {
+        var depName = Markup.Escape(dependency.Name.Trim());
+        if (dependency.Type == ProjectType.Package)
+        {
+            var version = Markup.Escape(dependency.FullPath.Trim());
+            return $"{typeIcon} [yellow]{depName}[/] [dim yellow]({version})[/]";
+        }
+
+        var color = isCyclicProject ? "red" : "green";
+        return $"[{color}]{depName}[/]";
     }
 
     /// <summary>
