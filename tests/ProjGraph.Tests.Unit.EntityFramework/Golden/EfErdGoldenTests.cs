@@ -20,14 +20,25 @@ public sealed class EfErdGoldenTests
     public static IEnumerable<object?[]> Cases =>
     [
         [@"erd\simple-context\EntityFramework\MyDbContext.cs", "MyDbContext", "simple-context"],
-        [@"erd\complex-ecommerce\Data\MyDbContext.cs", "MyDbContext", "complex-ecommerce"]
+        [@"erd\complex-ecommerce\Data\MyDbContext.cs", "MyDbContext", "complex-ecommerce"],
+        [FixturePath("RelationshipsContext.cs"), "RelationshipsContext", "fixture-relationships"],
+        [FixturePath("OwnedAndJoinContext.cs"), "OwnedAndJoinContext", "fixture-owned-join"],
+        [FixturePath("PropertyConfigContext.cs"), "PropertyConfigContext", "fixture-property-config"],
+        [FixturePath("ConfigClassContext.cs"), "ConfigClassContext", "fixture-config-class"],
+        [FixturePath("BaseContext.cs"), "BaseContext", "fixture-base-dbset"]
     ];
+
+    private static string FixturePath(string fileName) =>
+        Path.Combine(AppContext.BaseDirectory, "Golden", "fixtures", fileName);
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void Erd_MatchesGolden(string sampleRelativePath, string? contextName, string goldenName)
+    public void Erd_MatchesGolden(string contextPath, string? contextName, string goldenName)
     {
-        var actual = EfGoldenRunner.RenderContext(TestPathHelper.GetSamplePath(sampleRelativePath), contextName);
+        var absolute = Path.IsPathFullyQualified(contextPath)
+            ? contextPath
+            : TestPathHelper.GetSamplePath(contextPath);
+        var actual = EfGoldenRunner.RenderContext(absolute, contextName);
         EfGoldenRunner.Verify(goldenName, actual);
     }
 }

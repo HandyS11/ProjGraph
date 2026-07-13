@@ -27,6 +27,11 @@
     <None Include="Golden/goldens/**/*.mmd" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Golden/fixtures/**/*.cs" />
+    <None Include="Golden/fixtures/**/*.cs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
 
 
