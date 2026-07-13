@@ -96,7 +96,17 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
                      enumerationOptions))
         {
             // Simple string check first for performance
-            var content = await fileSystem.ReadAllTextAsync(file);
+            string content;
+            try
+            {
+                content = await fileSystem.ReadAllTextAsync(file);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Skip a file that cannot be read rather than aborting the whole workspace scan.
+                continue;
+            }
+
             if (!content.Contains($"class {typeName}", StringComparison.Ordinal) &&
                 !content.Contains($"interface {typeName}", StringComparison.Ordinal) &&
                 !content.Contains($"struct {typeName}", StringComparison.Ordinal) &&

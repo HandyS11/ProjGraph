@@ -33,6 +33,28 @@ public sealed class EntityAnalyzerTests
     }
 
     [Fact]
+    public void AnalyzeEntity_ShouldSkipStaticIndexerAndComputedProperties()
+    {
+        // EF Core maps only instance, non-indexer, settable properties. A static property, an
+        // indexer, and a get-only computed property must not become entity columns.
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             public class Order
+                                                             {
+                                                                 public int Id { get; set; }
+                                                                 public string Name { get; set; }
+                                                                 public static Order Default { get; } = new();
+                                                                 public string Display => Name;
+                                                                 public int this[int i] => i;
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Order")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.Select(p => p.Name).Should().BeEquivalentTo("Id", "Name");
+    }
+
+    [Fact]
     public void AnalyzeEntity_IdProperty_ShouldBeIdentifiedAsPrimaryKey()
     {
         var compilation = RoslynTestHelper.CreateCompilation("""

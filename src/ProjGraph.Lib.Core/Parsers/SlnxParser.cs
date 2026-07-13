@@ -19,7 +19,7 @@ public sealed class SlnxParser(IFileSystem fileSystem) : ISlnxParser
     /// An enumerable collection of project file paths contained in the `.slnx` file.
     /// If the `.slnx` file does not exist, an empty collection is returned.
     /// </returns>
-    /// <exception cref="ParsingException">Thrown when the `.slnx` file contains malformed XML.</exception>
+    /// <exception cref="ParsingException">Thrown when the `.slnx` file cannot be read or parsed.</exception>
     public IEnumerable<string> GetProjectPaths(string path)
     {
         if (!fileSystem.FileExists(path))
@@ -30,11 +30,13 @@ public sealed class SlnxParser(IFileSystem fileSystem) : ISlnxParser
         XDocument doc;
         try
         {
-            doc = XDocument.Load(path);
+            // Read through the file-system abstraction rather than XDocument.Load(path) so the
+            // parser honours the injected IFileSystem and I/O errors are wrapped consistently.
+            doc = XDocument.Parse(fileSystem.ReadAllText(path));
         }
-        catch (XmlException ex)
+        catch (Exception ex) when (ex is XmlException or IOException or UnauthorizedAccessException)
         {
-            throw new ParsingException($"Malformed .slnx file: {path}", ex);
+            throw new ParsingException($"Failed to read or parse .slnx file: {path}", ex);
         }
 
         var solutionDir = fileSystem.GetDirectoryName(path) ?? "";

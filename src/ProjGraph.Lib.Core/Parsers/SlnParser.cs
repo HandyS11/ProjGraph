@@ -1,5 +1,8 @@
 using Microsoft.Build.Construction;
+using Microsoft.Build.Exceptions;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Lib.Core.Abstractions;
+using System.Xml;
 
 namespace ProjGraph.Lib.Core.Parsers;
 
@@ -17,6 +20,7 @@ public sealed class SlnParser(IFileSystem fileSystem) : ISlnParser
     /// An enumerable collection of project file paths contained in the solution.
     /// If the solution file does not exist, an empty collection is returned.
     /// </returns>
+    /// <exception cref="ParsingException">Thrown when the solution file cannot be parsed.</exception>
     public IEnumerable<string> GetProjectPaths(string path)
     {
         if (!fileSystem.FileExists(path))
@@ -25,7 +29,17 @@ public sealed class SlnParser(IFileSystem fileSystem) : ISlnParser
         }
 
         var fullPath = fileSystem.GetFullPath(path);
-        var slnFile = SolutionFile.Parse(fullPath);
+
+        SolutionFile slnFile;
+        try
+        {
+            slnFile = SolutionFile.Parse(fullPath);
+        }
+        catch (Exception ex) when (ex is InvalidProjectFileException or IOException or XmlException
+                                       or InvalidOperationException or UnauthorizedAccessException)
+        {
+            throw new ParsingException($"Failed to read or parse .sln file: {path}", ex);
+        }
 
         return slnFile.ProjectsInOrder
             .Where(p => p.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)

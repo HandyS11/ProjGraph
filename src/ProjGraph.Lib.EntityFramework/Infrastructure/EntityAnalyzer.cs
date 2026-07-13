@@ -39,6 +39,13 @@ public static class EntityAnalyzer
         {
             foreach (var prop in currentType.GetMembers().OfType<IPropertySymbol>())
             {
+                // EF Core maps only instance, non-indexer, settable properties. Static members,
+                // indexers (this[]), and get-only computed properties are not columns.
+                if (prop.IsStatic || prop.IsIndexer || prop.SetMethod is null)
+                {
+                    continue;
+                }
+
                 if (NavigationPropertyAnalyzer.IsNavigationProperty(prop, out _, out _))
                 {
                     continue;

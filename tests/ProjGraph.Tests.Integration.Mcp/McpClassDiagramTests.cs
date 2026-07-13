@@ -159,6 +159,16 @@ public sealed class McpClassDiagramTests : IDisposable
     }
 
     [Fact]
+    public async Task GetClassDiagram_NegativeMaxDepth_ShouldThrowMcpException()
+    {
+        var tools = CreateTools();
+
+        var act = async () => await tools.GetClassDiagramAsync("/any.cs", new AnalysisOptions(-1));
+
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain("maxDepth");
+    }
+
+    [Fact]
     public async Task GetClassDiagram_NonExistentFile_ShouldThrow()
     {
         // Arrange

@@ -43,6 +43,12 @@ internal sealed class ProjGraphTools(
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        if (options is { MaxDepth: < 0 })
+        {
+            // 0 is valid (render only the requested types); only a negative depth is invalid.
+            throw new McpException($"maxDepth must not be negative; got {options.MaxDepth}.");
+        }
+
         path = await PreparePathAsync(path, cancellationToken);
 
         if (!fileSystem.FileExists(path) && !fileSystem.DirectoryExists(path))
@@ -172,6 +178,11 @@ internal sealed class ProjGraphTools(
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        if (topN < 1)
+        {
+            throw new McpException($"topN must be at least 1; got {topN}.");
+        }
+
         path = await PreparePathAsync(path, cancellationToken);
 
         progress?.Report(new ProgressNotificationValue

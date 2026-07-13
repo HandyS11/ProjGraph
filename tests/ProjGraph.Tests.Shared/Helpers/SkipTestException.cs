@@ -25,9 +25,10 @@ public sealed class SkipTestException : Exception
     /// <summary>
     /// Initializes a new instance of the <see cref="SkipTestException"/> class with a message and inner exception.
     /// </summary>
-    /// <param name="message">The error message that explains the reason for the exception.</param>
+    /// <param name="message">The skip reason.</param>
     /// <param name="innerException">The exception that is the cause of the current exception.</param>
-    public SkipTestException(string message, Exception innerException) : base(message, innerException)
+    public SkipTestException(string message, Exception innerException)
+        : base($"$XunitDynamicSkip${message}", innerException)
     {
     }
 }

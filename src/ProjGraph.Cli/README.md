@@ -19,13 +19,13 @@ dotnet tool install -g ProjGraph.Cli
 Visualize solution/project dependencies as ASCII tree or Mermaid diagram.
 
 ```bash
-# ASCII tree (default)
+# Mermaid diagram (default format)
 projgraph visualize ./MySolution.sln
 
-# Mermaid diagram (redirecting stdout)
-projgraph visualize ./MySolution.slnx --format mermaid > graph.mmd
+# ASCII tree
+projgraph visualize ./MySolution.sln --format tree
 
-# Mermaid diagram (using output flag)
+# Raw Mermaid to a .mmd file (use --output; stdout is wrapped in a ```mermaid fence)
 projgraph visualize ./MySolution.slnx --format mermaid --output graph.mmd
 
 # Save as fenced Markdown

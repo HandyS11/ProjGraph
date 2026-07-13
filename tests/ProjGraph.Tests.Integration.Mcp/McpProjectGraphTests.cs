@@ -8,6 +8,16 @@ namespace ProjGraph.Tests.Integration.Mcp;
 public class McpProjectGraphTests
 {
     [Fact]
+    public async Task GetProjectStats_TopNLessThanOne_ShouldThrowMcpException()
+    {
+        var tools = CreateTools();
+
+        var act = async () => await tools.GetProjectStatsAsync("/any.slnx", topN: 0);
+
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain("topN");
+    }
+
+    [Fact]
     public async Task GetProjectGraph_NonExistentFile_ShouldThrowMcpExceptionWithPath()
     {
         // Validation errors must surface as McpException so the message reaches the client;

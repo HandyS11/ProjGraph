@@ -92,7 +92,11 @@ public static class WorkspaceRootResolver
     /// <returns>True if the directory is under the temp path; otherwise, false.</returns>
     private static bool IsTempPath(DirectoryInfo directory, string tempPath)
     {
-        return directory.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .StartsWith(tempPath, StringComparison.OrdinalIgnoreCase);
+        var normalized = directory.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        // Equal to, or a real subdirectory of, the temp path. A bare prefix check would wrongly
+        // treat a sibling like "/tmpfoo" as being under "/tmp".
+        return normalized.Equals(tempPath, StringComparison.OrdinalIgnoreCase)
+               || normalized.StartsWith(tempPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
 }

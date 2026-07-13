@@ -49,7 +49,7 @@ public static class DbContextIdentifier
         string? contextName)
     {
         return classDeclarations.FirstOrDefault(c =>
-            (contextName is null && IsDbContext(c)) || c.Identifier.Text == contextName);
+            IsDbContext(c) && (contextName is null || c.Identifier.Text == contextName));
     }
 
     /// <summary>
@@ -65,6 +65,6 @@ public static class DbContextIdentifier
         string? snapshotName)
     {
         return classDeclarations.FirstOrDefault(c =>
-            (snapshotName is null && IsModelSnapshot(c)) || c.Identifier.Text == snapshotName);
+            IsModelSnapshot(c) && (snapshotName is null || c.Identifier.Text == snapshotName));
     }
 }

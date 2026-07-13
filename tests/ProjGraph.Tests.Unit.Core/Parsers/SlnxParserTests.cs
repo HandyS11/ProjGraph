@@ -129,7 +129,7 @@ public class SlnxParserTests
         // Act & Assert
         var act = () => _parser.GetProjectPaths(tempSlnx).ToList();
         act.Should().Throw<ParsingException>()
-            .WithMessage("*Malformed .slnx file*");
+            .WithMessage("*Failed to read or parse .slnx file*");
     }
 
     [Fact]

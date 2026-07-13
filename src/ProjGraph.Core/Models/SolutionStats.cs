@@ -9,11 +9,11 @@ namespace ProjGraph.Core.Models;
 /// <param name="SolutionPath">The absolute path to the analysed file.</param>
 /// <param name="TotalProjectCount">Number of non-Package projects in the graph.</param>
 /// <param name="TypeBreakdown">Count per project type. Keys are <see cref="ProjectType"/> names (Library, Executable, Test, Other).</param>
-/// <param name="DepthStats">Aggregate dependency depth statistics. All values are -1 when <paramref name="HasCycles"/> is <see langword="true"/>.</param>
+/// <param name="DepthStats">Aggregate dependency depth statistics. All values are <see langword="null"/> when <paramref name="HasCycles"/> is <see langword="true"/>.</param>
 /// <param name="HotspotProjects">Top-N most directly-referenced projects, ranked descending by direct in-degree.</param>
 /// <param name="HasCycles">
 /// <see langword="true"/> if a dependency cycle was detected in the graph.
-/// When <see langword="true"/>, <see cref="DepthStats"/> values are all -1.
+/// When <see langword="true"/>, <see cref="DepthStats"/> values are all <see langword="null"/>.
 /// </param>
 public record SolutionStats(
     [property: JsonPropertyName("solutionName")]

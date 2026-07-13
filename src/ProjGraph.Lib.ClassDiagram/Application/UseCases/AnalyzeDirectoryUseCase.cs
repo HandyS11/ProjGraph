@@ -48,7 +48,18 @@ public class AnalyzeDirectoryUseCase(
         var syntaxTrees = new List<SyntaxTree>();
         foreach (var file in csFiles)
         {
-            var code = await fileSystem.ReadAllTextAsync(file);
+            string code;
+            try
+            {
+                code = await fileSystem.ReadAllTextAsync(file);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // A file that becomes unreadable (deleted in-flight, permissions) must not abort
+                // the whole directory analysis; skip it.
+                continue;
+            }
+
             syntaxTrees.Add(CSharpSyntaxTree.ParseText(code, path: file));
         }
 
