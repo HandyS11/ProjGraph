@@ -52,18 +52,34 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
         var name = Path.GetFileNameWithoutExtension(projectPath);
         var relativePath = Path.GetRelativePath(fileSystem.GetCurrentDirectory(), projectPath);
 
-        // Fast extraction of properties
-        var framework = root.Properties.FirstOrDefault(p => p.Name == "TargetFramework")?.Value ??
-                        root.Properties.FirstOrDefault(p => p.Name == "TargetFrameworks")?.Value ?? "unknown";
-        var outputType = root.Properties.FirstOrDefault(p => p.Name == "OutputType")?.Value ?? "";
+        // Fast extraction of properties from the project itself (a null-or-whitespace value counts
+        // as "not defined" so it falls back to Directory.Build.props / "unknown").
+        var ownFramework = GetPropertyValue(root, "TargetFramework") ?? GetPropertyValue(root, "TargetFrameworks");
+        var ownOutputType = GetPropertyValue(root, "OutputType");
+        var ownIsTestProject = GetPropertyValue(root, "IsTestProject");
+
+        // Repos commonly set these centrally in Directory.Build.props; fall back to it (a single
+        // walk up the tree) only for the values the project does not define locally.
+        Dictionary<string, string>? inherited = null;
+        if (ownFramework is null || ownOutputType is null || ownIsTestProject is null)
+        {
+            inherited = ResolveInheritedProperties(projectPath,
+                ["TargetFramework", "TargetFrameworks", "OutputType", "IsTestProject"]);
+        }
+
+        var framework = ownFramework
+                        ?? inherited?.GetValueOrDefault("TargetFramework")
+                        ?? inherited?.GetValueOrDefault("TargetFrameworks")
+                        ?? "unknown";
+        var outputType = ownOutputType ?? inherited?.GetValueOrDefault("OutputType") ?? "";
+        var isTestProject = ownIsTestProject ?? inherited?.GetValueOrDefault("IsTestProject");
 
         var type = outputType.Contains("Exe", StringComparison.OrdinalIgnoreCase)
             ? ProjectType.Executable
             : ProjectType.Library;
 
         if (name.Contains("Test", StringComparison.OrdinalIgnoreCase) ||
-            root.Properties.Any(p =>
-                p.Name == "IsTestProject" && p.Value.Equals("true", StringComparison.OrdinalIgnoreCase)))
+            string.Equals(isTestProject, "true", StringComparison.OrdinalIgnoreCase))
         {
             type = ProjectType.Test;
         }
@@ -91,6 +107,75 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
             .ToList();
 
         return (project, projectReferences, packageReferences);
+    }
+
+    /// <summary>
+    /// Reads a single MSBuild property value from an element using a case-insensitive name match
+    /// (MSBuild property names are case-insensitive). A null-or-whitespace value is treated as
+    /// undefined and returns <see langword="null"/>.
+    /// </summary>
+    /// <param name="element">The project or props root element to read from.</param>
+    /// <param name="name">The property name.</param>
+    /// <returns>The property value, or <see langword="null"/> when unset or whitespace.</returns>
+    private static string? GetPropertyValue(ProjectRootElement element, string name)
+    {
+        var value = element.Properties
+            .FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))?.Value;
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    /// <summary>
+    /// Resolves MSBuild properties inherited from <c>Directory.Build.props</c> for a project that
+    /// does not define them locally. Walks up the directory tree from the project file, nearest
+    /// first, recording the first value found for each requested property.
+    /// </summary>
+    /// <param name="projectPath">The path to the project file.</param>
+    /// <param name="names">The property names to resolve.</param>
+    /// <returns>A map of the resolved property names to their inherited values.</returns>
+    private Dictionary<string, string> ResolveInheritedProperties(
+        string projectPath,
+        IReadOnlyCollection<string> names)
+    {
+        // Property names are matched case-insensitively (MSBuild semantics).
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
+
+        while (directory is not null && result.Count < names.Count)
+        {
+            var propsFile = Path.Combine(directory, "Directory.Build.props");
+            if (fileSystem.FileExists(propsFile))
+            {
+                try
+                {
+                    var propsRoot = ProjectRootElement.Open(propsFile);
+                    if (propsRoot is not null)
+                    {
+                        foreach (var propertyName in names)
+                        {
+                            if (result.ContainsKey(propertyName))
+                            {
+                                continue;
+                            }
+
+                            var value = GetPropertyValue(propsRoot, propertyName);
+                            if (value is not null)
+                            {
+                                result[propertyName] = value;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex) when (ex is InvalidProjectFileException or IOException
+                                               or InvalidOperationException or XmlException)
+                {
+                    // If we can't read the props file, continue searching up
+                }
+            }
+
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        return result;
     }
 
     /// <summary>

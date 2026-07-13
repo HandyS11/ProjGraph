@@ -224,6 +224,67 @@ public class ProjectParserTests
     }
 
     [Fact]
+    public void Parse_ShouldInheritFrameworkFromDirectoryBuildProps()
+    {
+        // Arrange — a repo with a central Directory.Build.props that sets TargetFramework, and a
+        // project that does not set it locally. The framework must be inherited, not "unknown".
+        using var temp = new TestDirectory();
+        File.WriteAllText(Path.Combine(temp.DirectoryPath, "Directory.Build.props"), """
+                                                                                     <Project>
+                                                                                       <PropertyGroup>
+                                                                                         <TargetFramework>net10.0</TargetFramework>
+                                                                                         <OutputType>Exe</OutputType>
+                                                                                       </PropertyGroup>
+                                                                                     </Project>
+                                                                                     """);
+        var appDir = Directory.CreateDirectory(Path.Combine(temp.DirectoryPath, "App")).FullName;
+        var projectPath = Path.Combine(appDir, "App.csproj");
+        File.WriteAllText(projectPath, """
+                                       <Project Sdk="Microsoft.NET.Sdk">
+                                         <PropertyGroup>
+                                         </PropertyGroup>
+                                       </Project>
+                                       """);
+
+        // Act
+        var (project, _, _) = _parser.Parse(projectPath);
+
+        // Assert
+        project.Framework.Should().Be("net10.0");
+        project.Type.Should().Be(ProjectType.Executable);
+    }
+
+    [Fact]
+    public void Parse_EmptyLocalFramework_WithDifferentlyCasedProps_ShouldInherit()
+    {
+        // A whitespace/empty local value counts as undefined, and MSBuild property names are
+        // case-insensitive, so a lower-cased Directory.Build.props property must still be used.
+        using var temp = new TestDirectory();
+        File.WriteAllText(Path.Combine(temp.DirectoryPath, "Directory.Build.props"), """
+                                                                                     <Project>
+                                                                                       <PropertyGroup>
+                                                                                         <targetframework>net10.0</targetframework>
+                                                                                         <outputtype>Exe</outputtype>
+                                                                                       </PropertyGroup>
+                                                                                     </Project>
+                                                                                     """);
+        var appDir = Directory.CreateDirectory(Path.Combine(temp.DirectoryPath, "App")).FullName;
+        var projectPath = Path.Combine(appDir, "App.csproj");
+        File.WriteAllText(projectPath, """
+                                       <Project Sdk="Microsoft.NET.Sdk">
+                                         <PropertyGroup>
+                                           <TargetFramework>   </TargetFramework>
+                                         </PropertyGroup>
+                                       </Project>
+                                       """);
+
+        var (project, _, _) = _parser.Parse(projectPath);
+
+        project.Framework.Should().Be("net10.0");
+        project.Type.Should().Be(ProjectType.Executable);
+    }
+
+    [Fact]
     public void Parse_ShouldReturnUnknownFrameworkWhenNotSpecified()
     {
         // Arrange
