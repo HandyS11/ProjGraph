@@ -53,6 +53,35 @@ public sealed class SymbolResolverTests
     }
 
     [Fact]
+    public async Task ResolveRelatedSymbolAsync_MetadataSymbol_ShouldAddExternalTypeWithoutSearching()
+    {
+        // A non-error symbol that is not in source was resolved from a referenced assembly.
+        // There is nothing to discover in the workspace, and a scan could rebind the type to an
+        // unrelated source type sharing the same simple name.
+        var compilation = RoslynTestHelper.CreateCompilation(
+            """
+            using Microsoft.Win32.SafeHandles;
+            namespace MyApp;
+            public class Holder { public SafeFileHandle? Handle { get; set; } }
+            """);
+        var holder = RoslynTestHelper.GetTypeSymbol(compilation, "Holder")!;
+        var handleSymbol = (INamedTypeSymbol)holder.GetMembers().OfType<IPropertySymbol>()
+            .First(p => p.Name == "Handle").Type;
+        handleSymbol.TypeKind.Should().NotBe(Microsoft.CodeAnalysis.TypeKind.Error,
+            "the test requires a resolved metadata symbol");
+        var sut = new SymbolResolver(_discovery, _fileSystem);
+        var context = CreateContext(compilation);
+        _discovery.FindTypeDefinitionFileAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult<string?>(null));
+
+        var resolved = await sut.ResolveRelatedSymbolAsync(handleSymbol, context);
+
+        resolved.Should().BeNull();
+        context.Types.Should().ContainSingle(t => t.Name == "SafeFileHandle");
+        await _discovery.DidNotReceive().FindTypeDefinitionFileAsync(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
     public async Task ResolveRelatedSymbolAsync_RepeatedUnresolvedType_ShouldSearchWorkspaceOnce()
     {
         // Multiple references to the same unresolved external type within one analysis run must
