@@ -45,8 +45,11 @@ internal static class Program
         builder.Services.AddSingleton<DiagramResourceCache>();
         builder.Services.AddSingleton<WorkspaceRootService>();
 
-        // Override IOutputConsole with a no-op to prevent ANSI markup on stdout (JSON-RPC transport)
-        builder.Services.AddSingleton<IOutputConsole, NullOutputConsole>();
+        // Override IOutputConsole with a warning-collecting console: it never writes to stdout
+        // (reserved for the JSON-RPC transport) but captures skip/partial-analysis warnings so the
+        // tools can surface them in their results instead of silently discarding them.
+        builder.Services.AddSingleton<CollectingOutputConsole>();
+        builder.Services.AddSingleton<IOutputConsole>(sp => sp.GetRequiredService<CollectingOutputConsole>());
 
         builder.Services.AddSingleton<DiagramRenderers>(sp => new DiagramRenderers(
             sp.GetRequiredService<MermaidGraphRenderer>(),

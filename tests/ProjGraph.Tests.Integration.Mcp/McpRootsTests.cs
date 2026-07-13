@@ -114,6 +114,22 @@ public sealed class McpRootsTests : IDisposable
     }
 
     [Fact]
+    public void InvalidateRoots_ResetsStatusToUnknown()
+    {
+        // A roots/list_changed notification must invalidate the cached roots so the next
+        // resolution re-fetches them.
+        var service = new WorkspaceRootService(new PhysicalFileSystem());
+        var statusField = typeof(WorkspaceRootService)
+            .GetField("_status", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var statusEnum = typeof(WorkspaceRootService).GetNestedType("RootsStatusKind", BindingFlags.NonPublic)!;
+        statusField.SetValue(service, Enum.ToObject(statusEnum, 2)); // Ready
+
+        service.InvalidateRoots();
+
+        statusField.GetValue(service)!.ToString().Should().Be("Unknown");
+    }
+
+    [Fact]
     public void AbsolutePath_IsFullyQualified()
     {
         var absolutePath = Path.Combine(Path.GetTempPath(), "MySolution.slnx");
@@ -213,11 +229,11 @@ public sealed class McpRootsTests : IDisposable
     }
 
     [Fact]
-    public void Dispose_ShouldReleaseSemaphore_WithoutThrowing()
+    public async Task DisposeAsync_ShouldReleaseSemaphore_WithoutThrowing()
     {
         var service = new WorkspaceRootService(new PhysicalFileSystem());
-        var act = service.Dispose;
-        act.Should().NotThrow();
+        var act = async () => await service.DisposeAsync();
+        await act.Should().NotThrowAsync();
     }
 
     private static void SetRoots(WorkspaceRootService service, IEnumerable<string> roots)

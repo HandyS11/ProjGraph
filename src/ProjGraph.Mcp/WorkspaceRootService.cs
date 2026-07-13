@@ -6,11 +6,13 @@ using System.Reflection;
 
 namespace ProjGraph.Mcp;
 
-internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IDisposable
+internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private volatile RootsStatusKind _status = RootsStatusKind.Unknown;
     private List<string> _rootPaths = [];
+    private bool _notificationHandlerRegistered;
+    private IAsyncDisposable? _rootsChangedRegistration;
 
     private enum RootsStatusKind
     {
@@ -114,6 +116,37 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IDisposable
                && !relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Invalidates the cached roots so the next resolution re-fetches them. Called when the client
+    /// sends a <c>notifications/roots/list_changed</c> notification.
+    /// </summary>
+    internal void InvalidateRoots()
+    {
+        _status = RootsStatusKind.Unknown;
+    }
+
+    /// <summary>
+    /// Registers, once, a handler for the client's <c>roots/list_changed</c> notification so a
+    /// mid-session change to the workspace roots invalidates the cached set.
+    /// </summary>
+    /// <param name="server">The MCP server used to register the notification handler.</param>
+    private void EnsureRootsChangedHandler(McpServer server)
+    {
+        if (_notificationHandlerRegistered)
+        {
+            return;
+        }
+
+        _notificationHandlerRegistered = true;
+        _rootsChangedRegistration = server.RegisterNotificationHandler(
+            NotificationMethods.RootsListChangedNotification,
+            (_, _) =>
+            {
+                InvalidateRoots();
+                return default;
+            });
+    }
+
     internal async Task RefreshRootsAsync(McpServer server, CancellationToken ct)
     {
         var result = await server.RequestRootsAsync(new ListRootsRequestParams(), ct);
@@ -151,6 +184,7 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IDisposable
                 return;
             }
 
+            EnsureRootsChangedHandler(server);
             await RefreshRootsAsync(server, ct);
         }
         finally
@@ -201,8 +235,12 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IDisposable
         return null;
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _initLock.Dispose();
+        if (_rootsChangedRegistration is not null)
+        {
+            await _rootsChangedRegistration.DisposeAsync();
+        }
     }
 }
