@@ -113,6 +113,33 @@ public sealed class RelationshipAnalyzerTests
     }
 
     [Fact]
+    public void AddDependencyRelationships_ArrayProperty_ShouldAddAssociationWithStarCardinality()
+    {
+        // An array-typed member is a collection, exactly like List<T>, and must produce an
+        // association to its element type with '*' cardinality (not be silently dropped).
+        const string code = """
+                            namespace Test;
+                            public class Item { }
+                            public class Order
+                            {
+                                public Item[] Items { get; set; }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Order")!;
+        var related =
+            new List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>();
+
+        RelationshipAnalyzer.AddDependencyRelationships(symbol, related);
+
+        related.Should().Contain(r =>
+            r.Kind == RelationshipKind.Association &&
+            r.Symbol.Name == "Item" &&
+            r.Label == "Items" &&
+            r.Cardinality == "*");
+    }
+
+    [Fact]
     public void AddDependencyRelationships_Enum_ShouldReturnEmpty()
     {
         const string code = """

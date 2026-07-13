@@ -150,8 +150,10 @@ public class MermaidClassDiagramRendererTests
 
         var result = _renderer.Render(model);
 
-        result.Should().Contain("Models_User \"1\" --> Models_Address : PrimaryAddress");
-        result.Should().Contain("Models_User \"*\" --> Models_Address : ShippingAddresses");
+        // Multiplicity belongs on the target (owned) end: a User has many Addresses,
+        // so the '*' sits next to Address, not next to User.
+        result.Should().Contain("Models_User --> \"1\" Models_Address : PrimaryAddress");
+        result.Should().Contain("Models_User --> \"*\" Models_Address : ShippingAddresses");
     }
 
     [Fact]
