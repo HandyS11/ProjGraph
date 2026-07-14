@@ -44,6 +44,14 @@ public sealed class EfErdGoldenTests
         var actual = EfGoldenRunner.RenderContext(absolute, contextName);
         EfGoldenRunner.Verify(goldenName, actual);
     }
+
+    [Fact]
+    public void SnapshotErd_MatchesGolden()
+    {
+        var actual = EfGoldenRunner.RenderSnapshot(
+            FixturePath("JournalSnapshot.cs"), "JournalContextModelSnapshot");
+        EfGoldenRunner.Verify("fixture-snapshot", actual);
+    }
 }
 
 /// <summary>
@@ -57,21 +65,38 @@ internal static class EfGoldenRunner
 
     public static string RenderContext(string samplePath, string? contextName)
     {
-        var fs = new PhysicalFileSystem();
-        var analyzer = new EfModelAnalyzer(new CompilationFactory(), fs, new EntityFileDiscovery(fs));
-        var service = new EfAnalysisService(
-            new AnalyzeContextUseCase(analyzer),
-            new DiscoverContextsUseCase(analyzer, fs),
-            new AnalyzeSnapshotUseCase(analyzer),
-            new DiscoverSnapshotsUseCase(analyzer, fs));
+        var service = CreateService();
 
 #pragma warning disable VSTHRD002 // Deliberate sync-over-async bridge: harness API is pinned to a synchronous
         // signature (see task brief); no SynchronizationContext deadlock risk under xUnit.
         var model = service.AnalyzeContextAsync(samplePath, contextName).GetAwaiter().GetResult();
 #pragma warning restore VSTHRD002
-        var rendered = new MermaidErdRenderer().Render(model, new DiagramOptions(true, false));
-        return Normalize(rendered);
+        return Render(model);
     }
+
+    public static string RenderSnapshot(string snapshotPath, string? snapshotName)
+    {
+        var service = CreateService();
+
+#pragma warning disable VSTHRD002 // Same deliberate sync-over-async bridge as RenderContext.
+        var model = service.AnalyzeSnapshotAsync(snapshotPath, snapshotName).GetAwaiter().GetResult();
+#pragma warning restore VSTHRD002
+        return Render(model);
+    }
+
+    private static EfAnalysisService CreateService()
+    {
+        var fs = new PhysicalFileSystem();
+        var analyzer = new EfModelAnalyzer(new CompilationFactory(), fs, new EntityFileDiscovery(fs));
+        return new EfAnalysisService(
+            new AnalyzeContextUseCase(analyzer),
+            new DiscoverContextsUseCase(analyzer, fs),
+            new AnalyzeSnapshotUseCase(analyzer),
+            new DiscoverSnapshotsUseCase(analyzer, fs));
+    }
+
+    private static string Render(EfModel model)
+        => Normalize(new MermaidErdRenderer().Render(model, new DiagramOptions(true, false)));
 
     public static void Verify(string goldenName, string actual)
     {

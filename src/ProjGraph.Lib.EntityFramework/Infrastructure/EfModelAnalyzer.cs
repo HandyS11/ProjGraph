@@ -7,7 +7,6 @@ using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Extensions;
-using ProjGraph.Lib.EntityFramework.Infrastructure.Patterns;
 
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
@@ -456,40 +455,23 @@ public class EfModelAnalyzer(
     }
 
     /// <summary>
-    /// Extracts entity type names from a ModelSnapshot class by parsing the BuildModel method.
+    /// Extracts entity type names from a ModelSnapshot class by walking the syntax of its BuildModel
+    /// method for <c>Entity&lt;T&gt;()</c> / <c>Entity("Ns.T")</c> invocations.
     /// </summary>
     /// <param name="snapshotClass">The <see cref="ClassDeclarationSyntax"/> of the ModelSnapshot class.</param>
     /// <returns>A <see cref="HashSet{T}"/> containing the names of all entities found in the snapshot.</returns>
-    /// <seealso cref="MethodDeclarationSyntax"/>
-    /// <seealso cref="EfAnalysisConstants.EfMethods.BuildModel"/>
-    /// <seealso cref="EfAnalysisRegexPatterns.EntityMatchRegex"/>
+    /// <seealso cref="FluentEntityWalker.CollectEntityNames(MethodDeclarationSyntax)"/>
     private static HashSet<string> ExtractEntityTypeNamesFromSnapshot(ClassDeclarationSyntax snapshotClass)
     {
-        var entityTypeNames = new HashSet<string>();
         var buildModelMethod = snapshotClass.Members.OfType<MethodDeclarationSyntax>()
             .FirstOrDefault(m => m.Identifier.Text == EfAnalysisConstants.EfMethods.BuildModel);
 
-        if (buildModelMethod?.Body == null)
+        if (buildModelMethod is null || (buildModelMethod.Body is null && buildModelMethod.ExpressionBody is null))
         {
-            return entityTypeNames;
+            return [];
         }
 
-        var methodText = buildModelMethod.ToString();
-
-        // Match .Entity<T> or .Entity("Namespace.T")
-        var entityMatches = EfAnalysisRegexPatterns.EntityMatchRegex().Matches(methodText);
-
-        var shortNames = entityMatches
-            .Select(match => match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value)
-            .Where(fullName => !string.IsNullOrEmpty(fullName))
-            .Select(fullName => fullName.Contains('.', StringComparison.Ordinal) ? fullName.Split('.')[^1] : fullName);
-
-        foreach (var shortName in shortNames)
-        {
-            entityTypeNames.Add(shortName);
-        }
-
-        return entityTypeNames;
+        return FluentEntityWalker.CollectEntityNames(buildModelMethod);
     }
 
     /// <summary>

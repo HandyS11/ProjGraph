@@ -218,19 +218,10 @@ public static class EfAnalysisConstants
     }
 
     /// <summary>
-    /// Contains constant values for regex patterns used in Fluent API parsing.
+    /// Contains constant values for regex patterns used when parsing SQL type strings.
     /// </summary>
     internal static class FluentApiPatterns
     {
-        public const string EntityPattern = """Entity(?:<([^>]+)>|\("([^"]+)"(?:,\s*[^)]+)?\))""";
-        public const string EntitySplitPattern = @"\.Entity(?=[<(])";
-        public const string EntityMatchPattern = """\.Entity\s*(?:<([^>]+)>|\(\s*"([^"]+)"\s*)""";
-        public const string ShadowRelationshipPattern = @"(HasOne|HasMany)<(\w+)>\(\s*\)\s*\.(WithOne|WithMany)\(\s*\)";
-        public const string LambdaPropertyPattern = @"^\s*\(?\s*(\w+)\s*\)?\s*=>\s*\1\.(\w+)\s*$";
-        public const string MethodCallPattern = @"\.(\w+(?:<[^>]+>)?)\(([^()]*(?:\([^()]*\)[^()]*)*)\)";
-        public const string ToTablePattern = """\.ToTable\(\"([^\"]+)\"\)""";
-        public const string StringLiteralPattern = "\"([^\"]+)\"";
-        public const string MethodNamePattern = @"\.\s*(\w+)";
         public const string NumericArgumentPattern = @"\((\d+)\)";
     }
 }

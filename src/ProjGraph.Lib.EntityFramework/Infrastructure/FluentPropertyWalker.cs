@@ -3,17 +3,18 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
+using ProjGraph.Lib.EntityFramework.Infrastructure.Patterns;
 
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
 /// <summary>
-/// Walks the Fluent API invocation chains of a configuring method (OnModelCreating) directly on the
-/// C# syntax tree to discover per-property configuration
+/// Walks the Fluent API invocation chains of a configuring method (OnModelCreating or a snapshot's
+/// BuildModel) directly on the C# syntax tree to discover per-property configuration
 /// (<c>Property</c>/<c>HasKey</c>/<c>IsRequired</c>/<c>HasMaxLength</c>/<c>HasPrecision</c>/
-/// <c>HasColumnType</c>/<c>HasDefaultValue</c>/<c>HasDefaultValueSql</c>), replacing the text/regex based
-/// <see cref="PropertyConfigParser"/> for the DbContext path. The receiver expression of each chain
-/// determines the owning entity, so configuration never leaks between unrelated statements or into
-/// nested owned-type / join-entity builder lambdas.
+/// <c>HasColumnType</c>/<c>HasDefaultValue</c>/<c>HasDefaultValueSql</c>), having replaced the retired
+/// text/regex property parser. The receiver expression of each chain determines the owning entity, so
+/// configuration never leaks between unrelated statements or into nested owned-type / join-entity
+/// builder lambdas.
 /// </summary>
 internal static class FluentPropertyWalker
 {
@@ -21,8 +22,7 @@ internal static class FluentPropertyWalker
     /// Fluent methods that open a nested builder lambda for a *different* target (an owned type or a
     /// join entity). <c>Property</c>/<c>HasKey</c> calls inside their argument lists configure that
     /// nested builder, not the outer entity, and are out of scope for this slice (owned types and join
-    /// entities are handled in Slice 3). This mirrors the regex parser, whose single-level argument
-    /// capture absorbed such nested calls so they were never applied to the outer entity.
+    /// entities are handled in Slice 3).
     /// </summary>
     private static readonly HashSet<string> NestedBuilderScopes = new(StringComparer.Ordinal)
     {
@@ -118,12 +118,12 @@ internal static class FluentPropertyWalker
         }
 
         var type = GenericTypeArgumentName(propertyRoot) ?? "";
-        var current = FluentApiParsingUtilities.GetOrCreateProperty(entity, propertyName, type);
+        var current = EfPropertyFactory.GetOrCreateProperty(entity, propertyName, type);
 
         foreach (var (name, invocation) in TrailingCalls(propertyRoot))
         {
             var argText = invocation.ArgumentList.Arguments.ToString();
-            var updated = PropertyConfigParser.ApplyConfiguration(current, name, argText, compilation);
+            var updated = ApplyConfiguration(current, name, argText, compilation);
             if (ReferenceEquals(updated, current))
             {
                 continue;
@@ -153,7 +153,7 @@ internal static class FluentPropertyWalker
 
         foreach (var propertyName in KeyPropertyNames(keyRoot))
         {
-            var property = FluentApiParsingUtilities.GetOrCreateProperty(entity, propertyName, "");
+            var property = EfPropertyFactory.GetOrCreateProperty(entity, propertyName, "");
             var updated = EfPropertyFactory.CopyWith(property, new EfPropertyOverrides { IsPrimaryKey = true });
             ReplaceProperty(entity, property, updated);
         }
@@ -322,4 +322,104 @@ internal static class FluentPropertyWalker
     /// <param name="value">The dotted name.</param>
     private static string LastSegment(string value)
         => value.Contains('.', StringComparison.Ordinal) ? value.Split('.')[^1] : value;
+
+    /// <summary>
+    /// Applies a single property-configuration call to a property, dispatching on the fluent method name;
+    /// returns the same instance for unrecognized methods (e.g. generated-snapshot noise such as
+    /// <c>ValueGeneratedOnAdd</c> or <c>HasAnnotation</c>).
+    /// </summary>
+    /// <param name="property">The property to configure.</param>
+    /// <param name="configMethod">The configuration method name (e.g. <c>HasMaxLength</c>).</param>
+    /// <param name="configArg">The raw argument text captured between the call's parentheses.</param>
+    /// <param name="compilation">The Roslyn compilation for constant/enum resolution.</param>
+    private static EfProperty ApplyConfiguration(EfProperty property, string configMethod, string configArg,
+        Compilation compilation)
+    {
+        return configMethod switch
+        {
+            EfAnalysisConstants.EfMethods.IsRequired => ApplyIsRequiredConfiguration(property, configArg),
+            EfAnalysisConstants.EfMethods.HasMaxLength => ApplyMaxLengthConfiguration(property, configArg),
+            EfAnalysisConstants.EfMethods.HasPrecision => ApplyPrecisionConfiguration(property, configArg),
+            EfAnalysisConstants.EfMethods.HasColumnType => ApplyColumnTypeConfiguration(property, configArg),
+            EfAnalysisConstants.EfMethods.HasDefaultValue => DefaultValueResolver.CreateWithDefaultValue(property,
+                configArg, compilation),
+            EfAnalysisConstants.EfMethods.HasDefaultValueSql => DefaultValueResolver.CreateWithDefaultValueSql(
+                property, configArg),
+            _ => property
+        };
+    }
+
+    private static EfProperty ApplyIsRequiredConfiguration(EfProperty property, string configArg)
+    {
+        var isRequired = string.IsNullOrEmpty(configArg) ||
+                         configArg.Equals("true", StringComparison.OrdinalIgnoreCase);
+        return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+        {
+            IsRequired = isRequired,
+            IsExplicitlyRequired = isRequired || property.IsExplicitlyRequired
+        });
+    }
+
+    private static EfProperty ApplyMaxLengthConfiguration(EfProperty property, string configArg)
+    {
+        if (int.TryParse(configArg, out var maxLen))
+        {
+            return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+            {
+                MaxLength = maxLen
+            });
+        }
+
+        return property;
+    }
+
+    /// <summary>
+    /// Configures the column type for a property, inferring max length from column type definition if needed.
+    /// </summary>
+    /// <param name="property">The property to configure.</param>
+    /// <param name="configArg">The column type argument.</param>
+    private static EfProperty ApplyColumnTypeConfiguration(EfProperty property, string configArg)
+    {
+        if (property.MaxLength is not null)
+        {
+            return property;
+        }
+
+        var match = EfAnalysisRegexPatterns.NumberInParensRegex().Match(configArg);
+        if (match.Success && int.TryParse(match.Groups[1].Value, out var len))
+        {
+            return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+            {
+                MaxLength = len
+            });
+        }
+
+        return property;
+    }
+
+    /// <summary>
+    /// Creates a new property with the specified precision and scale.
+    /// </summary>
+    /// <param name="property">The source property.</param>
+    /// <param name="configArg">The precision/scale argument string.</param>
+    private static EfProperty ApplyPrecisionConfiguration(EfProperty property, string configArg)
+    {
+        var precisionArgs = configArg.Split(',');
+        if (precisionArgs.Length < 1 || !int.TryParse(precisionArgs[0].Trim(), out var precision))
+        {
+            return property;
+        }
+
+        int? scale = null;
+        if (precisionArgs.Length >= 2 && int.TryParse(precisionArgs[1].Trim(), out var s))
+        {
+            scale = s;
+        }
+
+        return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+        {
+            Precision = precision,
+            Scale = scale ?? property.Scale
+        });
+    }
 }

@@ -1,0 +1,21 @@
+---
+title: JournalContext
+---
+erDiagram
+  Entry {
+    int Id PK
+    int JournalId FK
+    decimal Score "precision(18,2)"
+    string Title "required"
+  }
+  Journal {
+    int Id PK
+    string Name "required, max:200"
+    string Rating "default:N'unrated"
+  }
+  ShipmentItem {
+    int OrderId PK
+    int ProductId PK
+    int Quantity
+  }
+  Journal ||--o{ Entry : ""

@@ -9,7 +9,7 @@ namespace ProjGraph.Tests.Unit.EntityFramework;
 
 /// <summary>
 /// Unit tests for <see cref="FluentPropertyWalker"/>: the Roslyn fluent-chain property/key walker that
-/// replaces the regex <c>PropertyConfigParser</c> on the DbContext path.
+/// replaced the retired regex property parser.
 /// </summary>
 [Trait("Category", "EntityFramework")]
 public sealed class FluentPropertyWalkerTests
@@ -366,5 +366,66 @@ public sealed class FluentPropertyWalkerTests
         FluentPropertyWalker.Apply(method, entities, compilation);
 
         Property(entities, "Widget", "Name").MaxLength.Should().BeNull();
+    }
+
+    [Fact]
+    public void Apply_SnapshotStringForm_UsesGenericTypeAndAppliesChain()
+    {
+        // The generated-ModelSnapshot shape: string entity, Property<T>("name") with generic type and
+        // string-literal name, unknown generated calls (ValueGeneratedOnAdd) as no-ops in the chain.
+        const string source = """
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity("SnapFx.Journal", b =>
+                    {
+                        b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("int");
+                        b.Property<string>("Name").IsRequired().HasMaxLength(200);
+                        b.HasKey("Id");
+                    });
+                }
+            }
+            """;
+        var (method, compilation, entities) = Build(source);
+        entities["Journal"] = new EfEntity { Name = "Journal" };
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        var id = Property(entities, "Journal", "Id");
+        id.Type.Should().Be("int");
+        id.IsPrimaryKey.Should().BeTrue();
+        var name = Property(entities, "Journal", "Name");
+        name.Type.Should().Be("string");
+        name.IsRequired.Should().BeTrue();
+        name.MaxLength.Should().Be(200);
+    }
+
+    [Fact]
+    public void Apply_HasKeyStringLiterals_MarksCompositePrimaryKey()
+    {
+        const string source = """
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity("SnapFx.ShipmentItem", b =>
+                    {
+                        b.Property<int>("OrderId");
+                        b.Property<int>("ProductId");
+                        b.HasKey("OrderId", "ProductId");
+                    });
+                }
+            }
+            """;
+        var (method, compilation, entities) = Build(source);
+        entities["ShipmentItem"] = new EfEntity { Name = "ShipmentItem" };
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        entities["ShipmentItem"].Properties.Should().HaveCount(2);
+        Property(entities, "ShipmentItem", "OrderId").IsPrimaryKey.Should().BeTrue();
+        Property(entities, "ShipmentItem", "ProductId").IsPrimaryKey.Should().BeTrue();
+        entities["ShipmentItem"].Properties.Should().NotContain(p => p.Name.Contains(','));
     }
 }
