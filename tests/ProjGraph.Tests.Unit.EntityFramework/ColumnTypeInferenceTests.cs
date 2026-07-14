@@ -82,4 +82,17 @@ public class ColumnTypeInferenceTests
         property.Type.Should().Be("string");
         property.MaxLength.Should().Be(200);
     }
+
+    [Theory]
+    [InlineData("decimal(18)")]
+    [InlineData("numeric(18)")]
+    [InlineData("float(24)")]
+    public async Task HasColumnType_SingleArgNumericColumn_DoesNotSetMaxLength(string columnType)
+    {
+        // The number in a numeric column type is precision, not string length; it must never be
+        // recorded as MaxLength, which is only meaningful for string columns.
+        var property = await AnalyzePropertyAsync("Amount", columnType);
+
+        property.MaxLength.Should().BeNull();
+    }
 }

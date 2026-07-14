@@ -279,9 +279,13 @@ internal static class FluentPropertyWalker
                 Scale = scale
             });
         }
-        else if (updated.MaxLength is null)
+        else if (updated.MaxLength is null &&
+                 updated.Type.Equals(EfAnalysisConstants.DataTypes.StringTypeName,
+                     StringComparison.OrdinalIgnoreCase))
         {
-            // Sized string column types such as nvarchar(200): capture max length.
+            // Max length is only meaningful for string columns (e.g. nvarchar(200)). For numeric
+            // column types the number in parentheses is precision, not length, so it must never be
+            // recorded as MaxLength.
             var lengthMatch = EfAnalysisRegexPatterns.NumberInParensRegex().Match(configArg);
             if (lengthMatch.Success && int.TryParse(lengthMatch.Groups[1].Value, out var len))
             {
