@@ -321,4 +321,50 @@ public sealed class FluentPropertyWalkerTests
 
         Property(entities, "Account", "LegacyId").IsPrimaryKey.Should().BeTrue();
     }
+
+    [Fact]
+    public void Apply_AmbientEntity_RoutesBareBuilderChainToAmbient()
+    {
+        // A config class's Configure(EntityTypeBuilder<Widget> builder) body: chains are rooted at the
+        // bare `builder` parameter with no Entity<T>() call, so the owning entity is the ambient T.
+        const string source = """
+            public class Widget { public int Id { get; set; } public string Name { get; set; } = ""; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic builder)
+                {
+                    builder.HasKey(w => w.Id);
+                    builder.Property(w => w.Name).IsRequired().HasMaxLength(120);
+                }
+            }
+            """;
+        var (method, compilation, entities) = Build(source, "Widget");
+
+        FluentPropertyWalker.Apply(method, entities, compilation, ambientEntity: "Widget");
+
+        var name = Property(entities, "Widget", "Name");
+        name.IsRequired.Should().BeTrue();
+        name.MaxLength.Should().Be(120);
+        Property(entities, "Widget", "Id").IsPrimaryKey.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Apply_NoAmbient_BareBuilderChainAppliesNothing()
+    {
+        const string source = """
+            public class Widget { public int Id { get; set; } public string Name { get; set; } = ""; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic builder)
+                {
+                    builder.Property(w => w.Name).HasMaxLength(120);
+                }
+            }
+            """;
+        var (method, compilation, entities) = Build(source, "Widget");
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        Property(entities, "Widget", "Name").MaxLength.Should().BeNull();
+    }
 }

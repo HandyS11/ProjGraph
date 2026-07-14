@@ -348,4 +348,48 @@ public sealed class FluentRelationshipWalkerTests
         rel.Type.Should().Be(EfRelationshipType.OneToMany);
         entities["Blog"].Properties.Should().Contain(p => p.Name == "OwnerId" && p.IsForeignKey);
     }
+
+    [Fact]
+    public void Apply_AmbientEntity_RoutesBareBuilderRelationshipToAmbient()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            public class Blog { public int Id { get; set; } public List<Post> Posts { get; set; } = new(); }
+            public class Post { public int Id { get; set; } public Blog Blog { get; set; } = null!; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic builder)
+                {
+                    builder.HasMany(b => b.Posts).WithOne(p => p.Blog);
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Blog", "Post");
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation, ambientEntity: "Blog");
+
+        model.Relationships.Should().ContainSingle(r => r.SourceEntity == "Blog" && r.TargetEntity == "Post");
+    }
+
+    [Fact]
+    public void Apply_NoAmbient_BareBuilderRelationshipAddsNothing()
+    {
+        const string source = """
+            using System.Collections.Generic;
+            public class Blog { public int Id { get; set; } public List<Post> Posts { get; set; } = new(); }
+            public class Post { public int Id { get; set; } public Blog Blog { get; set; } = null!; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic builder)
+                {
+                    builder.HasMany(b => b.Posts).WithOne(p => p.Blog);
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Blog", "Post");
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        model.Relationships.Should().BeEmpty();
+    }
 }

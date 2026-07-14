@@ -225,4 +225,45 @@ public sealed class FluentEntityWalkerTests
         entities["ProductSupplier"].TableName.Should().Be("product_supplier");
         model.Entities.Single(e => e.Name == "ProductSupplier").TableName.Should().Be("product_supplier");
     }
+
+    [Fact]
+    public void Apply_AmbientEntity_RoutesBareBuilderToTableToAmbient()
+    {
+        const string source = """
+            public class Widget { public int Id { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic builder)
+                {
+                    builder.ToTable("widgets");
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Widget");
+
+        FluentEntityWalker.Apply(method, entities, model, compilation, ambientEntity: "Widget");
+
+        entities["Widget"].TableName.Should().Be("widgets");
+        model.Entities.Single(e => e.Name == "Widget").TableName.Should().Be("widgets");
+    }
+
+    [Fact]
+    public void Apply_NoAmbient_BareBuilderToTableSetsNothing()
+    {
+        const string source = """
+            public class Widget { public int Id { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic builder)
+                {
+                    builder.ToTable("widgets");
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Widget");
+
+        FluentEntityWalker.Apply(method, entities, model, compilation);
+
+        entities["Widget"].TableName.Should().BeEmpty();
+    }
 }
