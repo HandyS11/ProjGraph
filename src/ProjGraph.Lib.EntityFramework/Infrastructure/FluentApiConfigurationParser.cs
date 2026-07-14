@@ -34,40 +34,29 @@ public static class FluentApiConfigurationParser
             return;
         }
 
-        // Context path: parse table config and materialize fluent-only entities from text (Slice 3 still
-        // handles ToTable/owned/join), but derive property config, primary keys, relationships, and
-        // foreign keys from the Roslyn syntax walkers instead of the regex parsers.
-        ApplyConstraintsFromMethod(
-            methodSyntax, entities, model, compilation, includeRelationships: false, includeProperties: false);
+        // Context path: every concern now flows through the Roslyn syntax walkers. FluentEntityWalker
+        // materializes fluent-only entities and applies ToTable; FluentPropertyWalker derives property
+        // config + primary keys; FluentRelationshipWalker derives relationships + foreign keys. The regex
+        // ApplyConstraintsFromMethod path is used only by the snapshot path now (retired in Slice 6).
+        FluentEntityWalker.Apply(methodSyntax, entities, model, compilation);
         FluentPropertyWalker.Apply(methodSyntax, entities, compilation);
         FluentRelationshipWalker.Apply(methodSyntax, entities, model, compilation);
     }
 
     /// <summary>
     /// Applies Fluent API constraints from a specific method (e.g., OnModelCreating or BuildModel)
-    /// to the specified Entity Framework model.
+    /// to the specified Entity Framework model. Used by the snapshot path; the context path uses the
+    /// Roslyn syntax walkers instead.
     /// </summary>
     /// <param name="methodSyntax">The method declaration syntax to parse.</param>
     /// <param name="entities">The dictionary of entities in the model.</param>
     /// <param name="model">The EF model to apply constraints to.</param>
     /// <param name="compilation">The Roslyn compilation for symbol resolution.</param>
-    /// <param name="includeRelationships">
-    /// When <see langword="true"/> (the default, used by the snapshot path), relationships are parsed via
-    /// <see cref="RelationshipConfigParser"/>. The context path passes <see langword="false"/> and derives
-    /// relationships from <see cref="FluentRelationshipWalker"/> instead.
-    /// </param>
-    /// <param name="includeProperties">
-    /// When <see langword="true"/> (the default, used by the snapshot path), property and key config is
-    /// parsed via <see cref="PropertyConfigParser"/>. The context path passes <see langword="false"/> and
-    /// derives it from <see cref="FluentPropertyWalker"/> instead.
-    /// </param>
     public static void ApplyConstraintsFromMethod(
         MethodDeclarationSyntax methodSyntax,
         Dictionary<string, EfEntity> entities,
         EfModel model,
-        Compilation compilation,
-        bool includeRelationships = true,
-        bool includeProperties = true)
+        Compilation compilation)
     {
         // Accept both block-bodied ({ ... }) and expression-bodied (=> ...) methods; ToString()
         // includes the expression body text in either case.
@@ -82,8 +71,7 @@ public static class FluentApiConfigurationParser
         // Skip the first part (before the first .Entity)
         for (var i = 1; i < entityConfigSections.Length; i++)
         {
-            ProcessEntityConfigSection(
-                entityConfigSections[i], entities, model, compilation, includeRelationships, includeProperties);
+            ProcessEntityConfigSection(entityConfigSections[i], entities, model, compilation);
         }
     }
 
@@ -101,9 +89,7 @@ public static class FluentApiConfigurationParser
         string sectionContent,
         Dictionary<string, EfEntity> entities,
         EfModel model,
-        Compilation compilation,
-        bool includeRelationships,
-        bool includeProperties)
+        Compilation compilation)
     {
         // Add back "Entity" which was removed by the split
         var section = EfAnalysisConstants.EfMethods.Entity + sectionContent;
@@ -115,8 +101,7 @@ public static class FluentApiConfigurationParser
             section = section[..entityConfigEnd];
         }
 
-        var shadowRelationships = ParseEntityConfiguration(
-            section, entities, model, compilation, includeRelationships, includeProperties);
+        var shadowRelationships = ParseEntityConfiguration(section, entities, model, compilation);
         AddUniqueRelationships(shadowRelationships, model);
     }
 
@@ -137,9 +122,7 @@ public static class FluentApiConfigurationParser
         string configSection,
         Dictionary<string, EfEntity> entities,
         EfModel model,
-        Compilation compilation,
-        bool includeRelationships,
-        bool includeProperties)
+        Compilation compilation)
     {
         var shadowRelationships = new List<EfRelationship>();
 
@@ -182,17 +165,10 @@ public static class FluentApiConfigurationParser
             }
         }
 
-        if (includeRelationships)
-        {
-            RelationshipConfigParser.ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
-            RelationshipConfigParser.ParseExplicitRelationships(configSection, entityName, entities, shadowRelationships,
-                compilation);
-        }
-
-        if (includeProperties)
-        {
-            PropertyConfigParser.ParsePropertyConfigurations(configSection, entity, compilation);
-        }
+        RelationshipConfigParser.ParseShadowRelationships(configSection, entityName, entities, shadowRelationships);
+        RelationshipConfigParser.ParseExplicitRelationships(configSection, entityName, entities, shadowRelationships,
+            compilation);
+        PropertyConfigParser.ParsePropertyConfigurations(configSection, entity, compilation);
 
         // Parse table mapping
         var tableMatch = EfAnalysisRegexPatterns.ToTableRegex().Match(configSection);
