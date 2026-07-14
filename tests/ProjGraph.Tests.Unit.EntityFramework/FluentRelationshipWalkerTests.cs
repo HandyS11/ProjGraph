@@ -392,4 +392,69 @@ public sealed class FluentRelationshipWalkerTests
 
         model.Relationships.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Apply_SnapshotStringForm_CreatesRelationshipAndMarksForeignKey()
+    {
+        // The generated-ModelSnapshot relationship pass: string target + navigation names, FK by string,
+        // OnDelete noise, explicit IsRequired() in the same chain.
+        const string source = """
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity("SnapFx.Entry", b =>
+                    {
+                        b.HasOne("SnapFx.Journal", "Journal")
+                            .WithMany("Entries")
+                            .HasForeignKey("JournalId")
+                            .OnDelete(DeleteBehavior.Cascade)
+                            .IsRequired();
+                    });
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source);
+        entities["Journal"] = new EfEntity { Name = "Journal" };
+        entities["Entry"] = new EfEntity { Name = "Entry" };
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        var rel = model.Relationships.Should().ContainSingle().Which;
+        rel.SourceEntity.Should().Be("Journal");
+        rel.TargetEntity.Should().Be("Entry");
+        rel.Type.Should().Be(EfRelationshipType.OneToMany);
+        rel.IsRequired.Should().BeTrue();
+        entities["Entry"].Properties.Should().ContainSingle(p => p.Name == "JournalId" && p.IsForeignKey);
+    }
+
+    [Fact]
+    public void Apply_IsRequiredOnSeparatePropertyChain_DoesNotAffectRelationship()
+    {
+        // Preserves the RelationshipConfigParserTests regression intent before that suite is deleted in
+        // Task 4: an IsRequired() on a *property* chain after the relationship statement must not flip
+        // the relationship's requiredness (one-to-one defaults to optional).
+        const string source = """
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity("SnapFx.Entry", b =>
+                    {
+                        b.HasOne("SnapFx.Journal", "Journal").WithOne("Entry");
+                        b.Property<string>("Note").IsRequired();
+                    });
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source);
+        entities["Journal"] = new EfEntity { Name = "Journal" };
+        entities["Entry"] = new EfEntity { Name = "Entry" };
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        var rel = model.Relationships.Should().ContainSingle().Which;
+        rel.Type.Should().Be(EfRelationshipType.OneToOne);
+        rel.IsRequired.Should().BeFalse();
+    }
 }
