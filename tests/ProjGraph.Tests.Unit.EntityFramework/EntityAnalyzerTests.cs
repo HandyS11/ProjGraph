@@ -355,4 +355,98 @@ public sealed class EntityAnalyzerTests
         // Non-nullable string property should be required
         entity.Properties.First(p => p.Name == "Title").IsRequired.Should().BeTrue();
     }
+
+    /// <summary>
+    /// Fixture-local <c>[PrimaryKey]</c>/<c>[Key]</c>/<c>[Column]</c> attributes so the semantic paths
+    /// (which read <c>AttributeClass.Name</c>) resolve without an EF Core reference.
+    /// </summary>
+    private const string DataAnnotationAttributes = """
+        using System;
+        public sealed class PrimaryKeyAttribute : Attribute
+        {
+            public PrimaryKeyAttribute(string propertyName, params string[] additionalPropertyNames) { }
+        }
+        public sealed class KeyAttribute : Attribute { }
+        public sealed class ColumnAttribute : Attribute { public string? TypeName { get; set; } }
+        """;
+
+    [Fact]
+    public void AnalyzeEntity_PrimaryKeyAttributeWithNameof_ShouldMarkCompositeKey()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation(DataAnnotationAttributes, """
+            [PrimaryKey(nameof(TenantId), nameof(Code))]
+            public class Tenant
+            {
+                public int TenantId { get; set; }
+                public string Code { get; set; } = "";
+                public string Name { get; set; } = "";
+            }
+            """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Tenant")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.Where(p => p.IsPrimaryKey).Select(p => p.Name)
+            .Should().BeEquivalentTo("TenantId", "Code");
+        entity.Properties.First(p => p.Name == "Name").IsPrimaryKey.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnalyzeEntity_PrimaryKeyAttributeWithStringLiterals_ShouldMarkCompositeKey()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation(DataAnnotationAttributes, """
+            [PrimaryKey("OrderId", "LineNumber")]
+            public class OrderLine
+            {
+                public int OrderId { get; set; }
+                public int LineNumber { get; set; }
+                public string Sku { get; set; } = "";
+            }
+            """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "OrderLine")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.Where(p => p.IsPrimaryKey).Select(p => p.Name)
+            .Should().BeEquivalentTo("OrderId", "LineNumber");
+    }
+
+    [Fact]
+    public void AnalyzeEntity_KeyAttributeOnProperty_ShouldMarkPrimaryKey()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation(DataAnnotationAttributes, """
+            public class Product
+            {
+                [Key]
+                public string Sku { get; set; } = "";
+                public string Name { get; set; } = "";
+            }
+            """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Product")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "Sku").IsPrimaryKey.Should().BeTrue();
+        entity.Properties.First(p => p.Name == "Name").IsPrimaryKey.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnalyzeEntity_ColumnTypeNameWithPrecision_ShouldExtractPrecisionAndScale()
+    {
+        var compilation = RoslynTestHelper.CreateCompilation(DataAnnotationAttributes, """
+            public class Invoice
+            {
+                public int Id { get; set; }
+                [Column(TypeName = "decimal(18,4)")]
+                public decimal Amount { get; set; }
+            }
+            """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Invoice")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        var amount = entity.Properties.First(p => p.Name == "Amount");
+        amount.Precision.Should().Be(18);
+        amount.Scale.Should().Be(4);
+    }
 }

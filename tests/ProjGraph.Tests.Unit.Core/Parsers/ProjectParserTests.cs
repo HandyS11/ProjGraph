@@ -466,4 +466,68 @@ public class ProjectParserTests
         pkgList[0].Name.Should().Be("SomePackage");
         pkgList[0].Version.Should().Be("[1.0,2.0)");
     }
+
+    [Fact]
+    public void Parse_WhenFrameworkAndOutputTypeAreInherited_ShouldResolveFromDirectoryBuildProps()
+    {
+        // Arrange: the project omits TargetFramework/OutputType locally; both are inherited from a
+        // Directory.Build.props sitting next to it.
+        using var temp = new TestDirectory();
+        temp.CreateFile("Directory.Build.props", """
+                                                 <Project>
+                                                   <PropertyGroup>
+                                                     <TargetFramework>net10.0</TargetFramework>
+                                                     <OutputType>Exe</OutputType>
+                                                   </PropertyGroup>
+                                                 </Project>
+                                                 """);
+        var tempFile = temp.CreateFile("inherited.csproj", """
+                                                            <Project Sdk="Microsoft.NET.Sdk">
+                                                              <PropertyGroup>
+                                                                <RootNamespace>Inherited</RootNamespace>
+                                                              </PropertyGroup>
+                                                            </Project>
+                                                            """);
+
+        // Act
+        var (project, _, _) = _parser.Parse(tempFile);
+
+        // Assert
+        project.Framework.Should().Be("net10.0");
+        project.Type.Should().Be(ProjectType.Executable);
+    }
+
+    [Fact]
+    public void Parse_WhenPackageVersionIsCentrallyManaged_ShouldResolveFromDirectoryPackagesProps()
+    {
+        // Arrange: Central Package Management — the PackageReference carries no Version; the version
+        // lives in a Directory.Packages.props next to the project.
+        using var temp = new TestDirectory();
+        temp.CreateFile("Directory.Packages.props", """
+                                                    <Project>
+                                                      <ItemGroup>
+                                                        <PackageVersion Include="Newtonsoft.Json" Version="13.0.5" />
+                                                      </ItemGroup>
+                                                    </Project>
+                                                    """);
+        var tempFile = temp.CreateFile("cpm.csproj", """
+                                                      <Project Sdk="Microsoft.NET.Sdk">
+                                                        <PropertyGroup>
+                                                          <TargetFramework>net10.0</TargetFramework>
+                                                        </PropertyGroup>
+                                                        <ItemGroup>
+                                                          <PackageReference Include="Newtonsoft.Json" />
+                                                        </ItemGroup>
+                                                      </Project>
+                                                      """);
+
+        // Act
+        var (_, _, packages) = _parser.Parse(tempFile);
+        var pkgList = packages.ToList();
+
+        // Assert
+        pkgList.Should().ContainSingle();
+        pkgList[0].Name.Should().Be("Newtonsoft.Json");
+        pkgList[0].Version.Should().Be("13.0.5");
+    }
 }

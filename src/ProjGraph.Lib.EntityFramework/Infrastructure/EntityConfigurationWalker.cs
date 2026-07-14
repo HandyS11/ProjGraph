@@ -54,7 +54,7 @@ internal static class EntityConfigurationWalker
                 continue;
             }
 
-            MaterializeEntity(configClass.EntityName, entities, model, compilation);
+            FluentSyntax.MaterializeEntity(configClass.EntityName, entities, model, compilation);
 
             FluentEntityWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
             FluentPropertyWalker.Apply(configClass.Configure, entities, compilation, configClass.EntityName);
@@ -70,14 +70,14 @@ internal static class EntityConfigurationWalker
         foreach (var invocation in method.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
             if (invocation.Expression is not MemberAccessExpressionSyntax ma
-                || SimpleName(ma.Name) != EfAnalysisConstants.EfMethods.ApplyConfiguration)
+                || FluentSyntax.SimpleName(ma.Name) != EfAnalysisConstants.EfMethods.ApplyConfiguration)
             {
                 continue;
             }
 
             if (invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is ObjectCreationExpressionSyntax creation)
             {
-                names.Add(TypeName(creation.Type));
+                names.Add(FluentSyntax.TypeName(creation.Type));
             }
         }
 
@@ -91,7 +91,7 @@ internal static class EntityConfigurationWalker
         return method.DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .Any(invocation => invocation.Expression is MemberAccessExpressionSyntax ma
-                               && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.ApplyConfigurationsFromAssembly);
+                               && FluentSyntax.SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.ApplyConfigurationsFromAssembly);
     }
 
     /// <summary>Enumerates every class in the compilation that implements <c>IEntityTypeConfiguration&lt;T&gt;</c> and has a <c>Configure</c> method.</summary>
@@ -135,63 +135,7 @@ internal static class EntityConfigurationWalker
             return null;
         }
 
-        var entityName = TypeName(configInterface.TypeArgumentList.Arguments[0]);
+        var entityName = FluentSyntax.TypeName(configInterface.TypeArgumentList.Arguments[0]);
         return new ConfigClass(declaration.Identifier.Text, entityName, configure);
     }
-
-    /// <summary>
-    /// Materializes the entity named <paramref name="entityName"/> when it is not already known, resolving its
-    /// symbol (or falling back to a bare entity) and adding it to both the entities dictionary and the model.
-    /// Mirrors <see cref="FluentEntityWalker"/>'s materialization.
-    /// </summary>
-    /// <param name="entityName">The configured entity type name.</param>
-    /// <param name="entities">The known entities, augmented in place.</param>
-    /// <param name="model">The model whose <see cref="EfModel.Entities"/> collection is augmented.</param>
-    /// <param name="compilation">The compilation for symbol resolution.</param>
-    private static void MaterializeEntity(
-        string entityName,
-        Dictionary<string, EfEntity> entities,
-        EfModel model,
-        Compilation compilation)
-    {
-        if (string.IsNullOrEmpty(entityName) || entities.ContainsKey(entityName))
-        {
-            return;
-        }
-
-        var symbol = compilation.GetSymbolsWithName(entityName, SymbolFilter.Type)
-            .OfType<INamedTypeSymbol>()
-            .FirstOrDefault();
-
-        var entity = symbol is not null
-            ? EntityAnalyzer.AnalyzeEntity(symbol)
-            : new EfEntity { Name = entityName };
-
-        entities[entityName] = entity;
-        if (model.Entities.All(e => e.Name != entityName))
-        {
-            model.Entities.Add(entity);
-        }
-    }
-
-    /// <summary>Returns the simple identifier of a name syntax (drops any generic type arguments).</summary>
-    /// <param name="name">The name syntax.</param>
-    private static string SimpleName(SimpleNameSyntax name) => name.Identifier.Text;
-
-    /// <summary>
-    /// Returns the name of a type syntax: the bare identifier for a simple name, otherwise the last dotted
-    /// segment of its text (namespace qualification stripped; any generic argument list is retained).
-    /// </summary>
-    /// <param name="type">The type syntax.</param>
-    private static string TypeName(TypeSyntax type)
-    {
-        return type is IdentifierNameSyntax identifier
-            ? identifier.Identifier.Text
-            : LastSegment(type.ToString());
-    }
-
-    /// <summary>Returns the substring after the last <c>.</c>, or the whole string when there is none.</summary>
-    /// <param name="value">The dotted name.</param>
-    private static string LastSegment(string value)
-        => value.Contains('.', StringComparison.Ordinal) ? value.Split('.')[^1] : value;
 }

@@ -7,6 +7,9 @@ on:
     paths:
       - 'docfx/**'
       - '**/*.md'
+      # docfx builds only the repo docs (READMEs, index/specs/samples), not the agent-tooling
+      # docs under docs/ (e.g. docs/superpowers/**), so changes there must not trigger a publish.
+      - '!docs/**'
   workflow_dispatch:
 
 permissions:

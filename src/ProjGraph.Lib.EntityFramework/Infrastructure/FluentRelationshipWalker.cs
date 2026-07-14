@@ -71,7 +71,7 @@ internal static class FluentRelationshipWalker
         return method.DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .Where(inv => inv.Expression is MemberAccessExpressionSyntax ma
-                          && SimpleName(ma.Name) is EfAnalysisConstants.EfMethods.HasOne
+                          && FluentSyntax.SimpleName(ma.Name) is EfAnalysisConstants.EfMethods.HasOne
                               or EfAnalysisConstants.EfMethods.HasMany
                           && !IsInsideUsingEntity(inv));
     }
@@ -89,7 +89,7 @@ internal static class FluentRelationshipWalker
         return node.Ancestors()
             .OfType<InvocationExpressionSyntax>()
             .Any(inv => inv.Expression is MemberAccessExpressionSyntax ma
-                        && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.UsingEntity
+                        && FluentSyntax.SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.UsingEntity
                         && inv.ArgumentList.Span.Contains(node.Span));
     }
 
@@ -103,7 +103,7 @@ internal static class FluentRelationshipWalker
         {
             if (name == EfAnalysisConstants.EfMethods.Entity)
             {
-                return EntityNameFromInvocation(invocation);
+                return FluentSyntax.EntityNameFromInvocation(invocation);
             }
         }
 
@@ -111,9 +111,9 @@ internal static class FluentRelationshipWalker
         var enclosingEntity = chain.HasNode.Ancestors()
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(inv => inv.Expression is MemberAccessExpressionSyntax ma
-                                   && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity);
+                                   && FluentSyntax.SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity);
 
-        return enclosingEntity is null ? ambientEntity : EntityNameFromInvocation(enclosingEntity);
+        return enclosingEntity is null ? ambientEntity : FluentSyntax.EntityNameFromInvocation(enclosingEntity);
     }
 
     /// <summary>Builds the relationship for a chain, or <see langword="null"/> when it has no paired <c>With</c> call.</summary>
@@ -159,22 +159,20 @@ internal static class FluentRelationshipWalker
         Dictionary<string, EfEntity> entities,
         Compilation compilation)
     {
-        var generic = GenericTypeArgumentName(hasInvocation);
+        var generic = FluentSyntax.GenericTypeArgumentName(hasInvocation);
         if (generic is not null)
         {
             return generic;
         }
 
         var arg = hasInvocation.ArgumentList.Arguments.FirstOrDefault();
-        switch (arg?.Expression)
+        return arg?.Expression switch
         {
-            case LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression):
-                return LastSegment(literal.Token.ValueText);
-            case SimpleLambdaExpressionSyntax lambda:
-                return NavigationTargetName(lambda, sourceEntity, entities, compilation);
-            default:
-                return null;
-        }
+            LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression)
+                => FluentSyntax.LastSegment(literal.Token.ValueText),
+            SimpleLambdaExpressionSyntax lambda => NavigationTargetName(lambda, sourceEntity, entities, compilation),
+            _ => null
+        };
     }
 
     /// <summary>
@@ -216,35 +214,6 @@ internal static class FluentRelationshipWalker
             : navigationPropertyName;
     }
 
-    /// <summary>Returns the entity name from an <c>Entity&lt;T&gt;()</c> or <c>Entity("NS.T")</c> invocation.</summary>
-    /// <param name="invocation">The Entity invocation.</param>
-    private static string? EntityNameFromInvocation(InvocationExpressionSyntax invocation)
-    {
-        var generic = GenericTypeArgumentName(invocation);
-        if (generic is not null)
-        {
-            return generic;
-        }
-
-        var arg = invocation.ArgumentList.Arguments.FirstOrDefault();
-        return arg?.Expression is LiteralExpressionSyntax literal && literal.IsKind(SyntaxKind.StringLiteralExpression)
-            ? LastSegment(literal.Token.ValueText)
-            : null;
-    }
-
-    /// <summary>Returns the first generic type argument's simple name for an invocation like <c>HasOne&lt;T&gt;()</c>, else <see langword="null"/>.</summary>
-    /// <param name="invocation">The invocation.</param>
-    private static string? GenericTypeArgumentName(InvocationExpressionSyntax invocation)
-    {
-        if (invocation.Expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax generic }
-            && generic.TypeArgumentList.Arguments.Count >= 1)
-        {
-            return TypeName(generic.TypeArgumentList.Arguments[0]);
-        }
-
-        return null;
-    }
-
     /// <summary>Returns the navigation property name from a lambda like <c>x =&gt; x.Nav</c>, else <see langword="null"/>.</summary>
     /// <param name="lambda">The lambda expression.</param>
     private static string? NavigationName(SimpleLambdaExpressionSyntax lambda)
@@ -252,35 +221,17 @@ internal static class FluentRelationshipWalker
         return (lambda.Body as MemberAccessExpressionSyntax)?.Name.Identifier.Text;
     }
 
-    /// <summary>Returns the simple identifier of a name syntax (drops any generic type arguments).</summary>
-    /// <param name="name">The name syntax.</param>
-    private static string SimpleName(SimpleNameSyntax name) => name.Identifier.Text;
-
-    /// <summary>Returns the simple name of a type syntax (last dotted segment, generics dropped).</summary>
-    /// <param name="type">The type syntax.</param>
-    private static string TypeName(TypeSyntax type)
-    {
-        return type is IdentifierNameSyntax identifier
-            ? identifier.Identifier.Text
-            : LastSegment(type.ToString());
-    }
-
-    /// <summary>Returns the substring after the last <c>.</c>, or the whole string when there is none.</summary>
-    /// <param name="value">The dotted name.</param>
-    private static string LastSegment(string value)
-        => value.Contains('.', StringComparison.Ordinal) ? value.Split('.')[^1] : value;
-
     /// <summary>Reads an explicit <c>.IsRequired(...)</c> from the chain: <c>true</c> for no-arg or <c>true</c>, <c>false</c> otherwise; <see langword="null"/> when absent.</summary>
     /// <param name="chain">The fluent chain.</param>
     private static bool? ExtractExplicitRequired(FluentChain chain)
     {
-        var call = chain.Calls.FirstOrDefault(c => c.Name == EfAnalysisConstants.EfMethods.IsRequired);
-        if (call.Name is null)
+        var (name, invocation) = chain.Calls.FirstOrDefault(c => c.Name == EfAnalysisConstants.EfMethods.IsRequired);
+        if (name is null)
         {
             return null;
         }
 
-        var arguments = call.Invocation.ArgumentList.Arguments;
+        var arguments = invocation.ArgumentList.Arguments;
         return arguments.Count == 0 || arguments[0].Expression.IsKind(SyntaxKind.TrueLiteralExpression);
     }
 
@@ -297,19 +248,19 @@ internal static class FluentRelationshipWalker
         string targetEntity,
         Dictionary<string, EfEntity> entities)
     {
-        var call = chain.Calls.FirstOrDefault(c => c.Name == EfAnalysisConstants.EfMethods.HasForeignKey);
-        if (call.Name is null)
+        var (name, invocation) = chain.Calls.FirstOrDefault(c => c.Name == EfAnalysisConstants.EfMethods.HasForeignKey);
+        if (name is null)
         {
             return;
         }
 
-        var propertyNames = ForeignKeyPropertyNames(call.Invocation, entities.Keys);
+        var propertyNames = ForeignKeyPropertyNames(invocation, entities.Keys);
         if (propertyNames.Count == 0)
         {
             return;
         }
 
-        var dependentEntity = GenericTypeArgumentName(call.Invocation)
+        var dependentEntity = FluentSyntax.GenericTypeArgumentName(invocation)
                               ?? (hasMethod == EfAnalysisConstants.EfMethods.HasOne ? sourceEntity : targetEntity);
 
         if (entities.TryGetValue(dependentEntity, out var entity))
@@ -357,7 +308,7 @@ internal static class FluentRelationshipWalker
     /// <param name="value">The string-literal argument.</param>
     /// <param name="knownEntities">The known entity names.</param>
     private static bool IsEntityTypeName(string value, IReadOnlyCollection<string> knownEntities)
-        => value.Contains('.', StringComparison.Ordinal) || knownEntities.Contains(LastSegment(value));
+        => value.Contains('.', StringComparison.Ordinal) || knownEntities.Contains(FluentSyntax.LastSegment(value));
 
     /// <summary>Sets <see cref="EfProperty.IsForeignKey"/> on the named properties, creating them if missing (parity with the regex parser).</summary>
     /// <param name="entity">The dependent entity.</param>

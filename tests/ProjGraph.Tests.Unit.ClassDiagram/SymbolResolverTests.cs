@@ -5,7 +5,6 @@ using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.ClassDiagram.Infrastructure;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Tests.Shared.Helpers;
-using System.Collections.ObjectModel;
 
 namespace ProjGraph.Tests.Unit.ClassDiagram;
 
@@ -25,8 +24,8 @@ public sealed class SymbolResolverTests
         return new AnalysisContext
         {
             AnalyzedTypeFullNames = [],
-            Types = new Collection<TypeDefinition>(),
-            Relationships = new Collection<Relationship>(),
+            Types = [],
+            Relationships = [],
             Compilation = compilation,
             StartDirectory = "/nonexistent"
         };
