@@ -27,7 +27,8 @@ public sealed class EfErdGoldenTests
         [FixturePath("PropertyConfigContext.cs"), "PropertyConfigContext", "fixture-property-config"],
         [FixturePath("ConfigClassContext.cs"), "ConfigClassContext", "fixture-config-class"],
         [FixturePath("SeparateConfigContext.cs"), "SeparateConfigContext", "fixture-separate-config"],
-        [FixturePath("BaseContext.cs"), "BaseContext", "fixture-base-dbset"]
+        [FixturePath("BaseContext.cs"), "BaseContext", "fixture-base-dbset"],
+        [FixturePath("AuditContext.cs"), "AuditContext", "fixture-base-dbset-multifile"]
     ];
 
     private static string FixturePath(string fileName) =>
