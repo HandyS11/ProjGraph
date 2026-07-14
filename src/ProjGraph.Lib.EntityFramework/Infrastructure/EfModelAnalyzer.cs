@@ -178,6 +178,11 @@ public class EfModelAnalyzer(
 
         MergeFileDictionaries(entityFiles, baseClassFiles);
 
+        // Slice 4: pull separate IEntityTypeConfiguration<T> files into the compilation so config classes
+        // that live in their own files are visible to EntityConfigurationWalker.
+        var configFiles = await entityFileDiscovery.DiscoverConfigurationFilesAsync(searchDirectories, contextPath);
+        MergeFileDictionaries(entityFiles, configFiles);
+
         return CreateSyntaxTrees(contextSyntaxTree, entityFiles);
     }
 

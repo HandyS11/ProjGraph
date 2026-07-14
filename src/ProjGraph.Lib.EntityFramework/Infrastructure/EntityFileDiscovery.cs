@@ -64,6 +64,29 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
     }
 
     /// <summary>
+    /// Discovers source files declaring an <c>IEntityTypeConfiguration&lt;T&gt;</c> class within the given
+    /// search directories, so config classes that live in their own files are added to the compilation. The
+    /// context file is excluded (its declarations are already in the primary syntax tree).
+    /// </summary>
+    /// <param name="searchDirectories">The directories to search recursively.</param>
+    /// <param name="contextFilePath">The DbContext file path to exclude.</param>
+    /// <returns>A dictionary of config-class name to file path.</returns>
+    public async Task<Dictionary<string, string>> DiscoverConfigurationFilesAsync(
+        IReadOnlyList<string> searchDirectories,
+        string contextFilePath)
+    {
+        var configFiles = new Dictionary<string, string>();
+        var normalizedContextPath = fileSystem.GetFullPath(contextFilePath);
+
+        foreach (var searchDir in searchDirectories.Where(fileSystem.DirectoryExists))
+        {
+            await SearchDirectoryForConfigurationsAsync(searchDir, normalizedContextPath, configFiles);
+        }
+
+        return configFiles;
+    }
+
+    /// <summary>
     /// Discovers the file paths of base class files for the given entity files within the specified context directory.
     /// </summary>
     /// <param name="entityFiles">
@@ -293,6 +316,90 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
                      .Where(classDecl => entityTypeNames.Contains(classDecl.Identifier.Text)))
         {
             entityFiles.TryAdd(classDecl.Identifier.Text, filePath);
+        }
+    }
+
+    /// <summary>
+    /// Recursively searches a directory for source files declaring an <c>IEntityTypeConfiguration&lt;T&gt;</c>
+    /// class, skipping the context file and build-artifact directories.
+    /// </summary>
+    /// <param name="currentDir">The directory to search.</param>
+    /// <param name="normalizedContextPath">The normalized context file path to exclude.</param>
+    /// <param name="configFiles">The dictionary of config-class name to file path, augmented in place.</param>
+    private async Task SearchDirectoryForConfigurationsAsync(
+        string currentDir,
+        string normalizedContextPath,
+        Dictionary<string, string> configFiles)
+    {
+        try
+        {
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.System
+            };
+
+            foreach (var csFile in fileSystem.EnumerateFiles(
+                         currentDir,
+                         EfAnalysisConstants.FilePatterns.CSharpFiles,
+                         options))
+            {
+                var fullPath = fileSystem.GetFullPath(csFile);
+                if (fullPath.Equals(normalizedContextPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                await ProcessConfigurationFileAsync(fullPath, configFiles);
+            }
+
+            foreach (var subDir in fileSystem.EnumerateDirectories(currentDir, "*", options))
+            {
+                if (DirectoryFilters.ShouldSkipDirectory(subDir))
+                {
+                    continue;
+                }
+
+                await SearchDirectoryForConfigurationsAsync(subDir, normalizedContextPath, configFiles);
+            }
+        }
+        catch (IOException)
+        {
+            // Ignore access errors for directories we can't read
+        }
+    }
+
+    /// <summary>
+    /// Adds a source file to <paramref name="configFiles"/> for each <c>IEntityTypeConfiguration&lt;T&gt;</c>
+    /// class it declares. Skips files whose text does not mention the interface (a cheap pre-parse guard).
+    /// </summary>
+    /// <param name="filePath">The path of the source file to inspect.</param>
+    /// <param name="configFiles">The dictionary of config-class name to file path, augmented in place.</param>
+    private async Task ProcessConfigurationFileAsync(string filePath, Dictionary<string, string> configFiles)
+    {
+        var fileCode = await fileSystem.ReadAllTextAsync(filePath);
+        if (!fileCode.Contains(EfAnalysisConstants.EfMethods.EntityTypeConfigurationInterface, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(fileCode);
+        var root = await syntaxTree.GetRootAsync();
+
+        foreach (var classDecl in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+        {
+            var implementsInterface = classDecl.BaseList?.Types
+                .Select(baseType => baseType.Type)
+                .OfType<GenericNameSyntax>()
+                .Any(generic =>
+                    generic.Identifier.Text == EfAnalysisConstants.EfMethods.EntityTypeConfigurationInterface
+                    && generic.TypeArgumentList.Arguments.Count == 1) ?? false;
+
+            if (implementsInterface)
+            {
+                configFiles.TryAdd(classDecl.Identifier.Text, filePath);
+            }
         }
     }
 

@@ -26,6 +26,7 @@ public sealed class EfErdGoldenTests
         [FixturePath("OwnedAndJoinContext.cs"), "OwnedAndJoinContext", "fixture-owned-join"],
         [FixturePath("PropertyConfigContext.cs"), "PropertyConfigContext", "fixture-property-config"],
         [FixturePath("ConfigClassContext.cs"), "ConfigClassContext", "fixture-config-class"],
+        [FixturePath("SeparateConfigContext.cs"), "SeparateConfigContext", "fixture-separate-config"],
         [FixturePath("BaseContext.cs"), "BaseContext", "fixture-base-dbset"]
     ];
 
