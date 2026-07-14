@@ -184,6 +184,30 @@ public sealed class FluentPropertyWalkerTests
     }
 
     [Fact]
+    public void Apply_ChainedOwnsOneProperty_DoesNotLeakOntoOwner()
+    {
+        // The chained owned-type form used throughout the EF docs: OwnsOne is not given a builder
+        // lambda, so the Property call is a sibling after it rather than inside its argument list.
+        // The owned City property must not land on the owner Customer entity.
+        const string source = """
+            public class Address { public string City { get; set; } = ""; }
+            public class Customer { public int Id { get; set; } public Address Address { get; set; } = null!; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                    => modelBuilder.Entity<Customer>()
+                        .OwnsOne(c => c.Address)
+                        .Property(a => a.City).HasMaxLength(50);
+            }
+            """;
+        var (method, compilation, entities) = Build(source, "Customer");
+
+        FluentPropertyWalker.Apply(method, entities, compilation);
+
+        entities["Customer"].Properties.Should().NotContain(p => p.Name == "City");
+    }
+
+    [Fact]
     public void Apply_UnknownEntity_DoesNothing()
     {
         const string source = """

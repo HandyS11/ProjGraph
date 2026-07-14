@@ -51,6 +51,30 @@ public sealed class EntityFileDiscoveryTests : IDisposable
     }
 
     [Fact]
+    public void ExtractEntityTypeNames_NullableAndQualifiedDbSets_ShouldReduceToSimpleNames()
+    {
+        // DbSet<Blog>? wraps the generic in a NullableTypeSyntax, and DbSet<Models.Blog> qualifies
+        // the type argument. Both must reduce to the simple entity name "Blog" so the entity's file
+        // joins the compilation instead of being stored as an unmatched name.
+        const string code = """
+                            using Microsoft.EntityFrameworkCore;
+                            public class MyContext : DbContext
+                            {
+                                public DbSet<Blog>? Blogs { get; set; }
+                                public DbSet<Models.Post> Posts { get; set; }
+                            }
+                            """;
+
+        var tree = CSharpSyntaxTree.ParseText(code);
+        var root = tree.GetRoot();
+        var contextClass = root.DescendantNodes().OfType<ClassDeclarationSyntax>().First();
+
+        var result = _sut.ExtractEntityTypeNames(contextClass);
+
+        result.Should().BeEquivalentTo("Blog", "Post");
+    }
+
+    [Fact]
     public void ExtractEntityTypeNames_NoDbSetProperties_ShouldReturnEmpty()
     {
         const string code = """

@@ -49,10 +49,11 @@ public static class RelationshipAnalyzer
             AnalyzeEntityRelationships(entity, symbol, entities, model, addedRelationships);
         }
 
+        // Many-to-many relationships are decomposed into an explicit join entity plus two
+        // one-to-many edges to it; the original many-to-many edge is removed in the process, so no
+        // separate cleanup of "direct" edges between the joined pair is needed (removing them would
+        // also drop legitimate co-existing relationships such as a distinct owner reference).
         ConvertManyToManyToJoinTables(model);
-
-        // Remove direct relationships when join tables exist
-        RemoveDirectRelationshipsWithJoinTables(model);
     }
 
     /// <summary>
@@ -342,65 +343,4 @@ public static class RelationshipAnalyzer
         });
     }
 
-    /// <summary>
-    /// Removes direct relationships between entities that are already connected through join tables.
-    /// </summary>
-    /// <param name="model">The <see cref="EfModel"/> representing the entity framework model.</param>
-    /// <remarks>
-    /// This method identifies join tables in the model, determines the entities they connect, and removes any direct relationships
-    /// between those entities. A join table is identified as an entity with exactly two foreign key properties, which are also primary keys.
-    /// </remarks>
-    private static void RemoveDirectRelationshipsWithJoinTables(EfModel model)
-    {
-        var joinTables = model.Entities.Where(e => e.IsJoinEntity || IsJoinTable(e)).ToList();
-
-        var relationshipsToRemove = joinTables
-            .Select(joinTable => joinTable.Properties.Where(p => p.IsForeignKey).ToList())
-            .Where(fkProperties => fkProperties.Count == 2)
-            .Select(fkProperties => fkProperties
-                .Select(fk =>
-                    fk.Name.EndsWith(EfAnalysisConstants.Suffixes.IdSuffix, StringComparison.OrdinalIgnoreCase)
-                        ? fk.Name[..^2]
-                        : null)
-                .Where(name => name != null)
-                .ToList())
-            .Where(entityNames => entityNames.Count == 2)
-            .Select(entityNames =>
-            {
-                var entity1 = entityNames[0]!;
-                var entity2 = entityNames[1]!;
-                return model.Relationships.Where(r =>
-                    (r.SourceEntity == entity1 && r.TargetEntity == entity2) ||
-                    (r.SourceEntity == entity2 && r.TargetEntity == entity1));
-            })
-            .SelectMany(relationships => relationships)
-            .Distinct()
-            .ToList();
-
-        // Remove the direct relationships
-        foreach (var rel in relationshipsToRemove)
-        {
-            model.Relationships.Remove(rel);
-        }
-    }
-
-    /// <summary>
-    /// Determines if the given entity is a join table.
-    /// </summary>
-    /// <param name="entity">The <see cref="EfEntity"/> to evaluate.</param>
-    /// <returns>
-    /// A boolean value indicating whether the entity is a join table.
-    /// A join table is defined as an entity that has exactly two foreign key properties,
-    /// which are also primary keys.
-    /// </returns>
-    private static bool IsJoinTable(EfEntity entity)
-    {
-        var fkProperties = entity.Properties.Where(p => p.IsForeignKey).ToList();
-        var pkProperties = entity.Properties.Where(p => p.IsPrimaryKey).ToList();
-
-        // A join table should have exactly 2 FKs that are also PKs
-        return fkProperties.Count == 2 &&
-               pkProperties.Count == 2 &&
-               fkProperties.All(fk => fk.IsPrimaryKey);
-    }
 }

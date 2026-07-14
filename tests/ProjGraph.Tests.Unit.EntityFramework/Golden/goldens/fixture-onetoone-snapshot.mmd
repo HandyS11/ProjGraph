@@ -1,0 +1,14 @@
+---
+title: LedgerContext
+---
+erDiagram
+  Ledger {
+    int Id PK
+    string Title "required"
+  }
+  LedgerHeader {
+    int Id PK
+    int LedgerId FK
+    string Summary
+  }
+  LedgerHeader ||--|| Ledger : ""
