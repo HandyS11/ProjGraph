@@ -316,12 +316,48 @@ public class EfModelAnalyzer(
         }
 
         FluentApiConfigurationParser.ApplyFluentApiConstraints(contextType, entities, model, compilation);
+        ApplyPrimaryKeyConventions(model);
         RelationshipAnalyzer.AnalyzeRelationships(model, entities, compilation);
 
         // Deduplicate entities and relationships (in case any were added multiple times)
         DeduplicateModelContent(model);
 
         return model;
+    }
+
+    /// <summary>
+    /// Applies EF Core's primary-key-by-convention rule to entities that have no key configured
+    /// explicitly (no <c>HasKey</c>, no <c>[Key]</c>/<c>[PrimaryKey]</c>). A property named <c>Id</c>
+    /// or <c>{EntityName}Id</c> becomes the primary key. This mirrors <see cref="EntityAnalyzer"/>'s
+    /// convention for resolvable entities, covering entities whose CLR type is only known through the
+    /// Fluent API (e.g. cross-project entities), whose properties are added after entity discovery.
+    /// </summary>
+    /// <param name="model">The model whose entities are inspected and updated in place.</param>
+    private static void ApplyPrimaryKeyConventions(EfModel model)
+    {
+        foreach (var entity in model.Entities)
+        {
+            if (entity.Properties.Any(p => p.IsPrimaryKey))
+            {
+                continue;
+            }
+
+            var conventionalKey = entity.Properties.FirstOrDefault(p =>
+                                      p.Name.Equals(EfAnalysisConstants.CommonNames.Id,
+                                          StringComparison.OrdinalIgnoreCase))
+                                  ?? entity.Properties.FirstOrDefault(p =>
+                                      p.Name.Equals(entity.Name + EfAnalysisConstants.CommonNames.Id,
+                                          StringComparison.OrdinalIgnoreCase));
+
+            if (conventionalKey is null)
+            {
+                continue;
+            }
+
+            var index = entity.Properties.IndexOf(conventionalKey);
+            entity.Properties[index] = EfPropertyFactory.CopyWith(conventionalKey,
+                new EfPropertyOverrides { IsPrimaryKey = true });
+        }
     }
 
     /// <summary>

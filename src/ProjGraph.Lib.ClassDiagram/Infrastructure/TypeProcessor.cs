@@ -168,8 +168,7 @@ public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcess
             // Roslyn parks an unresolved base-list item in BaseType, so an interface base only
             // discernible after resolution is initially classified as Inheritance. Once the
             // resolved symbol is known to be an interface, reclassify it as Realization.
-            var effectiveKind = kind == RelationshipKind.Inheritance
-                                && symbolToUse.TypeKind == Microsoft.CodeAnalysis.TypeKind.Interface
+            var effectiveKind = kind == RelationshipKind.Inheritance && IsInterfaceBase(symbolToUse)
                 ? RelationshipKind.Realization
                 : kind;
 
@@ -186,9 +185,29 @@ public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcess
                 continue;
             }
 
-            // Only enqueue once per unique type (check if already in queue would be complex, 
+            // Only enqueue once per unique type (check if already in queue would be complex,
             // but the AnalyzedTypeFullNames check in ProcessTypeQueueAsync handles duplicates)
             typesToAnalyze.Enqueue((resolvedSymbol, depth + 1));
         }
+    }
+
+    /// <summary>
+    /// Determines whether a base-type symbol should be treated as an interface (Realization) rather
+    /// than a base class (Inheritance). A resolved interface symbol is authoritative; when the base
+    /// type is unresolved (an error type, e.g. it lives in a referenced assembly not on disk), the
+    /// C# convention that interfaces are named <c>I</c> followed by an uppercase letter is used as a
+    /// fallback so the relationship is still classified correctly.
+    /// </summary>
+    /// <param name="symbol">The resolved-or-fallback base-type symbol.</param>
+    private static bool IsInterfaceBase(INamedTypeSymbol symbol)
+    {
+        if (symbol.TypeKind == Microsoft.CodeAnalysis.TypeKind.Interface)
+        {
+            return true;
+        }
+
+        return symbol.TypeKind == Microsoft.CodeAnalysis.TypeKind.Error
+               && symbol.Name is ['I', var second, ..]
+               && char.IsUpper(second);
     }
 }

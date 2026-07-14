@@ -290,6 +290,77 @@ public class MermaidErdRendererTests
     }
 
     [Fact]
+    public void Render_ShouldQuoteGenericEntityNames()
+    {
+        // Arrange
+        var entity = new EfEntity
+        {
+            Name = "IdentityUserRole<string>",
+            Properties = [new EfProperty { Name = "RoleId", Type = "string", IsPrimaryKey = true }]
+        };
+
+        var model = new EfModel { ContextName = "AppIdentityDbContext", Entities = [entity] };
+
+        // Act
+        var result = _renderer.Render(model);
+
+        // Assert
+        result.Should().Contain("\"IdentityUserRole<string>\" {");
+        result.Should().NotContain("IdentityUserRole<string> {");
+    }
+
+    [Fact]
+    public void Render_ShouldQuoteGenericEntityNamesInRelationships()
+    {
+        // Arrange
+        var model = new EfModel
+        {
+            ContextName = "AppIdentityDbContext",
+            Entities =
+            [
+                new EfEntity { Name = "ApplicationUser", Properties = [] },
+                new EfEntity { Name = "IdentityUserRole<string>", Properties = [] }
+            ],
+            Relationships =
+            [
+                new EfRelationship
+                {
+                    SourceEntity = "ApplicationUser",
+                    TargetEntity = "IdentityUserRole<string>",
+                    Type = EfRelationshipType.OneToMany,
+                    IsRequired = true
+                }
+            ]
+        };
+
+        // Act
+        var result = _renderer.Render(model);
+
+        // Assert
+        result.Should().Contain("ApplicationUser ||--o{ \"IdentityUserRole<string>\" : \"\"");
+    }
+
+    [Fact]
+    public void Render_ShouldNotQuoteSimpleEntityNames()
+    {
+        // Arrange
+        var entity = new EfEntity
+        {
+            Name = "User",
+            Properties = [new EfProperty { Name = "Id", Type = "int", IsPrimaryKey = true }]
+        };
+
+        var model = new EfModel { ContextName = "TestDbContext", Entities = [entity] };
+
+        // Act
+        var result = _renderer.Render(model);
+
+        // Assert
+        result.Should().Contain("User {");
+        result.Should().NotContain("\"User\"");
+    }
+
+    [Fact]
     public void Render_ShouldRenderOneToOneRelationship()
     {
         // Arrange

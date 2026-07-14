@@ -244,27 +244,55 @@ internal static class FluentPropertyWalker
     }
 
     /// <summary>
-    /// Configures the column type for a property, inferring max length from column type definition if needed.
+    /// Configures a property from an explicit SQL column type: recovers the CLR type when the current
+    /// type is only the <c>string</c> fallback (e.g. a cross-project entity whose type was guessed),
+    /// captures decimal precision/scale, and infers max length from a sized string column type.
     /// </summary>
     /// <param name="property">The property to configure.</param>
-    /// <param name="configArg">The column type argument.</param>
+    /// <param name="configArg">The column type argument (e.g. <c>decimal(18,2)</c>, <c>nvarchar(200)</c>).</param>
     private static EfProperty ApplyColumnTypeConfiguration(EfProperty property, string configArg)
     {
-        if (property.MaxLength is not null)
-        {
-            return property;
-        }
+        var updated = property;
 
-        var match = EfAnalysisRegexPatterns.NumberInParensRegex().Match(configArg);
-        if (match.Success && int.TryParse(match.Groups[1].Value, out var len))
+        // The SQL column type is authoritative. When the CLR type is only the guessed string fallback,
+        // recover a more accurate value type (e.g. decimal, Guid, bool) from the column type.
+        var inferredType = SqlColumnTypeMapper.ToClrType(configArg);
+        if (inferredType is not null &&
+            updated.Type.Equals(EfAnalysisConstants.DataTypes.StringTypeName, StringComparison.OrdinalIgnoreCase))
         {
-            return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+            updated = EfPropertyFactory.CopyWith(updated, new EfPropertyOverrides
             {
-                MaxLength = len
+                Type = inferredType,
+                IsValueType = EfPropertyFactory.IsValueTypeString(inferredType)
             });
         }
 
-        return property;
+        // decimal(precision, scale): capture both constraints.
+        var decimalMatch = EfAnalysisRegexPatterns.DecimalPrecisionRegex().Match(configArg);
+        if (decimalMatch.Success &&
+            int.TryParse(decimalMatch.Groups[1].Value, out var precision) &&
+            int.TryParse(decimalMatch.Groups[2].Value, out var scale))
+        {
+            updated = EfPropertyFactory.CopyWith(updated, new EfPropertyOverrides
+            {
+                Precision = precision,
+                Scale = scale
+            });
+        }
+        else if (updated.MaxLength is null)
+        {
+            // Sized string column types such as nvarchar(200): capture max length.
+            var lengthMatch = EfAnalysisRegexPatterns.NumberInParensRegex().Match(configArg);
+            if (lengthMatch.Success && int.TryParse(lengthMatch.Groups[1].Value, out var len))
+            {
+                updated = EfPropertyFactory.CopyWith(updated, new EfPropertyOverrides
+                {
+                    MaxLength = len
+                });
+            }
+        }
+
+        return updated;
     }
 
     /// <summary>
