@@ -41,6 +41,11 @@ public static class FluentApiConfigurationParser
         FluentEntityWalker.Apply(methodSyntax, entities, model, compilation);
         FluentPropertyWalker.Apply(methodSyntax, entities, compilation);
         FluentRelationshipWalker.Apply(methodSyntax, entities, model, compilation);
+
+        // Fold IEntityTypeConfiguration<T> classes referenced via ApplyConfiguration /
+        // ApplyConfigurationsFromAssembly by walking each Configure(EntityTypeBuilder<T>) body with T as
+        // the ambient entity (Slice 4).
+        EntityConfigurationWalker.Apply(methodSyntax, entities, model, compilation);
     }
 
     /// <summary>
