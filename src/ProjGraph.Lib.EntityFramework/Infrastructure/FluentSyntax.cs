@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
+using System.Collections.Frozen;
 
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
@@ -20,13 +21,14 @@ internal static class FluentSyntax
     /// Fluent methods that open a nested builder lambda for a *different* target (an owned type or a join
     /// entity). Configuration calls inside their argument lists configure that nested builder, not the
     /// outer entity, and are excluded by <see cref="FindConfigRoots"/> / <see cref="ResolveOwningEntity"/>.
+    /// Immutable and private so no other code can alter the walkers' scoping behaviour at runtime.
     /// </summary>
-    public static readonly HashSet<string> NestedBuilderScopes = new(StringComparer.Ordinal)
+    private static readonly FrozenSet<string> NestedBuilderScopes = new[]
     {
         EfAnalysisConstants.EfMethods.OwnsOne,
         EfAnalysisConstants.EfMethods.OwnsMany,
         EfAnalysisConstants.EfMethods.UsingEntity
-    };
+    }.ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>
     /// Finds every invocation in <paramref name="method"/> whose immediate member name is
