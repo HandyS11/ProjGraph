@@ -47,7 +47,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     {
         foreach (var entity in model.Entities.OrderBy(e => e.Name))
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  {entity.Name} {{");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  {SanitizeEntityName(entity.Name)} {{");
 
             var orderedProperties = entity.Properties
                 .OrderByDescending(p => p.IsPrimaryKey)
@@ -119,8 +119,8 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
         foreach (var rel in sortedRelationships)
         {
             var relSyntax = GetRelationshipSyntax(rel);
-            var sourceEntity = rel.SourceEntity.Trim();
-            var targetEntity = rel.TargetEntity.Trim();
+            var sourceEntity = SanitizeEntityName(rel.SourceEntity.Trim());
+            var targetEntity = SanitizeEntityName(rel.TargetEntity.Trim());
 
             sb.AppendLine(CultureInfo.InvariantCulture, $"  {sourceEntity} {relSyntax} {targetEntity} : \"\"");
         }
@@ -193,6 +193,21 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
         }
 
         return "";
+    }
+
+    /// <summary>
+    /// Sanitizes an entity name for use as a Mermaid ER entity identifier. Names that are not bare
+    /// identifiers (e.g. generic types such as <c>IdentityUserRole&lt;string&gt;</c>) are wrapped in
+    /// double quotes so Mermaid accepts them; simple identifiers are returned unchanged.
+    /// </summary>
+    /// <param name="name">The entity name to sanitize.</param>
+    /// <returns>The entity name, quoted if it contains characters outside <c>[A-Za-z0-9_]</c>.</returns>
+    private static string SanitizeEntityName(string name)
+    {
+        var isBareIdentifier = name.Length > 0 &&
+                               name.All(c => char.IsLetterOrDigit(c) || c == '_');
+
+        return isBareIdentifier ? name : $"\"{name}\"";
     }
 
     /// <summary>

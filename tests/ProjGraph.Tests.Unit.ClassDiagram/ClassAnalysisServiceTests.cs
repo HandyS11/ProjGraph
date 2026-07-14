@@ -125,6 +125,46 @@ public sealed class ClassAnalysisServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AnalyzeFileAsync_UnresolvableInterfaceBase_UsesNamingConventionForRealization()
+    {
+        // When the interface base cannot be resolved anywhere in the workspace (e.g. it lives in a
+        // referenced assembly, not in source), Roslyn leaves the sole base-list item parked in
+        // BaseType as an error type, which looks like class inheritance. The C# convention that an
+        // interface is named I + PascalCase lets us still classify it as Realization (dashed <|..).
+        var root = Path.Combine(_temp.DirectoryPath, "convention");
+        Directory.CreateDirectory(root);
+        var serviceFile = Path.Combine(root, "BasketService.cs");
+        await File.WriteAllTextAsync(serviceFile,
+            "namespace App; public class BasketService : IBasketService { public void Add() {} }");
+        await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
+
+        var result = await _service.AnalyzeFileAsync(serviceFile, new AnalysisOptions(IncludeInheritance: true));
+
+        var rel = result.Relationships.Should()
+            .ContainSingle(r => r.From == "App.BasketService").Which;
+        rel.Kind.Should().Be(RelationshipKind.Realization);
+    }
+
+    [Fact]
+    public async Task AnalyzeFileAsync_UnresolvableNonInterfaceBase_StaysInheritance()
+    {
+        // A base name that does NOT follow the interface convention must remain classified as
+        // Inheritance so the naming-convention heuristic does not misclassify real base classes.
+        var root = Path.Combine(_temp.DirectoryPath, "convention-negative");
+        Directory.CreateDirectory(root);
+        var serviceFile = Path.Combine(root, "Widget.cs");
+        await File.WriteAllTextAsync(serviceFile,
+            "namespace App; public class Widget : ExternalBase { }");
+        await File.WriteAllTextAsync(Path.Combine(root, "Test.csproj"), "<Project />");
+
+        var result = await _service.AnalyzeFileAsync(serviceFile, new AnalysisOptions(IncludeInheritance: true));
+
+        var rel = result.Relationships.Should()
+            .ContainSingle(r => r.From == "App.Widget").Which;
+        rel.Kind.Should().Be(RelationshipKind.Inheritance);
+    }
+
+    [Fact]
     public async Task AnalyzeFileAsync_UnresolvedGenericBase_EdgeTargetsDeclaredNode()
     {
         // An unresolved generic base is registered as an external node under its open-generic
