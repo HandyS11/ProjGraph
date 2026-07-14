@@ -164,7 +164,7 @@ The regex layer is deleted; §4.3 line-items are **obsolete by deletion** except
 | 14 | L | Committed version 0.4.0 behind tags; fragile sed | **deferred** | `Directory.Build.props:22`, `server.json:4,14` (Phase 2 CI PR) |
 | 15 | L | EFCore/Design version skew | **fixed** | Both 10.0.9 |
 | 16 | L | No `RollForward` on global tool | **fixed** | `ProjGraph.Cli.csproj:6` |
-| 17 | L | BOMs in csproj/props | **fixed** | Zero BOMs (scanned); the pre-commit hook itself is gone |
+| 17 | L | BOMs in csproj/props | **fixed** | Zero BOMs (scanned). `.githooks/pre-commit` still enforces the BOM check (opt-in via `git config core.hooksPath .githooks`), so edits to these files are no longer blocked |
 | 18 | M | MCP "integration" suite hand-wires tools, `null!` server, no e2e | **still-present** | `McpTestHelper.cs:62`; no `McpClient`/`StdioClientTransport` anywhere |
 | 19 | M | `TestPathHelper` CWD climb; skip guards green-wash | **still-present** | `TestPathHelper.cs:16-17,29-31`; `GraphServiceTests.cs:40-44` |
 | 20 | L | `SkipTestException` overload missing skip token | **fixed** | `SkipTestException.cs:31-33` |
