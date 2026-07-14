@@ -8,10 +8,10 @@ using ProjGraph.Lib.EntityFramework.Infrastructure.Extensions;
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
 /// <summary>
-/// Walks the Fluent API invocation chains of a configuring method (OnModelCreating) directly on the
-/// C# syntax tree to discover entity relationships, replacing the text/regex based
-/// <see cref="RelationshipConfigParser"/> for the DbContext path. The receiver expression of each
-/// chain determines the owning entity, so configuration never leaks between unrelated statements.
+/// Walks the Fluent API invocation chains of a configuring method (OnModelCreating or a snapshot's
+/// BuildModel) directly on the C# syntax tree to discover entity relationships, having replaced the
+/// retired text/regex relationship parser. The receiver expression of each chain determines the owning
+/// entity, so configuration never leaks between unrelated statements.
 /// </summary>
 internal static class FluentRelationshipWalker
 {
@@ -145,8 +145,7 @@ internal static class FluentRelationshipWalker
         }
 
         var explicitRequired = ExtractExplicitRequired(chain);
-        return RelationshipConfigParser.CreateShadowRelationship(
-            sourceEntity, target, hasMethod, withMethod, explicitRequired);
+        return CreateShadowRelationship(sourceEntity, target, hasMethod, withMethod, explicitRequired);
     }
 
     /// <summary>Extracts the target entity of a <c>HasOne</c>/<c>HasMany</c> call from its generic arg or first argument.</summary>
@@ -349,7 +348,7 @@ internal static class FluentRelationshipWalker
     {
         foreach (var propertyName in propertyNames)
         {
-            var property = FluentApiParsingUtilities.GetOrCreateProperty(entity, propertyName, "");
+            var property = EfPropertyFactory.GetOrCreateProperty(entity, propertyName, "");
             var updated = EfPropertyFactory.CopyWith(property, new EfPropertyOverrides { IsForeignKey = true });
             var index = entity.Properties.IndexOf(property);
             if (index >= 0)
@@ -357,6 +356,60 @@ internal static class FluentRelationshipWalker
                 entity.Properties[index] = updated;
             }
         }
+    }
+
+    /// <summary>
+    /// Creates an EfRelationship from has/with method combination.
+    /// </summary>
+    /// <param name="sourceEntity">The source entity name.</param>
+    /// <param name="targetEntity">The target entity name.</param>
+    /// <param name="hasMethod">The Has method name (HasOne/HasMany).</param>
+    /// <param name="withMethod">The With method name (WithOne/WithMany).</param>
+    /// <param name="explicitRequired">
+    /// The explicit <c>.IsRequired(...)</c> value when configured, or <see langword="null"/> to apply the
+    /// EF convention default for the relationship kind (required for one-to-many, optional otherwise).
+    /// </param>
+    private static EfRelationship CreateShadowRelationship(string sourceEntity, string targetEntity,
+        string hasMethod, string withMethod, bool? explicitRequired = null)
+    {
+        return (hasMethod, withMethod) switch
+        {
+            (EfAnalysisConstants.EfMethods.HasOne, EfAnalysisConstants.EfMethods.WithMany) => new EfRelationship
+            {
+                SourceEntity = targetEntity,
+                TargetEntity = sourceEntity,
+                Type = EfRelationshipType.OneToMany,
+                IsRequired = explicitRequired ?? true
+            },
+            (EfAnalysisConstants.EfMethods.HasMany, EfAnalysisConstants.EfMethods.WithOne) => new EfRelationship
+            {
+                SourceEntity = sourceEntity,
+                TargetEntity = targetEntity,
+                Type = EfRelationshipType.OneToMany,
+                IsRequired = explicitRequired ?? true
+            },
+            (EfAnalysisConstants.EfMethods.HasOne, EfAnalysisConstants.EfMethods.WithOne) => new EfRelationship
+            {
+                SourceEntity = sourceEntity,
+                TargetEntity = targetEntity,
+                Type = EfRelationshipType.OneToOne,
+                IsRequired = explicitRequired ?? false
+            },
+            (EfAnalysisConstants.EfMethods.HasMany, EfAnalysisConstants.EfMethods.WithMany) => new EfRelationship
+            {
+                SourceEntity = sourceEntity,
+                TargetEntity = targetEntity,
+                Type = EfRelationshipType.ManyToMany,
+                IsRequired = explicitRequired ?? false
+            },
+            _ => new EfRelationship
+            {
+                SourceEntity = targetEntity,
+                TargetEntity = sourceEntity,
+                Type = EfRelationshipType.OneToMany,
+                IsRequired = explicitRequired ?? true
+            }
+        };
     }
 
     /// <summary>

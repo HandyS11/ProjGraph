@@ -7,13 +7,13 @@ using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
 /// <summary>
-/// Walks the Fluent API invocation chains of a configuring method (OnModelCreating) directly on the
-/// C# syntax tree to discover entity-level configuration: fluent-only entities declared via
-/// <c>modelBuilder.Entity&lt;T&gt;()</c> / <c>Entity("Ns.T")</c> that have no <c>DbSet&lt;T&gt;</c>, and
-/// their <c>.ToTable("X")</c> mapping. Replaces the text/regex materialization and <c>ToTable</c> parsing
-/// that <see cref="FluentApiConfigurationParser.ApplyConstraintsFromMethod"/> performed on the DbContext
-/// path. The receiver expression of each chain determines the owning entity, so configuration never leaks
-/// between unrelated statements or into nested owned-type / join-entity builder lambdas.
+/// Walks the Fluent API invocation chains of a configuring method (OnModelCreating or a snapshot's
+/// BuildModel) directly on the C# syntax tree to discover entity-level configuration: fluent-only
+/// entities declared via <c>modelBuilder.Entity&lt;T&gt;()</c> / <c>Entity("Ns.T")</c> that have no
+/// <c>DbSet&lt;T&gt;</c>, and their <c>.ToTable("X")</c> mapping, having replaced the retired text/regex
+/// materialization and <c>ToTable</c> parsing. The receiver expression of each chain determines the
+/// owning entity, so configuration never leaks between unrelated statements or into nested owned-type /
+/// join-entity builder lambdas.
 /// </summary>
 internal static class FluentEntityWalker
 {

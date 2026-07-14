@@ -9,7 +9,7 @@ namespace ProjGraph.Tests.Unit.EntityFramework;
 
 /// <summary>
 /// Unit tests for <see cref="FluentPropertyWalker"/>: the Roslyn fluent-chain property/key walker that
-/// replaces the regex <c>PropertyConfigParser</c> on the DbContext path.
+/// replaced the retired regex property parser.
 /// </summary>
 [Trait("Category", "EntityFramework")]
 public sealed class FluentPropertyWalkerTests

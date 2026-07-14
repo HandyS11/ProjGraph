@@ -9,7 +9,7 @@ namespace ProjGraph.Tests.Unit.EntityFramework;
 
 /// <summary>
 /// Unit tests for <see cref="FluentRelationshipWalker"/>: the Roslyn fluent-chain relationship
-/// walker that replaces the regex <c>RelationshipConfigParser</c> on the DbContext path.
+/// walker that replaced the retired regex relationship parser.
 /// </summary>
 [Trait("Category", "EntityFramework")]
 public sealed class FluentRelationshipWalkerTests
@@ -431,9 +431,9 @@ public sealed class FluentRelationshipWalkerTests
     [Fact]
     public void Apply_IsRequiredOnSeparatePropertyChain_DoesNotAffectRelationship()
     {
-        // Preserves the RelationshipConfigParserTests regression intent before that suite is deleted in
-        // Task 4: an IsRequired() on a *property* chain after the relationship statement must not flip
-        // the relationship's requiredness (one-to-one defaults to optional).
+        // Preserves the regression intent of the retired regex-parser tests: an IsRequired() on a
+        // *property* chain after the relationship statement must not flip the relationship's
+        // requiredness (one-to-one defaults to optional).
         const string source = """
             public class Ctx
             {
