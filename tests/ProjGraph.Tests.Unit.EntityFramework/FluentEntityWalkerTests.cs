@@ -134,4 +134,95 @@ public sealed class FluentEntityWalkerTests
         entities.Should().NotContainKey("Address");
         model.Entities.Should().NotContain(e => e.Name == "Address");
     }
+
+    [Fact]
+    public void Apply_ToTable_SetsTableNameOnOwningEntity()
+    {
+        const string source = """
+            public class Order { public int Id { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Order>().ToTable("Orders");
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Order");
+
+        FluentEntityWalker.Apply(method, entities, model, compilation);
+
+        entities["Order"].TableName.Should().Be("Orders");
+        model.Entities.Single(e => e.Name == "Order").TableName.Should().Be("Orders");
+    }
+
+    [Fact]
+    public void Apply_ToTableSchemaOverload_SetsTableNameFromFirstArgument()
+    {
+        // Low #13: the old regex only matched single-arg .ToTable("X"); the two-arg schema overload
+        // silently set no table name. The walker takes the first string-literal argument.
+        const string source = """
+            public class Order { public int Id { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Order>().ToTable("Orders", "sales");
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Order");
+
+        FluentEntityWalker.Apply(method, entities, model, compilation);
+
+        entities["Order"].TableName.Should().Be("Orders");
+    }
+
+    [Fact]
+    public void Apply_ToTableInsideOwnsOne_DoesNotLeakToOwner()
+    {
+        const string source = """
+            public class Customer { public int Id { get; set; } public Address Address { get; set; } = null!; }
+            public class Address { public string City { get; set; } = ""; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Customer>(e =>
+                    {
+                        e.OwnsOne(c => c.Address, a => a.ToTable("Addresses"));
+                    });
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Customer");
+
+        FluentEntityWalker.Apply(method, entities, model, compilation);
+
+        entities["Customer"].TableName.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Apply_ToTableOnFluentOnlyEntity_MaterializesAndSetsTableName()
+    {
+        const string source = """
+            public class Product { public int Id { get; set; } }
+            public class Supplier { public int Id { get; set; } }
+            public class ProductSupplier { public int ProductId { get; set; } public int SupplierId { get; set; } }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<ProductSupplier>().ToTable("product_supplier");
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Product", "Supplier");
+
+        FluentEntityWalker.Apply(method, entities, model, compilation);
+
+        entities.Should().ContainKey("ProductSupplier");
+        entities["ProductSupplier"].TableName.Should().Be("product_supplier");
+        model.Entities.Single(e => e.Name == "ProductSupplier").TableName.Should().Be("product_supplier");
+    }
 }

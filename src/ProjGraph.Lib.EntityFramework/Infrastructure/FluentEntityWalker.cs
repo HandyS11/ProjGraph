@@ -48,6 +48,11 @@ internal static class FluentEntityWalker
         {
             MaterializeEntity(entityInvocation, entities, model, compilation);
         }
+
+        foreach (var toTableInvocation in FindConfigRoots(method, EfAnalysisConstants.EfMethods.ToTable))
+        {
+            ApplyTableName(toTableInvocation, entities, model);
+        }
     }
 
     /// <summary>
@@ -116,6 +121,92 @@ internal static class FluentEntityWalker
         {
             model.Entities.Add(entity);
         }
+    }
+
+    /// <summary>
+    /// Applies a <c>.ToTable("X")</c> call to its owning entity, replacing the entity instance with a copy
+    /// carrying the table name in both the entities dictionary and the model. Mirrors the regex parser's
+    /// table-mapping step; the table name is the call's first string-literal argument, which also covers the
+    /// <c>.ToTable("X", "schema")</c> overload (Low #13).
+    /// </summary>
+    /// <param name="toTableInvocation">The <c>ToTable</c> invocation.</param>
+    /// <param name="entities">The known entities.</param>
+    /// <param name="model">The model whose <see cref="EfModel.Entities"/> collection is updated.</param>
+    private static void ApplyTableName(
+        InvocationExpressionSyntax toTableInvocation,
+        Dictionary<string, EfEntity> entities,
+        EfModel model)
+    {
+        var tableName = TableNameArgument(toTableInvocation);
+        if (tableName is null)
+        {
+            return;
+        }
+
+        var entityName = ResolveOwningEntity(toTableInvocation);
+        if (entityName is null || !entities.TryGetValue(entityName, out var entity))
+        {
+            return;
+        }
+
+        var updated = new EfEntity
+        {
+            Name = entity.Name,
+            Properties = entity.Properties,
+            IsJoinEntity = entity.IsJoinEntity,
+            TableName = tableName
+        };
+
+        entities[entityName] = updated;
+        var index = model.Entities.IndexOf(model.Entities.FirstOrDefault(e => e.Name == entity.Name)!);
+        if (index >= 0)
+        {
+            model.Entities[index] = updated;
+        }
+    }
+
+    /// <summary>Returns the first string-literal argument of a <c>ToTable</c> call (the table name), else <see langword="null"/>.</summary>
+    /// <param name="invocation">The ToTable invocation.</param>
+    private static string? TableNameArgument(InvocationExpressionSyntax invocation)
+    {
+        var arg = invocation.ArgumentList.Arguments.FirstOrDefault();
+        return arg?.Expression is LiteralExpressionSyntax literal && literal.IsKind(SyntaxKind.StringLiteralExpression)
+            ? literal.Token.ValueText
+            : null;
+    }
+
+    /// <summary>
+    /// Resolves the entity that owns a configuration call, either from an <c>Entity&lt;T&gt;()</c> earlier in
+    /// the same chain (<c>modelBuilder.Entity&lt;T&gt;().ToTable(...)</c>) or from the enclosing
+    /// <c>Entity&lt;T&gt;(e =&gt; ...)</c> configuration lambda.
+    /// </summary>
+    /// <param name="configInvocation">The <c>ToTable</c> invocation.</param>
+    private static string? ResolveOwningEntity(InvocationExpressionSyntax configInvocation)
+    {
+        for (var receiver = ChainReceiver(configInvocation);
+             receiver is not null;
+             receiver = ChainReceiver(receiver))
+        {
+            if (receiver.Expression is MemberAccessExpressionSyntax ma
+                && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity)
+            {
+                return EntityNameFromInvocation(receiver);
+            }
+        }
+
+        var enclosingEntity = configInvocation.Ancestors()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(inv => inv.Expression is MemberAccessExpressionSyntax ma
+                                   && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity);
+
+        return enclosingEntity is null ? null : EntityNameFromInvocation(enclosingEntity);
+    }
+
+    /// <summary>Returns the invocation on the receiver side of a member-access invocation, or <see langword="null"/>.</summary>
+    /// <param name="invocation">The invocation whose receiver to inspect.</param>
+    private static InvocationExpressionSyntax? ChainReceiver(InvocationExpressionSyntax invocation)
+    {
+        return (invocation.Expression as MemberAccessExpressionSyntax)?.Expression as InvocationExpressionSyntax;
     }
 
     /// <summary>Returns the entity name from an <c>Entity&lt;T&gt;()</c> or <c>Entity("NS.T")</c> invocation.</summary>
