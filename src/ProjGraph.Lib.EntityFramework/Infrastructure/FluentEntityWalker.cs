@@ -38,11 +38,16 @@ internal static class FluentEntityWalker
     /// <param name="entities">Entities already discovered from DbSets; augmented in place with fluent-only entities.</param>
     /// <param name="model">The model whose <see cref="EfModel.Entities"/> collection is populated.</param>
     /// <param name="compilation">The Roslyn compilation for symbol resolution of fluent-only entity types.</param>
+    /// <param name="ambientEntity">
+    /// The owning entity to fall back to when a chain has no <c>Entity&lt;T&gt;()</c> call to resolve from
+    /// (e.g. an <c>IEntityTypeConfiguration&lt;T&gt;.Configure</c> body rooted at a bare builder parameter).
+    /// </param>
     public static void Apply(
         MethodDeclarationSyntax method,
         Dictionary<string, EfEntity> entities,
         EfModel model,
-        Compilation compilation)
+        Compilation compilation,
+        string? ambientEntity = null)
     {
         foreach (var entityInvocation in FindConfigRoots(method, EfAnalysisConstants.EfMethods.Entity))
         {
@@ -51,7 +56,7 @@ internal static class FluentEntityWalker
 
         foreach (var toTableInvocation in FindConfigRoots(method, EfAnalysisConstants.EfMethods.ToTable))
         {
-            ApplyTableName(toTableInvocation, entities, model);
+            ApplyTableName(toTableInvocation, entities, model, ambientEntity);
         }
     }
 
@@ -132,10 +137,12 @@ internal static class FluentEntityWalker
     /// <param name="toTableInvocation">The <c>ToTable</c> invocation.</param>
     /// <param name="entities">The known entities.</param>
     /// <param name="model">The model whose <see cref="EfModel.Entities"/> collection is updated.</param>
+    /// <param name="ambientEntity">The owning entity to fall back to when the chain has no <c>Entity&lt;T&gt;()</c> call.</param>
     private static void ApplyTableName(
         InvocationExpressionSyntax toTableInvocation,
         Dictionary<string, EfEntity> entities,
-        EfModel model)
+        EfModel model,
+        string? ambientEntity)
     {
         var tableName = TableNameArgument(toTableInvocation);
         if (tableName is null)
@@ -143,7 +150,7 @@ internal static class FluentEntityWalker
             return;
         }
 
-        var entityName = ResolveOwningEntity(toTableInvocation);
+        var entityName = ResolveOwningEntity(toTableInvocation, ambientEntity);
         if (entityName is null || !entities.TryGetValue(entityName, out var entity))
         {
             return;
@@ -181,7 +188,8 @@ internal static class FluentEntityWalker
     /// <c>Entity&lt;T&gt;(e =&gt; ...)</c> configuration lambda.
     /// </summary>
     /// <param name="configInvocation">The <c>ToTable</c> invocation.</param>
-    private static string? ResolveOwningEntity(InvocationExpressionSyntax configInvocation)
+    /// <param name="ambientEntity">The owning entity to fall back to when no enclosing <c>Entity&lt;T&gt;()</c> is found.</param>
+    private static string? ResolveOwningEntity(InvocationExpressionSyntax configInvocation, string? ambientEntity)
     {
         for (var receiver = ChainReceiver(configInvocation);
              receiver is not null;
@@ -199,7 +207,7 @@ internal static class FluentEntityWalker
             .FirstOrDefault(inv => inv.Expression is MemberAccessExpressionSyntax ma
                                    && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity);
 
-        return enclosingEntity is null ? null : EntityNameFromInvocation(enclosingEntity);
+        return enclosingEntity is null ? ambientEntity : EntityNameFromInvocation(enclosingEntity);
     }
 
     /// <summary>Returns the invocation on the receiver side of a member-access invocation, or <see langword="null"/>.</summary>

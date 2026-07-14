@@ -117,6 +117,14 @@ public static class EfAnalysisConstants
         /// </summary>
         public const string OnModelCreating = "OnModelCreating";
         public const string BuildModel = "BuildModel";
+
+        /// <summary>
+        /// Entity type configuration (<c>IEntityTypeConfiguration&lt;T&gt;</c>) methods and names.
+        /// </summary>
+        public const string ApplyConfiguration = "ApplyConfiguration";
+        public const string ApplyConfigurationsFromAssembly = "ApplyConfigurationsFromAssembly";
+        public const string Configure = "Configure";
+        public const string EntityTypeConfigurationInterface = "IEntityTypeConfiguration";
     }
 
     /// <summary>

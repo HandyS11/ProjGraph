@@ -252,4 +252,59 @@ public sealed class EntityFileDiscoveryTests : IDisposable
 
         result.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task DiscoverConfigurationFilesAsync_WithSeparateConfigFile_ShouldFindIt()
+    {
+        const string configCode = """
+            using Microsoft.EntityFrameworkCore;
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+            public class GadgetConfiguration : IEntityTypeConfiguration<Gadget>
+            {
+                public void Configure(EntityTypeBuilder<Gadget> builder) { }
+            }
+            """;
+        var configPath = Path.Combine(_tempDir, "GadgetConfiguration.cs");
+        await File.WriteAllTextAsync(configPath, configCode);
+
+        var contextFilePath = Path.Combine(_tempDir, "MyContext.cs");
+        await File.WriteAllTextAsync(contextFilePath, "public class MyContext { }");
+
+        var result = await _sut.DiscoverConfigurationFilesAsync(new List<string> { _tempDir }, contextFilePath);
+
+        result.Should().ContainKey("GadgetConfiguration");
+        result["GadgetConfiguration"].Should().Contain("GadgetConfiguration.cs");
+    }
+
+    [Fact]
+    public async Task DiscoverConfigurationFilesAsync_ContextFileItself_ShouldBeExcluded()
+    {
+        const string contextCode = """
+            using Microsoft.EntityFrameworkCore;
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+            public class InlineConfiguration : IEntityTypeConfiguration<Gadget>
+            {
+                public void Configure(EntityTypeBuilder<Gadget> builder) { }
+            }
+            """;
+        var contextFilePath = Path.Combine(_tempDir, "MyContext.cs");
+        await File.WriteAllTextAsync(contextFilePath, contextCode);
+
+        var result = await _sut.DiscoverConfigurationFilesAsync(new List<string> { _tempDir }, contextFilePath);
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DiscoverConfigurationFilesAsync_NoConfigClasses_ShouldReturnEmpty()
+    {
+        var entityPath = Path.Combine(_tempDir, "Gadget.cs");
+        await File.WriteAllTextAsync(entityPath, "public class Gadget { public int Id { get; set; } }");
+        var contextFilePath = Path.Combine(_tempDir, "MyContext.cs");
+        await File.WriteAllTextAsync(contextFilePath, "public class MyContext { }");
+
+        var result = await _sut.DiscoverConfigurationFilesAsync(new List<string> { _tempDir }, contextFilePath);
+
+        result.Should().BeEmpty();
+    }
 }

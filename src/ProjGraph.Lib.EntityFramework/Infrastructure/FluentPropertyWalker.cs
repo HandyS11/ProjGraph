@@ -38,19 +38,24 @@ internal static class FluentPropertyWalker
     /// <param name="method">The <c>OnModelCreating</c> method declaration to walk.</param>
     /// <param name="entities">Entities already discovered from DbSets and fluent <c>.Entity&lt;T&gt;</c> calls.</param>
     /// <param name="compilation">The Roslyn compilation for constant/enum default-value resolution.</param>
+    /// <param name="ambientEntity">
+    /// The owning entity to fall back to when a chain has no <c>Entity&lt;T&gt;()</c> call to resolve from
+    /// (e.g. an <c>IEntityTypeConfiguration&lt;T&gt;.Configure</c> body rooted at a bare builder parameter).
+    /// </param>
     public static void Apply(
         MethodDeclarationSyntax method,
         Dictionary<string, EfEntity> entities,
-        Compilation compilation)
+        Compilation compilation,
+        string? ambientEntity = null)
     {
         foreach (var propertyRoot in FindConfigRoots(method, EfAnalysisConstants.EfMethods.Property))
         {
-            ApplyPropertyChain(propertyRoot, entities, compilation);
+            ApplyPropertyChain(propertyRoot, entities, compilation, ambientEntity);
         }
 
         foreach (var keyRoot in FindConfigRoots(method, EfAnalysisConstants.EfMethods.HasKey))
         {
-            ApplyKey(keyRoot, entities);
+            ApplyKey(keyRoot, entities, ambientEntity);
         }
     }
 
@@ -93,12 +98,14 @@ internal static class FluentPropertyWalker
     /// <param name="propertyRoot">The <c>Property</c> invocation seeding the chain.</param>
     /// <param name="entities">The known entities.</param>
     /// <param name="compilation">The compilation for constant/enum resolution.</param>
+    /// <param name="ambientEntity">The owning entity to fall back to when the chain has no <c>Entity&lt;T&gt;()</c> call.</param>
     private static void ApplyPropertyChain(
         InvocationExpressionSyntax propertyRoot,
         Dictionary<string, EfEntity> entities,
-        Compilation compilation)
+        Compilation compilation,
+        string? ambientEntity)
     {
-        var entityName = ResolveOwningEntity(propertyRoot);
+        var entityName = ResolveOwningEntity(propertyRoot, ambientEntity);
         if (entityName is null || !entities.TryGetValue(entityName, out var entity))
         {
             return;
@@ -132,9 +139,13 @@ internal static class FluentPropertyWalker
     /// </summary>
     /// <param name="keyRoot">The <c>HasKey</c> invocation.</param>
     /// <param name="entities">The known entities.</param>
-    private static void ApplyKey(InvocationExpressionSyntax keyRoot, Dictionary<string, EfEntity> entities)
+    /// <param name="ambientEntity">The owning entity to fall back to when the chain has no <c>Entity&lt;T&gt;()</c> call.</param>
+    private static void ApplyKey(
+        InvocationExpressionSyntax keyRoot,
+        Dictionary<string, EfEntity> entities,
+        string? ambientEntity)
     {
-        var entityName = ResolveOwningEntity(keyRoot);
+        var entityName = ResolveOwningEntity(keyRoot, ambientEntity);
         if (entityName is null || !entities.TryGetValue(entityName, out var entity))
         {
             return;
@@ -200,7 +211,8 @@ internal static class FluentPropertyWalker
     /// <c>Entity&lt;T&gt;(e =&gt; ...)</c> configuration lambda.
     /// </summary>
     /// <param name="configInvocation">The <c>Property</c>/<c>HasKey</c> invocation.</param>
-    private static string? ResolveOwningEntity(InvocationExpressionSyntax configInvocation)
+    /// <param name="ambientEntity">The owning entity to fall back to when no enclosing <c>Entity&lt;T&gt;()</c> is found.</param>
+    private static string? ResolveOwningEntity(InvocationExpressionSyntax configInvocation, string? ambientEntity)
     {
         for (var receiver = ChainReceiver(configInvocation);
              receiver is not null;
@@ -218,7 +230,7 @@ internal static class FluentPropertyWalker
             .FirstOrDefault(inv => inv.Expression is MemberAccessExpressionSyntax ma
                                    && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity);
 
-        return enclosingEntity is null ? null : EntityNameFromInvocation(enclosingEntity);
+        return enclosingEntity is null ? ambientEntity : EntityNameFromInvocation(enclosingEntity);
     }
 
     /// <summary>Returns the invocation on the receiver side of a member-access invocation, or <see langword="null"/>.</summary>

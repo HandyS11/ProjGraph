@@ -23,11 +23,16 @@ internal static class FluentRelationshipWalker
     /// <param name="entities">Entities already discovered from DbSets and fluent <c>.Entity&lt;T&gt;</c> calls.</param>
     /// <param name="model">The model whose <see cref="EfModel.Relationships"/> collection is populated.</param>
     /// <param name="compilation">The Roslyn compilation for semantic navigation-property resolution.</param>
+    /// <param name="ambientEntity">
+    /// The owning entity to fall back to when a chain has no <c>Entity&lt;T&gt;()</c> call to resolve from
+    /// (e.g. an <c>IEntityTypeConfiguration&lt;T&gt;.Configure</c> body rooted at a bare builder parameter).
+    /// </param>
     public static void Apply(
         MethodDeclarationSyntax method,
         Dictionary<string, EfEntity> entities,
         EfModel model,
-        Compilation compilation)
+        Compilation compilation,
+        string? ambientEntity = null)
     {
         var existingKeys = model.Relationships.Select(r => r.GenerateKey()).ToHashSet();
 
@@ -35,7 +40,7 @@ internal static class FluentRelationshipWalker
         {
             var chain = new FluentChain(hasInvocation);
 
-            var sourceEntity = ResolveSourceEntity(chain);
+            var sourceEntity = ResolveSourceEntity(chain, ambientEntity);
             if (sourceEntity is null)
             {
                 continue;
@@ -90,7 +95,8 @@ internal static class FluentRelationshipWalker
 
     /// <summary>Resolves the entity that owns a fluent chain from its receiver expression.</summary>
     /// <param name="chain">The fluent chain.</param>
-    private static string? ResolveSourceEntity(FluentChain chain)
+    /// <param name="ambientEntity">The owning entity to fall back to when no enclosing <c>Entity&lt;T&gt;()</c> is found.</param>
+    private static string? ResolveSourceEntity(FluentChain chain, string? ambientEntity)
     {
         // modelBuilder.Entity<T>().HasMany(...): the Entity call is part of this chain's spine.
         foreach (var (name, invocation) in chain.Calls)
@@ -107,7 +113,7 @@ internal static class FluentRelationshipWalker
             .FirstOrDefault(inv => inv.Expression is MemberAccessExpressionSyntax ma
                                    && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity);
 
-        return enclosingEntity is null ? null : EntityNameFromInvocation(enclosingEntity);
+        return enclosingEntity is null ? ambientEntity : EntityNameFromInvocation(enclosingEntity);
     }
 
     /// <summary>Builds the relationship for a chain, or <see langword="null"/> when it has no paired <c>With</c> call.</summary>

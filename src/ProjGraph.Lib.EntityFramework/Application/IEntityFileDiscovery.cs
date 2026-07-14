@@ -20,6 +20,16 @@ public interface IEntityFileDiscovery
         string contextFilePath);
 
     /// <summary>
+    /// Discovers source files declaring an <c>IEntityTypeConfiguration&lt;T&gt;</c> class within the given
+    /// search directories.
+    /// </summary>
+    /// <param name="searchDirectories">The directories to search for configuration files.</param>
+    /// <param name="contextFilePath">The file path of the context file to exclude.</param>
+    Task<Dictionary<string, string>> DiscoverConfigurationFilesAsync(
+        IReadOnlyList<string> searchDirectories,
+        string contextFilePath);
+
+    /// <summary>
     /// Discovers source files containing base class definitions used by entity types.
     /// </summary>
     /// <param name="entityFiles">A dictionary of entity type names and their file paths.</param>
