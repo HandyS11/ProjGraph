@@ -259,7 +259,7 @@ internal static class FluentPropertyWalker
     private static IEnumerable<(string Name, InvocationExpressionSyntax Invocation)> TrailingCalls(
         InvocationExpressionSyntax root)
     {
-        for (SyntaxNode? cursor = root.Parent;
+        for (var cursor = root.Parent;
              cursor is MemberAccessExpressionSyntax member && member.Parent is InvocationExpressionSyntax invocation;
              cursor = invocation.Parent)
         {
