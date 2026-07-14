@@ -61,6 +61,29 @@ internal static class FluentEntityWalker
     }
 
     /// <summary>
+    /// Collects the entity type names referenced by every <c>Entity&lt;T&gt;()</c> / <c>Entity("Ns.T")</c>
+    /// invocation in <paramref name="method"/>, namespace-stripped. Unlike <see cref="Apply"/>, nested
+    /// builder scopes are NOT excluded: this feeds entity-*file* discovery, which wants maximal recall,
+    /// while configuration scoping stays the walkers' concern.
+    /// </summary>
+    /// <param name="method">The configuring method (e.g. a snapshot's <c>BuildModel</c>) to scan.</param>
+    public static HashSet<string> CollectEntityNames(MethodDeclarationSyntax method)
+    {
+        var names = new HashSet<string>();
+        foreach (var invocation in method.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            if (invocation.Expression is MemberAccessExpressionSyntax ma
+                && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity
+                && EntityNameFromInvocation(invocation) is { Length: > 0 } name)
+            {
+                names.Add(name);
+            }
+        }
+
+        return names;
+    }
+
+    /// <summary>
     /// Finds every invocation whose immediate member name is <paramref name="methodName"/>, excluding those
     /// nested inside an owned-type / join-entity builder lambda (see <see cref="NestedBuilderScopes"/>).
     /// </summary>

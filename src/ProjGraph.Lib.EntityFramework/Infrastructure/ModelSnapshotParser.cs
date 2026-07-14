@@ -6,7 +6,9 @@ using ProjGraph.Lib.EntityFramework.Infrastructure.Constants;
 namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 
 /// <summary>
-/// Parser for Entity Framework ModelSnapshot files.
+/// Parser for Entity Framework ModelSnapshot files: locates the snapshot's <c>BuildModel</c> method and
+/// folds its fluent configuration into an <see cref="EfModel"/> via the Roslyn syntax walkers
+/// (<see cref="FluentEntityWalker"/>, <see cref="FluentPropertyWalker"/>, <see cref="FluentRelationshipWalker"/>).
 /// </summary>
 public static class ModelSnapshotParser
 {
@@ -28,19 +30,17 @@ public static class ModelSnapshotParser
         var buildModelMethod = snapshotClass.Members.OfType<MethodDeclarationSyntax>()
             .FirstOrDefault(m => m.Identifier.Text == EfAnalysisConstants.EfMethods.BuildModel);
 
-        if (buildModelMethod?.Body is null)
+        if (buildModelMethod is null || (buildModelMethod.Body is null && buildModelMethod.ExpressionBody is null))
         {
             return model;
         }
 
-        // Use the updated FluentApiConfigurationParser to process sections
-        FluentApiConfigurationParser.ApplyConstraintsFromMethod(buildModelMethod, entities, model, compilation);
-
-        // Populate the model entities if they weren't already added by ApplyConstraintsFromMethod
-        foreach (var entity in entities.Values.Where(entity => model.Entities.All(e => e.Name != entity.Name)))
-        {
-            model.Entities.Add(entity);
-        }
+        // A generated snapshot's BuildModel has the same fluent shape as OnModelCreating (string-based
+        // Entity/Property/HasKey/HasOne overloads), so the same Roslyn syntax walkers apply, in the same
+        // order as the context path. The walkers add materialized entities to the model directly.
+        FluentEntityWalker.Apply(buildModelMethod, entities, model, compilation);
+        FluentPropertyWalker.Apply(buildModelMethod, entities, compilation);
+        FluentRelationshipWalker.Apply(buildModelMethod, entities, model, compilation);
 
         return model;
     }
