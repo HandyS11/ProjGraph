@@ -178,12 +178,50 @@ public class EfModelAnalyzer(
 
         MergeFileDictionaries(entityFiles, baseClassFiles);
 
+        // Slice 5: DbSet<T> declared on a base context names entities the entry context never
+        // mentions. Pull those entity type names from the discovered base-context files and
+        // discover their files too, so base-declared entities in their own file materialize with
+        // columns instead of resolving to a bare (member-less) type.
+        var baseContextEntityNames = await ExtractEntityTypeNamesFromFilesAsync(additionalBaseFiles.Values);
+        if (baseContextEntityNames.Count > 0)
+        {
+            var baseEntityFiles = await entityFileDiscovery.DiscoverEntityFilesAsync(
+                searchDirectories,
+                baseContextEntityNames,
+                contextPath);
+            MergeFileDictionaries(entityFiles, baseEntityFiles);
+        }
+
         // Slice 4: pull separate IEntityTypeConfiguration<T> files into the compilation so config classes
         // that live in their own files are visible to EntityConfigurationWalker.
         var configFiles = await entityFileDiscovery.DiscoverConfigurationFilesAsync(searchDirectories, contextPath);
         MergeFileDictionaries(entityFiles, configFiles);
 
         return CreateSyntaxTrees(contextSyntaxTree, entityFiles);
+    }
+
+    /// <summary>
+    /// Extracts the DbSet entity-type names declared across the class declarations of the given files.
+    /// </summary>
+    /// <param name="filePaths">The C# files to scan (typically the discovered base-context files).</param>
+    /// <returns>The set of entity type names referenced by <c>DbSet&lt;T&gt;</c> properties in those files.</returns>
+    /// <seealso cref="entityFileDiscovery.ExtractEntityTypeNames(ClassDeclarationSyntax)"/>
+    private async Task<HashSet<string>> ExtractEntityTypeNamesFromFilesAsync(IEnumerable<string> filePaths)
+    {
+        var entityTypeNames = new HashSet<string>();
+
+        foreach (var filePath in filePaths.Distinct())
+        {
+            var code = await fileSystem.ReadAllTextAsync(filePath);
+            var fileRoot = await CSharpSyntaxTree.ParseText(code).GetRootAsync();
+
+            foreach (var classDeclaration in fileRoot.DescendantNodes().OfType<ClassDeclarationSyntax>())
+            {
+                entityTypeNames.UnionWith(entityFileDiscovery.ExtractEntityTypeNames(classDeclaration));
+            }
+        }
+
+        return entityTypeNames;
     }
 
     /// <summary>
@@ -274,20 +312,30 @@ public class EfModelAnalyzer(
     {
         var entities = new Dictionary<string, EfEntity>();
 
-        foreach (var member in contextType.GetMembers().OfType<IPropertySymbol>())
+        // Walk the context's base-type chain (derived -> base) so DbSet<T> members declared on a
+        // base DbContext are discovered too, mirroring how EntityAnalyzer.AnalyzeEntity climbs the
+        // entity hierarchy. Stop at System.Object; the EF DbContext base exposes no DbSet<T>.
+        for (var currentType = contextType;
+             currentType is not null && currentType.SpecialType is not SpecialType.System_Object;
+             currentType = currentType.BaseType)
         {
-            if (member.Type is not INamedTypeSymbol
+            foreach (var member in currentType.GetMembers().OfType<IPropertySymbol>())
+            {
+                if (member.Type is not INamedTypeSymbol
+                    {
+                        Name: EfAnalysisConstants.CommonNames.DbSet, TypeArguments.Length: 1
+                    } dbSetType)
                 {
-                    Name: EfAnalysisConstants.CommonNames.DbSet, TypeArguments.Length: 1
-                } dbSetType)
-            {
-                continue;
-            }
+                    continue;
+                }
 
-            if (dbSetType.TypeArguments[0] is INamedTypeSymbol entityType &&
-                !entities.ContainsKey(entityType.Name))
-            {
-                entities[entityType.Name] = EntityAnalyzer.AnalyzeEntity(entityType);
+                // First-wins over the derived -> base walk: a derived re-declaration of a DbSet<T>
+                // takes precedence over the base's, consistent with C# member hiding/overriding.
+                if (dbSetType.TypeArguments[0] is INamedTypeSymbol entityType &&
+                    !entities.ContainsKey(entityType.Name))
+                {
+                    entities[entityType.Name] = EntityAnalyzer.AnalyzeEntity(entityType);
+                }
             }
         }
 
