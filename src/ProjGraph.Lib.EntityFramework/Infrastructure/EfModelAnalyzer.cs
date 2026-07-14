@@ -169,11 +169,10 @@ public class EfModelAnalyzer(
         // Also discover base classes for entities that might be in the context file itself
         var baseClassFiles = await entityFileDiscovery.DiscoverBaseClassFilesAsync(entityFiles, contextDirectory);
 
-        // New step: extract base classes from the context file root as well
-        var additionalBaseClassNames = new HashSet<string>();
-        entityFileDiscovery.ExtractBaseClassNamesFromSyntax(root, additionalBaseClassNames);
-        var additionalBaseFiles =
-            entityFileDiscovery.SearchForBaseClassFiles(additionalBaseClassNames, new DirectoryInfo(contextDirectory));
+        // New step: extract base classes from the context file root as well, following the
+        // inheritance chain across files — a base context may itself derive from another
+        // context declared in yet another file.
+        var additionalBaseFiles = await DiscoverTransitiveBaseFilesAsync(root, contextDirectory);
         MergeFileDictionaries(baseClassFiles, additionalBaseFiles);
 
         MergeFileDictionaries(entityFiles, baseClassFiles);
@@ -201,6 +200,56 @@ public class EfModelAnalyzer(
     }
 
     /// <summary>
+    /// Discovers base-class files reachable from the context file's syntax root, following the
+    /// inheritance chain transitively: base names found in each discovered file are searched in
+    /// turn, so a multi-file DbContext hierarchy (context → base → grand-base, each in its own
+    /// file) is pulled into the compilation in full.
+    /// </summary>
+    /// <param name="root">The syntax root of the context file.</param>
+    /// <param name="contextDirectory">The directory containing the context file, used as the search root.</param>
+    /// <returns>A dictionary mapping discovered base-class names to their file paths.</returns>
+    /// <seealso cref="entityFileDiscovery.ExtractBaseClassNamesFromSyntax(SyntaxNode, HashSet{string})"/>
+    /// <seealso cref="entityFileDiscovery.SearchForBaseClassFiles(HashSet{string}, DirectoryInfo)"/>
+    private async Task<Dictionary<string, string>> DiscoverTransitiveBaseFilesAsync(
+        SyntaxNode root,
+        string contextDirectory)
+    {
+        var searchRoot = new DirectoryInfo(contextDirectory);
+        var discoveredFiles = new Dictionary<string, string>();
+
+        // seenNames makes the walk cycle-safe; each iteration must discover a new file to continue.
+        var seenNames = new HashSet<string>();
+        entityFileDiscovery.ExtractBaseClassNamesFromSyntax(root, seenNames);
+        var pendingNames = new HashSet<string>(seenNames);
+
+        while (pendingNames.Count > 0)
+        {
+            var foundFiles = entityFileDiscovery.SearchForBaseClassFiles(pendingNames, searchRoot);
+            pendingNames = [];
+
+            foreach (var (baseName, filePath) in foundFiles)
+            {
+                if (!discoveredFiles.TryAdd(baseName, filePath))
+                {
+                    continue;
+                }
+
+                var fileRoot = await TryParseFileAsync(filePath);
+                if (fileRoot is null)
+                {
+                    continue;
+                }
+
+                var nestedBaseNames = new HashSet<string>();
+                entityFileDiscovery.ExtractBaseClassNamesFromSyntax(fileRoot, nestedBaseNames);
+                pendingNames.UnionWith(nestedBaseNames.Where(seenNames.Add));
+            }
+        }
+
+        return discoveredFiles;
+    }
+
+    /// <summary>
     /// Extracts the DbSet entity-type names declared across the class declarations of the given files.
     /// </summary>
     /// <param name="filePaths">The C# files to scan (typically the discovered base-context files).</param>
@@ -212,8 +261,11 @@ public class EfModelAnalyzer(
 
         foreach (var filePath in filePaths.Distinct())
         {
-            var code = await fileSystem.ReadAllTextAsync(filePath);
-            var fileRoot = await CSharpSyntaxTree.ParseText(code).GetRootAsync();
+            var fileRoot = await TryParseFileAsync(filePath);
+            if (fileRoot is null)
+            {
+                continue;
+            }
 
             foreach (var classDeclaration in fileRoot.DescendantNodes().OfType<ClassDeclarationSyntax>())
             {
@@ -222,6 +274,26 @@ public class EfModelAnalyzer(
         }
 
         return entityTypeNames;
+    }
+
+    /// <summary>
+    /// Reads and parses a C# file, returning its syntax root, or <c>null</c> when the file cannot
+    /// be read (locked, deleted, inaccessible). Discovery degrades to whatever the compilation
+    /// already contains instead of failing the whole analysis on one unreadable file.
+    /// </summary>
+    /// <param name="filePath">The C# file to read and parse.</param>
+    /// <returns>The parsed syntax root, or <c>null</c> when the file is unreadable.</returns>
+    private async Task<SyntaxNode?> TryParseFileAsync(string filePath)
+    {
+        try
+        {
+            var code = await fileSystem.ReadAllTextAsync(filePath);
+            return await CSharpSyntaxTree.ParseText(code).GetRootAsync();
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -438,6 +510,8 @@ public class EfModelAnalyzer(
 
     /// <summary>
     /// Creates a list of syntax trees from a given context syntax tree and a collection of entity files.
+    /// Files that cannot be read (locked, deleted, inaccessible) are skipped so the analysis degrades
+    /// to the remaining sources instead of failing outright.
     /// </summary>
     /// <param name="contextTree">The syntax tree representing the context.</param>
     /// <param name="entityFiles">A dictionary containing entity file paths with their corresponding names as keys.</param>
@@ -446,8 +520,18 @@ public class EfModelAnalyzer(
         Dictionary<string, string> entityFiles)
     {
         var syntaxTrees = new List<SyntaxTree> { contextTree };
-        syntaxTrees.AddRange(entityFiles.Values.Distinct().Select(fileSystem.ReadAllText)
-            .Select(entityCode => CSharpSyntaxTree.ParseText(entityCode)));
+
+        foreach (var filePath in entityFiles.Values.Distinct())
+        {
+            try
+            {
+                syntaxTrees.Add(CSharpSyntaxTree.ParseText(fileSystem.ReadAllText(filePath)));
+            }
+            catch (IOException)
+            {
+                // Skip unreadable files; the compilation degrades to what it already contains.
+            }
+        }
 
         return syntaxTrees;
     }
