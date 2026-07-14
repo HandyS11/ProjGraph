@@ -7,6 +7,9 @@ on:
   push:
     branches:
       - develop
+  # Allow analysing an arbitrary branch on demand (e.g. a PR branch), so the quality gate
+  # can be checked before merging into develop rather than only after.
+  workflow_dispatch:
 
 jobs:
   build:
