@@ -69,11 +69,13 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IAsyncDispo
                 nameof(path));
         }
 
-        return rootPaths
-            .Select(rootPath => ResolveWithinRoot(rootPath, path))
-            .OfType<string>()
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        return
+        [
+            .. rootPaths
+                .Select(rootPath => ResolveWithinRoot(rootPath, path))
+                .OfType<string>()
+                .Distinct(StringComparer.Ordinal)
+        ];
     }
 
     private string? ResolveWithinRoot(string rootPath, string relativePath)

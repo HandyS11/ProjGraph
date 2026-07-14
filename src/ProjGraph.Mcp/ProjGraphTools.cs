@@ -7,6 +7,7 @@ using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Dependencies.Application;
 using ProjGraph.Lib.EntityFramework.Application;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -15,6 +16,11 @@ using System.Text.Json.Nodes;
 namespace ProjGraph.Mcp;
 
 [McpServerToolType]
+[method: SuppressMessage("Major Code Smell", "S107:Methods should not have too many parameters",
+    Justification =
+        "This is the MCP tool host: each parameter is an independent DI-injected collaborator that a " +
+        "distinct tool method needs. Bundling them behind a wrapper type would obscure the dependency " +
+        "graph without reducing real coupling.")]
 internal sealed class ProjGraphTools(
     AnalysisServices analysisServices,
     IDiscoverCsFilesUseCase discoverCsFilesUseCase,

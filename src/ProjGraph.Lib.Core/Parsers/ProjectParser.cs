@@ -142,40 +142,61 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
 
         while (directory is not null && result.Count < names.Count)
         {
-            var propsFile = Path.Combine(directory, "Directory.Build.props");
-            if (fileSystem.FileExists(propsFile))
-            {
-                try
-                {
-                    var propsRoot = ProjectRootElement.Open(propsFile);
-                    if (propsRoot is not null)
-                    {
-                        foreach (var propertyName in names)
-                        {
-                            if (result.ContainsKey(propertyName))
-                            {
-                                continue;
-                            }
-
-                            var value = GetPropertyValue(propsRoot, propertyName);
-                            if (value is not null)
-                            {
-                                result[propertyName] = value;
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex) when (ex is InvalidProjectFileException or IOException
-                                               or InvalidOperationException or XmlException)
-                {
-                    // If we can't read the props file, continue searching up
-                }
-            }
-
+            MergeInheritedProperties(Path.Combine(directory, "Directory.Build.props"), names, result);
             directory = Path.GetDirectoryName(directory);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Merges the requested properties found in a single <c>Directory.Build.props</c> file into
+    /// <paramref name="result"/>, keeping the nearest (first-seen) value for each name. A missing or
+    /// unreadable props file contributes nothing.
+    /// </summary>
+    /// <param name="propsFile">The <c>Directory.Build.props</c> path to read.</param>
+    /// <param name="names">The property names still being resolved.</param>
+    /// <param name="result">The accumulator of resolved property values, augmented in place.</param>
+    private void MergeInheritedProperties(
+        string propsFile,
+        IReadOnlyCollection<string> names,
+        Dictionary<string, string> result)
+    {
+        if (!fileSystem.FileExists(propsFile))
+        {
+            return;
+        }
+
+        ProjectRootElement? propsRoot;
+        try
+        {
+            propsRoot = ProjectRootElement.Open(propsFile);
+        }
+        catch (Exception ex) when (ex is InvalidProjectFileException or IOException
+                                       or InvalidOperationException or XmlException)
+        {
+            // If we can't read the props file, continue searching up.
+            return;
+        }
+
+        if (propsRoot is null)
+        {
+            return;
+        }
+
+        foreach (var propertyName in names)
+        {
+            if (result.ContainsKey(propertyName))
+            {
+                continue;
+            }
+
+            var value = GetPropertyValue(propsRoot, propertyName);
+            if (value is not null)
+            {
+                result[propertyName] = value;
+            }
+        }
     }
 
     /// <summary>

@@ -294,7 +294,7 @@ public sealed class EntityFileDiscoveryTests : IDisposable
         var contextFilePath = Path.Combine(_tempDir, "MyContext.cs");
         await File.WriteAllTextAsync(contextFilePath, "public class MyContext { }");
 
-        var result = await _sut.DiscoverConfigurationFilesAsync(new List<string> { _tempDir }, contextFilePath);
+        var result = await _sut.DiscoverConfigurationFilesAsync([_tempDir], contextFilePath);
 
         result.Should().ContainKey("GadgetConfiguration");
         result["GadgetConfiguration"].Should().Contain("GadgetConfiguration.cs");
@@ -314,7 +314,7 @@ public sealed class EntityFileDiscoveryTests : IDisposable
         var contextFilePath = Path.Combine(_tempDir, "MyContext.cs");
         await File.WriteAllTextAsync(contextFilePath, contextCode);
 
-        var result = await _sut.DiscoverConfigurationFilesAsync(new List<string> { _tempDir }, contextFilePath);
+        var result = await _sut.DiscoverConfigurationFilesAsync([_tempDir], contextFilePath);
 
         result.Should().BeEmpty();
     }
@@ -327,7 +327,7 @@ public sealed class EntityFileDiscoveryTests : IDisposable
         var contextFilePath = Path.Combine(_tempDir, "MyContext.cs");
         await File.WriteAllTextAsync(contextFilePath, "public class MyContext { }");
 
-        var result = await _sut.DiscoverConfigurationFilesAsync(new List<string> { _tempDir }, contextFilePath);
+        var result = await _sut.DiscoverConfigurationFilesAsync([_tempDir], contextFilePath);
 
         result.Should().BeEmpty();
     }
