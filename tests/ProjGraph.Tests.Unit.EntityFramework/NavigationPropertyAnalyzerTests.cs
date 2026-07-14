@@ -65,6 +65,28 @@ public sealed class NavigationPropertyAnalyzerTests
     }
 
     [Fact]
+    public void IsNavigationProperty_CollectionOfPrimitives_ShouldReturnFalse()
+    {
+        // EF 8+ primitive collections (List<string> Tags) are scalar columns, not navigations. The
+        // element type is not an entity candidate, so the property must fall through to a column
+        // rather than being classified as a navigation (which would drop it from the ERD entirely).
+        var prop = GetProperty("""
+                               using System.Collections.Generic;
+                               public class Post
+                               {
+                                   public int Id { get; set; }
+                                   public List<string> Tags { get; set; }
+                               }
+                               """, "Post", "Tags");
+
+        var result = NavigationPropertyAnalyzer.IsNavigationProperty(prop, out var targetType, out var isCollection);
+
+        result.Should().BeFalse();
+        isCollection.Should().BeFalse();
+        targetType.Should().BeNull();
+    }
+
+    [Fact]
     public void IsNavigationProperty_PrimitiveType_ShouldReturnFalse()
     {
         var prop = GetProperty("""

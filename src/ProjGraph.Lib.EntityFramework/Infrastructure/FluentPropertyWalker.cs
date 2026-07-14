@@ -218,8 +218,22 @@ internal static class FluentPropertyWalker
              receiver is not null;
              receiver = ChainReceiver(receiver))
         {
-            if (receiver.Expression is MemberAccessExpressionSyntax ma
-                && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity)
+            if (receiver.Expression is not MemberAccessExpressionSyntax ma)
+            {
+                continue;
+            }
+
+            var callName = SimpleName(ma.Name);
+
+            // A chained owned-type builder (e.g. Entity<T>().OwnsOne(...).Property(...)) configures
+            // the owned type, not the owner. Stop before crossing it so the config is not leaked
+            // onto the outer entity the receiver chain eventually reaches.
+            if (NestedBuilderScopes.Contains(callName))
+            {
+                return null;
+            }
+
+            if (callName == EfAnalysisConstants.EfMethods.Entity)
             {
                 return EntityNameFromInvocation(receiver);
             }

@@ -28,7 +28,8 @@ public sealed class EfErdGoldenTests
         [FixturePath("ConfigClassContext.cs"), "ConfigClassContext", "fixture-config-class"],
         [FixturePath("SeparateConfigContext.cs"), "SeparateConfigContext", "fixture-separate-config"],
         [FixturePath("BaseContext.cs"), "BaseContext", "fixture-base-dbset"],
-        [FixturePath("AuditContext.cs"), "AuditContext", "fixture-base-dbset-multifile"]
+        [FixturePath("AuditContext.cs"), "AuditContext", "fixture-base-dbset-multifile"],
+        [FixturePath("ChainedOwnedContext.cs"), "ChainedOwnedContext", "fixture-chained-owned"]
     ];
 
     private static string FixturePath(string fileName) =>
@@ -51,6 +52,14 @@ public sealed class EfErdGoldenTests
         var actual = EfGoldenRunner.RenderSnapshot(
             FixturePath("JournalSnapshot.cs"), "JournalContextModelSnapshot");
         EfGoldenRunner.Verify("fixture-snapshot", actual);
+    }
+
+    [Fact]
+    public void OneToOneSnapshotErd_MatchesGolden()
+    {
+        var actual = EfGoldenRunner.RenderSnapshot(
+            FixturePath("OneToOneSnapshot.cs"), "LedgerContextModelSnapshot");
+        EfGoldenRunner.Verify("fixture-onetoone-snapshot", actual);
     }
 }
 

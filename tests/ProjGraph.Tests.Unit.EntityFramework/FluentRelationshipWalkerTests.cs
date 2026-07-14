@@ -429,6 +429,99 @@ public sealed class FluentRelationshipWalkerTests
     }
 
     [Fact]
+    public void Apply_TwoStringHasForeignKey_SkipsDependentTypeNameArgument()
+    {
+        // The ModelSnapshot one-to-one form uses the two-string HasForeignKey overload, which
+        // passes the dependent entity type name first and the FK property second. Only the second
+        // argument is a real column, so the first must not become a phantom Snap.BlogHeader FK.
+        const string source = """
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity("Snap.BlogHeader", b =>
+                    {
+                        b.HasOne("Snap.Blog", "Blog")
+                            .WithOne("Header")
+                            .HasForeignKey("Snap.BlogHeader", "BlogId")
+                            .OnDelete(DeleteBehavior.Cascade)
+                            .IsRequired();
+                    });
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source);
+        entities["Blog"] = new EfEntity { Name = "Blog" };
+        entities["BlogHeader"] = new EfEntity { Name = "BlogHeader" };
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        entities["BlogHeader"].Properties.Should().ContainSingle(p => p.IsForeignKey)
+            .Which.Name.Should().Be("BlogId");
+        entities["BlogHeader"].Properties.Should()
+            .NotContain(p => p.Name == "Snap.BlogHeader" || p.Name == "BlogHeader");
+    }
+
+    [Fact]
+    public void Apply_TwoStringHasForeignKey_DependentTypeBySimpleName_IsSkipped()
+    {
+        // Same two-string overload, but the dependent type is written unqualified with no dot. It
+        // is recognized as an entity because its name matches a known entity key, so it is skipped.
+        const string source = """
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity("BlogHeader", b =>
+                    {
+                        b.HasOne("Blog", "Blog")
+                            .WithOne("Header")
+                            .HasForeignKey("BlogHeader", "BlogId");
+                    });
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source);
+        entities["Blog"] = new EfEntity { Name = "Blog" };
+        entities["BlogHeader"] = new EfEntity { Name = "BlogHeader" };
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        entities["BlogHeader"].Properties.Should().ContainSingle(p => p.IsForeignKey)
+            .Which.Name.Should().Be("BlogId");
+        entities["BlogHeader"].Properties.Should().NotContain(p => p.Name == "BlogHeader");
+    }
+
+    [Fact]
+    public void Apply_CompositeStringForeignKey_KeepsBothColumns()
+    {
+        // The composite one-to-many form takes two column names and no leading type name. Neither
+        // is a known entity, so both must be preserved as FK properties.
+        const string source = """
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity("App.Enrollment", b =>
+                    {
+                        b.HasOne("App.Course", "Course")
+                            .WithMany("Enrollments")
+                            .HasForeignKey("CourseId", "Semester");
+                    });
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source);
+        entities["Course"] = new EfEntity { Name = "Course" };
+        entities["Enrollment"] = new EfEntity { Name = "Enrollment" };
+
+        FluentRelationshipWalker.Apply(method, entities, model, compilation);
+
+        entities["Enrollment"].Properties.Where(p => p.IsForeignKey).Select(p => p.Name)
+            .Should().BeEquivalentTo("CourseId", "Semester");
+    }
+
+    [Fact]
     public void Apply_IsRequiredOnSeparatePropertyChain_DoesNotAffectRelationship()
     {
         // Preserves the regression intent of the retired regex-parser tests: an IsRequired() on a

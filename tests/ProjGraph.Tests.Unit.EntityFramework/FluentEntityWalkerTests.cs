@@ -203,6 +203,31 @@ public sealed class FluentEntityWalkerTests
     }
 
     [Fact]
+    public void Apply_ChainedOwnsOneToTable_DoesNotLeakToOwner()
+    {
+        // Chained owned-type form with no builder lambda: the ToTable is a sibling after OwnsOne,
+        // so it configures the owned Address table, not the owner Customer.
+        const string source = """
+            public class Customer { public int Id { get; set; } public Address Address { get; set; } = null!; }
+            public class Address { public string City { get; set; } = ""; }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                {
+                    modelBuilder.Entity<Customer>()
+                        .OwnsOne(c => c.Address)
+                        .ToTable("Addresses");
+                }
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Customer");
+
+        FluentEntityWalker.Apply(method, entities, model, compilation);
+
+        entities["Customer"].TableName.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Apply_ToTableOnFluentOnlyEntity_MaterializesAndSetsTableName()
     {
         const string source = """

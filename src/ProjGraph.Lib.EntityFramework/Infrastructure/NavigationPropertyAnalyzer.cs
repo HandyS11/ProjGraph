@@ -45,9 +45,16 @@ public static class NavigationPropertyAnalyzer
             return false;
         }
 
-        // Check for generic collection types
-        if (TryGetCollectionElementType(namedType, out var elementType))
+        // Check for generic collection types. A collection is a navigation only when its element is
+        // an entity candidate; primitive collections (EF 8+ List<string> Tags) are not navigations
+        // and must be reported as such so they are kept as scalar columns instead of vanishing.
+        if (TryGetCollectionElementType(namedType, out var elementType) && elementType is not null)
         {
+            if (!IsEntityCandidate(elementType))
+            {
+                return false;
+            }
+
             targetType = elementType;
             isCollection = true;
             return true;

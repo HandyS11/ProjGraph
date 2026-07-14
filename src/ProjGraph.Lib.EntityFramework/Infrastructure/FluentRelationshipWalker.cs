@@ -303,7 +303,7 @@ internal static class FluentRelationshipWalker
             return;
         }
 
-        var propertyNames = ForeignKeyPropertyNames(call.Invocation);
+        var propertyNames = ForeignKeyPropertyNames(call.Invocation, entities.Keys);
         if (propertyNames.Count == 0)
         {
             return;
@@ -320,26 +320,44 @@ internal static class FluentRelationshipWalker
 
     /// <summary>Extracts the property names from a <c>HasForeignKey</c> call (lambda member access, anonymous object, or string literals).</summary>
     /// <param name="invocation">The HasForeignKey invocation.</param>
-    private static List<string> ForeignKeyPropertyNames(InvocationExpressionSyntax invocation)
+    /// <param name="knownEntities">The known entity names, used to recognize the dependent-type-name argument of the two-string overload.</param>
+    private static List<string> ForeignKeyPropertyNames(InvocationExpressionSyntax invocation, IReadOnlyCollection<string> knownEntities)
     {
-        var names = new List<string>();
+        var lambdaNames = new List<string>();
+        var literalNames = new List<string>();
         foreach (var argument in invocation.ArgumentList.Arguments)
         {
             switch (argument.Expression)
             {
                 case SimpleLambdaExpressionSyntax lambda:
-                    names.AddRange(lambda.Body.DescendantNodesAndSelf()
+                    lambdaNames.AddRange(lambda.Body.DescendantNodesAndSelf()
                         .OfType<MemberAccessExpressionSyntax>()
                         .Select(m => m.Name.Identifier.Text));
                     break;
                 case LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression):
-                    names.Add(literal.Token.ValueText);
+                    literalNames.Add(literal.Token.ValueText);
                     break;
             }
         }
 
-        return names;
+        // The ModelSnapshot one-to-one form emits HasForeignKey("Ns.Dependent", "FkId"): the first
+        // string argument is the dependent entity *type name*, not an FK property. Drop it so it is
+        // not fabricated into a phantom column. The single-string and composite (all-column) forms
+        // never lead with an entity name, so they are preserved.
+        if (literalNames.Count >= 2 && IsEntityTypeName(literalNames[0], knownEntities))
+        {
+            literalNames.RemoveAt(0);
+        }
+
+        lambdaNames.AddRange(literalNames);
+        return lambdaNames;
     }
+
+    /// <summary>Determines whether a <c>HasForeignKey</c> string argument names an entity type (dotted or a known entity) rather than a property.</summary>
+    /// <param name="value">The string-literal argument.</param>
+    /// <param name="knownEntities">The known entity names.</param>
+    private static bool IsEntityTypeName(string value, IReadOnlyCollection<string> knownEntities)
+        => value.Contains('.', StringComparison.Ordinal) || knownEntities.Contains(LastSegment(value));
 
     /// <summary>Sets <see cref="EfProperty.IsForeignKey"/> on the named properties, creating them if missing (parity with the regex parser).</summary>
     /// <param name="entity">The dependent entity.</param>

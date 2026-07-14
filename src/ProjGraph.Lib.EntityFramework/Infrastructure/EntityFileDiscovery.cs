@@ -171,24 +171,29 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
     /// </remarks>
     public HashSet<string> ExtractEntityTypeNames(ClassDeclarationSyntax contextClass)
     {
-        var entityTypeNames = new HashSet<string>();
-
-        foreach (var member in contextClass.Members.OfType<PropertyDeclarationSyntax>())
-        {
-            if (member.Type is not GenericNameSyntax
-                {
-                    Identifier.Text: EfAnalysisConstants.CommonNames.DbSet, TypeArgumentList.Arguments.Count: 1
-                } genericType)
+        return contextClass.Members
+            .OfType<PropertyDeclarationSyntax>()
+            // Unwrap DbSet<T>? so the nullable-annotated form is recognized like the bare form.
+            .Select(member => member.Type is NullableTypeSyntax nullable ? nullable.ElementType : member.Type)
+            .OfType<GenericNameSyntax>()
+            .Where(genericType => genericType is
             {
-                continue;
-            }
-
-            var entityTypeName = genericType.TypeArgumentList.Arguments[0].ToString();
-            entityTypeNames.Add(entityTypeName);
-        }
-
-        return entityTypeNames;
+                Identifier.Text: EfAnalysisConstants.CommonNames.DbSet, TypeArgumentList.Arguments.Count: 1
+            })
+            // Reduce the type argument to its simple name so DbSet<Models.Blog> keys as "Blog".
+            .Select(genericType => SimpleTypeName(genericType.TypeArgumentList.Arguments[0]))
+            .ToHashSet();
     }
+
+    /// <summary>Reduces a type-argument syntax to its simple identifier (last segment of a qualified name).</summary>
+    /// <param name="type">The type-argument syntax from a <c>DbSet&lt;T&gt;</c> property.</param>
+    /// <returns>The simple type name.</returns>
+    private static string SimpleTypeName(TypeSyntax type) => type switch
+    {
+        QualifiedNameSyntax qualified => qualified.Right.Identifier.Text,
+        SimpleNameSyntax simple => simple.Identifier.Text,
+        _ => type.ToString()
+    };
 
     /// <summary>
     /// Searches a directory and its subdirectories for C# files containing entity type definitions
