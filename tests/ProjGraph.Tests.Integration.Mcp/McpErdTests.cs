@@ -232,6 +232,21 @@ public sealed class McpErdTests : IDisposable
         (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain(".cs");
     }
 
+    [Fact]
+    public async Task GetErd_InvalidOwnedMode_ShouldThrowMcpException()
+    {
+        // Arrange — unlike the CLI's Spectre validation, an unrecognized ownedMode previously fell through
+        // to a silent default of MirrorEf. An MCP caller is usually an LLM, for which plausible-but-wrong
+        // output with no signal is the worst failure mode, so this must now fail loudly instead.
+        var tools = CreateTools();
+
+        // Act
+        var act = async () => await tools.GetErdAsync(_tempFile, ownedMode: "bogus");
+
+        // Assert
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain("ownedMode");
+    }
+
     public void Dispose()
     {
         Dispose(true);

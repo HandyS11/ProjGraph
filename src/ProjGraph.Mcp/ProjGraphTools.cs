@@ -239,9 +239,21 @@ internal sealed class ProjGraphTools(
         string? contextName = null,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
+        [Description("How EF Core owned types are shown: 'mirror' (default) inlines table-split owned types onto the owner as EF names them; 'classic' gives every owned type its own entity")]
+        string ownedMode = "mirror",
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        if (!ErdOwnedModeParser.TryParse(ownedMode, out var mode))
+        {
+            // McpException so the actionable message reaches the client; the SDK strips the message from
+            // any other exception type. Unlike the CLI, an MCP caller is usually an LLM — silently
+            // defaulting an unrecognized value to mirror would return plausible-but-wrong output with no
+            // signal the requested mode was never applied. Validated up front, before any analysis work,
+            // mirroring how maxDepth is rejected in GetClassDiagramAsync before touching the file system.
+            throw new McpException($"Invalid ownedMode '{ownedMode}'. Expected 'mirror' or 'classic'.");
+        }
+
         path = await PreparePathAsync(path, cancellationToken);
 
         RequireFileExists(path);
@@ -298,7 +310,7 @@ internal sealed class ProjGraphTools(
             Message = "Rendering entity diagram"
         });
 
-        var diagram = renderers.ErdRenderer.Render(model, new DiagramOptions(showTitle, false));
+        var diagram = renderers.ErdRenderer.Render(model, new DiagramOptions(showTitle, false, false, mode));
 
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("erd", path, "text/plain", diagram,

@@ -115,6 +115,11 @@ projgraph erd ./Migrations/MyDbContextModelSnapshot.cs
 
 # Output to Markdown for documentation
 projgraph erd ./Data/MyDbContext.cs --output docs/database-schema.md
+
+# Control how EF Core owned types (OwnsOne/OwnsMany) are rendered:
+# 'mirror' (default) inlines a table-split owned type onto its owner as EF names it;
+# 'classic' gives every owned type its own entity box regardless of table mapping
+projgraph erd ./Data/MyDbContext.cs --owned-mode classic
 ```
 
 ### Visualize Class Hierarchies

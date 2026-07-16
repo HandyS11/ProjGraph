@@ -19,10 +19,10 @@ namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 internal static class FluentPropertyWalker
 {
     /// <summary>
-    /// Applies every <c>Property</c> configuration found in <paramref name="method"/> to the matching
+    /// Applies every <c>Property</c> configuration found in <paramref name="scope"/> to the matching
     /// entity in <paramref name="entities"/>.
     /// </summary>
-    /// <param name="method">The <c>OnModelCreating</c> method declaration to walk.</param>
+    /// <param name="scope">The <c>OnModelCreating</c> method declaration (or an owned builder's argument list) to walk.</param>
     /// <param name="entities">Entities already discovered from DbSets and fluent <c>.Entity&lt;T&gt;</c> calls.</param>
     /// <param name="compilation">The Roslyn compilation for constant/enum default-value resolution.</param>
     /// <param name="ambientEntity">
@@ -30,17 +30,17 @@ internal static class FluentPropertyWalker
     /// (e.g. an <c>IEntityTypeConfiguration&lt;T&gt;.Configure</c> body rooted at a bare builder parameter).
     /// </param>
     public static void Apply(
-        MethodDeclarationSyntax method,
+        SyntaxNode scope,
         Dictionary<string, EfEntity> entities,
         Compilation compilation,
         string? ambientEntity = null)
     {
-        foreach (var propertyRoot in FluentSyntax.FindConfigRoots(method, EfAnalysisConstants.EfMethods.Property))
+        foreach (var propertyRoot in FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.Property))
         {
             ApplyPropertyChain(propertyRoot, entities, compilation, ambientEntity);
         }
 
-        foreach (var keyRoot in FluentSyntax.FindConfigRoots(method, EfAnalysisConstants.EfMethods.HasKey))
+        foreach (var keyRoot in FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.HasKey))
         {
             ApplyKey(keyRoot, entities, ambientEntity);
         }

@@ -2,8 +2,13 @@
 title: ChainedOwnedContext
 ---
 erDiagram
+  PostalAddress {
+    string City "required, max:50"
+    string Country "required"
+  }
   Shopper {
     int Id PK
     string Name "required, max:120"
     List~string~ Tags "required"
   }
+  Shopper ||--|| PostalAddress : "Address"

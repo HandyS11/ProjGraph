@@ -1,0 +1,16 @@
+---
+title: BillingContext
+---
+erDiagram
+  Receipt {
+    int Id PK
+    string Reference "required, max:64"
+    string ShipToAddress_City "required, max:100"
+    string ShipToAddress_ZipCode "max:18"
+  }
+  ReceiptNote {
+    int Id PK
+    int ReceiptId FK
+    string Text "max:500"
+  }
+  Receipt ||--o{ ReceiptNote : "Notes"

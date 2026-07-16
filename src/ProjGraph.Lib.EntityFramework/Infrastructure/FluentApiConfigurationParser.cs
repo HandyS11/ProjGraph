@@ -33,15 +33,38 @@ public static class FluentApiConfigurationParser
 
         // Every concern flows through the Roslyn syntax walkers. FluentEntityWalker materializes
         // fluent-only entities and applies ToTable; FluentPropertyWalker derives property config +
-        // primary keys; FluentRelationshipWalker derives relationships + foreign keys.
+        // primary keys; FluentRelationshipWalker derives relationships + foreign keys. The second
+        // FluentEntityWalker pass applies ToTable calls whose owning entity is an owned type that did not
+        // exist during the first pass (it is idempotent for entities already known).
         FluentEntityWalker.Apply(methodSyntax, entities, model, compilation);
+        FluentOwnedTypeWalker.Apply(methodSyntax, entities, model, compilation);
         FluentPropertyWalker.Apply(methodSyntax, entities, compilation);
+        FluentEntityWalker.Apply(methodSyntax, entities, model, compilation);
         FluentRelationshipWalker.Apply(methodSyntax, entities, model, compilation);
 
         // Fold IEntityTypeConfiguration<T> classes referenced via ApplyConfiguration /
         // ApplyConfigurationsFromAssembly by walking each Configure(EntityTypeBuilder<T>) body with T as
-        // the ambient entity (Slice 4).
+        // the ambient entity (Slice 4). An owner's ToTable can live in one of these classes while its
+        // owned type was captured directly in OnModelCreating above, so this must run before
+        // ResolveTables below — not the other way around.
         EntityConfigurationWalker.Apply(methodSyntax, entities, model, compilation);
+
+        // Runs once, here, only after EVERY configuration pass above (including EntityConfigurationWalker)
+        // has had a chance to apply a ToTable — on the owned type itself, or on its owner from a separate
+        // config class — so it is never overwritten by the table-splitting default. ResolveTables is
+        // idempotent-BY-SKIP (it leaves an owned type's TableName alone once set), so running it any
+        // earlier and again later cannot self-correct a wrong first resolution.
+        FluentOwnedTypeWalker.ResolveTables(entities, model);
+
+        // Runs last, after every configuration pass above has had a chance to mark an owned property's
+        // primary key or foreign key — FluentPropertyWalker's HasKey handling, FluentRelationshipWalker's
+        // HasForeignKey handling, and FluentOwnedTypeWalker's own WithOwner().HasForeignKey() parsing,
+        // all of which EntityConfigurationWalker also drives per config class — so both the DbContext and
+        // snapshot paths strip the same EF implementation details identically. StripShadowKeys itself only
+        // clears a PK or drops an FK for an owned type that shares its owner's table (the case the
+        // renderer inlines); an owned type on its own table keeps both, since there they are its real,
+        // addressable columns, not shadow implementation detail.
+        FluentOwnedTypeWalker.StripShadowKeys(entities, model);
     }
 
     private static MethodDeclarationSyntax? FindOnModelCreatingMethod(INamedTypeSymbol contextType)

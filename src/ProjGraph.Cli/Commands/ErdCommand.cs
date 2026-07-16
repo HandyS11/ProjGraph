@@ -75,14 +75,40 @@ internal sealed class ErdCommand(
         public string? Output { get; init; }
 
         /// <summary>
+        /// Gets or sets how EF Core owned types are represented in the diagram.
+        /// </summary>
+        [CommandOption("--owned-mode <mirror|classic>")]
+        [Description(
+            "How EF Core owned types are shown: 'mirror' inlines table-split owned types onto the owner as " +
+            "EF names them (default), 'classic' gives every owned type its own entity")]
+        [DefaultValue("mirror")]
+        public string OwnedMode { get; init; } = "mirror";
+
+        /// <summary>Gets the parsed owned-type render mode. <see cref="Validate"/> guarantees <see cref="OwnedMode"/> is recognized before this is read.</summary>
+        internal ErdOwnedMode ResolvedOwnedMode
+        {
+            get
+            {
+                ErdOwnedModeParser.TryParse(OwnedMode, out var mode);
+                return mode;
+            }
+        }
+
+        /// <summary>
         /// Validates the settings provided for the command.
-        /// Ensures that the specified path exists, is a .cs file, or is left empty to search the current directory.
+        /// Ensures that the specified path exists, is a .cs file, or is left empty to search the current directory,
+        /// and that the owned-type render mode is a recognized value.
         /// </summary>
         /// <returns>
         /// A <see cref="ValidationResult"/> indicating whether the settings are valid.
         /// </returns>
         public override ValidationResult Validate()
         {
+            if (!ErdOwnedModeParser.TryParse(OwnedMode, out _))
+            {
+                return ValidationResult.Error($"Invalid --owned-mode '{OwnedMode}'. Expected 'mirror' or 'classic'.");
+            }
+
             if (string.IsNullOrWhiteSpace(Path))
             {
                 return ValidationResult.Success();
@@ -135,7 +161,8 @@ internal sealed class ErdCommand(
             var wrapInMarkdownFence = DiagramOutputWriter.ShouldWrapInMarkdownFence(settings.Output);
 
             var mermaidOutput =
-                mermaidRenderer.Render(model, new DiagramOptions(settings.ShowTitle, wrapInMarkdownFence));
+                mermaidRenderer.Render(model, new DiagramOptions(
+                    settings.ShowTitle, wrapInMarkdownFence, false, settings.ResolvedOwnedMode));
 
             await outputWriter.WriteAsync(mermaidOutput, settings.Output, cancellationToken);
 

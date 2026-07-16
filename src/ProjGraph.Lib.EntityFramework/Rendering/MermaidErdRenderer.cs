@@ -1,5 +1,6 @@
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
+using ProjGraph.Lib.EntityFramework.Infrastructure;
 using System.Globalization;
 using System.Text;
 
@@ -30,8 +31,8 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 
         sb.AppendLine("erDiagram");
 
-        RenderEntities(model, sb);
-        RenderRelationships(model, sb);
+        RenderEntities(model, sb, options);
+        RenderRelationships(model, sb, options);
 
         MermaidFenceHelper.AppendFenceEnd(sb, options);
 
@@ -43,13 +44,18 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     /// </summary>
     /// <param name="model">The EF model containing entities to render.</param>
     /// <param name="sb">The StringBuilder to append the rendered output to.</param>
-    private static void RenderEntities(EfModel model, StringBuilder sb)
+    /// <param name="options">The options for rendering the diagram.</param>
+    private static void RenderEntities(EfModel model, StringBuilder sb, DiagramOptions? options)
     {
-        foreach (var entity in model.Entities.OrderBy(e => e.Name))
-        {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  {SanitizeEntityName(entity.Name)} {{");
+        var rendered = model.Entities
+            .Where(e => !IsInlined(e, model, options))
+            .OrderBy(e => e.Name);
 
-            var orderedProperties = entity.Properties
+        foreach (var entity in rendered)
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  {SanitizeEntityName(DisplayName(entity, model, options))} {{");
+
+            var orderedProperties = EffectiveProperties(entity, model, options)
                 .OrderByDescending(p => p.IsPrimaryKey)
                 .ThenByDescending(p => p is { IsPrimaryKey: false, IsForeignKey: true })
                 .ThenBy(p => p.Name);
@@ -61,6 +67,150 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 
             sb.AppendLine("  }");
         }
+    }
+
+    /// <summary>
+    /// Returns the table an entity effectively maps to: its explicit table name, or its entity name
+    /// when unmapped (EF's default).
+    /// </summary>
+    /// <param name="entity">The entity.</param>
+    private static string EffectiveTable(EfEntity entity)
+        => string.IsNullOrEmpty(entity.TableName) ? entity.Name : entity.TableName;
+
+    /// <summary>
+    /// Determines whether an owned entity's columns are folded into its owner rather than drawn as their
+    /// own box: true when it shares the owner's table (EF table-splitting). Always false in Classic mode.
+    /// </summary>
+    /// <param name="entity">The candidate entity.</param>
+    /// <param name="model">The model, used to resolve the owner.</param>
+    /// <param name="options">The render options carrying the owned mode.</param>
+    /// <param name="visited">
+    /// The set of entity keys already visited in this recursion, used to guard against ownership cycles.
+    /// Forwarded to <see cref="HasEffectiveProperties"/> so a cycle is detected regardless of whether it is
+    /// reached directly or through this hop; callers outside the mutual recursion should omit it.
+    /// </param>
+    private static bool IsInlined(EfEntity entity, EfModel model, DiagramOptions? options, HashSet<string>? visited = null)
+    {
+        if (!entity.IsOwned || (options?.ErdOwnedMode ?? ErdOwnedMode.MirrorEf) == ErdOwnedMode.Classic)
+        {
+            return false;
+        }
+
+        // An owned collection is never inlined: folding a to-many into flat scalar columns on the owner
+        // is meaningless. EF never maps one to the owner's table, so this enforces the invariant.
+        if (entity.IsCollection)
+        {
+            return false;
+        }
+
+        // An owned type that resolves to zero effective columns (its own properties, and — recursively —
+        // any inlined child's) must still surface as its own box rather than vanish: the spec's error-
+        // handling contract promises "an empty owned box rather than dropped data" for an owned type whose
+        // CLR type could not be resolved. Inlining it here would fold zero columns onto the owner and
+        // leave no trace it was ever configured — silent data loss, not a degraded-but-visible result.
+        if (!HasEffectiveProperties(entity, model, options, visited))
+        {
+            return false;
+        }
+
+        var owner = model.Entities.FirstOrDefault(e => e.EffectiveKey == entity.OwnerEntity);
+        return owner is not null && EffectiveTable(owner) == EffectiveTable(entity);
+    }
+
+    /// <summary>
+    /// Determines whether an owned entity would contribute at least one rendered column: one of its own
+    /// properties, or — recursively — one contributed by a child owned entity that would itself be inlined
+    /// into it. Mirrors <see cref="EffectiveProperties"/>'s recursion, including its cycle guard: the same
+    /// <paramref name="visited"/> set is threaded through the <see cref="IsInlined"/> hop rather than let
+    /// each call start a fresh set, since <see cref="IsInlined"/> itself calls back into this method. Does
+    /// not materialize the full property sequence, since <see cref="IsInlined"/> only needs to know whether
+    /// it is empty.
+    /// </summary>
+    /// <param name="entity">The candidate entity.</param>
+    /// <param name="model">The model, used to resolve owned children.</param>
+    /// <param name="options">The render options carrying the owned mode.</param>
+    /// <param name="visited">The set of entity keys already visited in this recursion, used to guard against ownership cycles.</param>
+    private static bool HasEffectiveProperties(
+        EfEntity entity, EfModel model, DiagramOptions? options, HashSet<string>? visited = null)
+    {
+        if (entity.Properties.Count > 0)
+        {
+            return true;
+        }
+
+        visited ??= [];
+        if (!visited.Add(entity.EffectiveKey))
+        {
+            return false;
+        }
+
+        return model.Entities
+            .Where(e => e.OwnerEntity == entity.EffectiveKey && IsInlined(e, model, options, visited))
+            .Any(child => HasEffectiveProperties(child, model, options, visited));
+    }
+
+    /// <summary>
+    /// Returns the properties rendered for an entity: its own, plus the prefixed columns of every owned
+    /// entity inlined into it (recursively, so nested ownership compounds prefixes as EF does).
+    /// </summary>
+    /// <param name="entity">The entity being rendered.</param>
+    /// <param name="model">The model.</param>
+    /// <param name="options">The render options.</param>
+    /// <param name="visited">The set of entity keys already visited in this recursion, used to guard against ownership cycles.</param>
+    private static IEnumerable<EfProperty> EffectiveProperties(
+        EfEntity entity, EfModel model, DiagramOptions? options, HashSet<string>? visited = null)
+    {
+        foreach (var property in entity.Properties)
+        {
+            yield return property;
+        }
+
+        // Nothing in the model type prevents a self-owning or mutually-owning entity, and unbounded
+        // recursion would raise StackOverflowException — uncatchable, killing the CLI/MCP process.
+        visited ??= [];
+        if (!visited.Add(entity.EffectiveKey))
+        {
+            yield break;
+        }
+
+        var inlinedChildren = model.Entities
+            .Where(e => e.OwnerEntity == entity.EffectiveKey && IsInlined(e, model, options));
+
+        foreach (var child in inlinedChildren)
+        {
+            foreach (var property in EffectiveProperties(child, model, options, visited))
+            {
+                // EF names table-split owned columns Nav_Property; nested ownership compounds the prefix.
+                yield return EfPropertyFactory.Rename(property, $"{child.NavigationName}_{property.Name}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns the label for an entity box: its simple name, qualified to its flattened key
+    /// (<c>Owner_Nav</c>, or <c>Owner_Nav1_Nav2</c> for nested ownership) when another rendered entity
+    /// shares that name (two owners may own the same CLR type, which EF treats as distinct entity types).
+    /// </summary>
+    /// <param name="entity">The entity.</param>
+    /// <param name="model">The model, used to detect name collisions.</param>
+    /// <param name="options">The render options, used to tell which entities are actually drawn.</param>
+    private static string DisplayName(EfEntity entity, EfModel model, DiagramOptions? options)
+    {
+        if (!entity.IsOwned)
+        {
+            return entity.Name;
+        }
+
+        // Only entities actually drawn can collide on the diagram; an inlined owned entity is never
+        // drawn, so it must not force a qualified label onto the only box of that name.
+        var collides = model.Entities.Count(e => e.Name == entity.Name && !IsInlined(e, model, options)) > 1;
+
+        // Qualify by the entity's own key ({Owner}.{Nav}, dots flattened), which is unique by
+        // construction. Qualifying by the OWNER's CLR name is not enough: for nested owned types whose
+        // immediate owners share a CLR name (Invoice.ShipTo and Invoice.BillTo both "Address", each
+        // owning a Geo), it yields the same "Address_Geo" identifier for two different boxes, which
+        // Mermaid silently merges into one.
+        return collides ? entity.EffectiveKey.Replace('.', '_') : entity.Name;
     }
 
     /// <summary>
@@ -109,7 +259,8 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     /// </summary>
     /// <param name="model">The EF model containing relationships to render.</param>
     /// <param name="sb">The StringBuilder to append the rendered output to.</param>
-    private static void RenderRelationships(EfModel model, StringBuilder sb)
+    /// <param name="options">The options for rendering the diagram.</param>
+    private static void RenderRelationships(EfModel model, StringBuilder sb, DiagramOptions? options)
     {
         var sortedRelationships = model.Relationships
             .OrderBy(r => r.SourceEntity)
@@ -123,6 +274,27 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
             var targetEntity = SanitizeEntityName(rel.TargetEntity.Trim());
 
             sb.AppendLine(CultureInfo.InvariantCulture, $"  {sourceEntity} {relSyntax} {targetEntity} : \"\"");
+        }
+
+        // Owned relationships are derived, never stored: an inlined owned type must have no line, and
+        // deriving here keeps that decision in the same place as the inlining decision.
+        var ownedBoxes = model.Entities
+            .Where(e => e.IsOwned && !IsInlined(e, model, options))
+            .OrderBy(e => e.OwnerEntity)
+            .ThenBy(e => e.Name);
+
+        foreach (var owned in ownedBoxes)
+        {
+            var owner = model.Entities.FirstOrDefault(e => e.EffectiveKey == owned.OwnerEntity);
+            if (owner is null)
+            {
+                continue;
+            }
+
+            var syntax = owned.IsCollection ? "||--o{" : "||--||";
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"  {SanitizeEntityName(DisplayName(owner, model, options))} {syntax} " +
+                $"{SanitizeEntityName(DisplayName(owned, model, options))} : \"{owned.NavigationName}\"");
         }
     }
 

@@ -36,11 +36,18 @@ public static class ModelSnapshotParser
         }
 
         // A generated snapshot's BuildModel has the same fluent shape as OnModelCreating (string-based
-        // Entity/Property/HasKey/HasOne overloads), so the same Roslyn syntax walkers apply, in the same
+        // Entity/Property/HasKey/HasOne overloads, plus OwnsOne/OwnsMany with an explicit ToTable,
+        // WithOwner/HasForeignKey and shadow key), so the same Roslyn syntax walkers apply, in the same
         // order as the context path. The walkers add materialized entities to the model directly.
+        // StripShadowKeys runs last so the shadow PK EF invents for an owned type, and (for a
+        // table-split owned type) its FK back to the owner, never reach the renderer as columns.
         FluentEntityWalker.Apply(buildModelMethod, entities, model, compilation);
+        FluentOwnedTypeWalker.Apply(buildModelMethod, entities, model, compilation);
         FluentPropertyWalker.Apply(buildModelMethod, entities, compilation);
+        FluentEntityWalker.Apply(buildModelMethod, entities, model, compilation);
+        FluentOwnedTypeWalker.ResolveTables(entities, model);
         FluentRelationshipWalker.Apply(buildModelMethod, entities, model, compilation);
+        FluentOwnedTypeWalker.StripShadowKeys(entities, model);
 
         return model;
     }

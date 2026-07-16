@@ -19,7 +19,7 @@ internal static class EntityConfigurationWalker
     /// <param name="ClassName">The config class's simple name.</param>
     /// <param name="EntityName">The configured entity type <c>T</c>.</param>
     /// <param name="Configure">The <c>Configure(EntityTypeBuilder&lt;T&gt;)</c> method declaration.</param>
-    private readonly record struct ConfigClass(string ClassName, string EntityName, MethodDeclarationSyntax Configure);
+    internal readonly record struct ConfigClass(string ClassName, string EntityName, MethodDeclarationSyntax Configure);
 
     /// <summary>
     /// Applies every <c>IEntityTypeConfiguration&lt;T&gt;</c> class referenced from <paramref name="method"/>.
@@ -56,10 +56,37 @@ internal static class EntityConfigurationWalker
 
             FluentSyntax.MaterializeEntity(configClass.EntityName, entities, model, compilation);
 
+            // Mirrors the DbContext/snapshot paths' pass ordering (FluentApiConfigurationParser,
+            // ModelSnapshotParser), applied per config class with T as the ambient entity: the first
+            // FluentEntityWalker pass applies any ToTable on T itself; FluentOwnedTypeWalker.Apply then
+            // captures OwnsOne/OwnsMany calls in the Configure body (e.g. eShopOnWeb's
+            // Order.OwnsOne(o => o.ShipToAddress, ...), configured from an
+            // IEntityTypeConfiguration<Order>); FluentPropertyWalker derives T's own property config; the
+            // second FluentEntityWalker pass then applies a ToTable chained onto the OwnsOne call itself
+            // (e.g. `builder.OwnsOne(v => v.Warehouse).ToTable("X")`) — that owned entity does not exist
+            // in the dictionary during the first pass, so the call is a no-op then and idempotent now.
             FluentEntityWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
+            FluentOwnedTypeWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
             FluentPropertyWalker.Apply(configClass.Configure, entities, compilation, configClass.EntityName);
+            FluentEntityWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
             FluentRelationshipWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
         }
+
+        // Deliberately does NOT call FluentOwnedTypeWalker.ResolveTables here. This method folds in only
+        // the config-class subset of a context's configuration — an owned type captured directly in
+        // OnModelCreating (outside any config class) can still be waiting for ITS owner's ToTable, which
+        // may live in a config class folded in by a LATER caller (e.g. a second ApplyConfiguration call
+        // this method hasn't reached yet, or — the bug this comment replaces — one already folded in but
+        // whose owned type was resolved too early by a premature global pass). ResolveTables is
+        // idempotent-BY-SKIP (FluentOwnedTypeWalker.ResolveTables leaves TableName alone once set), so
+        // running it here would permanently freeze any owned type it reaches at that point, uncorrectable
+        // by a later, correct pass. Finalizing table resolution is therefore the orchestrator's job, run
+        // once, globally, after every configuration pass — including this one — has run
+        // (FluentApiConfigurationParser.ApplyFluentApiConstraints; ModelSnapshotParser.Parse has no
+        // config-class pass, so it just runs ResolveTables after its own single sweep). Callers that
+        // invoke this method directly — this walker's own unit tests included — must call
+        // FluentOwnedTypeWalker.ResolveTables themselves afterwards if they need to observe an owned
+        // type's effective table, exactly as the real orchestrator does.
     }
 
     /// <summary>Collects the config-class type names from every <c>ApplyConfiguration(new X())</c> call in the method.</summary>
@@ -100,12 +127,27 @@ internal static class EntityConfigurationWalker
     {
         foreach (var tree in compilation.SyntaxTrees)
         {
-            foreach (var declaration in tree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>())
+            foreach (var configClass in FindConfigClassesInRoot(tree.GetRoot()))
             {
-                if (AsConfigClass(declaration) is { } configClass)
-                {
-                    yield return configClass;
-                }
+                yield return configClass;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enumerates every class in a single syntax root that implements <c>IEntityTypeConfiguration&lt;T&gt;</c>
+    /// and has a <c>Configure</c> method. Purely syntactic — no semantic model required — so it can also run
+    /// during entity-file discovery, before a compilation exists (<see cref="EfModelAnalyzer"/>'s pre-pass
+    /// that seeds owned-navigation CLR types from config classes as well as <c>OnModelCreating</c>).
+    /// </summary>
+    /// <param name="root">The syntax root to scan.</param>
+    internal static IEnumerable<ConfigClass> FindConfigClassesInRoot(SyntaxNode root)
+    {
+        foreach (var declaration in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+        {
+            if (AsConfigClass(declaration) is { } configClass)
+            {
+                yield return configClass;
             }
         }
     }

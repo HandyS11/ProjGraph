@@ -67,10 +67,14 @@ erDiagram
     DateTime CreatedAt
     DateTime LastModifiedAt
     int Quantity
+    decimal UnitPrice_Amount
+    string UnitPrice_Currency "required"
   }
   Payment {
     int Id PK
     int OrderId FK
+    decimal Amount_Amount
+    string Amount_Currency "required"
     DateTime CreatedAt
     DateTime LastModifiedAt
     DateTime TransactionDate
@@ -103,6 +107,8 @@ erDiagram
     string Description
     DateTime LastModifiedAt
     string Name "required"
+    decimal Price_Amount
+    string Price_Currency "required"
     string SKU "required"
   }
   ProductSupplier {

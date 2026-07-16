@@ -47,6 +47,45 @@ public class EfEntity
     /// Gets or initializes the name of the database table associated with the entity.
     /// </summary>
     public string TableName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Gets or initializes this entity's identity within the model: <c>{Owner}.{Nav}</c> for an owned
+    /// entity, and empty for a root entity (which is identified by its <see cref="Name"/>). Prefer
+    /// <see cref="EffectiveKey"/>, which applies that fallback. <see cref="Name"/> holds the CLR type
+    /// name and is not unique — two owners may own the same type.
+    /// </summary>
+    public string Key { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Gets this entity's identity: <see cref="Key"/> when set, otherwise <see cref="Name"/>. Every
+    /// owner/owned lookup must match on this rather than on <see cref="Name"/>.
+    /// </summary>
+    public string EffectiveKey => string.IsNullOrEmpty(Key) ? Name : Key;
+
+    /// <summary>
+    /// Gets or initializes a value indicating whether the entity is an EF Core owned type
+    /// (configured via <c>OwnsOne</c>/<c>OwnsMany</c>) rather than a root entity.
+    /// </summary>
+    public bool IsOwned { get; init; }
+
+    /// <summary>
+    /// Gets or initializes the <see cref="EffectiveKey"/> of the entity that owns this one, when
+    /// <see cref="IsOwned"/> is <see langword="true"/>; otherwise <see langword="null"/>.
+    /// </summary>
+    public string? OwnerEntity { get; init; }
+
+    /// <summary>
+    /// Gets or initializes the owner's navigation property name for this owned type (e.g.
+    /// <c>ShipToAddress</c>), when <see cref="IsOwned"/> is <see langword="true"/>; otherwise
+    /// <see langword="null"/>. Source of both EF's column prefix and the identifying relationship.
+    /// </summary>
+    public string? NavigationName { get; init; }
+
+    /// <summary>
+    /// Gets or initializes a value indicating whether this owned type is a collection
+    /// (<c>OwnsMany</c>) rather than a reference (<c>OwnsOne</c>).
+    /// </summary>
+    public bool IsCollection { get; init; }
 }
 
 /// <summary>

@@ -29,7 +29,8 @@ public sealed class EfErdGoldenTests
         [FixturePath("SeparateConfigContext.cs"), "SeparateConfigContext", "fixture-separate-config"],
         [FixturePath("BaseContext.cs"), "BaseContext", "fixture-base-dbset"],
         [FixturePath("AuditContext.cs"), "AuditContext", "fixture-base-dbset-multifile"],
-        [FixturePath("ChainedOwnedContext.cs"), "ChainedOwnedContext", "fixture-chained-owned"]
+        [FixturePath("ChainedOwnedContext.cs"), "ChainedOwnedContext", "fixture-chained-owned"],
+        [FixturePath("VendorConfigContext.cs"), "VendorConfigContext", "fixture-config-class-owned"]
     ];
 
     private static string FixturePath(string fileName) =>
@@ -61,6 +62,47 @@ public sealed class EfErdGoldenTests
             FixturePath("OneToOneSnapshot.cs"), "LedgerContextModelSnapshot");
         EfGoldenRunner.Verify("fixture-onetoone-snapshot", actual);
     }
+
+    [Fact]
+    public void OwnedSnapshotErd_MatchesGolden()
+    {
+        var actual = EfGoldenRunner.RenderSnapshot(
+            FixturePath("OwnedSnapshot.cs"), "BillingContextModelSnapshot");
+        EfGoldenRunner.Verify("fixture-owned-snapshot", actual);
+    }
+
+    [Fact]
+    public void OwnedModesErd_MirrorEf_MatchesGolden()
+    {
+        var actual = EfGoldenRunner.RenderContext(
+            FixturePath("OwnedModesContext.cs"), "OwnedModesContext", ErdOwnedMode.MirrorEf);
+        EfGoldenRunner.Verify("fixture-owned-modes-mirror", actual);
+    }
+
+    [Fact]
+    public void OwnedModesErd_Classic_MatchesGolden()
+    {
+        var actual = EfGoldenRunner.RenderContext(
+            FixturePath("OwnedModesContext.cs"), "OwnedModesContext", ErdOwnedMode.Classic);
+        EfGoldenRunner.Verify("fixture-owned-modes-classic", actual);
+    }
+
+    [Fact]
+    public void ContextAndSnapshotPaths_RenderTheSameErd_ForTheSameModel()
+    {
+        var fromContext = EfGoldenRunner.RenderContext(
+            FixturePath("CrossPathContext.cs"), "CrossPathContext");
+        var fromSnapshot = EfGoldenRunner.RenderSnapshot(
+            FixturePath("CrossPathSnapshot.cs"), "CrossPathContextModelSnapshot");
+
+        // Titles differ by construction (context name vs snapshot-derived name); compare the diagram body.
+        static string Body(string mmd) => string.Join('\n',
+            mmd.Split('\n').SkipWhile(l => !l.StartsWith("erDiagram", StringComparison.Ordinal)));
+
+        Body(fromSnapshot).Should().Be(Body(fromContext),
+            "the DbContext path infers table-splitting from the absence of ToTable while the snapshot " +
+            "path reads an explicit one; both must resolve to the same recorded fact and render identically");
+    }
 }
 
 /// <summary>
@@ -72,7 +114,8 @@ internal static class EfGoldenRunner
     private static readonly bool UpdateMode =
         Environment.GetEnvironmentVariable("UPDATE_EF_GOLDENS") == "1";
 
-    public static string RenderContext(string samplePath, string? contextName)
+    public static string RenderContext(string samplePath, string? contextName,
+        ErdOwnedMode mode = ErdOwnedMode.MirrorEf)
     {
         var service = CreateService();
 
@@ -80,17 +123,18 @@ internal static class EfGoldenRunner
         // signature (see task brief); no SynchronizationContext deadlock risk under xUnit.
         var model = service.AnalyzeContextAsync(samplePath, contextName).GetAwaiter().GetResult();
 #pragma warning restore VSTHRD002
-        return Render(model);
+        return Render(model, mode);
     }
 
-    public static string RenderSnapshot(string snapshotPath, string? snapshotName)
+    public static string RenderSnapshot(string snapshotPath, string? snapshotName,
+        ErdOwnedMode mode = ErdOwnedMode.MirrorEf)
     {
         var service = CreateService();
 
 #pragma warning disable VSTHRD002 // Same deliberate sync-over-async bridge as RenderContext.
         var model = service.AnalyzeSnapshotAsync(snapshotPath, snapshotName).GetAwaiter().GetResult();
 #pragma warning restore VSTHRD002
-        return Render(model);
+        return Render(model, mode);
     }
 
     private static EfAnalysisService CreateService()
@@ -104,8 +148,8 @@ internal static class EfGoldenRunner
             new DiscoverSnapshotsUseCase(analyzer, fs));
     }
 
-    private static string Render(EfModel model)
-        => Normalize(new MermaidErdRenderer().Render(model, new DiagramOptions(true, false)));
+    private static string Render(EfModel model, ErdOwnedMode mode = ErdOwnedMode.MirrorEf)
+        => Normalize(new MermaidErdRenderer().Render(model, new DiagramOptions(true, false, false, mode)));
 
     public static void Verify(string goldenName, string actual)
     {

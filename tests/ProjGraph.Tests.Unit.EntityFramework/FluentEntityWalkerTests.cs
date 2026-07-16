@@ -291,4 +291,58 @@ public sealed class FluentEntityWalkerTests
 
         entities["Widget"].TableName.Should().BeEmpty();
     }
+
+    [Fact]
+    public void ApplyTableName_DictionaryAndModelListHoldDifferentInstances_StillUpdatesModelSlotByEffectiveKey()
+    {
+        // Regression: the walker previously located the model.Entities slot via reference equality
+        // (model.Entities.IndexOf(entity), using the exact instance looked up from the dictionary).
+        // That silently depends on the dictionary and model list holding the SAME object instance
+        // forever for a given logical entity — these are init-only records that walkers replace
+        // wholesale, so nothing guarantees that invariant survives future changes. Simulate the
+        // dictionary and model list already holding two DIFFERENT instances for the same owned
+        // entity (Key = "Customer.Address") and assert the ToTable call still finds and updates the
+        // correct slot by EffectiveKey, not by object identity.
+        const string source = """
+            public class Ctx
+            {
+                void OnModelCreating(dynamic builder)
+                {
+                    builder.ToTable("Addresses");
+                }
+            }
+            """;
+        var compilation = RoslynTestHelper.CreateCompilation(source);
+        var method = compilation.SyntaxTrees[0].GetRoot()
+            .DescendantNodes().OfType<MethodDeclarationSyntax>()
+            .First(m => m.Identifier.Text == "OnModelCreating");
+
+        var dictInstance = new EfEntity
+        {
+            Name = "Address",
+            Key = "Customer.Address",
+            IsOwned = true,
+            OwnerEntity = "Customer",
+            NavigationName = "Address"
+        };
+        var listInstance = new EfEntity
+        {
+            Name = "Address",
+            Key = "Customer.Address",
+            IsOwned = true,
+            OwnerEntity = "Customer",
+            NavigationName = "Address"
+        };
+
+        var entities = new Dictionary<string, EfEntity> { ["Customer.Address"] = dictInstance };
+        var model = new EfModel();
+        model.Entities.Add(listInstance);
+
+        FluentEntityWalker.Apply(method, entities, model, compilation, ambientEntity: "Customer.Address");
+
+        model.Entities.Should().ContainSingle(e => e.Key == "Customer.Address")
+            .Which.TableName.Should().Be("Addresses",
+                "the model list slot must be found and updated by EffectiveKey, not by the reference " +
+                "of the instance looked up from the dictionary");
+    }
 }

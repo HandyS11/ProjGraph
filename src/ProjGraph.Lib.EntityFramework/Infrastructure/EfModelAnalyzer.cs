@@ -85,8 +85,15 @@ public class EfModelAnalyzer(
 
         var model = ModelSnapshotParser.Parse(snapshotClass, snapshotType, compilation);
 
-        // Analyze relationships using the semantic model now that we have all symbols
-        var entities = model.Entities.ToDictionary(e => e.Name);
+        // Analyze relationships using the semantic model now that we have all symbols. Keyed by
+        // EffectiveKey, not Name: the DbContext path's entities dictionary keys owned types by
+        // {Owner}.{Nav} (never by their bare CLR type name), so a navigation property whose type
+        // resolves to an owned entity's Name never matches there and no spurious relationship is
+        // created. Keying by Name here would let that same navigation (e.g. Ticket.Seat) resolve
+        // against the owned SeatLocation entity by coincidence of its Name, fabricating a
+        // relationship the fluent OwnsOne/OwnsMany walkers already modelled as ownership — breaking
+        // cross-path parity between the DbContext and snapshot analyses of the same model.
+        var entities = model.Entities.ToDictionary(e => e.EffectiveKey);
         RelationshipAnalyzer.AnalyzeRelationships(model, entities, compilation);
 
         return model;
@@ -195,7 +202,218 @@ public class EfModelAnalyzer(
         var configFiles = await entityFileDiscovery.DiscoverConfigurationFilesAsync(searchDirectories, contextPath);
         MergeFileDictionaries(entityFiles, configFiles);
 
+        // An OwnsOne/OwnsMany navigation's CLR type is never named by a DbSet<T>, so nothing above finds
+        // its file when it lives on its own — the entity that owns it is what's discoverable, not the
+        // owned type itself. Walk OnModelCreating and every config class syntactically (no compilation
+        // exists yet) to resolve each owned navigation's property type from its owner's already-discovered
+        // class declaration, and search for that type's file too.
+        var ownedTypeFiles = await DiscoverOwnedNavigationFilesAsync(
+            root, contextClass, entityFiles, configFiles, searchDirectories, contextPath);
+        MergeFileDictionaries(entityFiles, ownedTypeFiles);
+
         return CreateSyntaxTrees(contextSyntaxTree, entityFiles);
+    }
+
+    /// <summary>
+    /// Resolves the CLR type file of every <c>OwnsOne</c>/<c>OwnsMany</c> navigation reachable from
+    /// <paramref name="contextClass"/>'s <c>OnModelCreating</c> and every discovered config class's
+    /// <c>Configure</c> body, so a cross-file owned type (e.g. a <c>Money</c> value object declared
+    /// separately from the entity that owns it) is added to the compilation instead of resolving to an
+    /// unresolvable symbol later. Purely syntactic: no compilation exists at this point, so the owner's CLR
+    /// type is located by re-parsing its already-discovered file and reading its property declaration's
+    /// type syntax directly, mirroring <see cref="FluentOwnedTypeWalker.ResolveOwnedType"/>'s later,
+    /// semantic-model version of the same lookup. Processes owned navigations owner-before-owned (by
+    /// <see cref="InvocationExpressionSyntax.Span"/> end, exactly as <see cref="FluentOwnedTypeWalker.Apply"/>
+    /// does) so a nested <c>OwnsOne</c>-within-<c>OwnsOne</c> can resolve its own owner's CLR type from the
+    /// outer navigation's just-resolved type.
+    /// </summary>
+    /// <param name="contextRoot">The syntax root of the context file.</param>
+    /// <param name="contextClass">The DbContext class declaration.</param>
+    /// <param name="entityFiles">The entity/base/config files discovered so far.</param>
+    /// <param name="configFiles">The <c>IEntityTypeConfiguration&lt;T&gt;</c> files discovered so far.</param>
+    /// <param name="searchDirectories">The directories to search for an owned type's file.</param>
+    /// <param name="contextPath">The context file path, excluded from the search.</param>
+    /// <returns>A dictionary mapping newly discovered owned CLR type names to their file paths.</returns>
+    private async Task<Dictionary<string, string>> DiscoverOwnedNavigationFilesAsync(
+        SyntaxNode contextRoot,
+        ClassDeclarationSyntax contextClass,
+        Dictionary<string, string> entityFiles,
+        Dictionary<string, string> configFiles,
+        IReadOnlyList<string> searchDirectories,
+        string contextPath)
+    {
+        var classDeclsByName = new Dictionary<string, TypeDeclarationSyntax>(StringComparer.Ordinal);
+        CacheClassDeclarations(contextRoot, classDeclsByName);
+
+        // A navigation's owner key resolves to a bare CLR type name at the top level (a DbSet entity, or
+        // one declared inline in the context file); seed the map with the identity mapping for every type
+        // name already known, so the lookup below finds it without special-casing "top level".
+        var keyToClrTypeName = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var name in entityFiles.Keys.Concat(classDeclsByName.Keys))
+        {
+            keyToClrTypeName.TryAdd(name, name);
+        }
+
+        var scopes = new List<(SyntaxNode Scope, string? AmbientEntity)>();
+        var onModelCreating = contextClass.Members.OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault(m => m.Identifier.Text == EfAnalysisConstants.EfMethods.OnModelCreating);
+        if (onModelCreating is not null)
+        {
+            scopes.Add((onModelCreating, null));
+        }
+
+        foreach (var configPath in configFiles.Values.Distinct())
+        {
+            var configRoot = await TryParseFileAsync(configPath);
+            if (configRoot is null)
+            {
+                continue;
+            }
+
+            CacheClassDeclarations(configRoot, classDeclsByName);
+            foreach (var configClass in EntityConfigurationWalker.FindConfigClassesInRoot(configRoot))
+            {
+                scopes.Add((configClass.Configure, configClass.EntityName));
+            }
+        }
+
+        // Config classes co-located in the context file itself (Slice 4's "co-located" shape).
+        foreach (var configClass in EntityConfigurationWalker.FindConfigClassesInRoot(contextRoot))
+        {
+            scopes.Add((configClass.Configure, configClass.EntityName));
+        }
+
+        var discovered = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var (scope, ambientEntity) in scopes)
+        {
+            await ResolveOwnedNavigationTypesAsync(
+                scope, ambientEntity, keyToClrTypeName, classDeclsByName, entityFiles, discovered,
+                searchDirectories, contextPath);
+        }
+
+        return discovered;
+    }
+
+    /// <summary>
+    /// Resolves every <c>OwnsOne</c>/<c>OwnsMany</c> navigation found in <paramref name="scope"/>, owner-
+    /// before-owned, updating <paramref name="keyToClrTypeName"/> and <paramref name="discovered"/> in place.
+    /// </summary>
+    /// <param name="scope">The configuring method (<c>OnModelCreating</c> or a config class's <c>Configure</c>).</param>
+    /// <param name="ambientEntity">The owning entity to fall back to when the chain has no <c>Entity&lt;T&gt;()</c> call.</param>
+    /// <param name="keyToClrTypeName">Maps an owner key (a bare CLR type name, or a resolved <c>{Owner}.{Nav}</c> owned key) to its CLR type name; augmented in place.</param>
+    /// <param name="classDeclsByName">Cache of CLR type name to its type declaration, loaded lazily; augmented in place.</param>
+    /// <param name="entityFiles">The entity files discovered so far.</param>
+    /// <param name="discovered">The owned type files newly discovered; augmented in place.</param>
+    /// <param name="searchDirectories">The directories to search for an owned type's file.</param>
+    /// <param name="contextPath">The context file path, excluded from the search.</param>
+    private async Task ResolveOwnedNavigationTypesAsync(
+        SyntaxNode scope,
+        string? ambientEntity,
+        Dictionary<string, string> keyToClrTypeName,
+        Dictionary<string, TypeDeclarationSyntax> classDeclsByName,
+        Dictionary<string, string> entityFiles,
+        Dictionary<string, string> discovered,
+        IReadOnlyList<string> searchDirectories,
+        string contextPath)
+    {
+        var ownsOneRoots = FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.OwnsOne)
+            .Select(inv => (Invocation: inv, IsCollection: false));
+        var ownsManyRoots = FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.OwnsMany)
+            .Select(inv => (Invocation: inv, IsCollection: true));
+        var orderedRoots = ownsOneRoots.Concat(ownsManyRoots).OrderBy(t => t.Invocation.Span.End);
+
+        foreach (var (owns, isCollection) in orderedRoots)
+        {
+            var ownerKey = FluentSyntax.ResolveOwningEntity(owns, ambientEntity);
+            var navigation = FluentSyntax.OwnedNavigationName(owns);
+            if (ownerKey is null || navigation is null
+                || !keyToClrTypeName.TryGetValue(ownerKey, out var ownerClrType))
+            {
+                continue;
+            }
+
+            if (!classDeclsByName.TryGetValue(ownerClrType, out var ownerDecl))
+            {
+                var ownerPath = entityFiles.GetValueOrDefault(ownerClrType) ?? discovered.GetValueOrDefault(ownerClrType);
+                if (ownerPath is not null)
+                {
+                    var ownerRoot = await TryParseFileAsync(ownerPath);
+                    if (ownerRoot is not null)
+                    {
+                        CacheClassDeclarations(ownerRoot, classDeclsByName);
+                    }
+                }
+
+                classDeclsByName.TryGetValue(ownerClrType, out ownerDecl);
+            }
+
+            var propertyDecl = ownerDecl?.Members.OfType<PropertyDeclarationSyntax>()
+                .FirstOrDefault(p => p.Identifier.Text == navigation);
+            var ownedTypeName = propertyDecl is null ? null : OwnedClrTypeName(propertyDecl.Type, isCollection);
+            if (ownedTypeName is null)
+            {
+                continue;
+            }
+
+            keyToClrTypeName[$"{ownerKey}.{navigation}"] = ownedTypeName;
+
+            if (entityFiles.ContainsKey(ownedTypeName) || classDeclsByName.ContainsKey(ownedTypeName)
+                || discovered.ContainsKey(ownedTypeName))
+            {
+                continue;
+            }
+
+            var found = await entityFileDiscovery.DiscoverEntityFilesAsync(
+                searchDirectories, [ownedTypeName], contextPath);
+            if (found.TryGetValue(ownedTypeName, out var foundPath))
+            {
+                discovered[ownedTypeName] = foundPath;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reduces a property's type syntax to the owned CLR type's simple name: unwraps a nullable
+    /// annotation, and — for an <c>OwnsMany</c> navigation — the collection's element type
+    /// (<c>List&lt;T&gt;</c>, <c>ICollection&lt;T&gt;</c>, <c>T[]</c>, ...). Returns <see langword="null"/>
+    /// for a predefined type (<c>string</c>, <c>int</c>, ...): EF Core never owns a primitive, so a
+    /// navigation typed that way is not a real owned-type candidate worth searching a file for.
+    /// </summary>
+    /// <param name="propertyType">The navigation property's type syntax.</param>
+    /// <param name="isCollection">Whether the navigation is an <c>OwnsMany</c> collection.</param>
+    private static string? OwnedClrTypeName(TypeSyntax propertyType, bool isCollection)
+    {
+        var unwrapped = propertyType is NullableTypeSyntax nullable ? nullable.ElementType : propertyType;
+
+        if (isCollection)
+        {
+            unwrapped = unwrapped switch
+            {
+                GenericNameSyntax { TypeArgumentList.Arguments.Count: 1 } generic => generic.TypeArgumentList.Arguments[0],
+                ArrayTypeSyntax array => array.ElementType,
+                _ => unwrapped
+            };
+        }
+
+        return unwrapped is PredefinedTypeSyntax ? null : FluentSyntax.TypeName(unwrapped);
+    }
+
+    /// <summary>
+    /// Caches every type declaration in <paramref name="root"/> by its simple name, first-wins. Matches
+    /// <see cref="TypeDeclarationSyntax"/>, not just <see cref="ClassDeclarationSyntax"/>, so a
+    /// <c>record</c>-declared owner or owned type is found here too, consistent with
+    /// <see cref="EntityFileDiscovery"/>'s own type-declaration scan.
+    /// </summary>
+    /// <param name="root">The syntax root to scan.</param>
+    /// <param name="classDeclsByName">The cache to augment in place.</param>
+    private static void CacheClassDeclarations(
+        SyntaxNode root, Dictionary<string, TypeDeclarationSyntax> classDeclsByName)
+    {
+        foreach (var classDecl in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
+        {
+            classDeclsByName.TryAdd(classDecl.Identifier.Text, classDecl);
+        }
     }
 
     /// <summary>
@@ -371,8 +589,12 @@ public class EfModelAnalyzer(
     /// <seealso cref="EfRelationship"/>
     private static void DeduplicateModelContent(EfModel model)
     {
+        // Group by EffectiveKey, not Name: Name is the CLR type name and is not unique — two owned
+        // entities under the same owner (or under different owners) can share a CLR type (e.g.
+        // Invoice.ShipTo and Invoice.BillTo both being InvoiceAddress). Grouping by Name would collapse
+        // them into one, silently discarding the second.
         var uniqueEntities = model.Entities
-            .GroupBy(e => e.Name)
+            .GroupBy(e => e.EffectiveKey)
             .Select(g => g.First())
             .ToList();
         model.Entities.Clear();

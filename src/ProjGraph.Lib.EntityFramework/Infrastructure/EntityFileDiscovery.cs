@@ -297,8 +297,12 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
     /// <returns>A task that represents the asynchronous operation.</returns>
     /// <remarks>
     /// This method reads the content of the specified source file, parses it into a syntax tree, and retrieves the root node.
-    /// It then searches for class declarations that match the provided entity type names and adds their file paths
-    /// to the dictionary if they are not already present.
+    /// It then searches for type declarations that match the provided entity type names and adds their file paths
+    /// to the dictionary if they are not already present. Matches <see cref="TypeDeclarationSyntax"/>, not just
+    /// <see cref="ClassDeclarationSyntax"/>, so a <c>record</c>-declared entity or owned type (e.g. a
+    /// <c>public record Money(decimal Amount, string Currency)</c> value object) is found too — <c>record</c>
+    /// declarations parse as <see cref="RecordDeclarationSyntax"/>, which does not derive from
+    /// <see cref="ClassDeclarationSyntax"/>.
     /// </remarks>
     private async Task ProcessSourceFileAsync(
         string filePath,
@@ -316,11 +320,11 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
         var syntaxTree = CSharpSyntaxTree.ParseText(fileCode);
         var root = await syntaxTree.GetRootAsync();
 
-        foreach (var classDecl in root.DescendantNodes()
-                     .OfType<ClassDeclarationSyntax>()
-                     .Where(classDecl => entityTypeNames.Contains(classDecl.Identifier.Text)))
+        foreach (var typeDecl in root.DescendantNodes()
+                     .OfType<TypeDeclarationSyntax>()
+                     .Where(typeDecl => entityTypeNames.Contains(typeDecl.Identifier.Text)))
         {
-            entityFiles.TryAdd(classDecl.Identifier.Text, filePath);
+            entityFiles.TryAdd(typeDecl.Identifier.Text, filePath);
         }
     }
 
