@@ -348,9 +348,8 @@ public class EfModelAnalyzer(
                 classDeclsByName.TryGetValue(ownerClrType, out ownerDecl);
             }
 
-            var propertyDecl = ownerDecl?.Members.OfType<PropertyDeclarationSyntax>()
-                .FirstOrDefault(p => p.Identifier.Text == navigation);
-            var ownedTypeName = propertyDecl is null ? null : OwnedClrTypeName(propertyDecl.Type, isCollection);
+            var navigationType = ownerDecl is null ? null : OwnedNavigationTypeSyntax(ownerDecl, navigation);
+            var ownedTypeName = navigationType is null ? null : OwnedClrTypeName(navigationType, isCollection);
             if (ownedTypeName is null)
             {
                 continue;
@@ -371,6 +370,28 @@ public class EfModelAnalyzer(
                 discovered[ownedTypeName] = foundPath;
             }
         }
+    }
+
+    /// <summary>
+    /// Returns the type syntax of the owner's navigation named <paramref name="navigation"/>: a member
+    /// property declaration, or — for a positional record like <c>record Product(int Id, Money Price)</c> —
+    /// the primary-constructor parameter of that name, whose synthesized property is a real EF navigation
+    /// but never appears as a <see cref="PropertyDeclarationSyntax"/> member. Returns <see langword="null"/>
+    /// when the owner declares no such navigation.
+    /// </summary>
+    /// <param name="ownerDecl">The owner's type declaration.</param>
+    /// <param name="navigation">The navigation property name.</param>
+    private static TypeSyntax? OwnedNavigationTypeSyntax(TypeDeclarationSyntax ownerDecl, string navigation)
+    {
+        var propertyDecl = ownerDecl.Members.OfType<PropertyDeclarationSyntax>()
+            .FirstOrDefault(p => p.Identifier.Text == navigation);
+        if (propertyDecl is not null)
+        {
+            return propertyDecl.Type;
+        }
+
+        return (ownerDecl as RecordDeclarationSyntax)?.ParameterList?.Parameters
+            .FirstOrDefault(p => p.Identifier.Text == navigation)?.Type;
     }
 
     /// <summary>

@@ -167,25 +167,28 @@ public static class EntityAnalyzer
     {
         foreach (var syntaxRef in type.DeclaringSyntaxReferences)
         {
-            if (syntaxRef.GetSyntax() is not ClassDeclarationSyntax classSyntax)
+            // TypeDeclarationSyntax, not ClassDeclarationSyntax: a record-declared entity's [PrimaryKey]
+            // and [Key] attributes live on a RecordDeclarationSyntax, which is not a class declaration —
+            // the same hazard family that made record-declared owners invisible to owned-nav discovery.
+            if (syntaxRef.GetSyntax() is not TypeDeclarationSyntax typeSyntax)
             {
                 continue;
             }
 
-            ExtractPrimaryKeysFromClassAttributes(classSyntax, primaryKeyNames);
-            ExtractPrimaryKeysFromPropertySyntax(classSyntax, primaryKeyNames);
+            ExtractPrimaryKeysFromClassAttributes(typeSyntax, primaryKeyNames);
+            ExtractPrimaryKeysFromPropertySyntax(typeSyntax, primaryKeyNames);
         }
     }
 
     /// <summary>
-    /// Extracts primary key names from class-level attribute syntax.
+    /// Extracts primary key names from type-level attribute syntax.
     /// </summary>
-    /// <param name="classSyntax">The class declaration syntax to analyze.</param>
+    /// <param name="typeSyntax">The type declaration syntax (class or record) to analyze.</param>
     /// <param name="primaryKeyNames">The set to populate with primary key names.</param>
-    private static void ExtractPrimaryKeysFromClassAttributes(ClassDeclarationSyntax classSyntax,
+    private static void ExtractPrimaryKeysFromClassAttributes(TypeDeclarationSyntax typeSyntax,
         HashSet<string> primaryKeyNames)
     {
-        foreach (var attr in classSyntax.AttributeLists.SelectMany(al => al.Attributes))
+        foreach (var attr in typeSyntax.AttributeLists.SelectMany(al => al.Attributes))
         {
             var name = attr.Name.ToString();
             if (name is not (EfAnalysisConstants.EfAttributes.PrimaryKey
@@ -210,12 +213,12 @@ public static class EntityAnalyzer
     /// <summary>
     /// Extracts primary key names from property syntax with Key attributes.
     /// </summary>
-    /// <param name="classSyntax">The class declaration syntax to analyze.</param>
+    /// <param name="typeSyntax">The type declaration syntax (class or record) to analyze.</param>
     /// <param name="primaryKeyNames">The set to populate with primary key names.</param>
-    private static void ExtractPrimaryKeysFromPropertySyntax(ClassDeclarationSyntax classSyntax,
+    private static void ExtractPrimaryKeysFromPropertySyntax(TypeDeclarationSyntax typeSyntax,
         HashSet<string> primaryKeyNames)
     {
-        foreach (var prop in classSyntax.Members.OfType<PropertyDeclarationSyntax>()
+        foreach (var prop in typeSyntax.Members.OfType<PropertyDeclarationSyntax>()
                      .Where(p => p.AttributeLists.SelectMany(al => al.Attributes)
                          .Any(a => a.Name.ToString() is EfAnalysisConstants.EfAttributes.Key
                              or EfAnalysisConstants.EfAttributes.KeyAttribute)))

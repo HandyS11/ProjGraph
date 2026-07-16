@@ -73,6 +73,34 @@ public sealed class EntityConfigurationWalkerTests
     }
 
     [Fact]
+    public void Apply_RecordDeclaredConfigClass_IsDiscoveredAndFolded()
+    {
+        // A record can implement IEntityTypeConfiguration<T> too; the class-only scan silently skipped
+        // its Configure body. Regression for the widening to TypeDeclarationSyntax (issue #163, item 3).
+        const string source = """
+            using Microsoft.EntityFrameworkCore;
+            using Microsoft.EntityFrameworkCore.Metadata.Builders;
+            public class Widget { public int Id { get; set; } public string Name { get; set; } = ""; }
+            public record WidgetConfiguration : IEntityTypeConfiguration<Widget>
+            {
+                public void Configure(EntityTypeBuilder<Widget> builder)
+                    => builder.Property(w => w.Name).HasMaxLength(64);
+            }
+            public class Ctx
+            {
+                void OnModelCreating(dynamic modelBuilder)
+                    => modelBuilder.ApplyConfiguration(new WidgetConfiguration());
+            }
+            """;
+        var (method, compilation, entities, model) = Build(source, "Widget");
+
+        EntityConfigurationWalker.Apply(method, entities, model, compilation);
+
+        entities["Widget"].Properties.Single(p => p.Name == "Name").MaxLength.Should().Be(64,
+            "a record-declared IEntityTypeConfiguration<T> must be discovered and its Configure body folded in");
+    }
+
+    [Fact]
     public void Apply_ApplyConfiguration_ConfiguresRelationship()
     {
         const string source = """

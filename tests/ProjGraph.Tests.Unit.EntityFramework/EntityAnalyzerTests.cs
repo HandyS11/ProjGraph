@@ -212,6 +212,32 @@ public sealed class EntityAnalyzerTests
     }
 
     [Fact]
+    public void AnalyzeEntity_RecordWithTypeLevelPrimaryKeyAttribute_SyntaxPathMarksPrimaryKey()
+    {
+        // The EF Core [PrimaryKey] attribute is not resolvable in these fixtures (no EF reference), so
+        // only the syntax fallback can read it - and that fallback filtered on ClassDeclarationSyntax,
+        // silently skipping record-declared entities. Regression for the widening to
+        // TypeDeclarationSyntax (issue #163, item 2).
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using Microsoft.EntityFrameworkCore;
+                                                             [PrimaryKey(nameof(Code))]
+                                                             public record Ticket
+                                                             {
+                                                                 public string Code { get; set; }
+                                                                 public string Title { get; set; }
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Ticket")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "Code").IsPrimaryKey.Should().BeTrue(
+            "the type-level [PrimaryKey] attribute lives on a RecordDeclarationSyntax, which the " +
+            "syntax fallback must not skip");
+        entity.Properties.First(p => p.Name == "Title").IsPrimaryKey.Should().BeFalse();
+    }
+
+    [Fact]
     public void AnalyzeEntity_RequiredAttribute_ShouldMarkAsRequired()
     {
         var compilation = RoslynTestHelper.CreateCompilation("""
