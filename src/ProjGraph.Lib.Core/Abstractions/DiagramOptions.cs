@@ -31,3 +31,43 @@ public record DiagramOptions(
     bool IncludePackages = false,
     ErdOwnedMode ErdOwnedMode = ErdOwnedMode.MirrorEf
 );
+
+/// <summary>
+/// Parses the <c>--owned-mode</c> (CLI) / <c>ownedMode</c> (MCP) string option into an
+/// <see cref="ErdOwnedMode"/>. Both surfaces call this single helper so the recognized values and their
+/// mapping cannot drift apart — the CLI validates and converts through it, and the MCP tool must too,
+/// rather than silently defaulting any unrecognized string to <see cref="ErdOwnedMode.MirrorEf"/>, which
+/// gives an LLM caller a plausible-but-wrong result with no signal that its input was never applied.
+/// </summary>
+public static class ErdOwnedModeParser
+{
+    /// <summary>The accepted value for <see cref="ErdOwnedMode.MirrorEf"/>.</summary>
+    public const string Mirror = "mirror";
+
+    /// <summary>The accepted value for <see cref="ErdOwnedMode.Classic"/>.</summary>
+    public const string Classic = "classic";
+
+    /// <summary>
+    /// Attempts to parse <paramref name="value"/> (case-insensitive) as an <see cref="ErdOwnedMode"/>.
+    /// </summary>
+    /// <param name="value">The raw option value (e.g. <c>"mirror"</c> or <c>"classic"</c>).</param>
+    /// <param name="mode">The parsed mode when this method returns <see langword="true"/>; otherwise <see cref="ErdOwnedMode.MirrorEf"/>.</param>
+    /// <returns><see langword="true"/> when <paramref name="value"/> is a recognized value; otherwise <see langword="false"/>.</returns>
+    public static bool TryParse(string value, out ErdOwnedMode mode)
+    {
+        if (value.Equals(Mirror, StringComparison.OrdinalIgnoreCase))
+        {
+            mode = ErdOwnedMode.MirrorEf;
+            return true;
+        }
+
+        if (value.Equals(Classic, StringComparison.OrdinalIgnoreCase))
+        {
+            mode = ErdOwnedMode.Classic;
+            return true;
+        }
+
+        mode = ErdOwnedMode.MirrorEf;
+        return false;
+    }
+}

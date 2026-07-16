@@ -98,8 +98,48 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
             return false;
         }
 
+        // An owned type that resolves to zero effective columns (its own properties, and — recursively —
+        // any inlined child's) must still surface as its own box rather than vanish: the spec's error-
+        // handling contract promises "an empty owned box rather than dropped data" for an owned type whose
+        // CLR type could not be resolved. Inlining it here would fold zero columns onto the owner and
+        // leave no trace it was ever configured — silent data loss, not a degraded-but-visible result.
+        if (!HasEffectiveProperties(entity, model, options))
+        {
+            return false;
+        }
+
         var owner = model.Entities.FirstOrDefault(e => e.EffectiveKey == entity.OwnerEntity);
         return owner is not null && EffectiveTable(owner) == EffectiveTable(entity);
+    }
+
+    /// <summary>
+    /// Determines whether an owned entity would contribute at least one rendered column: one of its own
+    /// properties, or — recursively — one contributed by a child owned entity that would itself be inlined
+    /// into it. Mirrors <see cref="EffectiveProperties"/>'s recursion (including its cycle guard) without
+    /// materializing the full property sequence, since <see cref="IsInlined"/> only needs to know whether
+    /// it is empty.
+    /// </summary>
+    /// <param name="entity">The candidate entity.</param>
+    /// <param name="model">The model, used to resolve owned children.</param>
+    /// <param name="options">The render options carrying the owned mode.</param>
+    /// <param name="visited">The set of entity keys already visited in this recursion, used to guard against ownership cycles.</param>
+    private static bool HasEffectiveProperties(
+        EfEntity entity, EfModel model, DiagramOptions? options, HashSet<string>? visited = null)
+    {
+        if (entity.Properties.Count > 0)
+        {
+            return true;
+        }
+
+        visited ??= [];
+        if (!visited.Add(entity.EffectiveKey))
+        {
+            return false;
+        }
+
+        return model.Entities
+            .Where(e => e.OwnerEntity == entity.EffectiveKey && IsInlined(e, model, options))
+            .Any(child => HasEffectiveProperties(child, model, options, visited));
     }
 
     /// <summary>

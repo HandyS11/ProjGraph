@@ -84,11 +84,15 @@ internal sealed class ErdCommand(
         [DefaultValue("mirror")]
         public string OwnedMode { get; init; } = "mirror";
 
-        /// <summary>Gets the parsed owned-type render mode.</summary>
-        internal ErdOwnedMode ResolvedOwnedMode =>
-            OwnedMode.Equals("classic", StringComparison.OrdinalIgnoreCase)
-                ? ErdOwnedMode.Classic
-                : ErdOwnedMode.MirrorEf;
+        /// <summary>Gets the parsed owned-type render mode. <see cref="Validate"/> guarantees <see cref="OwnedMode"/> is recognized before this is read.</summary>
+        internal ErdOwnedMode ResolvedOwnedMode
+        {
+            get
+            {
+                ErdOwnedModeParser.TryParse(OwnedMode, out var mode);
+                return mode;
+            }
+        }
 
         /// <summary>
         /// Validates the settings provided for the command.
@@ -100,8 +104,7 @@ internal sealed class ErdCommand(
         /// </returns>
         public override ValidationResult Validate()
         {
-            if (!OwnedMode.Equals("mirror", StringComparison.OrdinalIgnoreCase) &&
-                !OwnedMode.Equals("classic", StringComparison.OrdinalIgnoreCase))
+            if (!ErdOwnedModeParser.TryParse(OwnedMode, out _))
             {
                 return ValidationResult.Error($"Invalid --owned-mode '{OwnedMode}'. Expected 'mirror' or 'classic'.");
             }

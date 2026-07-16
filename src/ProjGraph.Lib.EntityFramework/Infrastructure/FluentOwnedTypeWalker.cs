@@ -265,14 +265,32 @@ internal static class FluentOwnedTypeWalker
             .FirstOrDefault();
 
         var navProperty = ownerSymbol?.GetMembers(navigation).OfType<IPropertySymbol>().FirstOrDefault();
-        if (navProperty?.Type is not INamedTypeSymbol navType)
+
+        // An IErrorTypeSymbol still satisfies `is INamedTypeSymbol` — Roslyn synthesizes one whenever the
+        // navigation's CLR type could not be resolved (e.g. its file never made it into the compilation).
+        // Treating it as resolved would seed the owned entity from a symbol with no members, capturing it
+        // with zero properties instead of surfacing the failure — the exact silent-data-loss shape this
+        // guards against; return null instead so the caller's graceful bare-entity fallback applies.
+        if (navProperty?.Type is not INamedTypeSymbol navType || navType is IErrorTypeSymbol)
         {
             return null;
         }
 
-        return isCollection && navType.TypeArguments.FirstOrDefault() is INamedTypeSymbol element
-            ? element
-            : navType;
+        if (!isCollection)
+        {
+            return navType;
+        }
+
+        // Same IErrorTypeSymbol guard for the unwrapped element type (OwnsMany's List&lt;T&gt;-style
+        // navigation): an unresolvable element must not masquerade as resolved either. When there is no
+        // generic element at all (not a realistic shape, but not this method's concern), fall back to the
+        // collection type itself, exactly as before this guard was added.
+        return navType.TypeArguments.FirstOrDefault() switch
+        {
+            IErrorTypeSymbol => null,
+            INamedTypeSymbol element => element,
+            _ => navType
+        };
     }
 
     /// <summary>
@@ -328,11 +346,16 @@ internal static class FluentOwnedTypeWalker
     }
 
     /// <summary>
-    /// Normalises the EF implementation details a snapshot's owned block declares. Two rules:
+    /// Normalises the EF implementation details a snapshot's owned block declares. Two rules, BOTH scoped to
+    /// a table-split owned type only (<paramref name="entities"/> whose effective table equals its owner's —
+    /// the case the renderer inlines onto the owner):
     /// <list type="bullet">
-    /// <item>An owned type's key is a shadow property EF invents to make the owned row addressable. It is
-    /// not part of the modelled schema, and surfacing it would put a spurious PK on the owner once the
-    /// owned type is inlined — so PK markers are cleared.</item>
+    /// <item>An inlined owned type's key is a shadow property EF invents to make the owned row addressable.
+    /// It is not part of the modelled schema, and surfacing it would put a spurious PK on the owner once the
+    /// owned type is inlined — so PK markers are cleared. An owned type on its OWN table (<c>OwnsMany</c>,
+    /// <c>OwnsOne</c>+<c>ToTable</c>) is never inlined and draws its own box, where that same key IS its
+    /// real, addressable primary key — so it is kept, exactly as the spec's inlined-only PK-suppression
+    /// scope requires.</item>
     /// <item>A table-split owned type's FK back to the owner IS the owner's own PK column re-projected,
     /// not an extra column — so it is dropped. The DbContext path cannot see that column at all, so
     /// keeping it would break cross-path parity. For an owned type on its own table
@@ -359,7 +382,7 @@ internal static class FluentOwnedTypeWalker
                     continue;
                 }
 
-                stripped.Properties.Add(property.IsPrimaryKey
+                stripped.Properties.Add(sharesOwnerTable && property.IsPrimaryKey
                     ? EfPropertyFactory.CopyWith(property, new EfPropertyOverrides { IsPrimaryKey = false })
                     : property);
             }

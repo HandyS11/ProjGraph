@@ -19,7 +19,7 @@ internal static class EntityConfigurationWalker
     /// <param name="ClassName">The config class's simple name.</param>
     /// <param name="EntityName">The configured entity type <c>T</c>.</param>
     /// <param name="Configure">The <c>Configure(EntityTypeBuilder&lt;T&gt;)</c> method declaration.</param>
-    private readonly record struct ConfigClass(string ClassName, string EntityName, MethodDeclarationSyntax Configure);
+    internal readonly record struct ConfigClass(string ClassName, string EntityName, MethodDeclarationSyntax Configure);
 
     /// <summary>
     /// Applies every <c>IEntityTypeConfiguration&lt;T&gt;</c> class referenced from <paramref name="method"/>.
@@ -127,12 +127,27 @@ internal static class EntityConfigurationWalker
     {
         foreach (var tree in compilation.SyntaxTrees)
         {
-            foreach (var declaration in tree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>())
+            foreach (var configClass in FindConfigClassesInRoot(tree.GetRoot()))
             {
-                if (AsConfigClass(declaration) is { } configClass)
-                {
-                    yield return configClass;
-                }
+                yield return configClass;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enumerates every class in a single syntax root that implements <c>IEntityTypeConfiguration&lt;T&gt;</c>
+    /// and has a <c>Configure</c> method. Purely syntactic — no semantic model required — so it can also run
+    /// during entity-file discovery, before a compilation exists (<see cref="EfModelAnalyzer"/>'s pre-pass
+    /// that seeds owned-navigation CLR types from config classes as well as <c>OnModelCreating</c>).
+    /// </summary>
+    /// <param name="root">The syntax root to scan.</param>
+    internal static IEnumerable<ConfigClass> FindConfigClassesInRoot(SyntaxNode root)
+    {
+        foreach (var declaration in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+        {
+            if (AsConfigClass(declaration) is { } configClass)
+            {
+                yield return configClass;
             }
         }
     }

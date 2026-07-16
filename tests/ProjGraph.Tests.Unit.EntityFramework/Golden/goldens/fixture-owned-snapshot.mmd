@@ -9,8 +9,8 @@ erDiagram
     string ShipToAddress_ZipCode "max:18"
   }
   ReceiptNote {
+    int Id PK
     int ReceiptId FK
-    int Id
     string Text "max:500"
   }
   Receipt ||--o{ ReceiptNote : "Notes"

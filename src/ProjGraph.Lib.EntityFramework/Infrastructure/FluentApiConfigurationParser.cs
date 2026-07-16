@@ -56,9 +56,14 @@ public static class FluentApiConfigurationParser
         // earlier and again later cannot self-correct a wrong first resolution.
         FluentOwnedTypeWalker.ResolveTables(entities, model);
 
-        // Runs last, after every pass that could still mark an owned property's shadow PK/FK (including
-        // a context-path HasKey/HasForeignKey reached via EntityConfigurationWalker), so both the
-        // DbContext and snapshot paths strip the same EF implementation details identically.
+        // Runs last, after every configuration pass above has had a chance to mark an owned property's
+        // primary key or foreign key — FluentPropertyWalker's HasKey handling, FluentRelationshipWalker's
+        // HasForeignKey handling, and FluentOwnedTypeWalker's own WithOwner().HasForeignKey() parsing,
+        // all of which EntityConfigurationWalker also drives per config class — so both the DbContext and
+        // snapshot paths strip the same EF implementation details identically. StripShadowKeys itself only
+        // clears a PK or drops an FK for an owned type that shares its owner's table (the case the
+        // renderer inlines); an owned type on its own table keeps both, since there they are its real,
+        // addressable columns, not shadow implementation detail.
         FluentOwnedTypeWalker.StripShadowKeys(entities, model);
     }
 

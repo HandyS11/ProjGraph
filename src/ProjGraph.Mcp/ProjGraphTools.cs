@@ -244,6 +244,16 @@ internal sealed class ProjGraphTools(
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        if (!ErdOwnedModeParser.TryParse(ownedMode, out var mode))
+        {
+            // McpException so the actionable message reaches the client; the SDK strips the message from
+            // any other exception type. Unlike the CLI, an MCP caller is usually an LLM — silently
+            // defaulting an unrecognized value to mirror would return plausible-but-wrong output with no
+            // signal the requested mode was never applied. Validated up front, before any analysis work,
+            // mirroring how maxDepth is rejected in GetClassDiagramAsync before touching the file system.
+            throw new McpException($"Invalid ownedMode '{ownedMode}'. Expected 'mirror' or 'classic'.");
+        }
+
         path = await PreparePathAsync(path, cancellationToken);
 
         RequireFileExists(path);
@@ -300,9 +310,6 @@ internal sealed class ProjGraphTools(
             Message = "Rendering entity diagram"
         });
 
-        var mode = ownedMode.Equals("classic", StringComparison.OrdinalIgnoreCase)
-            ? ErdOwnedMode.Classic
-            : ErdOwnedMode.MirrorEf;
         var diagram = renderers.ErdRenderer.Render(model, new DiagramOptions(showTitle, false, false, mode));
 
         var filename = Path.GetFileName(path);

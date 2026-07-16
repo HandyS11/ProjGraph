@@ -49,7 +49,7 @@ Or run from source:
 | Tool                | Description                                             | Primary Parameters                     |
 |---------------------|---------------------------------------------------------|----------------------------------------|
 | `get_project_graph` | Dependency graph as a Mermaid diagram                   | `path`, `showTitle`, `includePackages` |
-| `get_erd`           | Mermaid ERD from EF Core DbContext or ModelSnapshot     | `path`, `contextName`, `showTitle`     |
+| `get_erd`           | Mermaid ERD from EF Core DbContext or ModelSnapshot     | `path`, `contextName`, `showTitle`, `ownedMode` |
 | `get_class_diagram` | Mermaid class diagram for C# files or directories       | `path`, `options`, `showTitle`         |
 | `get_project_stats` | Architectural metrics (counts, depth, hotspots, cycles) | `path`, `topN`                         |
 
@@ -111,6 +111,9 @@ Generates a Mermaid Entity Relationship Diagram from an EF Core `DbContext` or `
 - `path` (string): Absolute path to a `.cs` file containing a `DbContext` or `ModelSnapshot`
 - `contextName` (string, optional): Specific class name if multiple exist in the file
 - `showTitle` (boolean, optional): Include diagram title (default: true)
+- `ownedMode` (string, optional): How EF Core owned types (`OwnsOne`/`OwnsMany`) are shown: `"mirror"`
+  (default) inlines a table-split owned type onto its owner as EF names it; `"classic"` gives every owned
+  type its own entity box regardless of table mapping. Any other value is rejected with an error.
 
 **Features:**
 

@@ -228,7 +228,18 @@ Golden coverage under `tests/ProjGraph.Tests.Unit.EntityFramework/Golden/`:
 - **Cross-path agreement test**: one model expressed both as a context and as its snapshot,
   asserting the two rendered ERDs are identical. No such invariant exists today — the context and
   snapshot fixtures are unrelated models — so this closes the drift gap the two-path design
-  otherwise leaves open.
+  otherwise leaves open. **Scope**: this asserts agreement for *table-split* owned types only
+  (`CrossPathContext`'s `Seat` is `OwnsOne` with no `ToTable`). For an owned type on its own table
+  (`OwnsMany`, `OwnsOne`+`ToTable`) the two paths legitimately diverge: a generated snapshot always
+  declares EF's conventional shadow key/FK columns (`b1.Property<int>("Id")`,
+  `b1.WithOwner().HasForeignKey("ReceiptId")`) for its own-table owned types, which a hand-written
+  DbContext's `OnModelCreating` never states — there is nothing in the C# source for the DbContext
+  path to read. This is inherent information asymmetry between the two input shapes, not a bug: see
+  `fixture-owned-snapshot.mmd`'s `ReceiptNote { int ReceiptId FK, int Id PK, ... }` (an `OwnsMany`,
+  own table, shadow columns visible) versus `fixture-owned-modes-mirror.mmd`'s `InvoiceLine` (also
+  `OwnsMany`, but the DbContext fixture's CLR class declares no `Id`/FK property at all, so none is
+  rendered). Do not extend the cross-path test to an own-table owned type expecting agreement — it
+  will not hold, and should not be made to.
 
 Mermaid v11 validation (browser + `mermaid.parse`) on every changed and new golden, as in the
 prior validation session.
