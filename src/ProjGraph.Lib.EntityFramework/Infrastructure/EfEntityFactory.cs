@@ -21,6 +21,7 @@ internal static class EfEntityFactory
             Name = source.Name,
             IsJoinEntity = source.IsJoinEntity,
             TableName = tableName ?? source.TableName,
+            Key = source.Key,
             IsOwned = source.IsOwned,
             OwnerEntity = source.OwnerEntity,
             NavigationName = source.NavigationName,

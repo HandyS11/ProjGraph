@@ -53,7 +53,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 
         foreach (var entity in rendered)
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  {SanitizeEntityName(DisplayName(entity, model))} {{");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  {SanitizeEntityName(DisplayName(entity, model, options))} {{");
 
             var orderedProperties = EffectiveProperties(entity, model, options)
                 .OrderByDescending(p => p.IsPrimaryKey)
@@ -91,7 +91,14 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
             return false;
         }
 
-        var owner = model.Entities.FirstOrDefault(e => e.Name == entity.OwnerEntity);
+        // An owned collection is never inlined: folding a to-many into flat scalar columns on the owner
+        // is meaningless. EF never maps one to the owner's table, so this enforces the invariant.
+        if (entity.IsCollection)
+        {
+            return false;
+        }
+
+        var owner = model.Entities.FirstOrDefault(e => e.EffectiveKey == entity.OwnerEntity);
         return owner is not null && EffectiveTable(owner) == EffectiveTable(entity);
     }
 
@@ -102,19 +109,29 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     /// <param name="entity">The entity being rendered.</param>
     /// <param name="model">The model.</param>
     /// <param name="options">The render options.</param>
-    private static IEnumerable<EfProperty> EffectiveProperties(EfEntity entity, EfModel model, DiagramOptions? options)
+    /// <param name="visited">The set of entity keys already visited in this recursion, used to guard against ownership cycles.</param>
+    private static IEnumerable<EfProperty> EffectiveProperties(
+        EfEntity entity, EfModel model, DiagramOptions? options, HashSet<string>? visited = null)
     {
         foreach (var property in entity.Properties)
         {
             yield return property;
         }
 
+        // Nothing in the model type prevents a self-owning or mutually-owning entity, and unbounded
+        // recursion would raise StackOverflowException — uncatchable, killing the CLI/MCP process.
+        visited ??= [];
+        if (!visited.Add(entity.EffectiveKey))
+        {
+            yield break;
+        }
+
         var inlinedChildren = model.Entities
-            .Where(e => e.OwnerEntity == entity.Name && IsInlined(e, model, options));
+            .Where(e => e.OwnerEntity == entity.EffectiveKey && IsInlined(e, model, options));
 
         foreach (var child in inlinedChildren)
         {
-            foreach (var property in EffectiveProperties(child, model, options))
+            foreach (var property in EffectiveProperties(child, model, options, visited))
             {
                 // EF names table-split owned columns Nav_Property; nested ownership compounds the prefix.
                 yield return EfPropertyFactory.Rename(property, $"{child.NavigationName}_{property.Name}");
@@ -129,16 +146,27 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     /// </summary>
     /// <param name="entity">The entity.</param>
     /// <param name="model">The model, used to detect name collisions.</param>
-    private static string DisplayName(EfEntity entity, EfModel model)
+    /// <param name="options">The render options, used to tell which entities are actually drawn.</param>
+    private static string DisplayName(EfEntity entity, EfModel model, DiagramOptions? options)
     {
         if (!entity.IsOwned)
         {
             return entity.Name;
         }
 
-        var collides = model.Entities.Count(e => e.Name == entity.Name) > 1;
-        return collides ? $"{entity.OwnerEntity}_{entity.NavigationName}" : entity.Name;
+        // Only entities actually drawn can collide on the diagram; an inlined owned entity is never
+        // drawn, so it must not force a qualified label onto the only box of that name.
+        var collides = model.Entities.Count(e => e.Name == entity.Name && !IsInlined(e, model, options)) > 1;
+        return collides ? $"{OwnerNameOf(entity, model)}_{entity.NavigationName}" : entity.Name;
     }
+
+    /// <summary>Returns the CLR name of an owned entity's owner, resolved by key; falls back to the raw key.</summary>
+    /// <param name="entity">The owned entity.</param>
+    /// <param name="model">The model.</param>
+    private static string OwnerNameOf(EfEntity entity, EfModel model)
+        => model.Entities.FirstOrDefault(e => e.EffectiveKey == entity.OwnerEntity)?.Name
+           ?? entity.OwnerEntity
+           ?? "";
 
     /// <summary>
     /// Renders a single property line for an entity.
@@ -212,7 +240,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 
         foreach (var owned in ownedBoxes)
         {
-            var owner = model.Entities.FirstOrDefault(e => e.Name == owned.OwnerEntity);
+            var owner = model.Entities.FirstOrDefault(e => e.EffectiveKey == owned.OwnerEntity);
             if (owner is null)
             {
                 continue;
@@ -220,8 +248,8 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
 
             var syntax = owned.IsCollection ? "||--o{" : "||--||";
             sb.AppendLine(CultureInfo.InvariantCulture,
-                $"  {SanitizeEntityName(DisplayName(owner, model))} {syntax} " +
-                $"{SanitizeEntityName(DisplayName(owned, model))} : \"{owned.NavigationName}\"");
+                $"  {SanitizeEntityName(DisplayName(owner, model, options))} {syntax} " +
+                $"{SanitizeEntityName(DisplayName(owned, model, options))} : \"{owned.NavigationName}\"");
         }
     }
 

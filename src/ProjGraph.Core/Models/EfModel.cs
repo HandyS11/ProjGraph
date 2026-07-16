@@ -49,14 +49,28 @@ public class EfEntity
     public string TableName { get; init; } = string.Empty;
 
     /// <summary>
+    /// Gets or initializes this entity's identity within the model: <c>{Owner}.{Nav}</c> for an owned
+    /// entity, and empty for a root entity (which is identified by its <see cref="Name"/>). Prefer
+    /// <see cref="EffectiveKey"/>, which applies that fallback. <see cref="Name"/> holds the CLR type
+    /// name and is not unique — two owners may own the same type.
+    /// </summary>
+    public string Key { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Gets this entity's identity: <see cref="Key"/> when set, otherwise <see cref="Name"/>. Every
+    /// owner/owned lookup must match on this rather than on <see cref="Name"/>.
+    /// </summary>
+    public string EffectiveKey => string.IsNullOrEmpty(Key) ? Name : Key;
+
+    /// <summary>
     /// Gets or initializes a value indicating whether the entity is an EF Core owned type
     /// (configured via <c>OwnsOne</c>/<c>OwnsMany</c>) rather than a root entity.
     /// </summary>
     public bool IsOwned { get; init; }
 
     /// <summary>
-    /// Gets or initializes the key of the entity that owns this one, when <see cref="IsOwned"/> is
-    /// <see langword="true"/>; otherwise <see langword="null"/>.
+    /// Gets or initializes the <see cref="EffectiveKey"/> of the entity that owns this one, when
+    /// <see cref="IsOwned"/> is <see langword="true"/>; otherwise <see langword="null"/>.
     /// </summary>
     public string? OwnerEntity { get; init; }
 
