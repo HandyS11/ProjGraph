@@ -143,7 +143,10 @@ internal static class EntityConfigurationWalker
     /// <param name="root">The syntax root to scan.</param>
     internal static IEnumerable<ConfigClass> FindConfigClassesInRoot(SyntaxNode root)
     {
-        foreach (var declaration in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+        // TypeDeclarationSyntax, not ClassDeclarationSyntax: a record (or struct) can implement
+        // IEntityTypeConfiguration<T> too, and a class-only scan would silently skip its Configure body —
+        // the same hazard family that made record-declared owners invisible to owned-nav discovery.
+        foreach (var declaration in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
         {
             if (AsConfigClass(declaration) is { } configClass)
             {
@@ -152,10 +155,18 @@ internal static class EntityConfigurationWalker
         }
     }
 
-    /// <summary>Interprets a class declaration as a config class, or returns <see langword="null"/> if it is not one.</summary>
-    /// <param name="declaration">The class declaration.</param>
-    private static ConfigClass? AsConfigClass(ClassDeclarationSyntax declaration)
+    /// <summary>Interprets a type declaration as a config class, or returns <see langword="null"/> if it is not one.</summary>
+    /// <param name="declaration">The type declaration.</param>
+    private static ConfigClass? AsConfigClass(TypeDeclarationSyntax declaration)
     {
+        // EF's ApplyConfigurationsFromAssembly only instantiates concrete types (a record compiles to
+        // a class, so it qualifies); an interface extending IEntityTypeConfiguration<T> with a
+        // default-implemented Configure is never applied at runtime and must not be folded in here.
+        if (declaration is InterfaceDeclarationSyntax)
+        {
+            return null;
+        }
+
         var configInterface = declaration.BaseList?.Types
             .Select(baseType => baseType.Type)
             .OfType<GenericNameSyntax>()

@@ -212,6 +212,51 @@ public sealed class EntityAnalyzerTests
     }
 
     [Fact]
+    public void AnalyzeEntity_RecordWithTypeLevelPrimaryKeyAttribute_SyntaxPathMarksPrimaryKey()
+    {
+        // The EF Core [PrimaryKey] attribute is not resolvable in these fixtures (no EF reference), so
+        // only the syntax fallback can read it - and that fallback filtered on ClassDeclarationSyntax,
+        // silently skipping record-declared entities. Regression for the widening to
+        // TypeDeclarationSyntax (issue #163, item 2).
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using Microsoft.EntityFrameworkCore;
+                                                             [PrimaryKey(nameof(Code))]
+                                                             public record Ticket
+                                                             {
+                                                                 public string Code { get; set; }
+                                                                 public string Title { get; set; }
+                                                             }
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Ticket")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "Code").IsPrimaryKey.Should().BeTrue(
+            "the type-level [PrimaryKey] attribute lives on a RecordDeclarationSyntax, which the " +
+            "syntax fallback must not skip");
+        entity.Properties.First(p => p.Name == "Title").IsPrimaryKey.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnalyzeEntity_PositionalRecordWithPropertyTargetedKeyAttribute_MarksPrimaryKey()
+    {
+        // A positional record's [property: Key] lives on a primary-constructor parameter; the
+        // synthesized property carries the attribute at runtime, but the syntax fallback saw only
+        // PropertyDeclarationSyntax members and missed it (issue #163 hazard family).
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using System.ComponentModel.DataAnnotations;
+                                                             public record Voucher([property: Key] string Code, string Label);
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Voucher")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "Code").IsPrimaryKey.Should().BeTrue(
+            "EF reads [property: Key] off the property synthesized from the record parameter");
+        entity.Properties.First(p => p.Name == "Label").IsPrimaryKey.Should().BeFalse();
+    }
+
+    [Fact]
     public void AnalyzeEntity_RequiredAttribute_ShouldMarkAsRequired()
     {
         var compilation = RoslynTestHelper.CreateCompilation("""

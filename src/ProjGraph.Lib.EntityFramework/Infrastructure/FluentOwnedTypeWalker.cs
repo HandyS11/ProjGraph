@@ -197,7 +197,12 @@ internal static class FluentOwnedTypeWalker
         }
     }
 
-    /// <summary>Extracts the property names from a <c>HasForeignKey</c> call (lambda member access or string literals).</summary>
+    /// <summary>
+    /// Extracts the property names from a <c>HasForeignKey</c> call. Both branches are live:
+    /// snapshots emit the <c>params string[]</c> form, while on the DbContext path the generic
+    /// <c>OwnershipBuilder&lt;TEntity,TDependentEntity&gt;</c> a builder-lambda's <c>WithOwner()</c>
+    /// returns also has an <c>Expression</c> overload (<c>HasForeignKey(x =&gt; x.OwnerId)</c>).
+    /// </summary>
     /// <param name="invocation">The <c>HasForeignKey</c> invocation.</param>
     private static IEnumerable<string> ForeignKeyPropertyNames(InvocationExpressionSyntax invocation)
     {
@@ -331,7 +336,7 @@ internal static class FluentOwnedTypeWalker
                 continue;
             }
 
-            var ownerTable = EffectiveTable(owner);
+            var ownerTable = owner.EffectiveTable;
             var table = owned.IsCollection ? $"{ownerTable}_{owned.NavigationName}" : ownerTable;
 
             var updated = EfEntityFactory.CopyWith(owned, table);
@@ -365,7 +370,7 @@ internal static class FluentOwnedTypeWalker
         {
             var sharesOwnerTable = owned.OwnerEntity is not null
                                    && entities.TryGetValue(owned.OwnerEntity, out var owner)
-                                   && EffectiveTable(owner) == EffectiveTable(owned);
+                                   && owner.EffectiveTable == owned.EffectiveTable;
 
             var stripped = EfEntityFactory.CopyWith(owned);
             stripped.Properties.Clear();
@@ -386,9 +391,4 @@ internal static class FluentOwnedTypeWalker
             EfEntityFactory.ReplaceModelSlot(model, stripped);
         }
     }
-
-    /// <summary>Returns an entity's effective table: its explicit table name, or its entity name when unmapped.</summary>
-    /// <param name="entity">The entity.</param>
-    private static string EffectiveTable(EfEntity entity)
-        => string.IsNullOrEmpty(entity.TableName) ? entity.Name : entity.TableName;
 }

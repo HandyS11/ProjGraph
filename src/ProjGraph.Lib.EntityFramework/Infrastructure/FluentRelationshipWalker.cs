@@ -108,6 +108,15 @@ internal static class FluentRelationshipWalker
         }
 
         // Entity<T>(e => e.HasMany(...)): the Has call is inside the Entity configuration lambda.
+        //
+        // CAUTION: this ancestor walk is unbounded — it climbs past owned-type builder fences without
+        // stopping, unlike FluentSyntax.ResolveOwningEntity. FindRelationshipRoots fences only
+        // UsingEntity, so a HasOne/HasMany declared INSIDE an OwnsOne/OwnsMany builder lambda IS
+        // yielded, reaches this walk, and gets attributed to the Entity<T>() enclosing the builder —
+        // the owner, not the owned type. That coarse attribution is a known limitation (this walker
+        // has no way to produce an owned {Owner}.{Nav} source key). If owned-builder relationships
+        // are ever modelled properly, this walk must stop at nested-builder fences the way
+        // FluentSyntax.ResolveOwningEntity does, or the relationship will silently leak to the owner.
         var enclosingEntity = chain.HasNode.Ancestors()
             .OfType<InvocationExpressionSyntax>()
             .FirstOrDefault(inv => inv.Expression is MemberAccessExpressionSyntax ma

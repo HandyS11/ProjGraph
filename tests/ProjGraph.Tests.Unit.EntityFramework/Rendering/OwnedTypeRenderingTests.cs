@@ -176,6 +176,8 @@ public sealed class OwnedTypeRenderingTests
 
         // Geo table-splits onto ShipTo, which itself table-splits onto Invoice, so the nested
         // Geo_Latitude column compounds onto Invoice's box under the ShipTo_Geo_ prefix.
+        // The Contain below is the discriminating assertion: pre-fix, Name-keyed matching dropped the
+        // column entirely rather than duplicating it, so the NotContain passes both pre- and post-fix.
         output.Should().Contain("ShipTo_Geo_Latitude",
             "Geo must be attributed to its true owner ShipTo, keyed Invoice.ShipTo");
         output.Should().NotContain("BillTo_Geo_Latitude",
@@ -229,6 +231,54 @@ public sealed class OwnedTypeRenderingTests
     }
 
     [Fact]
+    public void MirrorEf_InlinedSameNamedSibling_DoesNotForceQualifiedLabelOntoSoleRenderedBox()
+    {
+        // Order owns ShipTo (table-split onto Orders, so inlined and never drawn) and BillTo (its own
+        // table, so drawn). Both are CLR "Address". Only entities actually drawn can collide on the
+        // diagram, so the undrawn ShipTo must not force the sole rendered Address box to the qualified
+        // Order_BillTo label.
+        var order = new EfEntity { Name = "Order", TableName = "Orders" };
+        order.Properties.Add(new EfProperty { Name = "Id", Type = "int", IsPrimaryKey = true, IsValueType = true });
+
+        var shipTo = new EfEntity
+        {
+            Name = "Address",
+            Key = "Order.ShipTo",
+            IsOwned = true,
+            OwnerEntity = "Order",
+            NavigationName = "ShipTo",
+            TableName = "Orders"
+        };
+        shipTo.Properties.Add(new EfProperty { Name = "City", Type = "string" });
+
+        var billTo = new EfEntity
+        {
+            Name = "Address",
+            Key = "Order.BillTo",
+            IsOwned = true,
+            OwnerEntity = "Order",
+            NavigationName = "BillTo",
+            TableName = "BillToAddresses"
+        };
+        billTo.Properties.Add(new EfProperty { Name = "City", Type = "string" });
+
+        var model = new EfModel { ContextName = "Ctx" };
+        model.Entities.Add(order);
+        model.Entities.Add(shipTo);
+        model.Entities.Add(billTo);
+
+        var output = Render(model);
+
+        output.Should().Contain("ShipTo_City", "the table-split sibling inlines onto Order");
+        output.Should().Contain("Address {",
+            "the only rendered box of this name must keep its plain label");
+        output.Should().NotContain("Order_BillTo",
+            "an inlined, undrawn sibling cannot collide on the diagram, so it must not force " +
+            "qualification onto the sole rendered box of that name");
+        output.Should().Contain("Order ||--|| Address", "the relationship must reference the plain label");
+    }
+
+    [Fact]
     public void Classic_TableSplitOwnsOne_RendersBoxAndIdentifyingRelationship()
     {
         var model = ModelWithOwned("Orders", isCollection: false);
@@ -249,6 +299,10 @@ public sealed class OwnedTypeRenderingTests
 
         var output = new MermaidErdRenderer().Render(
             model, new DiagramOptions(false, false, false, ErdOwnedMode.Classic));
+
+        // Assert the box exists before splitting on it: if "Address {" were ever missing, [0] would be
+        // the WHOLE output and the NotContain below would test the wrong thing entirely.
+        output.Should().Contain("Address {", "classic mode always gives the owned type its own box");
 
         var orderBlock = output.Split("Address {")[0];
         orderBlock.Should().NotContain("ShipToAddress",

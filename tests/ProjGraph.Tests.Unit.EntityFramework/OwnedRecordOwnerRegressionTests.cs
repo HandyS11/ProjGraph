@@ -98,4 +98,54 @@ public sealed class OwnedRecordOwnerRegressionTests
         rendered.Should().NotContain("Price {\n  }",
             "a record-declared owner must not fall back to the zero-property empty-box safety net");
     }
+
+    [Fact]
+    public async Task AnalyzeContextAsync_PositionalRecordOwner_CrossFileOwnedRecordColumnsCapturedAndRendered()
+    {
+        using var temp = new TestDirectory();
+
+        // Product is a POSITIONAL record: its Price navigation is a primary-constructor parameter, not a
+        // PropertyDeclarationSyntax member, so the pre-pass's member-based nav lookup missed it entirely.
+        // Money.cs then stayed out of the compilation, the navigation resolved to an error type, and the
+        // owned entity degraded to the spec's empty-box floor. Regression for the parameter-list nav
+        // lookup (issue #163, item 1); Money is itself a positional record, per the issue's fixture shape.
+        const string contextContent = """
+            using Microsoft.EntityFrameworkCore;
+            namespace Test;
+
+            public class PositionalRecordContext : DbContext
+            {
+                public DbSet<Product> Products { get; set; } = null!;
+
+                protected override void OnModelCreating(ModelBuilder modelBuilder)
+                {
+                    modelBuilder.Entity<Product>().OwnsOne(p => p.Price);
+                }
+            }
+
+            public record Product(int Id, Money Price);
+            """;
+        const string moneyContent = """
+            namespace Test;
+
+            public record Money(decimal Amount, string Currency);
+            """;
+
+        var contextPath = temp.CreateFile("Context.cs", contextContent);
+        temp.CreateFile("Money.cs", moneyContent);
+
+        var model = await CreateService().AnalyzeContextAsync(contextPath, "PositionalRecordContext");
+
+        var owned = model.Entities.SingleOrDefault(e => e.Key == "Product.Price");
+        owned.Should().NotBeNull(
+            "OwnsOne(p => p.Price) must capture the owned entity even though Price is declared as a " +
+            "primary-constructor parameter rather than a property member");
+        owned!.Properties.Select(p => p.Name).Should().BeEquivalentTo(["Amount", "Currency"],
+            "the pre-pass must find the Price parameter on the positional record to discover Money.cs; " +
+            "without that, Money resolves to an error type and the owned entity renders as an empty box");
+
+        var rendered = new MermaidErdRenderer().Render(model, new DiagramOptions(false, false));
+        rendered.Should().Contain("Price_Amount", "the table-split owned columns must be inlined onto Product");
+        rendered.Should().Contain("Price_Currency");
+    }
 }

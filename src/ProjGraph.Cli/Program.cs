@@ -29,6 +29,12 @@ internal static class Program
         {
             config.SetApplicationName("projgraph");
 
+            // Spectre's default parser silently ignores unrecognized long options: a typo like
+            // `--owned-mod classic` (missing 'e') exits 0 and renders with defaults, giving the user
+            // no signal their option was dropped. Strict parsing turns any unknown option into a
+            // parse error with a non-zero exit code instead.
+            config.Settings.StrictParsing = true;
+
             config.AddCommand<VisualizeCommand>(packageDiagramCommandName)
                 .WithDescription("Visualize the dependency graph of a solution or project")
                 .WithExample(packageDiagramCommandName, "MySolution.sln")

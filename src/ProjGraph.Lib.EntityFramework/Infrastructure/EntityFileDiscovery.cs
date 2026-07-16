@@ -396,9 +396,18 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
         var syntaxTree = CSharpSyntaxTree.ParseText(fileCode);
         var root = await syntaxTree.GetRootAsync();
 
-        foreach (var classDecl in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+        // TypeDeclarationSyntax (minus interfaces), not ClassDeclarationSyntax: a record can implement
+        // IEntityTypeConfiguration<T> too, and this cross-file discovery feeds the same walker that was
+        // widened for exactly that reason (EntityConfigurationWalker.FindConfigClassesInRoot) — a
+        // class-only scan here would keep a separate-file record config invisible end-to-end.
+        foreach (var typeDecl in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
         {
-            var implementsInterface = classDecl.BaseList?.Types
+            if (typeDecl is InterfaceDeclarationSyntax)
+            {
+                continue;
+            }
+
+            var implementsInterface = typeDecl.BaseList?.Types
                 .Select(baseType => baseType.Type)
                 .OfType<GenericNameSyntax>()
                 .Any(generic =>
@@ -407,7 +416,7 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
 
             if (implementsInterface)
             {
-                configFiles.TryAdd(classDecl.Identifier.Text, filePath);
+                configFiles.TryAdd(typeDecl.Identifier.Text, filePath);
             }
         }
     }
@@ -447,16 +456,17 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
     /// <param name="root">The root <see cref="SyntaxNode"/> of the syntax tree to analyze.</param>
     /// <param name="baseClassNames">A <see cref="HashSet{T}"/> to store the extracted base class names.</param>
     /// <remarks>
-    /// This method traverses the syntax tree to find all class declarations with a base list.
+    /// This method traverses the syntax tree to find all class and record declarations with a base list
+    /// (interfaces are skipped: their base lists name other interfaces, never an entity base type).
     /// It then extracts the names of the base types using the <see cref="ExtractBaseTypeName"/> method
     /// and filters them using the <see cref="IsValidBaseClassName"/> method before adding them to the set.
     /// </remarks>
     public void ExtractBaseClassNamesFromSyntax(SyntaxNode root, HashSet<string> baseClassNames)
     {
         foreach (var baseTypeName in root.DescendantNodes()
-                     .OfType<ClassDeclarationSyntax>()
-                     .Where(classDecl => classDecl.BaseList is not null)
-                     .SelectMany(classDecl => classDecl.BaseList!.Types)
+                     .OfType<TypeDeclarationSyntax>()
+                     .Where(typeDecl => typeDecl is not InterfaceDeclarationSyntax && typeDecl.BaseList is not null)
+                     .SelectMany(typeDecl => typeDecl.BaseList!.Types)
                      .Select(ExtractBaseTypeName)
                      .Where(IsValidBaseClassName))
         {
