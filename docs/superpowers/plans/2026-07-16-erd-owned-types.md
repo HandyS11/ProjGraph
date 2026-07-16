@@ -374,17 +374,25 @@ copies through EfEntityFactory so a ToTable rewrite cannot drop them."
 
 ---
 
-### Task 3: Renderer — MirrorEf mode
+### Task 3: ErdOwnedMode option + renderer MirrorEf mode
 
 The renderer decides inline-vs-box by comparing effective tables. Tests build `EfModel` by hand — no parser involved.
 
+This task also adds the `ErdOwnedMode` option the renderer switches on. The option and its first consumer land together because the renderer cannot compile without it.
+
 **Files:**
+- Modify: `src/ProjGraph.Lib.Core/Abstractions/DiagramOptions.cs`
 - Modify: `src/ProjGraph.Lib.EntityFramework/Rendering/MermaidErdRenderer.cs:46-64,112-127`
+- Modify: `src/ProjGraph.Lib.EntityFramework/Infrastructure/EfPropertyFactory.cs`
 - Test: `tests/ProjGraph.Tests.Unit.EntityFramework/Rendering/OwnedTypeRenderingTests.cs` (create)
 
 **Interfaces:**
 - Consumes: Task 2's `EfEntity.IsOwned` / `OwnerEntity` / `NavigationName` / `IsCollection`.
-- Produces: `MermaidErdRenderer.Render(EfModel, DiagramOptions?)` handling owned entities. Private helpers: `EffectiveTable(EfEntity)`, `IsInlined(EfEntity, EfModel)`, `RenderEntities`, `RenderRelationships`.
+- Produces:
+  - `ErdOwnedMode` enum (`MirrorEf = 0`, `Classic = 1`) in `ProjGraph.Lib.Core.Abstractions`
+  - `DiagramOptions.ErdOwnedMode` — fourth positional parameter, defaulting to `MirrorEf`
+  - `EfPropertyFactory.Rename(EfProperty source, string name)` → `EfProperty`
+  - `MermaidErdRenderer.Render(EfModel, DiagramOptions?)` handling owned entities. Private helpers: `EffectiveTable(EfEntity)`, `IsInlined(EfEntity, EfModel, DiagramOptions?)`, `EffectiveProperties`, `DisplayName`, `RenderEntities`, `RenderRelationships`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -465,7 +473,49 @@ public sealed class OwnedTypeRenderingTests
 Run: `dtk test tests/ProjGraph.Tests.Unit.EntityFramework --filter "OwnedTypeRenderingTests"`
 Expected: FAIL — the renderer ignores owned metadata, so `Address {` is always emitted and no relationship line appears.
 
-- [ ] **Step 3: Implement MirrorEf**
+- [ ] **Step 3: Add the ErdOwnedMode option**
+
+Replace `src/ProjGraph.Lib.Core/Abstractions/DiagramOptions.cs`:
+
+```csharp
+namespace ProjGraph.Lib.Core.Abstractions;
+
+/// <summary>
+/// Controls how EF Core owned types (<c>OwnsOne</c>/<c>OwnsMany</c>) appear in a rendered ERD.
+/// </summary>
+public enum ErdOwnedMode
+{
+    /// <summary>
+    /// The physical view: an owned type that shares its owner's table is inlined onto the owner using
+    /// EF's <c>Nav_Property</c> column naming; one on its own table gets its own entity box.
+    /// </summary>
+    MirrorEf = 0,
+
+    /// <summary>
+    /// The conceptual view: every owned type is its own entity box linked to the owner by an identifying
+    /// relationship, regardless of table mapping.
+    /// </summary>
+    Classic = 1
+}
+
+/// <summary>
+/// Represents options for rendering a diagram.
+/// </summary>
+/// <param name="ShowTitle">Whether to include the title in the rendered output.</param>
+/// <param name="WrapInMarkdownFence">Whether to wrap the output in a ```mermaid code fence. Defaults to <see langword="true"/>.</param>
+/// <param name="IncludePackages">Whether to include NuGet package dependencies in the graph.</param>
+/// <param name="ErdOwnedMode">How EF Core owned types are represented in an ERD. Defaults to <see cref="ErdOwnedMode.MirrorEf"/>.</param>
+public record DiagramOptions(
+    bool ShowTitle = true,
+    bool WrapInMarkdownFence = true,
+    bool IncludePackages = false,
+    ErdOwnedMode ErdOwnedMode = ErdOwnedMode.MirrorEf
+);
+```
+
+The new positional parameter is optional, so every existing `new DiagramOptions(...)` call site compiles unchanged.
+
+- [ ] **Step 4: Implement MirrorEf**
 
 In `MermaidErdRenderer.cs`, replace `RenderEntities` and `RenderRelationships`, and add the helpers:
 
@@ -653,39 +703,42 @@ Add `Rename` to `EfPropertyFactory` (`src/ProjGraph.Lib.EntityFramework/Infrastr
 
 `EfPropertyFactory` is `internal` and `MermaidErdRenderer` is in the same assembly, so no visibility change is needed.
 
-Note: `EfPropertyFactory.Rename` preserves `IsPrimaryKey`. An owned type's shadow PK must not surface as an owner PK — Task 7 (snapshot path) is where shadow keys appear, and it strips them at capture time so the model never carries them. The renderer stays presentation-only.
+Note: `EfPropertyFactory.Rename` preserves `IsPrimaryKey`. An owned type's shadow PK must not surface as an owner PK — Task 8 (snapshot path) is where shadow keys appear, and it strips them at capture time so the model never carries them. The renderer stays presentation-only.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 5: Run tests to verify they pass**
 
-Run: `dtk test tests/ProjGraph.Tests.Unit.EntityFramework`
-Expected: PASS — three new tests pass; all goldens unchanged (no model produces owned entities yet).
+Run: `dtk test ProjGraph.slnx`
+Expected: PASS — three new tests pass; all goldens unchanged (no model produces owned entities yet); every existing `DiagramOptions` call site still compiles.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/ProjGraph.Lib.EntityFramework/Rendering/MermaidErdRenderer.cs \
+git add src/ProjGraph.Lib.Core/Abstractions/DiagramOptions.cs \
+        src/ProjGraph.Lib.EntityFramework/Rendering/MermaidErdRenderer.cs \
         src/ProjGraph.Lib.EntityFramework/Infrastructure/EfPropertyFactory.cs \
         tests/ProjGraph.Tests.Unit.EntityFramework/Rendering/OwnedTypeRenderingTests.cs
 git commit -m "feat(ef): render owned types in MirrorEf mode
 
-Owned entities sharing their owner's table inline as Nav_Property columns;
-those on their own table get a box plus a derived identifying relationship.
-Presentation lives entirely in the renderer."
+Adds DiagramOptions.ErdOwnedMode (MirrorEf default, Classic), following the
+IncludePackages precedent for feature-specific render options. Owned entities
+sharing their owner's table inline as Nav_Property columns; those on their own
+table get a box plus a derived identifying relationship. Presentation lives
+entirely in the renderer."
 ```
-
-Note: this task references `DiagramOptions.ErdOwnedMode`, which Task 4 adds. Implement Task 4's `DiagramOptions` change first if the compiler objects — the two are ordered for narrative, not dependency. If you are executing strictly task-by-task, apply Task 4 Step 3's `DiagramOptions` edit as part of this task and drop it from Task 4.
 
 ---
 
-### Task 4: Renderer — Classic mode + DiagramOptions
+### Task 4: Renderer — Classic mode
+
+Task 3's `IsInlined` already short-circuits on `ErdOwnedMode.Classic`, so Classic mode should work the moment the option exists. This task proves it, and is where it gets fixed if it does not.
 
 **Files:**
-- Modify: `src/ProjGraph.Lib.Core/Abstractions/DiagramOptions.cs`
 - Modify: `tests/ProjGraph.Tests.Unit.EntityFramework/Rendering/OwnedTypeRenderingTests.cs`
+- Modify (only if the tests fail): `src/ProjGraph.Lib.EntityFramework/Rendering/MermaidErdRenderer.cs`
 
 **Interfaces:**
-- Consumes: Task 3's renderer.
-- Produces: `ErdOwnedMode` enum (`MirrorEf = 0`, `Classic = 1`) in `ProjGraph.Lib.Core.Abstractions`; `DiagramOptions.ErdOwnedMode` property defaulting to `MirrorEf`.
+- Consumes: Task 3's `ErdOwnedMode`, `DiagramOptions.ErdOwnedMode`, and renderer.
+- Produces: nothing new — Classic mode is verified behaviour of Task 3's renderer.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -720,67 +773,28 @@ Append to `OwnedTypeRenderingTests.cs`:
     }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 2: Run the tests**
 
 Run: `dtk test tests/ProjGraph.Tests.Unit.EntityFramework --filter "OwnedTypeRenderingTests"`
-Expected: FAIL — `ErdOwnedMode` does not exist (CS0246) and `DiagramOptions` has no fourth parameter.
 
-- [ ] **Step 3: Add the option**
+These tests are expected to PASS immediately: Task 3 built Classic mode's behaviour into `IsInlined` but never proved it. That is the point of this task — a characterization test for an untested branch.
 
-Replace `src/ProjGraph.Lib.Core/Abstractions/DiagramOptions.cs`:
+If either test FAILS, that is a real Task 3 defect. Fix it in `MermaidErdRenderer` (do not weaken the test), then re-run. The likely culprits: `IsInlined` not short-circuiting before the owner lookup, or `DisplayName` collision-qualifying when it should not.
 
-```csharp
-namespace ProjGraph.Lib.Core.Abstractions;
-
-/// <summary>
-/// Controls how EF Core owned types (<c>OwnsOne</c>/<c>OwnsMany</c>) appear in a rendered ERD.
-/// </summary>
-public enum ErdOwnedMode
-{
-    /// <summary>
-    /// The physical view: an owned type that shares its owner's table is inlined onto the owner using
-    /// EF's <c>Nav_Property</c> column naming; one on its own table gets its own entity box.
-    /// </summary>
-    MirrorEf = 0,
-
-    /// <summary>
-    /// The conceptual view: every owned type is its own entity box linked to the owner by an identifying
-    /// relationship, regardless of table mapping.
-    /// </summary>
-    Classic = 1
-}
-
-/// <summary>
-/// Represents options for rendering a diagram.
-/// </summary>
-/// <param name="ShowTitle">Whether to include the title in the rendered output.</param>
-/// <param name="WrapInMarkdownFence">Whether to wrap the output in a ```mermaid code fence. Defaults to <see langword="true"/>.</param>
-/// <param name="IncludePackages">Whether to include NuGet package dependencies in the graph.</param>
-/// <param name="ErdOwnedMode">How EF Core owned types are represented in an ERD. Defaults to <see cref="ErdOwnedMode.MirrorEf"/>.</param>
-public record DiagramOptions(
-    bool ShowTitle = true,
-    bool WrapInMarkdownFence = true,
-    bool IncludePackages = false,
-    ErdOwnedMode ErdOwnedMode = ErdOwnedMode.MirrorEf
-);
-```
-
-Task 3's `IsInlined` already short-circuits on `ErdOwnedMode.Classic`, so no renderer change is needed.
-
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 3: Run the full suite**
 
 Run: `dtk test ProjGraph.slnx`
-Expected: PASS — the new positional parameter is optional, so every existing `new DiagramOptions(...)` call site compiles unchanged.
+Expected: PASS — no golden may move; nothing in this task changes MirrorEf behaviour.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/ProjGraph.Lib.Core/Abstractions/DiagramOptions.cs \
-        tests/ProjGraph.Tests.Unit.EntityFramework/Rendering/OwnedTypeRenderingTests.cs
-git commit -m "feat(ef): add Classic owned-type ERD mode
+git add tests/ProjGraph.Tests.Unit.EntityFramework/Rendering/OwnedTypeRenderingTests.cs \
+        src/ProjGraph.Lib.EntityFramework/Rendering/MermaidErdRenderer.cs
+git commit -m "test(ef): cover Classic owned-type ERD mode
 
-DiagramOptions gains ErdOwnedMode (MirrorEf default, Classic), following
-the IncludePackages precedent for feature-specific render options."
+Classic mode gives every owned type its own box with an identifying
+relationship and never prefixes columns, regardless of table mapping."
 ```
 
 ---
@@ -1636,18 +1650,31 @@ Append to `FluentOwnedTypeWalkerTests.cs`:
         var shipTo = model.Entities.Single(e => e.NavigationName == "ShipToAddress");
         shipTo.Properties.Should().NotContain(p => p.IsPrimaryKey,
             "an owned type's shadow key is an EF implementation detail, not a modelled column");
-        shipTo.Properties.Should().ContainSingle(p => p.Name == "ReceiptId")
-            .Which.IsForeignKey.Should().BeTrue("the FK back to the owner is a real column");
     }
 
     [Fact]
-    public void Snapshot_OwnsMany_CapturesCollectionOnItsOwnTable()
+    public void Snapshot_TableSplitOwnedType_DropsTheOwnerForeignKeyColumn()
+    {
+        var model = AnalyzeSnapshot("OwnedSnapshot.cs", "BillingContextModelSnapshot");
+
+        var shipTo = model.Entities.Single(e => e.NavigationName == "ShipToAddress");
+        shipTo.Properties.Should().NotContain(p => p.Name == "ReceiptId",
+            "a table-split owned type's FK is the owner's own PK column re-projected, not an extra " +
+            "column; the DbContext path cannot see it at all, so keeping it would break cross-path parity");
+        shipTo.Properties.Should().Contain(p => p.Name == "City");
+    }
+
+    [Fact]
+    public void Snapshot_OwnsMany_CapturesCollectionOnItsOwnTableAndKeepsItsForeignKey()
     {
         var model = AnalyzeSnapshot("OwnedSnapshot.cs", "BillingContextModelSnapshot");
 
         var notes = model.Entities.Single(e => e.NavigationName == "Notes");
         notes.IsCollection.Should().BeTrue();
         notes.TableName.Should().Be("ReceiptNotes");
+        notes.Properties.Should().ContainSingle(p => p.Name == "ReceiptId")
+            .Which.IsForeignKey.Should().BeTrue(
+                "an owned type on its own table has a real, separate FK column back to the owner");
     }
 ```
 
@@ -1674,10 +1701,16 @@ Add to `FluentOwnedTypeWalker`:
 
 ```csharp
     /// <summary>
-    /// Clears primary-key markers from owned entities. An owned type's key is a shadow property EF invents
-    /// to make the owned row addressable; it is not part of the modelled schema, and surfacing it would put
-    /// a spurious PK on the owner once the owned type is inlined. The FK back to the owner is left intact —
-    /// that is a real column.
+    /// Normalises the EF implementation details a snapshot's owned block declares. Two rules:
+    /// <list type="bullet">
+    /// <item>An owned type's key is a shadow property EF invents to make the owned row addressable. It is
+    /// not part of the modelled schema, and surfacing it would put a spurious PK on the owner once the
+    /// owned type is inlined — so PK markers are cleared.</item>
+    /// <item>A table-split owned type's FK back to the owner IS the owner's own PK column re-projected,
+    /// not an extra column — so it is dropped. The DbContext path cannot see that column at all, so
+    /// keeping it would break cross-path parity. For an owned type on its own table
+    /// (<c>OwnsMany</c>, <c>OwnsOne</c>+<c>ToTable</c>) the FK is a real, separate column and is kept.</item>
+    /// </list>
     /// </summary>
     /// <param name="entities">The known entities.</param>
     /// <param name="model">The model whose entities are updated in place.</param>
@@ -1685,11 +1718,19 @@ Add to `FluentOwnedTypeWalker`:
     {
         foreach (var (key, owned) in entities.Where(e => e.Value.IsOwned).ToList())
         {
+            var owner = entities.Values.FirstOrDefault(e => e.Name == owned.OwnerEntity);
+            var sharesOwnerTable = owner is not null && EffectiveTable(owner) == EffectiveTable(owned);
+
             var stripped = EfEntityFactory.CopyWith(owned);
             stripped.Properties.Clear();
 
             foreach (var property in owned.Properties)
             {
+                if (sharesOwnerTable && property.IsForeignKey)
+                {
+                    continue;
+                }
+
                 stripped.Properties.Add(property.IsPrimaryKey
                     ? EfPropertyFactory.CopyWith(property, new EfPropertyOverrides { IsPrimaryKey = false })
                     : property);
@@ -1704,11 +1745,16 @@ Add to `FluentOwnedTypeWalker`:
             }
         }
     }
+
+    /// <summary>Returns an entity's effective table: its explicit table name, or its entity name when unmapped.</summary>
+    /// <param name="entity">The entity.</param>
+    private static string EffectiveTable(EfEntity entity)
+        => string.IsNullOrEmpty(entity.TableName) ? entity.Name : entity.TableName;
 ```
 
 Also call `FluentOwnedTypeWalker.StripShadowKeys(entities, model)` as the final line of `FluentApiConfigurationParser.ApplyFluentApiConstraints` (after `EntityConfigurationWalker.Apply`), so both paths agree — a context-path `HasKey` inside an owned builder must be treated identically.
 
-The `WithOwner().HasForeignKey("ReceiptId")` call marks `ReceiptId` as an FK via the existing `FluentRelationshipWalker`; if that test assertion fails, mark the FK in `StripShadowKeys` by name from the owned builder's `HasForeignKey` literal instead of adding a new relationship — do not add an `EfRelationship` for owned types (the spec forbids it; the renderer derives the line).
+`StripShadowKeys` keys the FK-drop off `IsForeignKey`, which the existing `FluentRelationshipWalker` sets from `WithOwner().HasForeignKey("ReceiptId")`. If `ReceiptId` is not marked `IsForeignKey` after that pass, mark it in `StripShadowKeys` by reading the `HasForeignKey` string literal from inside the owned builder instead. Do NOT add an `EfRelationship` for owned types — the spec forbids it, and the renderer derives the line.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
@@ -1732,7 +1778,7 @@ In `EfErdGoldenTests.cs`, add after `OneToOneSnapshotErd_MatchesGolden`:
 Run: `UPDATE_EF_GOLDENS=1 dtk test tests/ProjGraph.Tests.Unit.EntityFramework --filter "Category=Golden"`
 Then: `git diff tests/ProjGraph.Tests.Unit.EntityFramework/Golden/goldens/`
 
-Expected: new `fixture-owned-snapshot.mmd` where `Receipt` carries inlined `ShipToAddress_City`/`ShipToAddress_ZipCode`/`ShipToAddress_ReceiptId` columns, plus a `ReceiptNote` box and a `Receipt ||--o{ ReceiptNote : "Notes"` line. No pre-existing golden may move.
+Expected: new `fixture-owned-snapshot.mmd` where `Receipt` carries inlined `ShipToAddress_City` and `ShipToAddress_ZipCode` columns (but NOT `ShipToAddress_ReceiptId` — the table-split FK is dropped), plus a `ReceiptNote` box keeping its own `ReceiptId` FK column and a `Receipt ||--o{ ReceiptNote : "Notes"` line. No pre-existing golden may move.
 
 - [ ] **Step 7: Run the full suite and commit**
 
@@ -1920,7 +1966,7 @@ In `EfErdGoldenTests.cs`, add:
     }
 ```
 
-The snapshot's owned block declares the FK column `TicketId`, which the context path cannot see (EF invents it). Expect this test to fail first on that difference. Resolve it by having `StripShadowKeys` also drop owned properties that are the owner FK declared by `WithOwner().HasForeignKey("X")` — the FK of a *table-split* owned type is the owner's own PK column re-projected, so it is not an additional column. Amend `StripShadowKeys` to remove, from any owned entity that shares its owner's effective table, properties named by a `HasForeignKey` literal inside that owned builder. For owned types on their own table (`OwnsMany`, `OwnsOne`+`ToTable`) the FK is a real, separate column and must be kept — this is why Task 8's `Snapshot_OwnedShadowKey_IsNotRecordedAsPrimaryKey` test asserts `ReceiptId` survives on `ReceiptAddress`; update that test to reflect the table-split rule (`ReceiptAddress` shares `Receipts`, so its `ReceiptId` is now dropped) and add the kept-FK assertion to `ReceiptNote` instead, which has its own table.
+Task 8's `StripShadowKeys` already drops the table-split FK (`TicketId`) and clears the shadow PK, which is exactly what makes this test passable — the snapshot declares both and the DbContext path can see neither. If this test fails, the difference it reports is the specification of the bug: read the two rendered bodies and fix the *capture* side that diverges. Do not special-case the renderer, and do not relax the assertion to a substring check.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
@@ -1953,7 +1999,7 @@ model, which nothing previously guarded."
 - Test: `tests/ProjGraph.Tests.Integration.Cli` (add to the existing ERD command test class)
 
 **Interfaces:**
-- Consumes: Task 4's `ErdOwnedMode`.
+- Consumes: Task 3's `ErdOwnedMode` and `DiagramOptions.ErdOwnedMode`.
 - Produces: `--owned-mode <mirror|classic>` CLI option; `ownedMode` MCP parameter. Both default to mirror.
 
 - [ ] **Step 1: Write the failing CLI test**
@@ -1980,23 +2026,12 @@ Expected: FAIL — non-zero exit; Spectre reports the unknown option `--owned-mo
 
 - [ ] **Step 3: Add the CLI option**
 
-In `ErdCommand.Settings`, after `ShowTitle`:
+In `ErdCommand.Settings`, after `ShowTitle`, add the option. It is bound as a **string**, not as the `ErdOwnedMode` enum: Spectre binds enums by member name, so `--owned-mode mirror` would not bind to `MirrorEf`, and exposing `--owned-mode mirroref` to users is worse than converting by hand.
 
 ```csharp
         /// <summary>
         /// Gets or sets how EF Core owned types are represented in the diagram.
         /// </summary>
-        [CommandOption("--owned-mode <mirror|classic>")]
-        [Description(
-            "How EF Core owned types are shown: 'mirror' inlines table-split owned types onto the owner as " +
-            "EF names them (default), 'classic' gives every owned type its own entity")]
-        [DefaultValue(ErdOwnedMode.MirrorEf)]
-        public ErdOwnedMode OwnedMode { get; init; } = ErdOwnedMode.MirrorEf;
-```
-
-Spectre binds enums case-insensitively by member name, so `--owned-mode classic` binds to `Classic`. `mirror` will NOT bind to `MirrorEf`. Add a `[TypeConverter]`-free explicit mapping instead by accepting a string and converting, to keep the documented `mirror|classic` vocabulary:
-
-```csharp
         [CommandOption("--owned-mode <mirror|classic>")]
         [Description(
             "How EF Core owned types are shown: 'mirror' inlines table-split owned types onto the owner as " +
@@ -2121,8 +2156,9 @@ git commit -m "test(ef): validate owned-type goldens against Mermaid v11"
 | Capture: nav suppression (step 5) | Verified pre-existing — asserted in Task 5's `AppliesNestedPropertyConfigurationToOwnedNotOwner` |
 | Scope-relative traversal refactor | 1 |
 | Capture: snapshot path | 8 |
+| `ErdOwnedMode` option on `DiagramOptions` | 3 |
 | Rendering: MirrorEf | 3 |
-| Rendering: Classic | 4 |
+| Rendering: Classic | 3 (behaviour), 4 (tests) |
 | Display naming / collisions | 3 (`DisplayName`), 9 (classic golden exercises it) |
 | Surfaces (CLI, MCP) | 10 |
 | Error handling (graceful degradation) | 5 (`GetOrCreateOwned` falls back to a bare entity) |
@@ -2132,6 +2168,10 @@ git commit -m "test(ef): validate owned-type goldens against Mermaid v11"
 
 **Type consistency:** `FluentOwnedTypeWalker.Apply/ResolveTables/StripShadowKeys`, `EfEntityFactory.CopyWith`, `EfPropertyFactory.Rename`, `FluentSyntax.OwnedNavigationName`, `ErdOwnedMode.MirrorEf|Classic`, and `DiagramOptions`' fourth positional parameter are used consistently across Tasks 2–11.
 
-**Known cross-task amendments (deliberate, not placeholders):**
-- Task 3 uses `DiagramOptions.ErdOwnedMode`, added in Task 4. Task 3's closing note tells the implementer to pull that edit forward if compiling task-by-task.
-- Task 8's `Snapshot_OwnedShadowKey_IsNotRecordedAsPrimaryKey` asserts the owner FK survives on a table-split owned type; Task 9 Step 4 tightens the rule (table-split FKs are dropped) and explicitly instructs updating that assertion. This is TDD discovering the rule via the cross-path test, and the plan says so at both ends rather than silently contradicting itself.
+**Pre-flight conflicts, resolved before execution (2026-07-16):**
+
+Three defects the plan itself authored were found by the pre-flight scan and fixed rather than left for the review loop:
+
+1. **Task 3 referenced `DiagramOptions.ErdOwnedMode` before Task 4 added it.** Resolved by folding the `DiagramOptions` edit into Task 3, which is its first consumer and cannot compile without it. Task 4 is now purely a characterization test for Classic mode — an untested branch of Task 3's `IsInlined`, which is why its tests are expected to pass on arrival rather than fail first.
+2. **Task 8 mandated an FK assertion that Task 9 overturned.** The table-split rule (an owned type's FK back to its owner is the owner's own PK re-projected, so it is dropped; an owned type on its own table keeps a real FK column) is now stated once, correctly, in Task 8's `StripShadowKeys` and its tests. Task 9's cross-path test consumes that rule instead of discovering it.
+3. **Task 10 carried two versions of the CLI option.** The dead enum-bound version is deleted; only the string-bound one remains, with the reason it is not enum-bound stated inline.
