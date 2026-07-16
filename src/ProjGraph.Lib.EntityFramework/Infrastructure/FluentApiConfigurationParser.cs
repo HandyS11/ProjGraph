@@ -35,6 +35,7 @@ public static class FluentApiConfigurationParser
         // fluent-only entities and applies ToTable; FluentPropertyWalker derives property config +
         // primary keys; FluentRelationshipWalker derives relationships + foreign keys.
         FluentEntityWalker.Apply(methodSyntax, entities, model, compilation);
+        FluentOwnedTypeWalker.Apply(methodSyntax, entities, model, compilation);
         FluentPropertyWalker.Apply(methodSyntax, entities, compilation);
         FluentRelationshipWalker.Apply(methodSyntax, entities, model, compilation);
 

@@ -71,8 +71,12 @@ internal static class FluentSyntax
     /// <summary>
     /// Resolves the entity that owns a configuration call, either from an <c>Entity&lt;T&gt;()</c> earlier in
     /// the same chain (<c>modelBuilder.Entity&lt;T&gt;().Property(...)</c>) or from the enclosing
-    /// <c>Entity&lt;T&gt;(e =&gt; ...)</c> configuration lambda; stopping (returning <see langword="null"/>)
-    /// before crossing a chained owned-type / join-entity builder so configuration is not leaked onto the owner.
+    /// <c>Entity&lt;T&gt;(e =&gt; ...)</c> configuration lambda; stopping (returning <see langword="null"/>
+    /// from the receiver-chain search, or falling back to <paramref name="ambientEntity"/> from the
+    /// ancestor search) before crossing a chained/nested owned-type or join-entity builder, so
+    /// configuration is not leaked onto the outer entity — including when <paramref name="configInvocation"/>
+    /// itself lives inside such a builder's own argument list (the case a caller who scopes directly to
+    /// that argument list, passing its own key as <paramref name="ambientEntity"/>, relies on).
     /// </summary>
     /// <param name="configInvocation">The configuration invocation (e.g. <c>Property</c>/<c>ToTable</c>).</param>
     /// <param name="ambientEntity">The owning entity to fall back to when no enclosing <c>Entity&lt;T&gt;()</c> is found.</param>
@@ -103,10 +107,31 @@ internal static class FluentSyntax
             }
         }
 
-        var enclosingEntity = configInvocation.Ancestors()
-            .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(inv => inv.Expression is MemberAccessExpressionSyntax ma
-                                   && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity);
+        InvocationExpressionSyntax? enclosingEntity = null;
+        foreach (var ancestor in configInvocation.Ancestors().OfType<InvocationExpressionSyntax>())
+        {
+            if (ancestor.Expression is not MemberAccessExpressionSyntax ma)
+            {
+                continue;
+            }
+
+            var callName = SimpleName(ma.Name);
+
+            // Climbing past an owned-type / join-entity builder invocation (e.g. the OwnsOne call whose
+            // argument list configInvocation lives inside) would reattribute this call to whatever
+            // Entity<T>() lies beyond it. Stop instead, so ambientEntity — the owned/join target the
+            // caller scoped this search to — wins.
+            if (NestedBuilderScopes.Contains(callName))
+            {
+                break;
+            }
+
+            if (callName == EfAnalysisConstants.EfMethods.Entity)
+            {
+                enclosingEntity = ancestor;
+                break;
+            }
+        }
 
         return enclosingEntity is null ? ambientEntity : EntityNameFromInvocation(enclosingEntity);
     }

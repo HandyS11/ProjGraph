@@ -4,6 +4,7 @@ title: OwnedAndJoinContext
 erDiagram
   Customer {
     int Id PK
+    string Address_City "required, max:50"
   }
   CustomerProduct {
     int CustomerId PK,FK
