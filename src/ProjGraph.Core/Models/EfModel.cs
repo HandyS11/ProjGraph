@@ -63,6 +63,14 @@ public class EfEntity
     public string EffectiveKey => string.IsNullOrEmpty(Key) ? Name : Key;
 
     /// <summary>
+    /// Gets the table this entity effectively maps to: its explicit <see cref="TableName"/>, or its
+    /// <see cref="Name"/> when unmapped (EF's default). The single source of the table-sharing rule —
+    /// an owned type shares its owner's table exactly when their effective tables are equal — used by
+    /// both the capture side (owned-type table resolution) and the render side (inline-vs-box).
+    /// </summary>
+    public string EffectiveTable => string.IsNullOrEmpty(TableName) ? Name : TableName;
+
+    /// <summary>
     /// Gets or initializes a value indicating whether the entity is an EF Core owned type
     /// (configured via <c>OwnsOne</c>/<c>OwnsMany</c>) rather than a root entity.
     /// </summary>

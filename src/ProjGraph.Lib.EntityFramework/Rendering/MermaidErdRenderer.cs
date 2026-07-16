@@ -70,14 +70,6 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     }
 
     /// <summary>
-    /// Returns the table an entity effectively maps to: its explicit table name, or its entity name
-    /// when unmapped (EF's default).
-    /// </summary>
-    /// <param name="entity">The entity.</param>
-    private static string EffectiveTable(EfEntity entity)
-        => string.IsNullOrEmpty(entity.TableName) ? entity.Name : entity.TableName;
-
-    /// <summary>
     /// Determines whether an owned entity's columns are folded into its owner rather than drawn as their
     /// own box: true when it shares the owner's table (EF table-splitting). Always false in Classic mode.
     /// </summary>
@@ -114,7 +106,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
         }
 
         var owner = model.Entities.FirstOrDefault(e => e.EffectiveKey == entity.OwnerEntity);
-        return owner is not null && EffectiveTable(owner) == EffectiveTable(entity);
+        return owner is not null && owner.EffectiveTable == entity.EffectiveTable;
     }
 
     /// <summary>
