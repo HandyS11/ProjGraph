@@ -24,7 +24,8 @@ public static class RelationshipAnalyzer
     /// <param name="entities">A dictionary containing all entities in the model, keyed by their names.</param>
     /// <param name="compilation">The <see cref="Compilation"/> object used to analyze the entity symbols.</param>
     /// <remarks>
-    /// This method iterates through all entities in the model, identifies their relationships, and updates the model with the
+    /// This method iterates through all ROOT entities in the model (owned types are excluded — see the
+    /// walked-source filter below), identifies their relationships, and updates the model with the
     /// discovered relationships. It ensures that duplicate relationships are not added by maintaining a set of added relationship keys.
     /// Additionally, it converts any many-to-many relationships into join tables.
     /// </remarks>
@@ -38,7 +39,16 @@ public static class RelationshipAnalyzer
             .Select(r => r.GenerateKey())
             .ToHashSet();
 
-        foreach (var entity in entities.Values)
+        // No EfRelationship is ever created for an owned type: the renderer derives the owned
+        // identifying-relationship line from the owned entities it chooses to draw as boxes, so a
+        // fabricated EfRelationship pointing at (or from) an owned entity would be a second,
+        // unsynchronised source of truth. Excluding owned entities from the walked "source" set here
+        // is what makes that guarantee hold — without it, an owned type's CLR class need only declare
+        // a navigation property (entirely legal in EF Core) to have its bare, non-unique Name fabricated
+        // into a spurious relationship (see AnalyzeEntityRelationships' target-side note for why the
+        // target side cannot reach an owned entity through the dictionary lookup, and is filtered
+        // explicitly anyway for defence in depth).
+        foreach (var entity in entities.Values.Where(e => !e.IsOwned))
         {
             var symbol = EntityAnalyzer.FindEntitySymbol(entity, compilation);
             if (symbol is null)
@@ -84,6 +94,18 @@ public static class RelationshipAnalyzer
             }
 
             if (targetType is null || !entities.TryGetValue(targetType.Name, out var targetEntity))
+            {
+                continue;
+            }
+
+            // Defence in depth: owned entities are keyed in the dictionary by "{Owner}.{Nav}" (always
+            // containing a literal '.', see FluentOwnedTypeWalker.Capture), while targetType.Name is a
+            // bare CLR identifier that can never contain '.'. So this TryGetValue can never actually
+            // resolve to an owned entity today — but that safety currently rests entirely on the key
+            // format staying dot-qualified. Checking IsOwned explicitly here means a future change to
+            // that format (or an unforeseen key collision) can't silently reopen the same bug the
+            // walked-source filter above closes.
+            if (targetEntity.IsOwned)
             {
                 continue;
             }
@@ -247,6 +269,13 @@ public static class RelationshipAnalyzer
                 .ToArray();
             var joinTableName = entitiesSorted[0] + entitiesSorted[1];
 
+            // Matching on Name (not EffectiveKey) is intentional and safe here: a ManyToMany
+            // EfRelationship can now only be produced by AnalyzeEntityRelationships walking a ROOT
+            // entity as both source and target (owned entities are excluded from the walked-source set
+            // above, and the target-side dictionary lookup there can never resolve to an owned entity
+            // either — see its comment). For root entities EffectiveKey falls back to Name, so
+            // m2m.SourceEntity/TargetEntity always hold a root entity's Name here, and this lookup
+            // cannot observe an owned entity's "{Owner}.{Nav}" Key.
             var sourceEntity = model.Entities.FirstOrDefault(e => e.Name == m2m.SourceEntity);
             var targetEntity = model.Entities.FirstOrDefault(e => e.Name == m2m.TargetEntity);
 
