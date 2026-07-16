@@ -218,6 +218,128 @@ public sealed class McpErdTests : IDisposable
         (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain("DbContext");
     }
 
+    private string WriteTwoContextFile()
+    {
+        var path = Path.Combine(_temp.DirectoryPath, "TwoContexts.cs");
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+
+                               namespace TestNamespace;
+
+                               public class Order
+                               {
+                                   public int Id { get; set; }
+                                   public string Reference { get; set; }
+                               }
+
+                               public class Customer
+                               {
+                                   public int Id { get; set; }
+                                   public string FullName { get; set; }
+                               }
+
+                               public class OrderContext : DbContext
+                               {
+                                   public DbSet<Order> Orders { get; set; }
+                               }
+
+                               public class CustomerContext : DbContext
+                               {
+                                   public DbSet<Customer> Customers { get; set; }
+                               }
+                               """;
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    [Fact]
+    public async Task GetErd_MultipleDbContexts_NoContextName_ShouldThrowMcpExceptionListingCandidates()
+    {
+        // Arrange — silently analyzing the first context is the worst outcome for an LLM caller:
+        // plausible-but-wrong output with no signal that CustomerContext was never considered.
+        var tools = CreateTools();
+        var path = WriteTwoContextFile();
+
+        // Act
+        var act = async () => await tools.GetErdAsync(path);
+
+        // Assert
+        var message = (await act.Should().ThrowAsync<McpException>()).Which.Message;
+        message.Should().Contain("OrderContext");
+        message.Should().Contain("CustomerContext");
+        message.Should().Contain("contextName");
+    }
+
+    [Fact]
+    public async Task GetErd_MultipleDbContexts_WithContextName_AnalyzesTheNamedContext()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var path = WriteTwoContextFile();
+
+        // Act
+        var result = await tools.GetErdAsync(path, contextName: "CustomerContext");
+
+        // Assert
+        result.Should().Contain("Customer {");
+        result.Should().NotContain("Order {");
+    }
+
+    [Fact]
+    public async Task GetErd_ContextNameTypo_ShouldThrowMcpExceptionListingCandidates()
+    {
+        // Arrange
+        var tools = CreateTools();
+        var path = WriteTwoContextFile();
+
+        // Act
+        var act = async () => await tools.GetErdAsync(path, contextName: "OrderConetxt");
+
+        // Assert — the error must name the typo and offer the real candidates
+        var message = (await act.Should().ThrowAsync<McpException>()).Which.Message;
+        message.Should().Contain("OrderConetxt");
+        message.Should().Contain("OrderContext");
+        message.Should().Contain("CustomerContext");
+    }
+
+    [Fact]
+    public async Task GetErd_SnapshotContextNameTypo_ShouldThrowMcpExceptionListingCandidates()
+    {
+        // Arrange — the snapshot branch already held the discovered candidate list but never
+        // validated a caller-supplied name against it: a typo fell through to analysis and
+        // surfaced as a stripped generic error.
+        var tools = CreateTools();
+        var path = Path.Combine(_temp.DirectoryPath, "MyDbContextModelSnapshot.cs");
+        const string content = """
+                               using Microsoft.EntityFrameworkCore;
+                               using Microsoft.EntityFrameworkCore.Infrastructure;
+
+                               namespace TestNamespace;
+
+                               public class MyDbContextModelSnapshot : ModelSnapshot
+                               {
+                                   protected override void BuildModel(ModelBuilder modelBuilder)
+                                   {
+                                       modelBuilder.Entity("TestNamespace.Blog", b =>
+                                       {
+                                           b.Property<int>("Id");
+                                           b.HasKey("Id");
+                                           b.ToTable("Blogs");
+                                       });
+                                   }
+                               }
+                               """;
+        await File.WriteAllTextAsync(path, content);
+
+        // Act
+        var act = async () => await tools.GetErdAsync(path, contextName: "WrongSnapshot");
+
+        // Assert
+        var message = (await act.Should().ThrowAsync<McpException>()).Which.Message;
+        message.Should().Contain("WrongSnapshot");
+        message.Should().Contain("MyDbContextModelSnapshot");
+    }
+
     [Fact]
     public async Task GetErd_NonCsFile_ShouldThrowMcpException()
     {

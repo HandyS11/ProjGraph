@@ -274,16 +274,7 @@ internal sealed class ProjGraphTools(
         if (path.EndsWith($"ModelSnapshot{FilePathGuard.CSharpExtension}", StringComparison.OrdinalIgnoreCase))
         {
             var snapshots = await RunAnalysisAsync(() => analysisServices.EfService.DiscoverSnapshotsAsync(path));
-
-            var snapshotName = !string.IsNullOrEmpty(contextName)
-                ? contextName
-                : snapshots.Count switch
-                {
-                    0 => throw new McpException($"No ModelSnapshot found in '{path}'."),
-                    1 => snapshots[0],
-                    _ => throw new McpException(
-                        $"Multiple ModelSnapshots found in '{path}': {string.Join(", ", snapshots)}. Specify one using the contextName parameter.")
-                };
+            var snapshotName = ResolveCandidateName(snapshots, contextName, "ModelSnapshot", path);
 
             progress?.Report(new ProgressNotificationValue
             {
@@ -296,6 +287,12 @@ internal sealed class ProjGraphTools(
         }
         else
         {
+            // Mirror the snapshot branch: with several DbContexts in the file, silently analyzing
+            // the first (the old FindContextClass FirstOrDefault behavior) hands an MCP caller
+            // plausible-but-wrong output with no signal that the others were never considered.
+            var contexts = await RunAnalysisAsync(() => analysisServices.EfService.DiscoverContextsAsync(path));
+            var resolvedName = ResolveCandidateName(contexts, contextName, "DbContext", path);
+
             progress?.Report(new ProgressNotificationValue
             {
                 Progress = 2,
@@ -303,7 +300,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing entities and relationships"
             });
 
-            model = await RunAnalysisAsync(() => analysisServices.EfService.AnalyzeContextAsync(path, contextName));
+            model = await RunAnalysisAsync(() => analysisServices.EfService.AnalyzeContextAsync(path, resolvedName));
         }
 
         progress?.Report(new ProgressNotificationValue
@@ -374,6 +371,41 @@ internal sealed class ProjGraphTools(
         }
 
         return node.ToJsonString(JsonSerializerOptions);
+    }
+
+    /// <summary>
+    /// Resolves which discovered DbContext/ModelSnapshot class to analyze, failing with an
+    /// actionable <see cref="McpException"/> instead of silently picking a wrong or missing one:
+    /// a requested name is validated against the discovered candidates (a typo previously fell
+    /// through to analysis and surfaced as a stripped generic error), and with several candidates
+    /// and no requested name the caller is asked to choose rather than being handed the first.
+    /// </summary>
+    /// <param name="candidates">The class names discovered in the file.</param>
+    /// <param name="requestedName">The caller-supplied class name, if any.</param>
+    /// <param name="kind">The kind of class being resolved ("DbContext" or "ModelSnapshot"), for messages.</param>
+    /// <param name="path">The analyzed file path, for messages.</param>
+    /// <returns>The single resolved class name.</returns>
+    /// <exception cref="McpException">Thrown when the requested name is unknown, none exist, or the choice is ambiguous.</exception>
+    private static string ResolveCandidateName(
+        List<string> candidates, string? requestedName, string kind, string path)
+    {
+        if (candidates.Count == 0)
+        {
+            throw new McpException($"No {kind} found in '{path}'.");
+        }
+
+        if (!string.IsNullOrEmpty(requestedName))
+        {
+            return candidates.Contains(requestedName)
+                ? requestedName
+                : throw new McpException(
+                    $"{kind} '{requestedName}' not found in '{path}'. Available: {string.Join(", ", candidates)}.");
+        }
+
+        return candidates.Count == 1
+            ? candidates[0]
+            : throw new McpException(
+                $"Multiple {kind}s found in '{path}': {string.Join(", ", candidates)}. Specify one using the contextName parameter.");
     }
 
     /// <summary>
