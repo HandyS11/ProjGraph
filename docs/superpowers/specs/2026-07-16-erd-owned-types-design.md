@@ -52,14 +52,17 @@ output-preserving default to protect.
 `EfModel` records owned types faithfully and only once: always as a distinct entity, never
 pre-inlined. Presentation is entirely the renderer's job.
 
-`EfEntity` gains four fields:
+`EfEntity` gains five fields:
 
 | Field | Meaning |
 | --- | --- |
+| `Key` | The entity's identity: `{Owner}.{Nav}` for an owned entity, `Name` for a root one. |
 | `IsOwned` | Marks an owned entity rather than a root one. |
-| `OwnerEntity` | The owning entity's key. |
+| `OwnerEntity` | The owning entity's **`Key`**. |
 | `NavigationName` | e.g. `ShipToAddress`; source of both the column prefix and the relationship. |
 | `IsCollection` | `OwnsMany` vs `OwnsOne`; selects `\|\|--o{` vs `\|\|--\|\|`. |
+
+**`Key`, not `Name`, is the model's identity.** `Name` holds the CLR type name and is *not* unique: `Order.ShipToAddress` and `Customer.Address` are distinct EF entity types both named `Address`. Every owner/owned lookup — in the analyzer and the renderer alike — matches on `Key`. Matching on `Name` cross-contaminates ownership chains: given an owner with two navigations of the same CLR type (`Invoice.ShipTo` and `Invoice.BillTo`, both `InvoiceAddress`) where one of them owns a nested type, a `Name`-keyed lookup attaches that nested type to *both*. `Name` is used only for display (see Rendering).
 
 The existing `TableName` does the load-bearing work. The analyzer resolves each owned entity's
 **effective** table, and the renderer decides to inline purely by comparing it to the owner's
@@ -83,10 +86,10 @@ relationship from the owned entities it chooses to draw as boxes. If the model h
 relationships, MirrorEf mode would have to filter out lines pointing at entities it had just
 inlined — two places to keep in sync. Deriving is one.
 
-**Entity keying.** Entities are keyed by name, but owned types collide: `Order.ShipToAddress` and
-`Customer.Address` are distinct entity types in EF even though both are `Address`. The dictionary
-key becomes `{Owner}.{Nav}` (EF itself uses `Order.ShipToAddress#Address`). Display naming is a
-renderer concern (see Rendering).
+**Entity keying.** The walkers' entity dictionary is keyed by `EfEntity.Key`: the bare name for a root
+entity, `{Owner}.{Nav}` for an owned one (EF itself uses `Order.ShipToAddress#Address`). Because `Key`
+is now carried on the entity, the dictionary key and the model's identity are the same value rather
+than two things to keep in sync. Display naming is a renderer concern (see Rendering).
 
 ### Capture: DbContext path
 
@@ -171,10 +174,23 @@ effective-table equality, producing the same recorded fact as the context path.
   different table render as their own box plus a derived identifying relationship.
 - **Classic** — every owned entity renders as a box, unprefixed, plus the identifying relationship.
 
+An owned *collection* is never inlined regardless of table mapping: folding a to-many relationship
+into flat scalar columns on the owner is structurally meaningless. EF never maps an owned collection
+to the owner's table, so this is an invariant the renderer enforces rather than a case it expects.
+
 Identifying relationship syntax: `||--||` for `OwnsOne`, `||--o{` for `OwnsMany`.
 
-Display naming for owned boxes: the owned type's simple name (`Address`) when unambiguous among
-rendered entities, falling back to `{Owner}_{Nav}` (`Order_ShipToAddress`) on collision.
+Display naming for owned boxes: the owned type's simple name (`Address`) when unambiguous among the
+entities actually **rendered**, falling back to `{Owner}_{Nav}` (`Order_ShipToAddress`) on collision.
+Inlined owned entities are not drawn, so they never force a collision-qualified label on a box that
+is the only one of its name on the diagram.
+
+Owner/owned resolution while rendering matches on `Key` (see Model), never on `Name`.
+
+**Cycle safety.** Nested ownership recurses when inlining. Nothing in the model type prevents a
+self-owning or mutually-owning entity, and unbounded recursion would raise `StackOverflowException`,
+which .NET cannot catch — it would kill the CLI or MCP server outright. The renderer therefore tracks
+visited keys and stops rather than trusting the analyzer to never produce a cycle.
 
 ### Surfaces
 

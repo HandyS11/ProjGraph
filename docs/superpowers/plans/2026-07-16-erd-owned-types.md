@@ -16,7 +16,9 @@
 - Prefer `dtk` (dotnet-token-killer) over raw `dotnet` for build/test.
 - Full test command: `dtk test ProjGraph.slnx`. EF unit tests only: `dtk test tests/ProjGraph.Tests.Unit.EntityFramework`.
 - Golden regeneration: `UPDATE_EF_GOLDENS=1 dtk test tests/ProjGraph.Tests.Unit.EntityFramework --filter "Category=Golden"`. Always review the resulting `git diff` before committing.
-- Owned entity dictionary key is always `{Owner}.{Nav}` (e.g. `Order.ShipToAddress`). Never key an owned entity by its bare CLR type name — `Order.ShipToAddress` and `Customer.Address` are distinct EF entity types that both have the CLR name `Address`.
+- **`EfEntity.Key` is the model's identity, not `Name`.** `Key` is `{Owner}.{Nav}` for an owned entity (e.g. `Order.ShipToAddress`) and `Name` for a root one. To avoid touching the four existing root-entity construction sites (`EntityAnalyzer.AnalyzeEntity`, `FluentSyntax.MaterializeEntity`, `RelationshipAnalyzer.CreateJoinEntity`, and DbSet discovery), `Key` defaults to empty and falls back to `Name`: only owned capture sets it explicitly. Read it through the helper `EfEntity.EffectiveKey` (`string.IsNullOrEmpty(Key) ? Name : Key`) — never read the raw `Key` property for a lookup. `Name` holds the CLR type name and is NOT unique — `Order.ShipToAddress` and `Customer.Address` are distinct EF entity types both named `Address`. The walkers' entity dictionary is keyed by `Key`, `OwnerEntity` stores the owner's `Key`, and EVERY owner/owned lookup (analyzer and renderer alike) matches on `Key`. Matching on `Name` cross-contaminates ownership chains: an owner with two navigations of the same CLR type (`Invoice.ShipTo` and `Invoice.BillTo`, both `InvoiceAddress`) where one owns a nested type would attach that nested type to both. `Name` is for display only.
+- An owned collection (`IsCollection`) is never inlined, regardless of table mapping — folding a to-many into flat scalar columns is meaningless. EF never maps an owned collection to the owner's table, so the renderer enforces this as an invariant rather than expecting the case.
+- Inlining recursion must be cycle-safe (track visited keys). A self-owning or mutually-owning entity would otherwise raise `StackOverflowException`, which .NET cannot catch — it kills the CLI/MCP process.
 - Effective table of an entity = `TableName` when non-empty, else `Name`.
 - Identifying relationship syntax: `||--||` for `OwnsOne`, `||--o{` for `OwnsMany`.
 - MirrorEf is the default mode everywhere (library default, CLI default, MCP default).
@@ -281,14 +283,28 @@ In `src/ProjGraph.Core/Models/EfModel.cs`, add to `EfEntity` after `TableName`:
 
 ```csharp
     /// <summary>
+    /// Gets or initializes this entity's identity within the model: <c>{Owner}.{Nav}</c> for an owned
+    /// entity, and empty for a root entity (which is identified by its <see cref="Name"/>). Prefer
+    /// <see cref="EffectiveKey"/>, which applies that fallback. <see cref="Name"/> holds the CLR type
+    /// name and is not unique — two owners may own the same type.
+    /// </summary>
+    public string Key { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Gets this entity's identity: <see cref="Key"/> when set, otherwise <see cref="Name"/>. Every
+    /// owner/owned lookup must match on this rather than on <see cref="Name"/>.
+    /// </summary>
+    public string EffectiveKey => string.IsNullOrEmpty(Key) ? Name : Key;
+
+    /// <summary>
     /// Gets or initializes a value indicating whether the entity is an EF Core owned type
     /// (configured via <c>OwnsOne</c>/<c>OwnsMany</c>) rather than a root entity.
     /// </summary>
     public bool IsOwned { get; init; }
 
     /// <summary>
-    /// Gets or initializes the key of the entity that owns this one, when <see cref="IsOwned"/> is
-    /// <see langword="true"/>; otherwise <see langword="null"/>.
+    /// Gets or initializes the <see cref="EffectiveKey"/> of the entity that owns this one, when
+    /// <see cref="IsOwned"/> is <see langword="true"/>; otherwise <see langword="null"/>.
     /// </summary>
     public string? OwnerEntity { get; init; }
 
@@ -332,6 +348,7 @@ internal static class EfEntityFactory
             Name = source.Name,
             IsJoinEntity = source.IsJoinEntity,
             TableName = tableName ?? source.TableName,
+            Key = source.Key,
             IsOwned = source.IsOwned,
             OwnerEntity = source.OwnerEntity,
             NavigationName = source.NavigationName,
@@ -542,7 +559,14 @@ In `MermaidErdRenderer.cs`, replace `RenderEntities` and `RenderRelationships`, 
             return false;
         }
 
-        var owner = model.Entities.FirstOrDefault(e => e.Name == entity.OwnerEntity);
+        // An owned collection is never inlined: folding a to-many into flat scalar columns on the owner
+        // is meaningless. EF never maps one to the owner's table, so this enforces the invariant.
+        if (entity.IsCollection)
+        {
+            return false;
+        }
+
+        var owner = model.Entities.FirstOrDefault(e => e.EffectiveKey == entity.OwnerEntity);
         return owner is not null && EffectiveTable(owner) == EffectiveTable(entity);
     }
 
@@ -553,19 +577,28 @@ In `MermaidErdRenderer.cs`, replace `RenderEntities` and `RenderRelationships`, 
     /// <param name="entity">The entity being rendered.</param>
     /// <param name="model">The model.</param>
     /// <param name="options">The render options.</param>
-    private static IEnumerable<EfProperty> EffectiveProperties(EfEntity entity, EfModel model, DiagramOptions? options)
+    private static IEnumerable<EfProperty> EffectiveProperties(
+        EfEntity entity, EfModel model, DiagramOptions? options, HashSet<string>? visited = null)
     {
         foreach (var property in entity.Properties)
         {
             yield return property;
         }
 
+        // Nothing in the model type prevents a self-owning or mutually-owning entity, and unbounded
+        // recursion would raise StackOverflowException — uncatchable, killing the CLI/MCP process.
+        visited ??= [];
+        if (!visited.Add(entity.EffectiveKey))
+        {
+            yield break;
+        }
+
         var inlinedChildren = model.Entities
-            .Where(e => e.OwnerEntity == entity.Name && IsInlined(e, model, options));
+            .Where(e => e.OwnerEntity == entity.EffectiveKey && IsInlined(e, model, options));
 
         foreach (var child in inlinedChildren)
         {
-            foreach (var property in EffectiveProperties(child, model, options))
+            foreach (var property in EffectiveProperties(child, model, options, visited))
             {
                 // EF names table-split owned columns Nav_Property; nested ownership compounds the prefix.
                 yield return EfPropertyFactory.Rename(property, $"{child.NavigationName}_{property.Name}");
@@ -585,7 +618,7 @@ Replace `RenderEntities`:
 
         foreach (var entity in rendered)
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  {SanitizeEntityName(DisplayName(entity, model))} {{");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  {SanitizeEntityName(DisplayName(entity, model, options))} {{");
 
             var orderedProperties = EffectiveProperties(entity, model, options)
                 .OrderByDescending(p => p.IsPrimaryKey)
@@ -630,7 +663,7 @@ Extend `RenderRelationships` to append derived owned relationships:
 
         foreach (var owned in ownedBoxes)
         {
-            var owner = model.Entities.FirstOrDefault(e => e.Name == owned.OwnerEntity);
+            var owner = model.Entities.FirstOrDefault(e => e.EffectiveKey == owned.OwnerEntity);
             if (owner is null)
             {
                 continue;
@@ -638,8 +671,8 @@ Extend `RenderRelationships` to append derived owned relationships:
 
             var syntax = owned.IsCollection ? "||--o{" : "||--||";
             sb.AppendLine(CultureInfo.InvariantCulture,
-                $"  {SanitizeEntityName(DisplayName(owner, model))} {syntax} " +
-                $"{SanitizeEntityName(DisplayName(owned, model))} : \"{owned.NavigationName}\"");
+                $"  {SanitizeEntityName(DisplayName(owner, model, options))} {syntax} " +
+                $"{SanitizeEntityName(DisplayName(owned, model, options))} : \"{owned.NavigationName}\"");
         }
     }
 ```
@@ -654,16 +687,27 @@ Add `DisplayName` (collision-qualified, per the spec):
     /// </summary>
     /// <param name="entity">The entity.</param>
     /// <param name="model">The model, used to detect name collisions.</param>
-    private static string DisplayName(EfEntity entity, EfModel model)
+    /// <param name="options">The render options, used to tell which entities are actually drawn.</param>
+    private static string DisplayName(EfEntity entity, EfModel model, DiagramOptions? options)
     {
         if (!entity.IsOwned)
         {
             return entity.Name;
         }
 
-        var collides = model.Entities.Count(e => e.Name == entity.Name) > 1;
-        return collides ? $"{entity.OwnerEntity}_{entity.NavigationName}" : entity.Name;
+        // Only entities actually drawn can collide on the diagram; an inlined owned entity is never
+        // drawn, so it must not force a qualified label onto the only box of that name.
+        var collides = model.Entities.Count(e => e.Name == entity.Name && !IsInlined(e, model, options)) > 1;
+        return collides ? $"{OwnerNameOf(entity, model)}_{entity.NavigationName}" : entity.Name;
     }
+
+    /// <summary>Returns the CLR name of an owned entity's owner, resolved by key; falls back to the raw key.</summary>
+    /// <param name="entity">The owned entity.</param>
+    /// <param name="model">The model.</param>
+    private static string OwnerNameOf(EfEntity entity, EfModel model)
+        => model.Entities.FirstOrDefault(e => e.EffectiveKey == entity.OwnerEntity)?.Name
+           ?? entity.OwnerEntity
+           ?? "";
 ```
 
 Update `Render` to thread `options` into both calls:
@@ -1025,8 +1069,9 @@ internal static class FluentOwnedTypeWalker
         var owned = new EfEntity
         {
             Name = ownedType?.Name ?? navigation,
+            Key = key,
             IsOwned = true,
-            OwnerEntity = owner.Name,
+            OwnerEntity = owner.EffectiveKey,
             NavigationName = navigation,
             IsCollection = isCollection
         };
@@ -1314,8 +1359,7 @@ In `FluentOwnedTypeWalker`, remove the `ResolveEffectiveTable(key, owner, entiti
                 continue;
             }
 
-            var owner = entities.Values.FirstOrDefault(e => e.Name == owned.OwnerEntity);
-            if (owner is null)
+            if (owned.OwnerEntity is null || !entities.TryGetValue(owned.OwnerEntity, out var owner))
             {
                 continue;
             }
@@ -1501,7 +1545,9 @@ Append to `FluentOwnedTypeWalkerTests.cs`:
 
         var geo = model.Entities.Single(e => e.NavigationName == "Geo");
         geo.IsOwned.Should().BeTrue();
-        geo.OwnerEntity.Should().Be("InvoiceAddress", "nested ownership chains through the owned type");
+        geo.OwnerEntity.Should().Be("Invoice.ShipTo",
+            "nested ownership chains through the owned type's KEY, not its CLR name — ShipTo and BillTo " +
+            "are both InvoiceAddress, so a name-keyed owner would attach Geo to both");
         geo.Properties.Should().ContainSingle(p => p.Name == "Latitude")
             .Which.Precision.Should().Be(9);
     }
@@ -1718,8 +1764,9 @@ Add to `FluentOwnedTypeWalker`:
     {
         foreach (var (key, owned) in entities.Where(e => e.Value.IsOwned).ToList())
         {
-            var owner = entities.Values.FirstOrDefault(e => e.Name == owned.OwnerEntity);
-            var sharesOwnerTable = owner is not null && EffectiveTable(owner) == EffectiveTable(owned);
+            var sharesOwnerTable = owned.OwnerEntity is not null
+                                   && entities.TryGetValue(owned.OwnerEntity, out var owner)
+                                   && EffectiveTable(owner) == EffectiveTable(owned);
 
             var stripped = EfEntityFactory.CopyWith(owned);
             stripped.Properties.Clear();
