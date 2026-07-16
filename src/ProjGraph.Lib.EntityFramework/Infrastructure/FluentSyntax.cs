@@ -63,9 +63,24 @@ internal static class FluentSyntax
         return node.Ancestors()
             .TakeWhile(ancestor => ancestor != scope && scope.Span.Contains(ancestor.Span))
             .OfType<InvocationExpressionSyntax>()
-            .Any(inv => inv.Expression is MemberAccessExpressionSyntax ma
-                        && NestedBuilderScopes.Contains(SimpleName(ma.Name))
-                        && inv.ArgumentList.Span.Contains(node.Span));
+            .Any(inv => IsNestedBuilderFence(inv, node));
+    }
+
+    /// <summary>
+    /// Determines whether <paramref name="invocation"/> fences <paramref name="node"/> off from the outer
+    /// entity: an owned-type / join-entity builder call (<see cref="NestedBuilderScopes"/>) whose ARGUMENT
+    /// LIST contains the node. The argument list — not the whole invocation — is tested because such a call
+    /// is itself chained onto the entity being configured, so a node on its receiver spine is not fenced by
+    /// it. The single home of the boundary rule shared by <see cref="IsInsideNestedBuilderScope"/> and
+    /// <see cref="ResolveOwningEntity"/>'s ancestor search.
+    /// </summary>
+    /// <param name="invocation">The candidate fence invocation.</param>
+    /// <param name="node">The node being tested.</param>
+    private static bool IsNestedBuilderFence(InvocationExpressionSyntax invocation, SyntaxNode node)
+    {
+        return invocation.Expression is MemberAccessExpressionSyntax ma
+               && NestedBuilderScopes.Contains(SimpleName(ma.Name))
+               && invocation.ArgumentList.Span.Contains(node.Span);
     }
 
     /// <summary>
@@ -121,23 +136,17 @@ internal static class FluentSyntax
         InvocationExpressionSyntax? enclosingEntity = null;
         foreach (var ancestor in configInvocation.Ancestors().OfType<InvocationExpressionSyntax>())
         {
-            if (ancestor.Expression is not MemberAccessExpressionSyntax ma)
-            {
-                continue;
-            }
-
-            var callName = SimpleName(ma.Name);
-
-            // Climbing past an owned-type / join-entity builder invocation (e.g. the OwnsOne call whose
+            // Climbing past an owned-type / join-entity builder fence (e.g. the OwnsOne call whose
             // argument list configInvocation lives inside) would reattribute this call to whatever
             // Entity<T>() lies beyond it. Stop instead, so ambientEntity — the owned/join target the
             // caller scoped this search to — wins.
-            if (NestedBuilderScopes.Contains(callName))
+            if (IsNestedBuilderFence(ancestor, configInvocation))
             {
                 break;
             }
 
-            if (callName == EfAnalysisConstants.EfMethods.Entity)
+            if (ancestor.Expression is MemberAccessExpressionSyntax ma
+                && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity)
             {
                 enclosingEntity = ancestor;
                 break;

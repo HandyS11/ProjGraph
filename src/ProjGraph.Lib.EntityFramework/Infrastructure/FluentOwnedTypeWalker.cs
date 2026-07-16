@@ -197,7 +197,12 @@ internal static class FluentOwnedTypeWalker
         }
     }
 
-    /// <summary>Extracts the property names from a <c>HasForeignKey</c> call (lambda member access or string literals).</summary>
+    /// <summary>
+    /// Extracts the property names from a <c>HasForeignKey</c> call. Both branches are live:
+    /// snapshots emit the <c>params string[]</c> form, while on the DbContext path the generic
+    /// <c>OwnershipBuilder&lt;TEntity,TDependentEntity&gt;</c> a builder-lambda's <c>WithOwner()</c>
+    /// returns also has an <c>Expression</c> overload (<c>HasForeignKey(x =&gt; x.OwnerId)</c>).
+    /// </summary>
     /// <param name="invocation">The <c>HasForeignKey</c> invocation.</param>
     private static IEnumerable<string> ForeignKeyPropertyNames(InvocationExpressionSyntax invocation)
     {

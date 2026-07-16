@@ -141,7 +141,8 @@ public sealed class FluentOwnedTypeWalkerTests
         lines.IsCollection.Should().BeTrue();
         lines.OwnerEntity.Should().Be("OwnedModesInvoice");
         lines.TableName.Should().Be("OwnedModesInvoice_Lines",
-            "an owned collection never shares the owner's table; EF's default is {{OwnerTable}}_{{Nav}}");
+            "an owned collection never shares the owner's table; EF defaults it to the owner's table " +
+            "name suffixed with the navigation name");
         lines.Properties.Should().ContainSingle(p => p.Name == "Amount")
             .Which.Precision.Should().Be(18);
     }
@@ -251,6 +252,42 @@ public sealed class FluentOwnedTypeWalkerTests
             "nested owned config from a config class must never leak onto the owner");
         vendor.Properties.Should().NotContain(p => p.Name == "HeadOffice" || p.Name == "Warehouse",
             "owned navigations are not columns");
+    }
+
+    [Fact]
+    public void ConfigClass_TableSplitOwnedTypeWithExplicitOwnershipKeys_StripsShadowKeyAndFkColumn()
+    {
+        // StripShadowKeys against a config-class owned type whose builder declares the ownership keys
+        // explicitly (WithOwner().HasForeignKey / HasKey) - the same shape a generated snapshot always
+        // emits, but reached through the IEntityTypeConfiguration<T> path.
+        var model = Analyze("OwnedFkConfigContext.cs", "OwnedFkConfigContext");
+
+        var sender = model.Entities.Should().ContainSingle(e => e.Key == "Parcel.Sender").Subject;
+        sender.TableName.Should().Be("Parcel", "OwnsOne without ToTable table-splits onto the owner");
+        sender.Properties.Should().NotContain(p => p.Name == "ParcelId",
+            "a table-split owned type's explicit WithOwner().HasForeignKey column is the owner's own PK " +
+            "re-projected, not an extra column");
+        sender.Properties.Should().NotContain(p => p.IsPrimaryKey,
+            "the explicit HasKey on a table-split owned type declares EF's shadow key, an implementation " +
+            "detail that must not surface as a modelled PK");
+        sender.Properties.Should().ContainSingle(p => p.Name == "Street")
+            .Which.MaxLength.Should().Be(120);
+    }
+
+    [Fact]
+    public void ConfigClass_OwnTableOwnedType_LambdaFormHasForeignKey_KeepsRealFkColumn()
+    {
+        // Pins ForeignKeyPropertyNames' lambda branch as LIVE: the generic OwnershipBuilder returned by
+        // WithOwner() has had an Expression HasForeignKey overload since EF Core 3.0, so the branch is
+        // reachable from real user code and must keep extracting the FK property name.
+        var model = Analyze("OwnedFkConfigContext.cs", "OwnedFkConfigContext");
+
+        var recipient = model.Entities.Should().ContainSingle(e => e.Key == "Parcel.Recipient").Subject;
+        recipient.TableName.Should().Be("ParcelRecipients");
+        recipient.Properties.Should().ContainSingle(p => p.Name == "ParcelId")
+            .Which.IsForeignKey.Should().BeTrue(
+                "an owned type on its own table has a real, separate FK column back to the owner, and " +
+                "the lambda form WithOwner().HasForeignKey(x => x.ParcelId) must mark it");
     }
 
     [Fact]
