@@ -1,5 +1,6 @@
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.ClassDiagram.Application.UseCases;
@@ -68,14 +69,14 @@ internal sealed class ProjGraphTools(
         });
 
         ClassModel model;
-        var warningMarkup = string.Empty;
+        var warnings = new List<string>();
 
         if (fileSystem.DirectoryExists(path))
         {
             var files = discoverCsFilesUseCase.Execute(path);
             if (files.Count > 50)
             {
-                warningMarkup = $"%% WARNING: Scanning {files.Count} files. Large diagrams may be hard to read.\n";
+                warnings.Add($"Scanning {files.Count} files. Large diagrams may be hard to read.");
             }
 
             progress?.Report(new ProgressNotificationValue
@@ -85,7 +86,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing types and members"
             });
 
-            model = await analysisServices.ClassService.AnalyzeDirectoryAsync(path, options);
+            model = await RunAnalysisAsync(() => analysisServices.ClassService.AnalyzeDirectoryAsync(path, options));
         }
         else
         {
@@ -98,7 +99,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing types and members"
             });
 
-            model = await analysisServices.ClassService.AnalyzeFileAsync(path, options);
+            model = await RunAnalysisAsync(() => analysisServices.ClassService.AnalyzeFileAsync(path, options));
         }
 
         progress?.Report(new ProgressNotificationValue
@@ -108,8 +109,11 @@ internal sealed class ProjGraphTools(
             Message = "Rendering class diagram"
         });
 
-        var diagram = renderers.ClassRenderer.Render(model, new DiagramOptions(showTitle, false));
-        var result = warningMarkup + diagram;
+        // Appended, not prepended: a comment ahead of the YAML front-matter breaks strict
+        // Mermaid parsers (same placement rule as get_project_graph's warnings).
+        var result = AppendWarningComments(
+            renderers.ClassRenderer.Render(model, new DiagramOptions(showTitle, false)),
+            warnings);
 
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("class", path, "text/plain", result,
@@ -151,7 +155,8 @@ internal sealed class ProjGraphTools(
         });
 
         outputConsole.ClearWarnings();
-        var graph = await analysisServices.GraphService.BuildGraphAsync(path, includePackages, cancellationToken);
+        var graph = await RunAnalysisAsync(() =>
+            analysisServices.GraphService.BuildGraphAsync(path, includePackages, cancellationToken));
         var warnings = outputConsole.DrainWarnings();
 
         progress?.Report(new ProgressNotificationValue
@@ -209,7 +214,8 @@ internal sealed class ProjGraphTools(
         });
 
         outputConsole.ClearWarnings();
-        var stats = await analysisServices.StatsService.ComputeStatsAsync(path, topN, cancellationToken);
+        var stats = await RunAnalysisAsync(() =>
+            analysisServices.StatsService.ComputeStatsAsync(path, topN, cancellationToken));
         var warnings = outputConsole.DrainWarnings();
 
         progress?.Report(new ProgressNotificationValue
@@ -270,17 +276,8 @@ internal sealed class ProjGraphTools(
 
         if (path.EndsWith($"ModelSnapshot{FilePathGuard.CSharpExtension}", StringComparison.OrdinalIgnoreCase))
         {
-            var snapshots = await analysisServices.EfService.DiscoverSnapshotsAsync(path);
-
-            var snapshotName = !string.IsNullOrEmpty(contextName)
-                ? contextName
-                : snapshots.Count switch
-                {
-                    0 => throw new McpException($"No ModelSnapshot found in '{path}'."),
-                    1 => snapshots[0],
-                    _ => throw new McpException(
-                        $"Multiple ModelSnapshots found in '{path}': {string.Join(", ", snapshots)}. Specify one using the contextName parameter.")
-                };
+            var snapshots = await RunAnalysisAsync(() => analysisServices.EfService.DiscoverSnapshotsAsync(path));
+            var snapshotName = ResolveCandidateName(snapshots, contextName, "ModelSnapshot", path);
 
             progress?.Report(new ProgressNotificationValue
             {
@@ -289,10 +286,16 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing entities and relationships"
             });
 
-            model = await analysisServices.EfService.AnalyzeSnapshotAsync(path, snapshotName);
+            model = await RunAnalysisAsync(() => analysisServices.EfService.AnalyzeSnapshotAsync(path, snapshotName));
         }
         else
         {
+            // Mirror the snapshot branch: with several DbContexts in the file, silently analyzing
+            // the first (the old FindContextClass FirstOrDefault behavior) hands an MCP caller
+            // plausible-but-wrong output with no signal that the others were never considered.
+            var contexts = await RunAnalysisAsync(() => analysisServices.EfService.DiscoverContextsAsync(path));
+            var resolvedName = ResolveCandidateName(contexts, contextName, "DbContext", path);
+
             progress?.Report(new ProgressNotificationValue
             {
                 Progress = 2,
@@ -300,7 +303,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing entities and relationships"
             });
 
-            model = await analysisServices.EfService.AnalyzeContextAsync(path, contextName);
+            model = await RunAnalysisAsync(() => analysisServices.EfService.AnalyzeContextAsync(path, resolvedName));
         }
 
         progress?.Report(new ProgressNotificationValue
@@ -373,10 +376,77 @@ internal sealed class ProjGraphTools(
         return node.ToJsonString(JsonSerializerOptions);
     }
 
+    /// <summary>
+    /// Resolves which discovered DbContext/ModelSnapshot class to analyze, failing with an
+    /// actionable <see cref="McpException"/> instead of silently picking a wrong or missing one:
+    /// a requested name is validated against the discovered candidates (a typo previously fell
+    /// through to analysis and surfaced as a stripped generic error), and with several candidates
+    /// and no requested name the caller is asked to choose rather than being handed the first.
+    /// </summary>
+    /// <param name="candidates">The class names discovered in the file.</param>
+    /// <param name="requestedName">The caller-supplied class name, if any.</param>
+    /// <param name="kind">The kind of class being resolved ("DbContext" or "ModelSnapshot"), for messages.</param>
+    /// <param name="path">The analyzed file path, for messages.</param>
+    /// <returns>The single resolved class name.</returns>
+    /// <exception cref="McpException">Thrown when the requested name is unknown, none exist, or the choice is ambiguous.</exception>
+    private static string ResolveCandidateName(
+        List<string> candidates, string? requestedName, string kind, string path)
+    {
+        if (candidates.Count == 0)
+        {
+            throw new McpException($"No {kind} found in '{path}'.");
+        }
+
+        if (!string.IsNullOrEmpty(requestedName))
+        {
+            return candidates.Contains(requestedName)
+                ? requestedName
+                : throw new McpException(
+                    $"{kind} '{requestedName}' not found in '{path}'. Available: {string.Join(", ", candidates)}.");
+        }
+
+        return candidates.Count == 1
+            ? candidates[0]
+            : throw new McpException(
+                $"Multiple {kind}s found in '{path}': {string.Join(", ", candidates)}. Specify one using the contextName parameter.");
+    }
+
+    /// <summary>
+    /// Runs a library analysis call, converting any <see cref="ProjGraphException"/> (the base of
+    /// <c>AnalysisException</c>/<c>ParsingException</c>) into an <see cref="McpException"/> carrying
+    /// the same message. The MCP SDK replaces the message of every other exception type with a
+    /// generic "An error occurred invoking '…'", so without this wrap the library's actionable
+    /// guidance (e.g. "DbContext not found in file") never reaches the client. Unexpected BCL
+    /// exceptions still propagate unwrapped: they carry no user guidance worth preserving, and
+    /// wrapping them would dress genuine bugs up as clean protocol errors.
+    /// </summary>
+    /// <typeparam name="T">The analysis result type.</typeparam>
+    /// <param name="analysis">The analysis call to run.</param>
+    /// <returns>The analysis result.</returns>
+    /// <exception cref="McpException">Thrown when the analysis fails with a <see cref="ProjGraphException"/>.</exception>
+    private static async Task<T> RunAnalysisAsync<T>(Func<Task<T>> analysis)
+    {
+        try
+        {
+            return await analysis();
+        }
+        catch (ProjGraphException ex)
+        {
+            // Inner exception preserved so the original type and stack trace stay in server logs.
+            throw new McpException(ex.Message, ex);
+        }
+    }
+
     private async Task<string> PreparePathAsync(string path, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            // McpException so the guidance reaches the client; the SDK strips the message from
+            // any other exception type.
+            throw new McpException("path must not be empty.");
+        }
+
         return await rootService.TryResolveAsync(path, server, cancellationToken);
     }
 

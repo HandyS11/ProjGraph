@@ -24,7 +24,7 @@ internal static class McpTestHelper
         return CreateTools(new CollectingOutputConsole());
     }
 
-    public static ProjGraphTools CreateTools(CollectingOutputConsole console)
+    public static ProjGraphTools CreateTools(CollectingOutputConsole console, DiagramResourceCache? cache = null)
     {
         var fs = new PhysicalFileSystem();
         var slnParser = new SlnParser(fs);
@@ -58,7 +58,7 @@ internal static class McpTestHelper
             new DiagramRenderers(new MermaidGraphRenderer(), new MermaidClassDiagramRenderer(),
                 new MermaidErdRenderer()),
             fs,
-            new DiagramResourceCache(),
+            cache ?? new DiagramResourceCache(),
             null!,
             new WorkspaceRootService(fs),
             console);

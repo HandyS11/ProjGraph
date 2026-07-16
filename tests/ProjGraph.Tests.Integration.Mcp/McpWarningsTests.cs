@@ -53,6 +53,34 @@ public sealed class McpWarningsTests : IDisposable
     }
 
     [Fact]
+    public async Task GetClassDiagram_ManyFiles_AppendsFileCountWarningAfterDiagram()
+    {
+        // Arrange — 51 files crosses the >50 threshold for the large-scan warning.
+        for (var i = 0; i < 51; i++)
+        {
+            _temp.CreateFile(Path.Combine("many", $"C{i}.cs"), $"namespace Many; public class C{i} {{ }}");
+        }
+
+        var cache = new DiagramResourceCache();
+        var tools = McpTestHelper.CreateTools(new CollectingOutputConsole(), cache);
+        var dirPath = Path.Combine(_temp.DirectoryPath, "many");
+
+        // Act
+        var result = await tools.GetClassDiagramAsync(dirPath);
+
+        // Assert — the warning must TRAIL the diagram like get_project_graph's warnings do:
+        // prepended ahead of the YAML front-matter, strict Mermaid parsers reject the diagram.
+        result.Should().Contain("%% WARNING: Scanning 51 files");
+        result.TrimStart().Should().NotStartWith("%% WARNING");
+        result.IndexOf("classDiagram", StringComparison.Ordinal).Should().BeLessThan(
+            result.IndexOf("%% WARNING", StringComparison.Ordinal));
+
+        // The cached resource must carry the same (appended) form as the returned diagram.
+        var cachedUri = $"projgraph://diagrams/class/{Uri.EscapeDataString(dirPath)}";
+        cache.TryRead(cachedUri).Should().Be(result);
+    }
+
+    [Fact]
     public async Task CollectingOutputConsole_ScopesWarningsToAsyncFlow()
     {
         // Two independent async flows using the same (singleton) console must not see each other's

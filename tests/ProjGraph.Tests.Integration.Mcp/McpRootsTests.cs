@@ -1,3 +1,4 @@
+using ModelContextProtocol;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Mcp;
 using ProjGraph.Tests.Shared.Helpers;
@@ -97,7 +98,8 @@ public sealed class McpRootsTests : IDisposable
 
         var act = () => service.ResolveMatches([_temp.DirectoryPath], "*.cs");
 
-        act.Should().Throw<ArgumentException>();
+        // McpException so the wildcard guidance reaches the client instead of a stripped generic error.
+        act.Should().Throw<McpException>().WithMessage("*wildcard*");
     }
 
     [Fact]
@@ -171,19 +173,20 @@ public sealed class McpRootsTests : IDisposable
     }
 
     [Fact]
-    public async Task TryResolve_RelativePath_FileNotFound_ShouldThrowFileNotFoundException()
+    public async Task TryResolve_RelativePath_FileNotFound_ShouldThrowMcpException()
     {
         var service = new WorkspaceRootService(new PhysicalFileSystem());
         SetRoots(service, [_temp.DirectoryPath]);
 
         var act = async () => await service.TryResolveAsync("missing.slnx", null!, CancellationToken.None);
 
-        await act.Should().ThrowAsync<FileNotFoundException>()
+        // McpException so the not-found guidance reaches the client instead of a stripped generic error.
+        await act.Should().ThrowAsync<McpException>()
             .WithMessage("*missing.slnx*");
     }
 
     [Fact]
-    public async Task TryResolve_RelativePath_AmbiguousMatch_ShouldThrowAmbiguousMatchException()
+    public async Task TryResolve_RelativePath_AmbiguousMatch_ShouldThrowMcpException()
     {
         const string fileName = "Shared.slnx";
         _temp.CreateFile(fileName, "");
@@ -196,7 +199,8 @@ public sealed class McpRootsTests : IDisposable
 
         var act = async () => await service.TryResolveAsync(fileName, null!, CancellationToken.None);
 
-        await act.Should().ThrowAsync<AmbiguousMatchException>()
+        // McpException so the ambiguity guidance reaches the client instead of a stripped generic error.
+        await act.Should().ThrowAsync<McpException>()
             .WithMessage("*Shared.slnx*");
     }
 
@@ -211,7 +215,7 @@ public sealed class McpRootsTests : IDisposable
 
         var act = async () => await service.TryResolveAsync(fileName, null!, CancellationToken.None);
 
-        await act.Should().ThrowAsync<FileNotFoundException>();
+        await act.Should().ThrowAsync<McpException>();
     }
 
     [Fact]
@@ -225,7 +229,7 @@ public sealed class McpRootsTests : IDisposable
 
         var act = async () => await service.TryResolveAsync(fileName, null!, CancellationToken.None);
 
-        await act.Should().ThrowAsync<FileNotFoundException>();
+        await act.Should().ThrowAsync<McpException>();
     }
 
     [Fact]
