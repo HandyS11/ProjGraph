@@ -69,14 +69,14 @@ internal sealed class ProjGraphTools(
         });
 
         ClassModel model;
-        var warningMarkup = string.Empty;
+        var warnings = new List<string>();
 
         if (fileSystem.DirectoryExists(path))
         {
             var files = discoverCsFilesUseCase.Execute(path);
             if (files.Count > 50)
             {
-                warningMarkup = $"%% WARNING: Scanning {files.Count} files. Large diagrams may be hard to read.\n";
+                warnings.Add($"Scanning {files.Count} files. Large diagrams may be hard to read.");
             }
 
             progress?.Report(new ProgressNotificationValue
@@ -109,8 +109,11 @@ internal sealed class ProjGraphTools(
             Message = "Rendering class diagram"
         });
 
-        var diagram = renderers.ClassRenderer.Render(model, new DiagramOptions(showTitle, false));
-        var result = warningMarkup + diagram;
+        // Appended, not prepended: a comment ahead of the YAML front-matter breaks strict
+        // Mermaid parsers (same placement rule as get_project_graph's warnings).
+        var result = AppendWarningComments(
+            renderers.ClassRenderer.Render(model, new DiagramOptions(showTitle, false)),
+            warnings);
 
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("class", path, "text/plain", result,
