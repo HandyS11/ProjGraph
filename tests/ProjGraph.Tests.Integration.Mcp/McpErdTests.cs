@@ -203,7 +203,7 @@ public sealed class McpErdTests : IDisposable
     }
 
     [Fact]
-    public async Task GetErd_InvalidCsFile_ShouldThrow()
+    public async Task GetErd_InvalidCsFile_ShouldThrowMcpExceptionNamingDbContext()
     {
         // Arrange
         var tools = CreateTools();
@@ -213,8 +213,9 @@ public sealed class McpErdTests : IDisposable
         // Act
         var act = async () => await tools.GetErdAsync(invalidFile);
 
-        // Assert
-        await act.Should().ThrowAsync<Exception>();
+        // Assert - the library's "DbContext not found" guidance must cross the tool boundary as
+        // McpException; the SDK strips the message from any other exception type.
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain("DbContext");
     }
 
     [Fact]

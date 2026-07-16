@@ -1,8 +1,8 @@
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Core.Infrastructure;
-using System.Reflection;
 
 namespace ProjGraph.Mcp;
 
@@ -30,9 +30,12 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IAsyncDispo
 
         await EnsureInitializedAsync(server, ct);
 
+        // Every failure below throws McpException: the SDK replaces the message of any other
+        // exception type with a generic "An error occurred invoking '…'", so the guidance
+        // (most importantly "provide an absolute path") would never reach the client.
         if (_status == RootsStatusKind.Unsupported)
         {
-            throw new InvalidOperationException(
+            throw new McpException(
                 "Client does not support workspace roots. Please provide an absolute path.");
         }
 
@@ -40,10 +43,10 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IAsyncDispo
 
         return matches.Count switch
         {
-            0 => throw new FileNotFoundException(
-                $"'{path}' not found under any workspace root"),
+            0 => throw new McpException(
+                $"'{path}' not found under any workspace root. Provide an absolute path."),
             1 => matches[0],
-            _ => throw new AmbiguousMatchException(
+            _ => throw new McpException(
                 $"'{path}' matches multiple roots: {string.Join(", ", matches)}. Provide an absolute path.")
         };
     }
@@ -57,16 +60,15 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IAsyncDispo
     /// <param name="rootPaths">The workspace root directories.</param>
     /// <param name="path">The relative path to resolve. Must not contain wildcard characters.</param>
     /// <returns>The distinct set of matching absolute paths across all roots.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="path"/> contains a wildcard.</exception>
+    /// <exception cref="McpException">Thrown when <paramref name="path"/> contains a wildcard.</exception>
     internal List<string> ResolveMatches(IEnumerable<string> rootPaths, string path)
     {
         // The input is a path, not a glob: reject wildcards so it cannot match an arbitrary file
-        // (e.g. "*.slnx") under a root.
+        // (e.g. "*.slnx") under a root. McpException so the guidance reaches the client.
         if (path.IndexOfAny(['*', '?']) >= 0)
         {
-            throw new ArgumentException(
-                $"Path '{path}' must not contain wildcard characters. Provide a specific relative path.",
-                nameof(path));
+            throw new McpException(
+                $"Path '{path}' must not contain wildcard characters. Provide a specific relative path.");
         }
 
         return

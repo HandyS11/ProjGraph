@@ -1,5 +1,6 @@
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
+using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Application;
 using ProjGraph.Lib.ClassDiagram.Application.UseCases;
@@ -85,7 +86,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing types and members"
             });
 
-            model = await analysisServices.ClassService.AnalyzeDirectoryAsync(path, options);
+            model = await RunAnalysisAsync(() => analysisServices.ClassService.AnalyzeDirectoryAsync(path, options));
         }
         else
         {
@@ -98,7 +99,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing types and members"
             });
 
-            model = await analysisServices.ClassService.AnalyzeFileAsync(path, options);
+            model = await RunAnalysisAsync(() => analysisServices.ClassService.AnalyzeFileAsync(path, options));
         }
 
         progress?.Report(new ProgressNotificationValue
@@ -151,7 +152,8 @@ internal sealed class ProjGraphTools(
         });
 
         outputConsole.ClearWarnings();
-        var graph = await analysisServices.GraphService.BuildGraphAsync(path, includePackages, cancellationToken);
+        var graph = await RunAnalysisAsync(() =>
+            analysisServices.GraphService.BuildGraphAsync(path, includePackages, cancellationToken));
         var warnings = outputConsole.DrainWarnings();
 
         progress?.Report(new ProgressNotificationValue
@@ -209,7 +211,8 @@ internal sealed class ProjGraphTools(
         });
 
         outputConsole.ClearWarnings();
-        var stats = await analysisServices.StatsService.ComputeStatsAsync(path, topN, cancellationToken);
+        var stats = await RunAnalysisAsync(() =>
+            analysisServices.StatsService.ComputeStatsAsync(path, topN, cancellationToken));
         var warnings = outputConsole.DrainWarnings();
 
         progress?.Report(new ProgressNotificationValue
@@ -270,7 +273,7 @@ internal sealed class ProjGraphTools(
 
         if (path.EndsWith($"ModelSnapshot{FilePathGuard.CSharpExtension}", StringComparison.OrdinalIgnoreCase))
         {
-            var snapshots = await analysisServices.EfService.DiscoverSnapshotsAsync(path);
+            var snapshots = await RunAnalysisAsync(() => analysisServices.EfService.DiscoverSnapshotsAsync(path));
 
             var snapshotName = !string.IsNullOrEmpty(contextName)
                 ? contextName
@@ -289,7 +292,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing entities and relationships"
             });
 
-            model = await analysisServices.EfService.AnalyzeSnapshotAsync(path, snapshotName);
+            model = await RunAnalysisAsync(() => analysisServices.EfService.AnalyzeSnapshotAsync(path, snapshotName));
         }
         else
         {
@@ -300,7 +303,7 @@ internal sealed class ProjGraphTools(
                 Message = "Analyzing entities and relationships"
             });
 
-            model = await analysisServices.EfService.AnalyzeContextAsync(path, contextName);
+            model = await RunAnalysisAsync(() => analysisServices.EfService.AnalyzeContextAsync(path, contextName));
         }
 
         progress?.Report(new ProgressNotificationValue
@@ -371,6 +374,31 @@ internal sealed class ProjGraphTools(
         }
 
         return node.ToJsonString(JsonSerializerOptions);
+    }
+
+    /// <summary>
+    /// Runs a library analysis call, converting any <see cref="ProjGraphException"/> (the base of
+    /// <c>AnalysisException</c>/<c>ParsingException</c>) into an <see cref="McpException"/> carrying
+    /// the same message. The MCP SDK replaces the message of every other exception type with a
+    /// generic "An error occurred invoking '…'", so without this wrap the library's actionable
+    /// guidance (e.g. "DbContext not found in file") never reaches the client. Unexpected BCL
+    /// exceptions still propagate unwrapped: they carry no user guidance worth preserving, and
+    /// wrapping them would dress genuine bugs up as clean protocol errors.
+    /// </summary>
+    /// <typeparam name="T">The analysis result type.</typeparam>
+    /// <param name="analysis">The analysis call to run.</param>
+    /// <returns>The analysis result.</returns>
+    /// <exception cref="McpException">Thrown when the analysis fails with a <see cref="ProjGraphException"/>.</exception>
+    private static async Task<T> RunAnalysisAsync<T>(Func<Task<T>> analysis)
+    {
+        try
+        {
+            return await analysis();
+        }
+        catch (ProjGraphException ex)
+        {
+            throw new McpException(ex.Message);
+        }
     }
 
     private async Task<string> PreparePathAsync(string path, CancellationToken cancellationToken)
