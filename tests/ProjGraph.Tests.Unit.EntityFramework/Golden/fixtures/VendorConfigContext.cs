@@ -4,7 +4,7 @@ namespace Fixtures;
 
 // Golden fixture for owned types configured inside an IEntityTypeConfiguration<T>.Configure body
 // (the ApplyConfiguration / IEntityTypeConfiguration<T> path), covering both owned-type shapes:
-//   HeadOffice - OwnsOne, no ToTable        -> table-split, inlines onto Vendor as Vendor_HeadOffice
+//   HeadOffice - OwnsOne, no ToTable        -> table-split, inlines onto Vendor as HeadOffice_Street/City
 //   Warehouse  - OwnsOne + chained ToTable  -> own table, a box with an identifying relationship
 //
 // Regression coverage for the gap where EntityConfigurationWalker never ran FluentOwnedTypeWalker,

@@ -35,20 +35,26 @@ public static class FluentApiConfigurationParser
         // fluent-only entities and applies ToTable; FluentPropertyWalker derives property config +
         // primary keys; FluentRelationshipWalker derives relationships + foreign keys. The second
         // FluentEntityWalker pass applies ToTable calls whose owning entity is an owned type that did not
-        // exist during the first pass (it is idempotent for entities already known); ResolveTables then
-        // runs last so a chained ToTable is already applied and is not overwritten by the table-splitting
-        // default.
+        // exist during the first pass (it is idempotent for entities already known).
         FluentEntityWalker.Apply(methodSyntax, entities, model, compilation);
         FluentOwnedTypeWalker.Apply(methodSyntax, entities, model, compilation);
         FluentPropertyWalker.Apply(methodSyntax, entities, compilation);
         FluentEntityWalker.Apply(methodSyntax, entities, model, compilation);
-        FluentOwnedTypeWalker.ResolveTables(entities, model);
         FluentRelationshipWalker.Apply(methodSyntax, entities, model, compilation);
 
         // Fold IEntityTypeConfiguration<T> classes referenced via ApplyConfiguration /
         // ApplyConfigurationsFromAssembly by walking each Configure(EntityTypeBuilder<T>) body with T as
-        // the ambient entity (Slice 4).
+        // the ambient entity (Slice 4). An owner's ToTable can live in one of these classes while its
+        // owned type was captured directly in OnModelCreating above, so this must run before
+        // ResolveTables below — not the other way around.
         EntityConfigurationWalker.Apply(methodSyntax, entities, model, compilation);
+
+        // Runs once, here, only after EVERY configuration pass above (including EntityConfigurationWalker)
+        // has had a chance to apply a ToTable — on the owned type itself, or on its owner from a separate
+        // config class — so it is never overwritten by the table-splitting default. ResolveTables is
+        // idempotent-BY-SKIP (it leaves an owned type's TableName alone once set), so running it any
+        // earlier and again later cannot self-correct a wrong first resolution.
+        FluentOwnedTypeWalker.ResolveTables(entities, model);
 
         // Runs last, after every pass that could still mark an owned property's shadow PK/FK (including
         // a context-path HasKey/HasForeignKey reached via EntityConfigurationWalker), so both the

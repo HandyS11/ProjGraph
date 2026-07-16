@@ -72,16 +72,21 @@ internal static class EntityConfigurationWalker
             FluentRelationshipWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
         }
 
-        // Runs once after every config class has been folded in, not per-iteration: each class
-        // configures its own distinct entity T (materialized earlier in the SAME iteration), so an owned
-        // type's owner and any chained ToTable on it are always already resolved by the time its class's
-        // iteration finishes — resolving per-class would be redundant, and resolving mid-loop before a
-        // later class runs cannot regress that later class's owned types since they belong to a different
-        // owner. Must run here (inside EntityConfigurationWalker.Apply), not left to the caller: unlike
-        // StripShadowKeys — which the DbContext path already runs once, globally, after this method
-        // returns — a table-split owned entity's TableName has to be resolved before ANY caller (this
-        // walker's own unit tests included) can observe its effective table.
-        FluentOwnedTypeWalker.ResolveTables(entities, model);
+        // Deliberately does NOT call FluentOwnedTypeWalker.ResolveTables here. This method folds in only
+        // the config-class subset of a context's configuration — an owned type captured directly in
+        // OnModelCreating (outside any config class) can still be waiting for ITS owner's ToTable, which
+        // may live in a config class folded in by a LATER caller (e.g. a second ApplyConfiguration call
+        // this method hasn't reached yet, or — the bug this comment replaces — one already folded in but
+        // whose owned type was resolved too early by a premature global pass). ResolveTables is
+        // idempotent-BY-SKIP (FluentOwnedTypeWalker.ResolveTables leaves TableName alone once set), so
+        // running it here would permanently freeze any owned type it reaches at that point, uncorrectable
+        // by a later, correct pass. Finalizing table resolution is therefore the orchestrator's job, run
+        // once, globally, after every configuration pass — including this one — has run
+        // (FluentApiConfigurationParser.ApplyFluentApiConstraints; ModelSnapshotParser.Parse has no
+        // config-class pass, so it just runs ResolveTables after its own single sweep). Callers that
+        // invoke this method directly — this walker's own unit tests included — must call
+        // FluentOwnedTypeWalker.ResolveTables themselves afterwards if they need to observe an owned
+        // type's effective table, exactly as the real orchestrator does.
     }
 
     /// <summary>Collects the config-class type names from every <c>ApplyConfiguration(new X())</c> call in the method.</summary>

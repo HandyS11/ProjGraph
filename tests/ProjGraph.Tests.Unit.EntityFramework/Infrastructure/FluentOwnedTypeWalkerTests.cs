@@ -253,6 +253,32 @@ public sealed class FluentOwnedTypeWalkerTests
             "owned navigations are not columns");
     }
 
+    [Fact]
+    public void OwnsOne_OwnerToTableAppliedBySeparateConfigClass_ResolvesToConfigClassTable()
+    {
+        // Regression: HeadOffice is captured directly in OnModelCreating, BEFORE Merchant's ToTable is
+        // applied by the separate MerchantTableConfig class (modelBuilder.ApplyConfiguration(new
+        // MerchantTableConfig())). The orchestrator must run FluentOwnedTypeWalker.ResolveTables only
+        // ONCE, after EntityConfigurationWalker.Apply has folded MerchantTableConfig in - resolving it
+        // any earlier observes Merchant's pre-ToTable default and, because ResolveTables is
+        // idempotent-by-skip (it leaves an owned type's TableName alone once set), can never be
+        // corrected by a later pass. Before the fix this asserted Merchant == "Merchants2" but
+        // HeadOffice == "Merchant" (stale), which made MermaidErdRenderer.IsInlined compare
+        // "Merchants2" != "Merchant" and render HeadOffice as its own box instead of inlining it.
+        var model = Analyze("MerchantSplitContext.cs", "MerchantSplitContext");
+
+        var merchant = model.Entities.Single(e => e.Name == "Merchant");
+        merchant.TableName.Should().Be("Merchants2",
+            "MerchantTableConfig.Configure calls builder.ToTable(\"Merchants2\")");
+
+        var headOffice = model.Entities.Should().ContainSingle(e => e.NavigationName == "HeadOffice").Subject;
+        headOffice.OwnerEntity.Should().Be("Merchant");
+        headOffice.TableName.Should().Be("Merchants2",
+            "OwnsOne without ToTable table-splits onto the owner's EFFECTIVE table, which must reflect " +
+            "Merchant's ToTable even though it is applied later, by a separate config class, so the " +
+            "renderer inlines HeadOffice onto Merchant instead of rendering it as its own box");
+    }
+
     internal static EfModel AnalyzeSnapshot(string fileName, string snapshotName)
     {
         var fs = new PhysicalFileSystem();

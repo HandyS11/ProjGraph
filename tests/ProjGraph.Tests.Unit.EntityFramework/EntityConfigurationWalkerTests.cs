@@ -225,6 +225,10 @@ public sealed class EntityConfigurationWalkerTests
         var (method, compilation, entities, model) = Build(source, "Order");
 
         EntityConfigurationWalker.Apply(method, entities, model, compilation);
+        // EntityConfigurationWalker does not resolve tables itself (that is the orchestrator's job, run
+        // once globally after every configuration pass); this test drives it directly, so it must call
+        // the finalizing pass itself, exactly as FluentApiConfigurationParser does.
+        FluentOwnedTypeWalker.ResolveTables(entities, model);
 
         var shipTo = model.Entities.Should().ContainSingle(e => e.IsOwned).Subject;
         shipTo.Key.Should().Be("Order.ShipTo");
@@ -267,6 +271,9 @@ public sealed class EntityConfigurationWalkerTests
         var (method, compilation, entities, model) = Build(source, "Order");
 
         EntityConfigurationWalker.Apply(method, entities, model, compilation);
+        // See Apply_ConfigClassOwnsOne_CapturesOwnedTypeInlinedOntoOwnerTable above: the finalizing
+        // ResolveTables pass is the orchestrator's responsibility, not this walker's.
+        FluentOwnedTypeWalker.ResolveTables(entities, model);
 
         var lines = model.Entities.Should().ContainSingle(e => e.IsOwned).Subject;
         lines.Key.Should().Be("Order.Lines");
