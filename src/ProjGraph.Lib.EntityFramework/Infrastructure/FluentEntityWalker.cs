@@ -99,13 +99,7 @@ internal static class FluentEntityWalker
             return;
         }
 
-        var updated = new EfEntity
-        {
-            Name = entity.Name,
-            Properties = entity.Properties,
-            IsJoinEntity = entity.IsJoinEntity,
-            TableName = tableName
-        };
+        var updated = EfEntityFactory.CopyWith(entity, tableName);
 
         entities[entityName] = updated;
         var index = model.Entities.IndexOf(model.Entities.FirstOrDefault(e => e.Name == entity.Name)!);

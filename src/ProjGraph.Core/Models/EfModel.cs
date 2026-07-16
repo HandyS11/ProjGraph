@@ -47,6 +47,31 @@ public class EfEntity
     /// Gets or initializes the name of the database table associated with the entity.
     /// </summary>
     public string TableName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Gets or initializes a value indicating whether the entity is an EF Core owned type
+    /// (configured via <c>OwnsOne</c>/<c>OwnsMany</c>) rather than a root entity.
+    /// </summary>
+    public bool IsOwned { get; init; }
+
+    /// <summary>
+    /// Gets or initializes the key of the entity that owns this one, when <see cref="IsOwned"/> is
+    /// <see langword="true"/>; otherwise <see langword="null"/>.
+    /// </summary>
+    public string? OwnerEntity { get; init; }
+
+    /// <summary>
+    /// Gets or initializes the owner's navigation property name for this owned type (e.g.
+    /// <c>ShipToAddress</c>), when <see cref="IsOwned"/> is <see langword="true"/>; otherwise
+    /// <see langword="null"/>. Source of both EF's column prefix and the identifying relationship.
+    /// </summary>
+    public string? NavigationName { get; init; }
+
+    /// <summary>
+    /// Gets or initializes a value indicating whether this owned type is a collection
+    /// (<c>OwnsMany</c>) rather than a reference (<c>OwnsOne</c>).
+    /// </summary>
+    public bool IsCollection { get; init; }
 }
 
 /// <summary>
