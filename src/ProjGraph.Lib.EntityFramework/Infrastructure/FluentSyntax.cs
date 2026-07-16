@@ -31,32 +31,37 @@ internal static class FluentSyntax
     }.ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>
-    /// Finds every invocation in <paramref name="method"/> whose immediate member name is
+    /// Finds every invocation within <paramref name="scope"/> whose immediate member name is
     /// <paramref name="methodName"/>, excluding those nested inside an owned-type / join-entity builder
-    /// lambda (see <see cref="NestedBuilderScopes"/>).
+    /// lambda that is itself inside <paramref name="scope"/> (see <see cref="NestedBuilderScopes"/>).
+    /// Fences enclosing <paramref name="scope"/> are ignored, so a caller may scope directly to an owned
+    /// builder's argument list to walk its own configuration.
     /// </summary>
-    /// <param name="method">The method to scan.</param>
+    /// <param name="scope">The syntax node to scan (a method body, or an owned builder's argument list).</param>
     /// <param name="methodName">The simple method name to match (e.g. <c>Entity</c>, <c>Property</c>).</param>
     public static IEnumerable<InvocationExpressionSyntax> FindConfigRoots(
-        MethodDeclarationSyntax method,
+        SyntaxNode scope,
         string methodName)
     {
-        return method.DescendantNodes()
+        return scope.DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .Where(inv => inv.Expression is MemberAccessExpressionSyntax ma
                           && SimpleName(ma.Name) == methodName
-                          && !IsInsideNestedBuilderScope(inv));
+                          && !IsInsideNestedBuilderScope(inv, scope));
     }
 
     /// <summary>
     /// Determines whether a node is lexically inside the argument list of an owned-type / join-entity builder
-    /// invocation (<see cref="NestedBuilderScopes"/>). The argument list — not the whole invocation — is tested
-    /// because such a call is itself chained onto the entity being configured.
+    /// invocation (<see cref="NestedBuilderScopes"/>) that lies within <paramref name="scope"/>. The argument
+    /// list — not the whole invocation — is tested because such a call is itself chained onto the entity being
+    /// configured. Fences outside <paramref name="scope"/> do not count.
     /// </summary>
     /// <param name="node">The node to test.</param>
-    public static bool IsInsideNestedBuilderScope(SyntaxNode node)
+    /// <param name="scope">The scope root; ancestors at or above it are not considered.</param>
+    public static bool IsInsideNestedBuilderScope(SyntaxNode node, SyntaxNode scope)
     {
         return node.Ancestors()
+            .TakeWhile(ancestor => ancestor != scope && scope.Span.Contains(ancestor.Span))
             .OfType<InvocationExpressionSyntax>()
             .Any(inv => inv.Expression is MemberAccessExpressionSyntax ma
                         && NestedBuilderScopes.Contains(SimpleName(ma.Name))

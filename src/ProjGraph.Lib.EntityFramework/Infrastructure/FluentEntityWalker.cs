@@ -19,9 +19,9 @@ internal static class FluentEntityWalker
 {
     /// <summary>
     /// Materializes fluent-only entities (Task 1) and applies <c>ToTable</c> mappings (Task 2) found in
-    /// <paramref name="method"/>.
+    /// <paramref name="scope"/>.
     /// </summary>
-    /// <param name="method">The <c>OnModelCreating</c> method declaration to walk.</param>
+    /// <param name="scope">The <c>OnModelCreating</c> method declaration (or an owned builder's argument list) to walk.</param>
     /// <param name="entities">Entities already discovered from DbSets; augmented in place with fluent-only entities.</param>
     /// <param name="model">The model whose <see cref="EfModel.Entities"/> collection is populated.</param>
     /// <param name="compilation">The Roslyn compilation for symbol resolution of fluent-only entity types.</param>
@@ -30,19 +30,19 @@ internal static class FluentEntityWalker
     /// (e.g. an <c>IEntityTypeConfiguration&lt;T&gt;.Configure</c> body rooted at a bare builder parameter).
     /// </param>
     public static void Apply(
-        MethodDeclarationSyntax method,
+        SyntaxNode scope,
         Dictionary<string, EfEntity> entities,
         EfModel model,
         Compilation compilation,
         string? ambientEntity = null)
     {
-        foreach (var entityInvocation in FluentSyntax.FindConfigRoots(method, EfAnalysisConstants.EfMethods.Entity))
+        foreach (var entityInvocation in FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.Entity))
         {
             FluentSyntax.MaterializeEntity(
                 FluentSyntax.EntityNameFromInvocation(entityInvocation), entities, model, compilation);
         }
 
-        foreach (var toTableInvocation in FluentSyntax.FindConfigRoots(method, EfAnalysisConstants.EfMethods.ToTable))
+        foreach (var toTableInvocation in FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.ToTable))
         {
             ApplyTableName(toTableInvocation, entities, model, ambientEntity);
         }
