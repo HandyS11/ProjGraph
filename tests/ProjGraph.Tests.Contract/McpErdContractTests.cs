@@ -83,9 +83,9 @@ public class McpErdContractTests
         var method = type.GetMethod("GetErdAsync");
         var parameters = method!.GetParameters();
 
-        // Assert parameters exist (path, contextName, showTitle, progress, cancellationToken)
-        parameters.Should().HaveCount(5,
-            "GetErd should have 5 parameters: path, contextName, showTitle, progress, and cancellationToken");
+        // Assert parameters exist (path, contextName, showTitle, ownedMode, progress, cancellationToken)
+        parameters.Should().HaveCount(6,
+            "GetErd should have 6 parameters: path, contextName, showTitle, ownedMode, progress, and cancellationToken");
 
         var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
         pathParam.ParameterType.Should().Be<string>();
@@ -100,6 +100,11 @@ public class McpErdContractTests
         titleParam.ParameterType.Should().Be<bool>();
         titleParam.IsOptional.Should().BeTrue();
         titleParam.DefaultValue.Should().Be(true);
+
+        var ownedModeParam = parameters.Should().ContainSingle(p => p.Name == "ownedMode").Which;
+        ownedModeParam.ParameterType.Should().Be<string>();
+        ownedModeParam.IsOptional.Should().BeTrue();
+        ownedModeParam.DefaultValue.Should().Be("mirror");
 
         var ctParam = parameters.Should().ContainSingle(p => p.Name == "cancellationToken").Which;
         ctParam.ParameterType.Should().Be<CancellationToken>();

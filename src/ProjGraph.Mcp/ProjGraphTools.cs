@@ -239,6 +239,8 @@ internal sealed class ProjGraphTools(
         string? contextName = null,
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
+        [Description("How EF Core owned types are shown: 'mirror' (default) inlines table-split owned types onto the owner as EF names them; 'classic' gives every owned type its own entity")]
+        string ownedMode = "mirror",
         IProgress<ProgressNotificationValue>? progress = null,
         CancellationToken cancellationToken = default)
     {
@@ -298,7 +300,10 @@ internal sealed class ProjGraphTools(
             Message = "Rendering entity diagram"
         });
 
-        var diagram = renderers.ErdRenderer.Render(model, new DiagramOptions(showTitle, false));
+        var mode = ownedMode.Equals("classic", StringComparison.OrdinalIgnoreCase)
+            ? ErdOwnedMode.Classic
+            : ErdOwnedMode.MirrorEf;
+        var diagram = renderers.ErdRenderer.Render(model, new DiagramOptions(showTitle, false, false, mode));
 
         var filename = Path.GetFileName(path);
         await cache.StoreAsync("erd", path, "text/plain", diagram,

@@ -290,6 +290,83 @@ public partial class ErdCommandTests
         }
     }
 
+    [Fact]
+    public void ErdCommand_WithOwnedModeClassic_ChainedOwnedContext_RendersOwnedTypeAsSeparateEntity()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var contextPath = CliTestHelpers.GetRootPath(
+            Path.Combine("tests", "ProjGraph.Tests.Unit.EntityFramework", "Golden", "fixtures", "ChainedOwnedContext.cs"));
+
+        // Act
+        var result = -1;
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            result = app.Run(["erd", contextPath, "--owned-mode", "classic", "--show-title", "false"]));
+
+        // Assert
+        result.Should().Be(0);
+        capturedOutput.Should().Contain("PostalAddress {");
+        capturedOutput.Should().Contain("Shopper ||--|| PostalAddress");
+    }
+
+    [Fact]
+    public void ErdCommand_DefaultOwnedMode_OwnedModesContext_InlinesTableSplitOwnedTypeOntoOwner()
+    {
+        // Arrange — no --owned-mode flag; must default to mirror (MirrorEf), which inlines the
+        // table-split ShipTo owned type onto OwnedModesInvoice using EF's Nav_Property naming
+        // rather than drawing it as its own entity box.
+        var app = CliTestHelpers.CreateApp();
+        var contextPath = CliTestHelpers.GetRootPath(
+            Path.Combine("tests", "ProjGraph.Tests.Unit.EntityFramework", "Golden", "fixtures", "OwnedModesContext.cs"));
+
+        // Act
+        var result = -1;
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            result = app.Run(["erd", contextPath, "--show-title", "false"]));
+
+        // Assert
+        result.Should().Be(0);
+        capturedOutput.Should().Contain("ShipTo_Street");
+        capturedOutput.Should().NotContain("OwnedModesInvoice_ShipTo {");
+    }
+
+    [Fact]
+    public void ErdCommand_WithOwnedModeClassic_OwnedModesContext_GivesTableSplitOwnedTypeItsOwnEntity()
+    {
+        // Arrange — same fixture as the mirror-mode test above, but with --owned-mode classic.
+        // Proves the flag actually changes output (rather than merely being accepted): the
+        // table-split ShipTo owned type moves from an inlined column prefix to its own entity box
+        // with an identifying relationship, and the prefixed column disappears.
+        var app = CliTestHelpers.CreateApp();
+        var contextPath = CliTestHelpers.GetRootPath(
+            Path.Combine("tests", "ProjGraph.Tests.Unit.EntityFramework", "Golden", "fixtures", "OwnedModesContext.cs"));
+
+        // Act
+        var result = -1;
+        var capturedOutput = CliTestHelpers.CaptureConsoleOutput(() =>
+            result = app.Run(["erd", contextPath, "--owned-mode", "classic", "--show-title", "false"]));
+
+        // Assert
+        result.Should().Be(0);
+        capturedOutput.Should().Contain("OwnedModesInvoice_ShipTo {");
+        capturedOutput.Should().Contain("OwnedModesInvoice ||--|| OwnedModesInvoice_ShipTo : \"ShipTo\"");
+        capturedOutput.Should().NotContain("ShipTo_Street");
+    }
+
+    [Fact]
+    public void ErdCommand_WithInvalidOwnedMode_ShouldFail()
+    {
+        // Arrange
+        var app = CliTestHelpers.CreateApp();
+        var contextPath = CliTestHelpers.GetSamplePath(@"erd\simple-context\EntityFramework\MyDbContext.cs");
+
+        // Act & Assert
+        var exception = Assert.Throws<CommandRuntimeException>(() =>
+            app.Run(["erd", contextPath, "--owned-mode", "bogus"]));
+
+        exception.Message.Should().Contain("Invalid --owned-mode");
+    }
+
     private static string ExtractMermaidBlock(string content)
     {
         var match = ExtractMermaidRegex().Match(content);
