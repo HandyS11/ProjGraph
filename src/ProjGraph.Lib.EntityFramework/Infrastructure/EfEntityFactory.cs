@@ -35,4 +35,26 @@ internal static class EfEntityFactory
 
         return copy;
     }
+
+    /// <summary>
+    /// Replaces the <see cref="EfModel.Entities"/> slot whose <see cref="EfEntity.EffectiveKey"/> matches
+    /// <paramref name="updated"/>'s, if present. The slot is found by EffectiveKey, not by reference:
+    /// reference equality would silently stop updating the model list the moment the walkers' dictionary
+    /// and the model list hold different object instances for the same logical entity (these are init-only
+    /// records replaced wholesale, so nothing guarantees they stay the same instance forever) — and not by
+    /// <see cref="EfEntity.Name"/>, which is the CLR type name and is not unique across owned entities.
+    /// </summary>
+    /// <param name="model">The model whose entity list to update.</param>
+    /// <param name="updated">The replacement entity.</param>
+    public static void ReplaceModelSlot(EfModel model, EfEntity updated)
+    {
+        for (var i = 0; i < model.Entities.Count; i++)
+        {
+            if (model.Entities[i].EffectiveKey == updated.EffectiveKey)
+            {
+                model.Entities[i] = updated;
+                return;
+            }
+        }
+    }
 }

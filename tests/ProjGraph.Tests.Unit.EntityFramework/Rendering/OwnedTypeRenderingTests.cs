@@ -39,6 +39,55 @@ public sealed class OwnedTypeRenderingTests
         new MermaidErdRenderer().Render(model, new DiagramOptions(false, false));
 
     [Fact]
+    public void Classic_NestedOwnedTypesUnderSameNamedOwners_GetDistinctBoxIdentifiers()
+    {
+        // Invoice owns ShipTo and BillTo (both CLR "Address"); EACH owns a nested "GeoPoint".
+        // Qualifying a colliding label by the owner's CLR name would produce "Address_Geo" for BOTH
+        // nested boxes — one Mermaid identifier for two entities, silently merged into one box.
+        var invoice = new EfEntity { Name = "Invoice" };
+        invoice.Properties.Add(new EfProperty { Name = "Id", Type = "int", IsPrimaryKey = true, IsValueType = true });
+
+        var model = new EfModel { ContextName = "Ctx" };
+        model.Entities.Add(invoice);
+
+        foreach (var nav in new[] { "ShipTo", "BillTo" })
+        {
+            var address = new EfEntity
+            {
+                Name = "Address",
+                Key = $"Invoice.{nav}",
+                IsOwned = true,
+                OwnerEntity = "Invoice",
+                NavigationName = nav
+            };
+            address.Properties.Add(new EfProperty { Name = "Street", Type = "string" });
+
+            var geo = new EfEntity
+            {
+                Name = "GeoPoint",
+                Key = $"Invoice.{nav}.Geo",
+                IsOwned = true,
+                OwnerEntity = $"Invoice.{nav}",
+                NavigationName = "Geo"
+            };
+            geo.Properties.Add(new EfProperty { Name = "Latitude", Type = "decimal", IsValueType = true });
+
+            model.Entities.Add(address);
+            model.Entities.Add(geo);
+        }
+
+        var output = new MermaidErdRenderer().Render(
+            model, new DiagramOptions(false, false, false, ErdOwnedMode.Classic));
+
+        output.Should().Contain("Invoice_ShipTo_Geo {");
+        output.Should().Contain("Invoice_BillTo_Geo {");
+        output.Should().NotContain("Address_Geo",
+            "qualifying by the owner's CLR name collapses both nested boxes into one Mermaid identifier");
+        output.Should().Contain("Invoice_ShipTo ||--|| Invoice_ShipTo_Geo");
+        output.Should().Contain("Invoice_BillTo ||--|| Invoice_BillTo_Geo");
+    }
+
+    [Fact]
     public void MirrorEf_TableSplitOwnsOne_InlinesPrefixedColumnsOntoOwner()
     {
         var output = Render(ModelWithOwned("Orders", isCollection: false));

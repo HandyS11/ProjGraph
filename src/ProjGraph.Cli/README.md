@@ -71,6 +71,9 @@ projgraph erd ./Data/MyDbContext.cs --output ./docs/database-schema.md
 
 # Generate without title header
 projgraph erd ./Data/MyDbContext.cs --show-title false
+
+# Show owned types (OwnsOne/OwnsMany) as separate entities instead of inlined columns
+projgraph erd ./Data/MyDbContext.cs --owned-mode classic
 ```
 
 **Settings**:
@@ -79,11 +82,15 @@ projgraph erd ./Data/MyDbContext.cs --show-title false
 - `-c|--context <NAME>`: Optional context/snapshot name.
 - `-o|--output <file>`: Write diagram directly to file. Auto-creates directories.
 - `--show-title <true|false>`: Include diagram title. Default: `true`.
+- `--owned-mode <mirror|classic>`: How EF Core owned types (`OwnsOne`/`OwnsMany`) are shown. Default: `mirror`.
+  - `mirror` — the physical view: an owned type sharing its owner's table (EF table-splitting) is inlined onto the owner using EF's column naming (e.g. `ShipToAddress_ZipCode`); owned types on their own table (`OwnsMany`, or `OwnsOne` + `ToTable`) get their own entity with an identifying relationship.
+  - `classic` — the conceptual view: every owned type is its own entity linked to the owner by an identifying relationship, with unprefixed columns.
 
 **Features**:
 
 - Detects entities, properties, and relationships from source or snapshots
 - Shows primary keys, foreign keys, and constraints
+- Captures owned types (`OwnsOne`/`OwnsMany`), including nested ownership and owned types configured in `IEntityTypeConfiguration<T>` classes
 - Supports inheritance and base classes
 - Extracts `MaxLength`, `Required`, and other data annotations
 - Detects Fluent API configurations

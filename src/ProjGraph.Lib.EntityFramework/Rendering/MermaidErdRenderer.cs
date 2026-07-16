@@ -187,9 +187,9 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     }
 
     /// <summary>
-    /// Returns the label for an entity box: its simple name, qualified to <c>{Owner}_{Nav}</c> when another
-    /// rendered entity shares that name (two owners may own the same CLR type, which EF treats as distinct
-    /// entity types).
+    /// Returns the label for an entity box: its simple name, qualified to its flattened key
+    /// (<c>Owner_Nav</c>, or <c>Owner_Nav1_Nav2</c> for nested ownership) when another rendered entity
+    /// shares that name (two owners may own the same CLR type, which EF treats as distinct entity types).
     /// </summary>
     /// <param name="entity">The entity.</param>
     /// <param name="model">The model, used to detect name collisions.</param>
@@ -204,16 +204,14 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
         // Only entities actually drawn can collide on the diagram; an inlined owned entity is never
         // drawn, so it must not force a qualified label onto the only box of that name.
         var collides = model.Entities.Count(e => e.Name == entity.Name && !IsInlined(e, model, options)) > 1;
-        return collides ? $"{OwnerNameOf(entity, model)}_{entity.NavigationName}" : entity.Name;
-    }
 
-    /// <summary>Returns the CLR name of an owned entity's owner, resolved by key; falls back to the raw key.</summary>
-    /// <param name="entity">The owned entity.</param>
-    /// <param name="model">The model.</param>
-    private static string OwnerNameOf(EfEntity entity, EfModel model)
-        => model.Entities.FirstOrDefault(e => e.EffectiveKey == entity.OwnerEntity)?.Name
-           ?? entity.OwnerEntity
-           ?? "";
+        // Qualify by the entity's own key ({Owner}.{Nav}, dots flattened), which is unique by
+        // construction. Qualifying by the OWNER's CLR name is not enough: for nested owned types whose
+        // immediate owners share a CLR name (Invoice.ShipTo and Invoice.BillTo both "Address", each
+        // owning a Geo), it yields the same "Address_Geo" identifier for two different boxes, which
+        // Mermaid silently merges into one.
+        return collides ? entity.EffectiveKey.Replace('.', '_') : entity.Name;
+    }
 
     /// <summary>
     /// Renders a single property line for an entity.

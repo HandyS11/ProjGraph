@@ -21,7 +21,10 @@ public static class RelationshipAnalyzer
     /// Analyzes the relationships between entities in the provided entity framework model and updates the model accordingly.
     /// </summary>
     /// <param name="model">The <see cref="EfModel"/> representing the entity framework model to be analyzed and updated.</param>
-    /// <param name="entities">A dictionary containing all entities in the model, keyed by their names.</param>
+    /// <param name="entities">
+    /// A dictionary containing all entities in the model, keyed by <see cref="EfEntity.EffectiveKey"/>
+    /// (the bare name for a root entity, <c>{Owner}.{Nav}</c> for an owned one).
+    /// </param>
     /// <param name="compilation">The <see cref="Compilation"/> object used to analyze the entity symbols.</param>
     /// <remarks>
     /// This method iterates through all ROOT entities in the model (owned types are excluded — see the
@@ -71,7 +74,10 @@ public static class RelationshipAnalyzer
     /// </summary>
     /// <param name="entity">The <see cref="EfEntity"/> representing the source entity being analyzed.</param>
     /// <param name="symbol">The <see cref="INamedTypeSymbol"/> representing the source entity's symbol.</param>
-    /// <param name="entities">A dictionary containing all entities in the model, keyed by their names.</param>
+    /// <param name="entities">
+    /// A dictionary containing all entities in the model, keyed by <see cref="EfEntity.EffectiveKey"/>
+    /// (the bare name for a root entity, <c>{Owner}.{Nav}</c> for an owned one).
+    /// </param>
     /// <param name="model">The <see cref="EfModel"/> representing the entity framework model.</param>
     /// <param name="addedRelationships">A <see cref="HashSet{T}"/> containing the keys of already added relationships to avoid duplicates.</param>
     /// <remarks>

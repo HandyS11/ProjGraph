@@ -340,4 +340,63 @@ public sealed class FluentOwnedTypeWalkerTests
             .Which.IsForeignKey.Should().BeTrue(
                 "an owned type on its own table has a real, separate FK column back to the owner");
     }
+    [Fact]
+    public void ResolveTables_DictionaryAndModelListHoldDifferentInstances_StillUpdatesModelSlotByEffectiveKey()
+    {
+        var (entities, model) = DivergedOwnedInstances();
+
+        FluentOwnedTypeWalker.ResolveTables(entities, model);
+
+        model.Entities.Should().ContainSingle(e => e.Key == "Customer.Address")
+            .Which.TableName.Should().Be("Customer",
+                "the model list slot must be found and updated by EffectiveKey, not by the reference " +
+                "identity of an instance the list no longer holds");
+    }
+
+    [Fact]
+    public void StripShadowKeys_DictionaryAndModelListHoldDifferentInstances_StillUpdatesModelSlotByEffectiveKey()
+    {
+        var (entities, model) = DivergedOwnedInstances();
+        entities["Customer.Address"].Properties.Add(new EfProperty { Name = "Id", Type = "int", IsPrimaryKey = true });
+        model.Entities[1].Properties.Add(new EfProperty { Name = "Id", Type = "int", IsPrimaryKey = true });
+
+        FluentOwnedTypeWalker.ResolveTables(entities, model);
+        FluentOwnedTypeWalker.StripShadowKeys(entities, model);
+
+        model.Entities.Should().ContainSingle(e => e.Key == "Customer.Address")
+            .Which.Properties.Should().NotContain(p => p.IsPrimaryKey,
+                "the stripped entity must land in the model list even when the dictionary and the list " +
+                "hold different instances for the same EffectiveKey");
+    }
+
+    /// <summary>
+    /// Builds an owner plus a table-split owned entity where the entities dictionary and the model list
+    /// deliberately hold DIFFERENT (but equal-keyed) instances of the owned entity, reproducing the drift
+    /// that init-only wholesale replacement can cause.
+    /// </summary>
+    private static (Dictionary<string, EfEntity> Entities, EfModel Model) DivergedOwnedInstances()
+    {
+        var owner = new EfEntity { Name = "Customer" };
+
+        static EfEntity Owned() => new()
+        {
+            Name = "Address",
+            Key = "Customer.Address",
+            IsOwned = true,
+            OwnerEntity = "Customer",
+            NavigationName = "Address"
+        };
+
+        var entities = new Dictionary<string, EfEntity>
+        {
+            ["Customer"] = owner,
+            ["Customer.Address"] = Owned()
+        };
+
+        var model = new EfModel();
+        model.Entities.Add(owner);
+        model.Entities.Add(Owned());
+
+        return (entities, model);
+    }
 }

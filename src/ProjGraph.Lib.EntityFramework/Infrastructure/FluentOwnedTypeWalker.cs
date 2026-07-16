@@ -336,12 +336,7 @@ internal static class FluentOwnedTypeWalker
 
             var updated = EfEntityFactory.CopyWith(owned, table);
             entities[key] = updated;
-
-            var index = model.Entities.IndexOf(owned);
-            if (index >= 0)
-            {
-                model.Entities[index] = updated;
-            }
+            EfEntityFactory.ReplaceModelSlot(model, updated);
         }
     }
 
@@ -388,12 +383,7 @@ internal static class FluentOwnedTypeWalker
             }
 
             entities[key] = stripped;
-
-            var index = model.Entities.IndexOf(owned);
-            if (index >= 0)
-            {
-                model.Entities[index] = stripped;
-            }
+            EfEntityFactory.ReplaceModelSlot(model, stripped);
         }
     }
 
