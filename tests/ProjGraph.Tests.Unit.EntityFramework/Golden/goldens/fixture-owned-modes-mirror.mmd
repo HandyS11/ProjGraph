@@ -1,0 +1,22 @@
+---
+title: OwnedModesContext
+---
+erDiagram
+  InvoiceLine {
+    decimal Amount "precision(18,2)"
+    string Description "required, max:240"
+  }
+  OwnedModesAddress {
+    string Street "required, max:180"
+    string ZipCode "required"
+  }
+  OwnedModesInvoice {
+    int Id PK
+    string Number "required"
+    decimal ShipTo_Geo_Latitude "precision(9,6)"
+    decimal ShipTo_Geo_Longitude
+    string ShipTo_Street "required, max:180"
+    string ShipTo_ZipCode "required, max:18"
+  }
+  OwnedModesInvoice ||--o{ InvoiceLine : "Lines"
+  OwnedModesInvoice ||--|| OwnedModesAddress : "BillTo"

@@ -85,8 +85,15 @@ public class EfModelAnalyzer(
 
         var model = ModelSnapshotParser.Parse(snapshotClass, snapshotType, compilation);
 
-        // Analyze relationships using the semantic model now that we have all symbols
-        var entities = model.Entities.ToDictionary(e => e.Name);
+        // Analyze relationships using the semantic model now that we have all symbols. Keyed by
+        // EffectiveKey, not Name: the DbContext path's entities dictionary keys owned types by
+        // {Owner}.{Nav} (never by their bare CLR type name), so a navigation property whose type
+        // resolves to an owned entity's Name never matches there and no spurious relationship is
+        // created. Keying by Name here would let that same navigation (e.g. Ticket.Seat) resolve
+        // against the owned SeatLocation entity by coincidence of its Name, fabricating a
+        // relationship the fluent OwnsOne/OwnsMany walkers already modelled as ownership — breaking
+        // cross-path parity between the DbContext and snapshot analyses of the same model.
+        var entities = model.Entities.ToDictionary(e => e.EffectiveKey);
         RelationshipAnalyzer.AnalyzeRelationships(model, entities, compilation);
 
         return model;
