@@ -341,6 +341,21 @@ public sealed class McpErdTests : IDisposable
     }
 
     [Fact]
+    public async Task GetErd_WhitespacePath_ShouldThrowMcpException()
+    {
+        // Arrange — a blank path previously hit ArgumentException.ThrowIfNullOrWhiteSpace, whose
+        // message the SDK strips to a generic error; the hottest parameter of every tool deserves
+        // an actionable failure.
+        var tools = CreateTools();
+
+        // Act
+        var act = async () => await tools.GetErdAsync("   ");
+
+        // Assert
+        (await act.Should().ThrowAsync<McpException>()).Which.Message.Should().Contain("path");
+    }
+
+    [Fact]
     public async Task GetErd_NonCsFile_ShouldThrowMcpException()
     {
         // Arrange

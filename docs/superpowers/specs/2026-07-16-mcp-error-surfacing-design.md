@@ -38,7 +38,8 @@ boundary where the stripping happens.
 ### 1. `WorkspaceRootService` → `McpException`
 
 All four throw sites in `TryResolveAsync`/`ResolveMatches` become `McpException` with the same
-messages. The service lives in `ProjGraph.Mcp`, so the dependency already exists. The existing
+messages (the not-found message additionally gains "Provide an absolute path.", matching its
+ambiguous-match sibling). The service lives in `ProjGraph.Mcp`, so the dependency already exists. The existing
 `McpRootsTests` assertions on BCL exception types are updated to `McpException` — that is the
 point of the change, not collateral damage.
 

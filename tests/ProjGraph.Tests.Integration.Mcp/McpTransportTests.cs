@@ -37,16 +37,21 @@ public sealed class McpTransportTests
         var testOutput = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
         var binRoot = TestPathHelper.GetRootPath(Path.Combine(
             "src", "ProjGraph.Mcp", "bin", testOutput.Parent!.Name, testOutput.Name));
+        Directory.Exists(binRoot).Should().BeTrue(
+            $"the MCP server build output must exist at {binRoot}");
         var exeName = OperatingSystem.IsWindows() ? "ProjGraph.Mcp.exe" : "ProjGraph.Mcp";
 
         // The build RID matches the machine that built it, so probing the RID subdirectories
-        // is exact enough without reconstructing the RID by hand.
+        // is exact enough without reconstructing the RID by hand. Preferring the most recently
+        // written apphost keeps a dev machine with stale cross-RID leftovers deterministic.
         var serverExe = Directory.GetDirectories(binRoot)
-            .Select(ridDir => Path.Combine(ridDir, exeName))
-            .FirstOrDefault(File.Exists);
+            .Select(ridDir => new FileInfo(Path.Combine(ridDir, exeName)))
+            .Where(apphost => apphost.Exists)
+            .OrderByDescending(apphost => apphost.LastWriteTimeUtc)
+            .FirstOrDefault();
 
         serverExe.Should().NotBeNull($"the MCP server apphost must be present under {binRoot}");
-        return serverExe!;
+        return serverExe!.FullName;
     }
 
     private static string JoinText(CallToolResult result)

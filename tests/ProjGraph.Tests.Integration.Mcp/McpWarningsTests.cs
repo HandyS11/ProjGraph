@@ -61,10 +61,12 @@ public sealed class McpWarningsTests : IDisposable
             _temp.CreateFile(Path.Combine("many", $"C{i}.cs"), $"namespace Many; public class C{i} {{ }}");
         }
 
-        var tools = McpTestHelper.CreateTools(new CollectingOutputConsole());
+        var cache = new DiagramResourceCache();
+        var tools = McpTestHelper.CreateTools(new CollectingOutputConsole(), cache);
+        var dirPath = Path.Combine(_temp.DirectoryPath, "many");
 
         // Act
-        var result = await tools.GetClassDiagramAsync(Path.Combine(_temp.DirectoryPath, "many"));
+        var result = await tools.GetClassDiagramAsync(dirPath);
 
         // Assert — the warning must TRAIL the diagram like get_project_graph's warnings do:
         // prepended ahead of the YAML front-matter, strict Mermaid parsers reject the diagram.
@@ -72,6 +74,10 @@ public sealed class McpWarningsTests : IDisposable
         result.TrimStart().Should().NotStartWith("%% WARNING");
         result.IndexOf("classDiagram", StringComparison.Ordinal).Should().BeLessThan(
             result.IndexOf("%% WARNING", StringComparison.Ordinal));
+
+        // The cached resource must carry the same (appended) form as the returned diagram.
+        var cachedUri = $"projgraph://diagrams/class/{Uri.EscapeDataString(dirPath)}";
+        cache.TryRead(cachedUri).Should().Be(result);
     }
 
     [Fact]

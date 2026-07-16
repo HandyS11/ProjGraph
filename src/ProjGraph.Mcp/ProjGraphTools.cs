@@ -432,14 +432,21 @@ internal sealed class ProjGraphTools(
         }
         catch (ProjGraphException ex)
         {
-            throw new McpException(ex.Message);
+            // Inner exception preserved so the original type and stack trace stay in server logs.
+            throw new McpException(ex.Message, ex);
         }
     }
 
     private async Task<string> PreparePathAsync(string path, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            // McpException so the guidance reaches the client; the SDK strips the message from
+            // any other exception type.
+            throw new McpException("path must not be empty.");
+        }
+
         return await rootService.TryResolveAsync(path, server, cancellationToken);
     }
 
