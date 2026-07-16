@@ -174,4 +174,31 @@ public sealed class OwnedTypeRenderingTests
         output.Should().Contain("Order ||--|| Order_ShipTo");
         output.Should().Contain("Order ||--|| Order_BillTo");
     }
+
+    [Fact]
+    public void Classic_TableSplitOwnsOne_RendersBoxAndIdentifyingRelationship()
+    {
+        var model = ModelWithOwned("Orders", isCollection: false);
+
+        var output = new MermaidErdRenderer().Render(
+            model, new DiagramOptions(false, false, false, ErdOwnedMode.Classic));
+
+        output.Should().Contain("Address {", "classic mode always gives an owned type its own box");
+        output.Should().Contain("string ZipCode", "classic mode never prefixes columns");
+        output.Should().Contain("Order ||--|| Address");
+        output.Should().NotContain("ShipToAddress_ZipCode");
+    }
+
+    [Fact]
+    public void Classic_OwnerDoesNotGainNavigationColumn()
+    {
+        var model = ModelWithOwned("Orders", isCollection: false);
+
+        var output = new MermaidErdRenderer().Render(
+            model, new DiagramOptions(false, false, false, ErdOwnedMode.Classic));
+
+        var orderBlock = output.Split("Address {")[0];
+        orderBlock.Should().NotContain("ShipToAddress",
+            "the relationship line carries the navigation; the owner gets no reference column");
+    }
 }
