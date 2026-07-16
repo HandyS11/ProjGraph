@@ -371,8 +371,12 @@ public class EfModelAnalyzer(
     /// <seealso cref="EfRelationship"/>
     private static void DeduplicateModelContent(EfModel model)
     {
+        // Group by EffectiveKey, not Name: Name is the CLR type name and is not unique — two owned
+        // entities under the same owner (or under different owners) can share a CLR type (e.g.
+        // Invoice.ShipTo and Invoice.BillTo both being InvoiceAddress). Grouping by Name would collapse
+        // them into one, silently discarding the second.
         var uniqueEntities = model.Entities
-            .GroupBy(e => e.Name)
+            .GroupBy(e => e.EffectiveKey)
             .Select(g => g.First())
             .ToList();
         model.Entities.Clear();

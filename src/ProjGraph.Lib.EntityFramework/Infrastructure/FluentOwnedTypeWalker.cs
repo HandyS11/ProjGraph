@@ -31,14 +31,29 @@ internal static class FluentOwnedTypeWalker
         Compilation compilation,
         string? ambientEntity = null)
     {
-        foreach (var owns in FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.OwnsOne))
-        {
-            Capture(owns, entities, model, compilation, ambientEntity, isCollection: false);
-        }
+        // Combine OwnsOne and OwnsMany roots and process them owner-first. FindConfigRoots walks
+        // DescendantNodes(), a pre-order traversal: for a chained nested form like
+        // Entity<T>().OwnsOne(a).OwnsOne(b), the syntactically OUTERMOST node is the .OwnsOne(b) call —
+        // .OwnsOne(a) is nested inside it as its receiver — so pre-order yields b before a. Capturing b
+        // first would resolve its owner key to a's {Owner}.{Nav}, which doesn't exist in the dictionary
+        // yet, and Capture would silently drop b and everything chained onto it.
+        //
+        // A receiver-chain-inner call always has a strictly smaller Span.End than the call chained onto
+        // it (its own tokens all precede the closing paren of the outer call), so ordering by Span.End
+        // ascending processes inner-before-outer, i.e. owner-before-owned, for both same-type and
+        // mixed OwnsOne/OwnsMany nesting. For sibling calls (two independent statements, or a builder
+        // lambda's single call) Span.End ascending matches source order, so the already-working forms
+        // (builder-lambda, two-statement chained merge, nested-in-lambda) are unaffected.
+        var ownsOneRoots = FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.OwnsOne)
+            .Select(inv => (Invocation: inv, IsCollection: false));
+        var ownsManyRoots = FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.OwnsMany)
+            .Select(inv => (Invocation: inv, IsCollection: true));
 
-        foreach (var owns in FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.OwnsMany))
+        var orderedRoots = ownsOneRoots.Concat(ownsManyRoots).OrderBy(t => t.Invocation.Span.End);
+
+        foreach (var (owns, isCollection) in orderedRoots)
         {
-            Capture(owns, entities, model, compilation, ambientEntity, isCollection: true);
+            Capture(owns, entities, model, compilation, ambientEntity, isCollection);
         }
     }
 

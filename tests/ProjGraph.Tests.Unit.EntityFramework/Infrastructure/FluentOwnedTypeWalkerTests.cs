@@ -81,4 +81,52 @@ public sealed class FluentOwnedTypeWalkerTests
         shopper.Properties.Should().Contain(p => p.Name == "Tags",
             "the EF 8+ primitive collection must survive as a scalar column");
     }
+
+    [Fact]
+    public void TwoOwnedNavigationsSharingClrName_BothSurviveDeduplication()
+    {
+        // Regression for the Name-keyed DeduplicateModelContent bug: Invoice.ShipTo and Invoice.BillTo
+        // are both InvoiceAddress. Grouping by Name (instead of EffectiveKey) would collapse them into
+        // one, silently discarding the second.
+        var model = Analyze("DualNavOwnedContext.cs", "DualNavOwnedContext");
+
+        var owned = model.Entities.Where(e => e.IsOwned).ToList();
+        owned.Should().HaveCount(2, "both Invoice.ShipTo and Invoice.BillTo must survive analysis");
+
+        var shipTo = owned.Should().ContainSingle(e => e.Key == "Invoice.ShipTo").Subject;
+        shipTo.Name.Should().Be("InvoiceAddress");
+        shipTo.OwnerEntity.Should().Be("Invoice");
+        shipTo.NavigationName.Should().Be("ShipTo");
+
+        var billTo = owned.Should().ContainSingle(e => e.Key == "Invoice.BillTo").Subject;
+        billTo.Name.Should().Be("InvoiceAddress");
+        billTo.OwnerEntity.Should().Be("Invoice");
+        billTo.NavigationName.Should().Be("BillTo");
+    }
+
+    [Fact]
+    public void OwnsOne_NestedChainedForm_CapturesInnerOwnedEntityWithChainedConfig()
+    {
+        // Regression for the pre-order FindConfigRoots ordering bug: in
+        // Entity<T>().OwnsOne(a).OwnsOne(b).Property(...), the syntactically outermost node is the
+        // .OwnsOne(b) call (.OwnsOne(a) is nested inside it as its receiver), so an unordered walk
+        // resolves b's owner key to a's {Owner}.{Nav} before a itself has been captured, silently
+        // dropping b and its chained Property config.
+        var model = Analyze("NestedChainedOwnedContext.cs", "NestedChainedOwnedContext");
+
+        var shipTo = model.Entities.Should().ContainSingle(e => e.Key == "Invoice.ShipTo").Subject;
+        shipTo.OwnerEntity.Should().Be("Invoice");
+        shipTo.NavigationName.Should().Be("ShipTo");
+
+        var geo = model.Entities.Should().ContainSingle(e => e.Key == "Invoice.ShipTo.Geo").Subject;
+        geo.Name.Should().Be("GeoTag");
+        geo.OwnerEntity.Should().Be("Invoice.ShipTo",
+            "the owner key must be the ShipTo owned entity's EffectiveKey, not the Invoice root");
+        geo.NavigationName.Should().Be("Geo");
+        geo.Properties.Should().Contain(p => p.Name == "Latitude",
+            "the chained Property call after the nested OwnsOne configures Geo, not the owner");
+
+        model.Entities.Should().NotContain(e => e.Name == "Invoice" && e.Properties.Any(p => p.Name == "Latitude"),
+            "nested owned config must never leak onto the root entity");
+    }
 }

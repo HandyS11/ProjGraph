@@ -103,9 +103,22 @@ internal static class FluentEntityWalker
 
         entities[entityName] = updated;
 
-        // Find the slot by reference to the entity just looked up by key — not by Name, which is the CLR
-        // type name and is not unique across owned entities (e.g. two navigations of the same owned type).
-        var index = model.Entities.IndexOf(entity);
+        // Find the slot by EffectiveKey, not by reference: reference equality would silently stop
+        // updating the model list the moment the dictionary and model.Entities hold different object
+        // instances for the same logical entity (these are init-only records that walkers replace
+        // wholesale, so nothing guarantees they stay the same instance forever). EffectiveKey — not
+        // Name, which is the CLR type name and is not unique across owned entities (e.g. two
+        // navigations of the same owned type) — is the model's actual identity.
+        var index = -1;
+        for (var i = 0; i < model.Entities.Count; i++)
+        {
+            if (model.Entities[i].EffectiveKey == updated.EffectiveKey)
+            {
+                index = i;
+                break;
+            }
+        }
+
         if (index >= 0)
         {
             model.Entities[index] = updated;
