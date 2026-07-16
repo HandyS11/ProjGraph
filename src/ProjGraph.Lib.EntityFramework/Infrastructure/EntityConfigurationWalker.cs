@@ -159,6 +159,14 @@ internal static class EntityConfigurationWalker
     /// <param name="declaration">The type declaration.</param>
     private static ConfigClass? AsConfigClass(TypeDeclarationSyntax declaration)
     {
+        // EF's ApplyConfigurationsFromAssembly only instantiates concrete types (a record compiles to
+        // a class, so it qualifies); an interface extending IEntityTypeConfiguration<T> with a
+        // default-implemented Configure is never applied at runtime and must not be folded in here.
+        if (declaration is InterfaceDeclarationSyntax)
+        {
+            return null;
+        }
+
         var configInterface = declaration.BaseList?.Types
             .Select(baseType => baseType.Type)
             .OfType<GenericNameSyntax>()

@@ -238,6 +238,25 @@ public sealed class EntityAnalyzerTests
     }
 
     [Fact]
+    public void AnalyzeEntity_PositionalRecordWithPropertyTargetedKeyAttribute_MarksPrimaryKey()
+    {
+        // A positional record's [property: Key] lives on a primary-constructor parameter; the
+        // synthesized property carries the attribute at runtime, but the syntax fallback saw only
+        // PropertyDeclarationSyntax members and missed it (issue #163 hazard family).
+        var compilation = RoslynTestHelper.CreateCompilation("""
+                                                             using System.ComponentModel.DataAnnotations;
+                                                             public record Voucher([property: Key] string Code, string Label);
+                                                             """);
+        var type = RoslynTestHelper.GetTypeSymbol(compilation, "Voucher")!;
+
+        var entity = EntityAnalyzer.AnalyzeEntity(type);
+
+        entity.Properties.First(p => p.Name == "Code").IsPrimaryKey.Should().BeTrue(
+            "EF reads [property: Key] off the property synthesized from the record parameter");
+        entity.Properties.First(p => p.Name == "Label").IsPrimaryKey.Should().BeFalse();
+    }
+
+    [Fact]
     public void AnalyzeEntity_RequiredAttribute_ShouldMarkAsRequired()
     {
         var compilation = RoslynTestHelper.CreateCompilation("""
