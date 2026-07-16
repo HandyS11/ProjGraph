@@ -129,4 +129,55 @@ public sealed class FluentOwnedTypeWalkerTests
         model.Entities.Should().NotContain(e => e.Name == "NestedInvoice" && e.Properties.Any(p => p.Name == "Latitude"),
             "nested owned config must never leak onto the root entity");
     }
+
+    [Fact]
+    public void OwnsMany_CapturesCollectionOwnedTypeOnItsOwnTable()
+    {
+        var model = Analyze("OwnedModesContext.cs", "OwnedModesContext");
+
+        var lines = model.Entities.Single(e => e.NavigationName == "Lines");
+        lines.Name.Should().Be("InvoiceLine");
+        lines.IsOwned.Should().BeTrue();
+        lines.IsCollection.Should().BeTrue();
+        lines.OwnerEntity.Should().Be("OwnedModesInvoice");
+        lines.TableName.Should().Be("OwnedModesInvoice_Lines",
+            "an owned collection never shares the owner's table; EF's default is {{OwnerTable}}_{{Nav}}");
+        lines.Properties.Should().ContainSingle(p => p.Name == "Amount")
+            .Which.Precision.Should().Be(18);
+    }
+
+    [Fact]
+    public void OwnsOne_WithToTable_GetsItsOwnTable()
+    {
+        var model = Analyze("OwnedModesContext.cs", "OwnedModesContext");
+
+        var billTo = model.Entities.Single(e => e.NavigationName == "BillTo");
+        billTo.TableName.Should().Be("BillingAddresses");
+        billTo.IsCollection.Should().BeFalse();
+    }
+
+    [Fact]
+    public void OwnsOne_WithoutToTable_SharesOwnerTable()
+    {
+        var model = Analyze("OwnedModesContext.cs", "OwnedModesContext");
+
+        var shipTo = model.Entities.Single(e => e.NavigationName == "ShipTo");
+        shipTo.TableName.Should().Be("OwnedModesInvoice", "table-splitting maps the owned type to the owner's table");
+        shipTo.Properties.Should().ContainSingle(p => p.Name == "Street")
+            .Which.MaxLength.Should().Be(180);
+    }
+
+    [Fact]
+    public void OwnsOne_NestedInOwnedBuilder_IsOwnedByTheOwnedType()
+    {
+        var model = Analyze("OwnedModesContext.cs", "OwnedModesContext");
+
+        var geo = model.Entities.Single(e => e.NavigationName == "Geo");
+        geo.IsOwned.Should().BeTrue();
+        geo.OwnerEntity.Should().Be("OwnedModesInvoice.ShipTo",
+            "nested ownership chains through the owned type's KEY, not its CLR name — ShipTo and BillTo " +
+            "are both OwnedModesAddress, so a name-keyed owner would attach Geo to both");
+        geo.Properties.Should().ContainSingle(p => p.Name == "Latitude")
+            .Which.Precision.Should().Be(9);
+    }
 }

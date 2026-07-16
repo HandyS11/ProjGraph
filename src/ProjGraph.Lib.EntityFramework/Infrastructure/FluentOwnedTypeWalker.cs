@@ -86,6 +86,12 @@ internal static class FluentOwnedTypeWalker
         // this argument list.
         FluentPropertyWalker.Apply(owns.ArgumentList, entities, compilation, key);
         FluentEntityWalker.Apply(owns.ArgumentList, entities, model, compilation, key);
+
+        // Recurse so an OwnsOne/OwnsMany nested inside this owned builder (owned-within-owned) is
+        // captured with this owned entity as ambient. FindConfigRoots is scope-relative (Task 1), so
+        // the nested call is found relative to owns.ArgumentList while any fence deeper still excludes
+        // its children — the recursive call handles those in turn.
+        Apply(owns.ArgumentList, entities, model, compilation, key);
     }
 
     /// <summary>
