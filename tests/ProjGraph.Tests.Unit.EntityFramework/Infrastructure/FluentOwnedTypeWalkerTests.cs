@@ -201,6 +201,58 @@ public sealed class FluentOwnedTypeWalkerTests
         address.Properties.Should().ContainSingle(p => p.Name == "City").Which.MaxLength.Should().Be(50);
     }
 
+    [Fact]
+    public void ConfigClass_OwnsOne_WithoutToTable_InlinesOntoOwnerTable()
+    {
+        // Regression for the gap where EntityConfigurationWalker never ran FluentOwnedTypeWalker:
+        // owned types configured inside an IEntityTypeConfiguration<T>.Configure body (rather than
+        // OnModelCreating directly) were silently dropped - exactly eShopOnWeb's
+        // Order.OwnsOne(o => o.ShipToAddress, ...) shape, this feature's motivating case.
+        var model = Analyze("VendorConfigContext.cs", "VendorConfigContext");
+
+        var headOffice = model.Entities.Should().ContainSingle(e => e.NavigationName == "HeadOffice").Subject;
+        headOffice.Key.Should().Be("Vendor.HeadOffice");
+        headOffice.OwnerEntity.Should().Be("Vendor");
+        headOffice.IsCollection.Should().BeFalse();
+        headOffice.TableName.Should().Be("Vendor",
+            "OwnsOne without ToTable table-splits onto the owner's effective table even when configured " +
+            "from a separate IEntityTypeConfiguration<T> class");
+        headOffice.Properties.Should().ContainSingle(p => p.Name == "Street")
+            .Which.MaxLength.Should().Be(180);
+        headOffice.Properties.Should().ContainSingle(p => p.Name == "City")
+            .Which.MaxLength.Should().Be(80);
+    }
+
+    [Fact]
+    public void ConfigClass_OwnsOne_WithChainedToTable_GetsItsOwnTable()
+    {
+        // Warehouse's ToTable is chained onto the OwnsOne call itself (no builder lambda), so it is
+        // only resolvable once FluentOwnedTypeWalker.Apply has materialized Vendor.Warehouse -
+        // exercising the same two-pass FluentEntityWalker ordering the DbContext/snapshot paths rely on.
+        var model = Analyze("VendorConfigContext.cs", "VendorConfigContext");
+
+        var warehouse = model.Entities.Should().ContainSingle(e => e.NavigationName == "Warehouse").Subject;
+        warehouse.Key.Should().Be("Vendor.Warehouse");
+        warehouse.OwnerEntity.Should().Be("Vendor");
+        warehouse.IsCollection.Should().BeFalse();
+        warehouse.TableName.Should().Be("VendorWarehouses",
+            "the chained ToTable configures the owned Warehouse type, not the owner");
+        warehouse.Properties.Should().ContainSingle(p => p.Name == "Code")
+            .Which.MaxLength.Should().Be(20);
+    }
+
+    [Fact]
+    public void ConfigClass_OwnedTypes_DoNotLeakOntoOwner()
+    {
+        var model = Analyze("VendorConfigContext.cs", "VendorConfigContext");
+
+        var vendor = model.Entities.Single(e => e.Name == "Vendor");
+        vendor.Properties.Should().NotContain(p => p.Name == "Street" || p.Name == "City" || p.Name == "Code",
+            "nested owned config from a config class must never leak onto the owner");
+        vendor.Properties.Should().NotContain(p => p.Name == "HeadOffice" || p.Name == "Warehouse",
+            "owned navigations are not columns");
+    }
+
     internal static EfModel AnalyzeSnapshot(string fileName, string snapshotName)
     {
         var fs = new PhysicalFileSystem();

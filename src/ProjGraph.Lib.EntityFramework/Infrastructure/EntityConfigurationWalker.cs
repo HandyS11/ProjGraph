@@ -56,10 +56,32 @@ internal static class EntityConfigurationWalker
 
             FluentSyntax.MaterializeEntity(configClass.EntityName, entities, model, compilation);
 
+            // Mirrors the DbContext/snapshot paths' pass ordering (FluentApiConfigurationParser,
+            // ModelSnapshotParser), applied per config class with T as the ambient entity: the first
+            // FluentEntityWalker pass applies any ToTable on T itself; FluentOwnedTypeWalker.Apply then
+            // captures OwnsOne/OwnsMany calls in the Configure body (e.g. eShopOnWeb's
+            // Order.OwnsOne(o => o.ShipToAddress, ...), configured from an
+            // IEntityTypeConfiguration<Order>); FluentPropertyWalker derives T's own property config; the
+            // second FluentEntityWalker pass then applies a ToTable chained onto the OwnsOne call itself
+            // (e.g. `builder.OwnsOne(v => v.Warehouse).ToTable("X")`) — that owned entity does not exist
+            // in the dictionary during the first pass, so the call is a no-op then and idempotent now.
             FluentEntityWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
+            FluentOwnedTypeWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
             FluentPropertyWalker.Apply(configClass.Configure, entities, compilation, configClass.EntityName);
+            FluentEntityWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
             FluentRelationshipWalker.Apply(configClass.Configure, entities, model, compilation, configClass.EntityName);
         }
+
+        // Runs once after every config class has been folded in, not per-iteration: each class
+        // configures its own distinct entity T (materialized earlier in the SAME iteration), so an owned
+        // type's owner and any chained ToTable on it are always already resolved by the time its class's
+        // iteration finishes — resolving per-class would be redundant, and resolving mid-loop before a
+        // later class runs cannot regress that later class's owned types since they belong to a different
+        // owner. Must run here (inside EntityConfigurationWalker.Apply), not left to the caller: unlike
+        // StripShadowKeys — which the DbContext path already runs once, globally, after this method
+        // returns — a table-split owned entity's TableName has to be resolved before ANY caller (this
+        // walker's own unit tests included) can observe its effective table.
+        FluentOwnedTypeWalker.ResolveTables(entities, model);
     }
 
     /// <summary>Collects the config-class type names from every <c>ApplyConfiguration(new X())</c> call in the method.</summary>

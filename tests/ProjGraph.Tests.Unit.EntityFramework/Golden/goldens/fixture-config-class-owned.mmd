@@ -1,0 +1,14 @@
+---
+title: VendorConfigContext
+---
+erDiagram
+  Vendor {
+    int Id PK
+    string HeadOffice_City "required, max:80"
+    string HeadOffice_Street "required, max:180"
+    string Name "required, max:120"
+  }
+  VendorWarehouse {
+    string Code "required, max:20"
+  }
+  Vendor ||--|| VendorWarehouse : "Warehouse"
