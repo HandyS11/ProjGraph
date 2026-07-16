@@ -34,6 +34,30 @@ internal static class EfPropertyFactory
     }
 
     /// <summary>
+    /// Creates a copy of a property under a different name, preserving every other facet. Used to apply
+    /// EF's <c>Nav_Property</c> prefix when an owned type is inlined into its owner.
+    /// </summary>
+    /// <param name="source">The source property.</param>
+    /// <param name="name">The new property name.</param>
+    public static EfProperty Rename(EfProperty source, string name)
+    {
+        return new EfProperty
+        {
+            Name = name,
+            Type = source.Type,
+            IsPrimaryKey = source.IsPrimaryKey,
+            IsForeignKey = source.IsForeignKey,
+            IsRequired = source.IsRequired,
+            IsValueType = source.IsValueType,
+            IsExplicitlyRequired = source.IsExplicitlyRequired,
+            MaxLength = source.MaxLength,
+            Precision = source.Precision,
+            Scale = source.Scale,
+            DefaultValue = source.DefaultValue
+        };
+    }
+
+    /// <summary>
     /// Gets an existing property or creates a new one if it doesn't exist.
     /// </summary>
     /// <param name="entity">The entity containing the property.</param>
