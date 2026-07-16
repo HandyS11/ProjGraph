@@ -22,7 +22,11 @@ public sealed class OwnedTypeRenderingTests
         };
         address.Properties.Add(new EfProperty
         {
-            Name = "ZipCode", Type = "string", IsExplicitlyRequired = true, IsRequired = true, MaxLength = 18
+            Name = "ZipCode",
+            Type = "string",
+            IsExplicitlyRequired = true,
+            IsRequired = true,
+            MaxLength = 18
         });
 
         var model = new EfModel { ContextName = "Ctx" };

@@ -114,19 +114,19 @@ public sealed class FluentOwnedTypeWalkerTests
         // dropping b and its chained Property config.
         var model = Analyze("NestedChainedOwnedContext.cs", "NestedChainedOwnedContext");
 
-        var shipTo = model.Entities.Should().ContainSingle(e => e.Key == "Invoice.ShipTo").Subject;
-        shipTo.OwnerEntity.Should().Be("Invoice");
+        var shipTo = model.Entities.Should().ContainSingle(e => e.Key == "NestedInvoice.ShipTo").Subject;
+        shipTo.OwnerEntity.Should().Be("NestedInvoice");
         shipTo.NavigationName.Should().Be("ShipTo");
 
-        var geo = model.Entities.Should().ContainSingle(e => e.Key == "Invoice.ShipTo.Geo").Subject;
+        var geo = model.Entities.Should().ContainSingle(e => e.Key == "NestedInvoice.ShipTo.Geo").Subject;
         geo.Name.Should().Be("GeoTag");
-        geo.OwnerEntity.Should().Be("Invoice.ShipTo",
-            "the owner key must be the ShipTo owned entity's EffectiveKey, not the Invoice root");
+        geo.OwnerEntity.Should().Be("NestedInvoice.ShipTo",
+            "the owner key must be the ShipTo owned entity's EffectiveKey, not the NestedInvoice root");
         geo.NavigationName.Should().Be("Geo");
         geo.Properties.Should().Contain(p => p.Name == "Latitude",
             "the chained Property call after the nested OwnsOne configures Geo, not the owner");
 
-        model.Entities.Should().NotContain(e => e.Name == "Invoice" && e.Properties.Any(p => p.Name == "Latitude"),
+        model.Entities.Should().NotContain(e => e.Name == "NestedInvoice" && e.Properties.Any(p => p.Name == "Latitude"),
             "nested owned config must never leak onto the root entity");
     }
 }

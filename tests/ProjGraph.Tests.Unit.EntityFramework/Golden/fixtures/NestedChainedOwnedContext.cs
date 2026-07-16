@@ -8,18 +8,18 @@ namespace Fixtures;
 // chained Geo config) silently vanishes.
 public class NestedChainedOwnedContext : DbContext
 {
-    public DbSet<Invoice> Invoices { get; set; } = null!;
+    public DbSet<NestedInvoice> Invoices { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Invoice>()
+        modelBuilder.Entity<NestedInvoice>()
             .OwnsOne(i => i.ShipTo)
             .OwnsOne(a => a.Geo)
             .Property(g => g.Latitude);
     }
 }
 
-public class Invoice
+public class NestedInvoice
 {
     public int Id { get; set; }
     public ShipToAddress ShipTo { get; set; } = null!;

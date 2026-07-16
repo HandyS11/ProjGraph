@@ -319,13 +319,19 @@ public sealed class FluentEntityWalkerTests
 
         var dictInstance = new EfEntity
         {
-            Name = "Address", Key = "Customer.Address", IsOwned = true,
-            OwnerEntity = "Customer", NavigationName = "Address"
+            Name = "Address",
+            Key = "Customer.Address",
+            IsOwned = true,
+            OwnerEntity = "Customer",
+            NavigationName = "Address"
         };
         var listInstance = new EfEntity
         {
-            Name = "Address", Key = "Customer.Address", IsOwned = true,
-            OwnerEntity = "Customer", NavigationName = "Address"
+            Name = "Address",
+            Key = "Customer.Address",
+            IsOwned = true,
+            OwnerEntity = "Customer",
+            NavigationName = "Address"
         };
 
         var entities = new Dictionary<string, EfEntity> { ["Customer.Address"] = dictInstance };
