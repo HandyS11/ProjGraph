@@ -32,6 +32,9 @@ public static class CliTestHelpers
         app.Configure(config =>
         {
             config.PropagateExceptions();
+            // Mirror the production app's parser configuration (Program.cs) so tests exercise the
+            // same strict-parsing behaviour users get.
+            config.Settings.StrictParsing = true;
             config.AddCommand<VisualizeCommand>("visualize");
             config.AddCommand<ErdCommand>("erd");
             config.AddCommand<ClassDiagramCommand>("classdiagram");
