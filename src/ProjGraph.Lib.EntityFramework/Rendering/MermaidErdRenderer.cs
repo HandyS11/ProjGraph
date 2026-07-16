@@ -84,7 +84,12 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     /// <param name="entity">The candidate entity.</param>
     /// <param name="model">The model, used to resolve the owner.</param>
     /// <param name="options">The render options carrying the owned mode.</param>
-    private static bool IsInlined(EfEntity entity, EfModel model, DiagramOptions? options)
+    /// <param name="visited">
+    /// The set of entity keys already visited in this recursion, used to guard against ownership cycles.
+    /// Forwarded to <see cref="HasEffectiveProperties"/> so a cycle is detected regardless of whether it is
+    /// reached directly or through this hop; callers outside the mutual recursion should omit it.
+    /// </param>
+    private static bool IsInlined(EfEntity entity, EfModel model, DiagramOptions? options, HashSet<string>? visited = null)
     {
         if (!entity.IsOwned || (options?.ErdOwnedMode ?? ErdOwnedMode.MirrorEf) == ErdOwnedMode.Classic)
         {
@@ -103,7 +108,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
         // handling contract promises "an empty owned box rather than dropped data" for an owned type whose
         // CLR type could not be resolved. Inlining it here would fold zero columns onto the owner and
         // leave no trace it was ever configured — silent data loss, not a degraded-but-visible result.
-        if (!HasEffectiveProperties(entity, model, options))
+        if (!HasEffectiveProperties(entity, model, options, visited))
         {
             return false;
         }
@@ -115,8 +120,10 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
     /// <summary>
     /// Determines whether an owned entity would contribute at least one rendered column: one of its own
     /// properties, or — recursively — one contributed by a child owned entity that would itself be inlined
-    /// into it. Mirrors <see cref="EffectiveProperties"/>'s recursion (including its cycle guard) without
-    /// materializing the full property sequence, since <see cref="IsInlined"/> only needs to know whether
+    /// into it. Mirrors <see cref="EffectiveProperties"/>'s recursion, including its cycle guard: the same
+    /// <paramref name="visited"/> set is threaded through the <see cref="IsInlined"/> hop rather than let
+    /// each call start a fresh set, since <see cref="IsInlined"/> itself calls back into this method. Does
+    /// not materialize the full property sequence, since <see cref="IsInlined"/> only needs to know whether
     /// it is empty.
     /// </summary>
     /// <param name="entity">The candidate entity.</param>
@@ -138,7 +145,7 @@ public sealed class MermaidErdRenderer : IDiagramRenderer<EfModel>
         }
 
         return model.Entities
-            .Where(e => e.OwnerEntity == entity.EffectiveKey && IsInlined(e, model, options))
+            .Where(e => e.OwnerEntity == entity.EffectiveKey && IsInlined(e, model, options, visited))
             .Any(child => HasEffectiveProperties(child, model, options, visited));
     }
 

@@ -205,4 +205,57 @@ public sealed class OwnedTypeRenderingTests
         orderBlock.Should().NotContain("ShipToAddress",
             "the relationship line carries the navigation; the owner gets no reference column");
     }
+
+    /// <summary>
+    /// Regression test for a cycle-guard reset: <c>IsInlined</c> used to re-enter
+    /// <c>HasEffectiveProperties</c> with a fresh <c>visited</c> set instead of threading the caller's set
+    /// through, so a zero-property SELF-owning owned entity (its own <c>OwnerEntity</c> equal to its own
+    /// <c>EffectiveKey</c>) recursed forever between the two methods and raised an uncatchable
+    /// <see cref="StackOverflowException"/>, aborting the whole test run. With the guard shared correctly,
+    /// the entity cannot resolve to a table-split inline (it never gains a column from itself) and must
+    /// surface as its own — empty — box instead.
+    /// </summary>
+    [Fact]
+    public void MirrorEf_ZeroPropertySelfOwningEntity_RendersOwnBoxWithoutStackOverflow()
+    {
+        var self = new EfEntity
+        {
+            Name = "Self",
+            IsOwned = true,
+            OwnerEntity = "Self", // EffectiveKey falls back to Name when Key is empty, so this is self-owning.
+            NavigationName = "SelfNav",
+            TableName = "Selves"
+        };
+
+        var model = new EfModel { ContextName = "Ctx" };
+        model.Entities.Add(self);
+
+        var output = Render(model);
+
+        output.Should().Contain("Self {", "a zero-property self-owning entity must still surface as its own box");
+        output.Should().Contain("Self ||--|| Self", "the derived self-referencing relationship still renders");
+    }
+
+    /// <summary>
+    /// Regression test for the same cycle-guard reset (see
+    /// <see cref="MirrorEf_ZeroPropertySelfOwningEntity_RendersOwnBoxWithoutStackOverflow"/>), but for a
+    /// zero-property MUTUALLY-owning pair (A owns B, B owns A). Pre-fix this also recursed forever between
+    /// <c>IsInlined</c> and <c>HasEffectiveProperties</c> and aborted the test run with a
+    /// <see cref="StackOverflowException"/>.
+    /// </summary>
+    [Fact]
+    public void MirrorEf_ZeroPropertyMutuallyOwningPair_RendersBothBoxesWithoutStackOverflow()
+    {
+        var a = new EfEntity { Name = "A", IsOwned = true, OwnerEntity = "B", NavigationName = "BNav" };
+        var b = new EfEntity { Name = "B", IsOwned = true, OwnerEntity = "A", NavigationName = "ANav" };
+
+        var model = new EfModel { ContextName = "Ctx" };
+        model.Entities.Add(a);
+        model.Entities.Add(b);
+
+        var output = Render(model);
+
+        output.Should().Contain("A {", "a zero-property, mutually-owning entity must still surface as its own box");
+        output.Should().Contain("B {", "a zero-property, mutually-owning entity must still surface as its own box");
+    }
 }

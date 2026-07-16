@@ -242,7 +242,7 @@ public class EfModelAnalyzer(
         IReadOnlyList<string> searchDirectories,
         string contextPath)
     {
-        var classDeclsByName = new Dictionary<string, ClassDeclarationSyntax>(StringComparer.Ordinal);
+        var classDeclsByName = new Dictionary<string, TypeDeclarationSyntax>(StringComparer.Ordinal);
         CacheClassDeclarations(contextRoot, classDeclsByName);
 
         // A navigation's owner key resolves to a bare CLR type name at the top level (a DbSet entity, or
@@ -302,7 +302,7 @@ public class EfModelAnalyzer(
     /// <param name="scope">The configuring method (<c>OnModelCreating</c> or a config class's <c>Configure</c>).</param>
     /// <param name="ambientEntity">The owning entity to fall back to when the chain has no <c>Entity&lt;T&gt;()</c> call.</param>
     /// <param name="keyToClrTypeName">Maps an owner key (a bare CLR type name, or a resolved <c>{Owner}.{Nav}</c> owned key) to its CLR type name; augmented in place.</param>
-    /// <param name="classDeclsByName">Cache of CLR type name to its class declaration, loaded lazily; augmented in place.</param>
+    /// <param name="classDeclsByName">Cache of CLR type name to its type declaration, loaded lazily; augmented in place.</param>
     /// <param name="entityFiles">The entity files discovered so far.</param>
     /// <param name="discovered">The owned type files newly discovered; augmented in place.</param>
     /// <param name="searchDirectories">The directories to search for an owned type's file.</param>
@@ -311,7 +311,7 @@ public class EfModelAnalyzer(
         SyntaxNode scope,
         string? ambientEntity,
         Dictionary<string, string> keyToClrTypeName,
-        Dictionary<string, ClassDeclarationSyntax> classDeclsByName,
+        Dictionary<string, TypeDeclarationSyntax> classDeclsByName,
         Dictionary<string, string> entityFiles,
         Dictionary<string, string> discovered,
         IReadOnlyList<string> searchDirectories,
@@ -399,13 +399,18 @@ public class EfModelAnalyzer(
         return unwrapped is PredefinedTypeSyntax ? null : FluentSyntax.TypeName(unwrapped);
     }
 
-    /// <summary>Caches every class declaration in <paramref name="root"/> by its simple name, first-wins.</summary>
+    /// <summary>
+    /// Caches every type declaration in <paramref name="root"/> by its simple name, first-wins. Matches
+    /// <see cref="TypeDeclarationSyntax"/>, not just <see cref="ClassDeclarationSyntax"/>, so a
+    /// <c>record</c>-declared owner or owned type is found here too, consistent with
+    /// <see cref="EntityFileDiscovery"/>'s own type-declaration scan.
+    /// </summary>
     /// <param name="root">The syntax root to scan.</param>
     /// <param name="classDeclsByName">The cache to augment in place.</param>
     private static void CacheClassDeclarations(
-        SyntaxNode root, Dictionary<string, ClassDeclarationSyntax> classDeclsByName)
+        SyntaxNode root, Dictionary<string, TypeDeclarationSyntax> classDeclsByName)
     {
-        foreach (var classDecl in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+        foreach (var classDecl in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
         {
             classDeclsByName.TryAdd(classDecl.Identifier.Text, classDecl);
         }
