@@ -180,4 +180,86 @@ public sealed class FluentOwnedTypeWalkerTests
         geo.Properties.Should().ContainSingle(p => p.Name == "Latitude")
             .Which.Precision.Should().Be(9);
     }
+
+    [Fact]
+    public void OwnsOne_StringLiteralInLaterArgument_DoesNotMisreadItAsTheOwnedTypeName()
+    {
+        // Regression for ResolveOwnedType's snapshot-form detection: it must key off the FIRST ARGUMENT
+        // itself being a string literal (the snapshot's OwnsOne("Ns.Type", "nav", ...) shape), not merely
+        // the presence of a string literal anywhere in the argument list. A looser check would misread
+        // the "AddressTable" literal at argument position 1 as the owned type's name, fail symbol
+        // resolution, and degrade to a bare entity — Country is only seeded via CLR reflection on the
+        // correctly-resolved owned type, so its presence proves the lambda form still wins.
+        var model = Analyze("OwnsOneArgOrderContext.cs", "OwnsOneArgOrderContext");
+
+        var address = model.Entities.Should().ContainSingle(e => e.IsOwned).Subject;
+        address.Name.Should().Be("GizmoAddress");
+        address.Properties.Should().Contain(p => p.Name == "Country",
+            "Country is only seeded via CLR reflection on the resolved owned type; if the string literal " +
+            "at argument position 1 were misread as the type name, symbol resolution would fail and the " +
+            "owned entity would degrade to a bare entity containing only the explicitly configured City column");
+        address.Properties.Should().ContainSingle(p => p.Name == "City").Which.MaxLength.Should().Be(50);
+    }
+
+    internal static EfModel AnalyzeSnapshot(string fileName, string snapshotName)
+    {
+        var fs = new PhysicalFileSystem();
+        var analyzer = new EfModelAnalyzer(new CompilationFactory(), fs, new EntityFileDiscovery(fs));
+        var service = new EfAnalysisService(
+            new AnalyzeContextUseCase(analyzer),
+            new DiscoverContextsUseCase(analyzer, fs),
+            new AnalyzeSnapshotUseCase(analyzer),
+            new DiscoverSnapshotsUseCase(analyzer, fs));
+#pragma warning disable VSTHRD002 // Deliberate sync-over-async bridge, as in EfGoldenRunner.
+        return service.AnalyzeSnapshotAsync(FixturePath(fileName), snapshotName).GetAwaiter().GetResult();
+#pragma warning restore VSTHRD002
+    }
+
+    [Fact]
+    public void Snapshot_OwnsOne_CapturesOwnedTypeFromStringLiteralForm()
+    {
+        var model = AnalyzeSnapshot("OwnedSnapshot.cs", "BillingContextModelSnapshot");
+
+        var shipTo = model.Entities.Single(e => e.NavigationName == "ShipToAddress");
+        shipTo.Name.Should().Be("ReceiptAddress");
+        shipTo.OwnerEntity.Should().Be("Receipt");
+        shipTo.IsCollection.Should().BeFalse();
+        shipTo.TableName.Should().Be("Receipts", "the snapshot's explicit ToTable matches the owner's");
+        shipTo.Properties.Should().ContainSingle(p => p.Name == "City").Which.MaxLength.Should().Be(100);
+    }
+
+    [Fact]
+    public void Snapshot_OwnedShadowKey_IsNotRecordedAsPrimaryKey()
+    {
+        var model = AnalyzeSnapshot("OwnedSnapshot.cs", "BillingContextModelSnapshot");
+
+        var shipTo = model.Entities.Single(e => e.NavigationName == "ShipToAddress");
+        shipTo.Properties.Should().NotContain(p => p.IsPrimaryKey,
+            "an owned type's shadow key is an EF implementation detail, not a modelled column");
+    }
+
+    [Fact]
+    public void Snapshot_TableSplitOwnedType_DropsTheOwnerForeignKeyColumn()
+    {
+        var model = AnalyzeSnapshot("OwnedSnapshot.cs", "BillingContextModelSnapshot");
+
+        var shipTo = model.Entities.Single(e => e.NavigationName == "ShipToAddress");
+        shipTo.Properties.Should().NotContain(p => p.Name == "ReceiptId",
+            "a table-split owned type's FK is the owner's own PK column re-projected, not an extra " +
+            "column; the DbContext path cannot see it at all, so keeping it would break cross-path parity");
+        shipTo.Properties.Should().Contain(p => p.Name == "City");
+    }
+
+    [Fact]
+    public void Snapshot_OwnsMany_CapturesCollectionOnItsOwnTableAndKeepsItsForeignKey()
+    {
+        var model = AnalyzeSnapshot("OwnedSnapshot.cs", "BillingContextModelSnapshot");
+
+        var notes = model.Entities.Single(e => e.NavigationName == "Notes");
+        notes.IsCollection.Should().BeTrue();
+        notes.TableName.Should().Be("ReceiptNotes");
+        notes.Properties.Should().ContainSingle(p => p.Name == "ReceiptId")
+            .Which.IsForeignKey.Should().BeTrue(
+                "an owned type on its own table has a real, separate FK column back to the owner");
+    }
 }

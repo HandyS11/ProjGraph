@@ -61,6 +61,14 @@ public sealed class EfErdGoldenTests
             FixturePath("OneToOneSnapshot.cs"), "LedgerContextModelSnapshot");
         EfGoldenRunner.Verify("fixture-onetoone-snapshot", actual);
     }
+
+    [Fact]
+    public void OwnedSnapshotErd_MatchesGolden()
+    {
+        var actual = EfGoldenRunner.RenderSnapshot(
+            FixturePath("OwnedSnapshot.cs"), "BillingContextModelSnapshot");
+        EfGoldenRunner.Verify("fixture-owned-snapshot", actual);
+    }
 }
 
 /// <summary>

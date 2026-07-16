@@ -111,6 +111,7 @@ public static class EfAnalysisConstants
         public const string UsingEntity = "UsingEntity";
         public const string OwnsOne = "OwnsOne";
         public const string OwnsMany = "OwnsMany";
+        public const string WithOwner = "WithOwner";
 
         /// <summary>
         /// DbContext methods.

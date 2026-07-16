@@ -49,6 +49,11 @@ public static class FluentApiConfigurationParser
         // ApplyConfigurationsFromAssembly by walking each Configure(EntityTypeBuilder<T>) body with T as
         // the ambient entity (Slice 4).
         EntityConfigurationWalker.Apply(methodSyntax, entities, model, compilation);
+
+        // Runs last, after every pass that could still mark an owned property's shadow PK/FK (including
+        // a context-path HasKey/HasForeignKey reached via EntityConfigurationWalker), so both the
+        // DbContext and snapshot paths strip the same EF implementation details identically.
+        FluentOwnedTypeWalker.StripShadowKeys(entities, model);
     }
 
     private static MethodDeclarationSyntax? FindOnModelCreatingMethod(INamedTypeSymbol contextType)

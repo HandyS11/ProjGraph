@@ -87,6 +87,12 @@ internal static class FluentOwnedTypeWalker
         FluentPropertyWalker.Apply(owns.ArgumentList, entities, compilation, key);
         FluentEntityWalker.Apply(owns.ArgumentList, entities, model, compilation, key);
 
+        // WithOwner().HasForeignKey("X") is the owned-type-specific relationship declaration a generated
+        // snapshot always emits; FluentRelationshipWalker only recognises HasOne/HasMany chains, so it
+        // never sees this one. StripShadowKeys depends on IsForeignKey to tell a table-split owned type's
+        // FK column (dropped) from a real one (kept), so it must be marked here instead.
+        ApplyOwnedForeignKey(owns.ArgumentList, entities, key);
+
         // Recurse so an OwnsOne/OwnsMany nested inside this owned builder (owned-within-owned) is
         // captured with this owned entity as ambient. FindConfigRoots is scope-relative (Task 1), so
         // the nested call is found relative to owns.ArgumentList while any fence deeper still excludes
@@ -130,9 +136,14 @@ internal static class FluentOwnedTypeWalker
         // throwing — the same graceful fallback FluentSyntax.MaterializeEntity uses.
         var seeded = ownedType is not null ? EntityAnalyzer.AnalyzeEntity(ownedType) : null;
 
+        // Name falls back to the snapshot's type-name literal (e.g. "ReceiptAddress" from
+        // "Fixtures.ReceiptAddress"), not the navigation, when the type is named but its symbol could not
+        // be resolved (a snapshot fixture with no backing CLR class, as `dotnet ef` output always is here).
+        // Mirrors FluentSyntax.MaterializeEntity's root-entity fallback, which likewise names the entity
+        // from the literal rather than leaving it keyed only by the caller's context.
         var owned = new EfEntity
         {
-            Name = ownedType?.Name ?? navigation,
+            Name = ownedType?.Name ?? SnapshotOwnedTypeName(owns) ?? navigation,
             Key = key,
             IsOwned = true,
             OwnerEntity = owner.EffectiveKey,
@@ -147,6 +158,65 @@ internal static class FluentOwnedTypeWalker
 
         entities[key] = owned;
         model.Entities.Add(owned);
+    }
+
+    /// <summary>
+    /// Marks the foreign-key properties declared by a <c>WithOwner().HasForeignKey(...)</c> call found
+    /// directly within an owned builder's own scope (nested owned builders are excluded, mirroring
+    /// <see cref="FluentSyntax.FindConfigRoots"/>'s general fencing). Creates the property if the
+    /// preceding <see cref="FluentPropertyWalker"/> pass has not already added it.
+    /// </summary>
+    /// <param name="ownedScope">The owned builder's own argument list.</param>
+    /// <param name="entities">The known entities.</param>
+    /// <param name="key">The owned entity's dictionary key (<c>{Owner}.{Nav}</c>).</param>
+    private static void ApplyOwnedForeignKey(SyntaxNode ownedScope, Dictionary<string, EfEntity> entities, string key)
+    {
+        if (!entities.TryGetValue(key, out var owned))
+        {
+            return;
+        }
+
+        foreach (var invocation in FluentSyntax.FindConfigRoots(ownedScope, EfAnalysisConstants.EfMethods.HasForeignKey))
+        {
+            if (FluentSyntax.ChainReceiver(invocation) is not { Expression: MemberAccessExpressionSyntax withOwnerAccess }
+                || FluentSyntax.SimpleName(withOwnerAccess.Name) != EfAnalysisConstants.EfMethods.WithOwner)
+            {
+                continue;
+            }
+
+            foreach (var propertyName in ForeignKeyPropertyNames(invocation))
+            {
+                var property = EfPropertyFactory.GetOrCreateProperty(owned, propertyName, "");
+                var updated = EfPropertyFactory.CopyWith(property, new EfPropertyOverrides { IsForeignKey = true });
+                var index = owned.Properties.IndexOf(property);
+                if (index >= 0)
+                {
+                    owned.Properties[index] = updated;
+                }
+            }
+        }
+    }
+
+    /// <summary>Extracts the property names from a <c>HasForeignKey</c> call (lambda member access or string literals).</summary>
+    /// <param name="invocation">The <c>HasForeignKey</c> invocation.</param>
+    private static IEnumerable<string> ForeignKeyPropertyNames(InvocationExpressionSyntax invocation)
+    {
+        foreach (var argument in invocation.ArgumentList.Arguments)
+        {
+            switch (argument.Expression)
+            {
+                case LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression):
+                    yield return literal.Token.ValueText;
+                    break;
+                case SimpleLambdaExpressionSyntax lambda:
+                    foreach (var member in lambda.Body.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>())
+                    {
+                        yield return member.Name.Identifier.Text;
+                    }
+
+                    break;
+            }
+        }
     }
 
     /// <summary>
@@ -165,16 +235,17 @@ internal static class FluentOwnedTypeWalker
         bool isCollection,
         Compilation compilation)
     {
-        // Snapshot form: the first string literal is the owned type's (namespace-qualified) name.
-        var firstLiteral = owns.ArgumentList.Arguments
-            .Select(a => a.Expression)
-            .OfType<LiteralExpressionSyntax>()
-            .FirstOrDefault(l => l.IsKind(SyntaxKind.StringLiteralExpression));
-
-        if (firstLiteral is not null && owns.ArgumentList.Arguments.Count >= 2)
+        // Snapshot form: the FIRST ARGUMENT itself (not merely the first string literal anywhere in the
+        // argument list) is the owned type's (namespace-qualified) name, e.g. OwnsOne("Ns.Type", "nav",
+        // b1 => ...). Checking position, not just presence, matters because a lambda-navigation call can
+        // carry a string literal in a later argument (e.g. an explicit table/entity-type-name overload)
+        // that is not a type name at all; the DbContext path's first argument is always a lambda, never a
+        // string literal, so this check alone distinguishes the two forms without misreading that later
+        // literal as the owned type and silently degrading to an unseeded bare entity.
+        var snapshotTypeName = SnapshotOwnedTypeName(owns);
+        if (snapshotTypeName is not null)
         {
-            var typeName = FluentSyntax.LastSegment(firstLiteral.Token.ValueText);
-            return compilation.GetSymbolsWithName(typeName, SymbolFilter.Type)
+            return compilation.GetSymbolsWithName(snapshotTypeName, SymbolFilter.Type)
                 .OfType<INamedTypeSymbol>()
                 .FirstOrDefault();
         }
@@ -205,6 +276,22 @@ internal static class FluentOwnedTypeWalker
     }
 
     /// <summary>
+    /// Returns the owned type's namespace-qualified name literal when <paramref name="owns"/> uses the
+    /// snapshot's string-literal form (its first argument is itself a string literal, e.g.
+    /// <c>OwnsOne("Ns.Type", "nav", ...)</c>), namespace-stripped; else <see langword="null"/>. The
+    /// DbContext lambda form's first argument is always a lambda, never a string literal, so this also
+    /// serves as that form's discriminator.
+    /// </summary>
+    /// <param name="owns">The <c>OwnsOne</c>/<c>OwnsMany</c> invocation.</param>
+    private static string? SnapshotOwnedTypeName(InvocationExpressionSyntax owns)
+    {
+        return owns.ArgumentList.Arguments.FirstOrDefault()?.Expression is LiteralExpressionSyntax literal
+               && literal.IsKind(SyntaxKind.StringLiteralExpression)
+            ? FluentSyntax.LastSegment(literal.Token.ValueText)
+            : null;
+    }
+
+    /// <summary>
     /// Resolves the effective table of every captured owned type that declared no <c>ToTable</c>. Runs after
     /// all configuration passes so a chained <c>ToTable</c> is already applied and is not overwritten:
     /// <c>OwnsOne</c> shares the owner's table (EF table-splitting); <c>OwnsMany</c> gets EF's default
@@ -226,7 +313,7 @@ internal static class FluentOwnedTypeWalker
                 continue;
             }
 
-            var ownerTable = string.IsNullOrEmpty(owner.TableName) ? owner.Name : owner.TableName;
+            var ownerTable = EffectiveTable(owner);
             var table = owned.IsCollection ? $"{ownerTable}_{owned.NavigationName}" : ownerTable;
 
             var updated = EfEntityFactory.CopyWith(owned, table);
@@ -239,4 +326,56 @@ internal static class FluentOwnedTypeWalker
             }
         }
     }
+
+    /// <summary>
+    /// Normalises the EF implementation details a snapshot's owned block declares. Two rules:
+    /// <list type="bullet">
+    /// <item>An owned type's key is a shadow property EF invents to make the owned row addressable. It is
+    /// not part of the modelled schema, and surfacing it would put a spurious PK on the owner once the
+    /// owned type is inlined — so PK markers are cleared.</item>
+    /// <item>A table-split owned type's FK back to the owner IS the owner's own PK column re-projected,
+    /// not an extra column — so it is dropped. The DbContext path cannot see that column at all, so
+    /// keeping it would break cross-path parity. For an owned type on its own table
+    /// (<c>OwnsMany</c>, <c>OwnsOne</c>+<c>ToTable</c>) the FK is a real, separate column and is kept.</item>
+    /// </list>
+    /// </summary>
+    /// <param name="entities">The known entities.</param>
+    /// <param name="model">The model whose entities are updated in place.</param>
+    public static void StripShadowKeys(Dictionary<string, EfEntity> entities, EfModel model)
+    {
+        foreach (var (key, owned) in entities.Where(e => e.Value.IsOwned).ToList())
+        {
+            var sharesOwnerTable = owned.OwnerEntity is not null
+                                   && entities.TryGetValue(owned.OwnerEntity, out var owner)
+                                   && EffectiveTable(owner) == EffectiveTable(owned);
+
+            var stripped = EfEntityFactory.CopyWith(owned);
+            stripped.Properties.Clear();
+
+            foreach (var property in owned.Properties)
+            {
+                if (sharesOwnerTable && property.IsForeignKey)
+                {
+                    continue;
+                }
+
+                stripped.Properties.Add(property.IsPrimaryKey
+                    ? EfPropertyFactory.CopyWith(property, new EfPropertyOverrides { IsPrimaryKey = false })
+                    : property);
+            }
+
+            entities[key] = stripped;
+
+            var index = model.Entities.IndexOf(owned);
+            if (index >= 0)
+            {
+                model.Entities[index] = stripped;
+            }
+        }
+    }
+
+    /// <summary>Returns an entity's effective table: its explicit table name, or its entity name when unmapped.</summary>
+    /// <param name="entity">The entity.</param>
+    private static string EffectiveTable(EfEntity entity)
+        => string.IsNullOrEmpty(entity.TableName) ? entity.Name : entity.TableName;
 }
