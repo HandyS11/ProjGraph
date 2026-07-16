@@ -54,4 +54,31 @@ public sealed class FluentOwnedTypeWalkerTests
         customer.Properties.Should().NotContain(p => p.Name == "Address",
             "the owned navigation is not a column");
     }
+
+    [Fact]
+    public void OwnsOne_ChainedForm_MergesRepeatedCallsIntoOneOwnedEntity()
+    {
+        var model = Analyze("ChainedOwnedContext.cs", "ChainedOwnedContext");
+
+        var owned = model.Entities.Should().ContainSingle(e => e.IsOwned).Subject;
+        owned.Name.Should().Be("PostalAddress");
+        owned.OwnerEntity.Should().Be("Shopper");
+        owned.NavigationName.Should().Be("Address");
+        owned.TableName.Should().Be("ShopperAddresses",
+            "the chained ToTable configures the owned type, not the owner");
+        owned.Properties.Should().ContainSingle(p => p.Name == "City")
+            .Which.MaxLength.Should().Be(50);
+    }
+
+    [Fact]
+    public void OwnsOne_ChainedForm_DoesNotLeakOntoOwner()
+    {
+        var model = Analyze("ChainedOwnedContext.cs", "ChainedOwnedContext");
+
+        var shopper = model.Entities.Single(e => e.Name == "Shopper");
+        shopper.Properties.Should().NotContain(p => p.Name == "City");
+        shopper.TableName.Should().BeEmpty("ToTable(\"ShopperAddresses\") targets the owned type");
+        shopper.Properties.Should().Contain(p => p.Name == "Tags",
+            "the EF 8+ primitive collection must survive as a scalar column");
+    }
 }

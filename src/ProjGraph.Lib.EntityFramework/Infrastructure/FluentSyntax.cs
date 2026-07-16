@@ -71,12 +71,15 @@ internal static class FluentSyntax
     /// <summary>
     /// Resolves the entity that owns a configuration call, either from an <c>Entity&lt;T&gt;()</c> earlier in
     /// the same chain (<c>modelBuilder.Entity&lt;T&gt;().Property(...)</c>) or from the enclosing
-    /// <c>Entity&lt;T&gt;(e =&gt; ...)</c> configuration lambda; stopping (returning <see langword="null"/>
-    /// from the receiver-chain search, or falling back to <paramref name="ambientEntity"/> from the
-    /// ancestor search) before crossing a chained/nested owned-type or join-entity builder, so
-    /// configuration is not leaked onto the outer entity — including when <paramref name="configInvocation"/>
-    /// itself lives inside such a builder's own argument list (the case a caller who scopes directly to
-    /// that argument list, passing its own key as <paramref name="ambientEntity"/>, relies on).
+    /// <c>Entity&lt;T&gt;(e =&gt; ...)</c> configuration lambda. When the receiver chain crosses an
+    /// <c>OwnsOne</c>/<c>OwnsMany</c> call, the result is the owned type's <c>{Owner}.{Nav}</c> key instead —
+    /// so a chained <c>Property</c>/<c>ToTable</c> configures the owned type, never the outer entity the
+    /// chain would otherwise reach. Crossing a <c>UsingEntity</c> (join-entity) call stops instead (returning
+    /// <see langword="null"/> from the receiver-chain search, or falling back to <paramref name="ambientEntity"/>
+    /// from the ancestor search), since join entities are out of scope — including when
+    /// <paramref name="configInvocation"/> itself lives inside such a builder's own argument list (the case a
+    /// caller who scopes directly to that argument list, passing its own key as <paramref name="ambientEntity"/>,
+    /// relies on).
     /// </summary>
     /// <param name="configInvocation">The configuration invocation (e.g. <c>Property</c>/<c>ToTable</c>).</param>
     /// <param name="ambientEntity">The owning entity to fall back to when no enclosing <c>Entity&lt;T&gt;()</c> is found.</param>
@@ -93,10 +96,18 @@ internal static class FluentSyntax
 
             var callName = SimpleName(ma.Name);
 
-            // A chained owned-type builder (e.g. Entity<T>().OwnsOne(...).Property(...)) configures
-            // the owned type, not the owner. Stop before crossing it so the config is not leaked
-            // onto the outer entity the receiver chain eventually reaches.
-            if (NestedBuilderScopes.Contains(callName))
+            // A chained owned-type builder (e.g. Entity<T>().OwnsOne(o => o.Nav).Property(...)) configures
+            // the owned type, not the owner. Resolve to the owned entity's {Owner}.{Nav} key so its
+            // configuration lands there — and never on the outer entity the receiver chain reaches.
+            if (callName is EfAnalysisConstants.EfMethods.OwnsOne or EfAnalysisConstants.EfMethods.OwnsMany)
+            {
+                var ownerKey = ResolveOwningEntity(receiver, ambientEntity);
+                var navigation = OwnedNavigationName(receiver);
+                return ownerKey is not null && navigation is not null ? $"{ownerKey}.{navigation}" : null;
+            }
+
+            // A join-entity builder (UsingEntity) is out of scope: stop rather than leak onto the owner.
+            if (callName == EfAnalysisConstants.EfMethods.UsingEntity)
             {
                 return null;
             }
@@ -141,6 +152,40 @@ internal static class FluentSyntax
     public static InvocationExpressionSyntax? ChainReceiver(InvocationExpressionSyntax invocation)
     {
         return (invocation.Expression as MemberAccessExpressionSyntax)?.Expression as InvocationExpressionSyntax;
+    }
+
+    /// <summary>
+    /// Returns the navigation name configured by an <c>OwnsOne</c>/<c>OwnsMany</c> invocation: the lambda
+    /// member access (<c>o =&gt; o.ShipToAddress</c>) on the DbContext path, or the second string literal
+    /// (<c>OwnsOne("Ns.Address", "ShipToAddress", ...)</c>) on the snapshot path.
+    /// </summary>
+    /// <param name="owns">The owned-type invocation.</param>
+    public static string? OwnedNavigationName(InvocationExpressionSyntax owns)
+    {
+        var args = owns.ArgumentList.Arguments;
+        if (args.Count == 0)
+        {
+            return null;
+        }
+
+        var stringLiterals = args
+            .Select(a => a.Expression)
+            .OfType<LiteralExpressionSyntax>()
+            .Where(l => l.IsKind(SyntaxKind.StringLiteralExpression))
+            .ToList();
+
+        if (stringLiterals.Count >= 2)
+        {
+            return stringLiterals[1].Token.ValueText;
+        }
+
+        return args[0].Expression switch
+        {
+            SimpleLambdaExpressionSyntax { Body: MemberAccessExpressionSyntax ma } => ma.Name.Identifier.Text,
+            ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters.Count: 1, Body: MemberAccessExpressionSyntax ma }
+                => ma.Name.Identifier.Text,
+            _ => null
+        };
     }
 
     /// <summary>Returns the entity name from an <c>Entity&lt;T&gt;()</c> or <c>Entity("NS.T")</c> invocation.</summary>

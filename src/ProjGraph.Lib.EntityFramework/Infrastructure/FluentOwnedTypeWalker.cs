@@ -50,24 +50,13 @@ internal static class FluentOwnedTypeWalker
         string? ambientEntity,
         bool isCollection)
     {
-        // Builder-lambda form only (e.g. OwnsOne(o => o.Address, a => a.Property(...))): the last
-        // argument configures the owned type inline. The chained form (OwnsOne(o => o.Address) with no
-        // builder lambda, config chained onto the call instead) is a distinct syntactic shape that needs
-        // its own owner-resolution handling and repeated-call merging across statements — out of scope
-        // here, so it is left for the chained-form walker to capture instead.
-        if (owns.ArgumentList.Arguments.Count < 2 ||
-            owns.ArgumentList.Arguments[^1].Expression is not LambdaExpressionSyntax)
-        {
-            return;
-        }
-
         var ownerKey = FluentSyntax.ResolveOwningEntity(owns, ambientEntity);
         if (ownerKey is null || !entities.TryGetValue(ownerKey, out var owner))
         {
             return;
         }
 
-        var navigation = NavigationName(owns);
+        var navigation = FluentSyntax.OwnedNavigationName(owns);
         if (string.IsNullOrEmpty(navigation))
         {
             return;
@@ -76,47 +65,12 @@ internal static class FluentOwnedTypeWalker
         var key = $"{ownerKey}.{navigation}";
         GetOrCreateOwned(key, owns, owner, navigation, isCollection, entities, model, compilation);
 
-        // The owned builder's own configuration: either a builder lambda argument, or calls chained onto
-        // the OwnsOne invocation. Both are walked with the owned entity as the ambient target.
+        // The owned builder's own lambda configuration (e.g. OwnsOne(o => o.Address, a => a.Property(...))).
+        // Calls chained onto the OwnsOne invocation instead (the form with no builder lambda) are resolved
+        // to the owned key by the outer walkers' passes over the enclosing method, since they lie outside
+        // this argument list.
         FluentPropertyWalker.Apply(owns.ArgumentList, entities, compilation, key);
         FluentEntityWalker.Apply(owns.ArgumentList, entities, model, compilation, key);
-
-        ResolveEffectiveTable(key, owner, entities, model);
-    }
-
-    /// <summary>
-    /// Returns the navigation name from an owned-type call: the lambda member access
-    /// (<c>o =&gt; o.ShipToAddress</c>) on the DbContext path, or the second string literal
-    /// (<c>OwnsOne("Ns.Address", "ShipToAddress", ...)</c>) on the snapshot path.
-    /// </summary>
-    /// <param name="owns">The <c>OwnsOne</c>/<c>OwnsMany</c> invocation.</param>
-    private static string? NavigationName(InvocationExpressionSyntax owns)
-    {
-        var args = owns.ArgumentList.Arguments;
-        if (args.Count == 0)
-        {
-            return null;
-        }
-
-        var stringLiterals = args
-            .Select(a => a.Expression)
-            .OfType<LiteralExpressionSyntax>()
-            .Where(l => l.IsKind(SyntaxKind.StringLiteralExpression))
-            .ToList();
-
-        // Snapshot form: OwnsOne("Ns.Address", "ShipToAddress", b1 => ...) — the nav is the second literal.
-        if (stringLiterals.Count >= 2)
-        {
-            return stringLiterals[1].Token.ValueText;
-        }
-
-        return args[0].Expression switch
-        {
-            SimpleLambdaExpressionSyntax { Body: MemberAccessExpressionSyntax ma } => ma.Name.Identifier.Text,
-            ParenthesizedLambdaExpressionSyntax { ParameterList.Parameters.Count: 1, Body: MemberAccessExpressionSyntax ma }
-                => ma.Name.Identifier.Text,
-            _ => null
-        };
     }
 
     /// <summary>
@@ -230,36 +184,38 @@ internal static class FluentOwnedTypeWalker
     }
 
     /// <summary>
-    /// Resolves the owned entity's effective table when its builder declared no <c>ToTable</c>:
+    /// Resolves the effective table of every captured owned type that declared no <c>ToTable</c>. Runs after
+    /// all configuration passes so a chained <c>ToTable</c> is already applied and is not overwritten:
     /// <c>OwnsOne</c> shares the owner's table (EF table-splitting); <c>OwnsMany</c> gets EF's default
     /// <c>{OwnerTable}_{Nav}</c>, which never equals the owner's, so it always renders as its own box.
     /// </summary>
-    /// <param name="key">The owned entity's dictionary key (<c>{Owner}.{Nav}</c>).</param>
-    /// <param name="owner">The owning entity.</param>
-    /// <param name="entities">The known entities, updated in place.</param>
-    /// <param name="model">The model whose <see cref="EfModel.Entities"/> collection is updated.</param>
-    private static void ResolveEffectiveTable(
-        string key,
-        EfEntity owner,
-        Dictionary<string, EfEntity> entities,
-        EfModel model)
+    /// <param name="entities">The known entities.</param>
+    /// <param name="model">The model whose entities are updated in place.</param>
+    public static void ResolveTables(Dictionary<string, EfEntity> entities, EfModel model)
     {
-        var owned = entities[key];
-        if (!string.IsNullOrEmpty(owned.TableName))
+        foreach (var (key, owned) in entities.Where(e => e.Value.IsOwned).ToList())
         {
-            return;
-        }
+            if (!string.IsNullOrEmpty(owned.TableName))
+            {
+                continue;
+            }
 
-        var ownerTable = string.IsNullOrEmpty(owner.TableName) ? owner.Name : owner.TableName;
-        var table = owned.IsCollection ? $"{ownerTable}_{owned.NavigationName}" : ownerTable;
+            if (owned.OwnerEntity is null || !entities.TryGetValue(owned.OwnerEntity, out var owner))
+            {
+                continue;
+            }
 
-        var updated = EfEntityFactory.CopyWith(owned, table);
-        entities[key] = updated;
+            var ownerTable = string.IsNullOrEmpty(owner.TableName) ? owner.Name : owner.TableName;
+            var table = owned.IsCollection ? $"{ownerTable}_{owned.NavigationName}" : ownerTable;
 
-        var index = model.Entities.IndexOf(owned);
-        if (index >= 0)
-        {
-            model.Entities[index] = updated;
+            var updated = EfEntityFactory.CopyWith(owned, table);
+            entities[key] = updated;
+
+            var index = model.Entities.IndexOf(owned);
+            if (index >= 0)
+            {
+                model.Entities[index] = updated;
+            }
         }
     }
 }

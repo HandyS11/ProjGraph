@@ -33,10 +33,16 @@ public static class FluentApiConfigurationParser
 
         // Every concern flows through the Roslyn syntax walkers. FluentEntityWalker materializes
         // fluent-only entities and applies ToTable; FluentPropertyWalker derives property config +
-        // primary keys; FluentRelationshipWalker derives relationships + foreign keys.
+        // primary keys; FluentRelationshipWalker derives relationships + foreign keys. The second
+        // FluentEntityWalker pass applies ToTable calls whose owning entity is an owned type that did not
+        // exist during the first pass (it is idempotent for entities already known); ResolveTables then
+        // runs last so a chained ToTable is already applied and is not overwritten by the table-splitting
+        // default.
         FluentEntityWalker.Apply(methodSyntax, entities, model, compilation);
         FluentOwnedTypeWalker.Apply(methodSyntax, entities, model, compilation);
         FluentPropertyWalker.Apply(methodSyntax, entities, compilation);
+        FluentEntityWalker.Apply(methodSyntax, entities, model, compilation);
+        FluentOwnedTypeWalker.ResolveTables(entities, model);
         FluentRelationshipWalker.Apply(methodSyntax, entities, model, compilation);
 
         // Fold IEntityTypeConfiguration<T> classes referenced via ApplyConfiguration /

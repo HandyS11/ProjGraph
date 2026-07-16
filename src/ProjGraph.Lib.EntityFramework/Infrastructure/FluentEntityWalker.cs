@@ -102,7 +102,10 @@ internal static class FluentEntityWalker
         var updated = EfEntityFactory.CopyWith(entity, tableName);
 
         entities[entityName] = updated;
-        var index = model.Entities.IndexOf(model.Entities.FirstOrDefault(e => e.Name == entity.Name)!);
+
+        // Find the slot by reference to the entity just looked up by key — not by Name, which is the CLR
+        // type name and is not unique across owned entities (e.g. two navigations of the same owned type).
+        var index = model.Entities.IndexOf(entity);
         if (index >= 0)
         {
             model.Entities[index] = updated;
