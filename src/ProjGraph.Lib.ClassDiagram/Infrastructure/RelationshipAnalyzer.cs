@@ -49,10 +49,12 @@ internal static class RelationshipAnalyzer
             return;
         }
 
-        // Track unique type+label combinations to avoid exact duplicates
+        // Track unique type+label combinations to avoid exact duplicates. Keys are
+        // fully-qualified names so same-named types in different namespaces stay distinct.
         var seenCombinations = new HashSet<(string TypeName, string? Label)>();
 
-        // Also track types separately for method dependencies (which don't have labels)
+        // Also track types separately for method dependencies (which don't have labels),
+        // again keyed by fully-qualified name.
         var seenMethodTypes = new HashSet<string>();
 
         // Process properties and fields for association relationships (has-a relationships)
@@ -90,7 +92,8 @@ internal static class RelationshipAnalyzer
             var extractedTypes = ExtractTypesFromGeneric(namedType);
             relatedSymbols.AddRange(
                 extractedTypes
-                    .Where(extracted => seenMethodTypes.Add(extracted.Name) && !TypeFilter.IsSystemType(extracted))
+                    .Where(extracted => seenMethodTypes.Add(TypeAnalyzer.GetFullyQualifiedName(extracted)) &&
+                                        !TypeFilter.IsSystemType(extracted))
                     .Select(extracted =>
                         ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(
                             extracted, RelationshipKind.Dependency, null, null)));
@@ -138,7 +141,8 @@ internal static class RelationshipAnalyzer
         relatedSymbols.AddRange(
             extractedTypes
                 .Where(extracted =>
-                    seenCombinations.Add((extracted.Name, memberName)) && !TypeFilter.IsSystemType(extracted))
+                    seenCombinations.Add((TypeAnalyzer.GetFullyQualifiedName(extracted), memberName)) &&
+                    !TypeFilter.IsSystemType(extracted))
                 .Select(extracted =>
                     ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(
                         extracted, RelationshipKind.Association, memberName, cardinality)));

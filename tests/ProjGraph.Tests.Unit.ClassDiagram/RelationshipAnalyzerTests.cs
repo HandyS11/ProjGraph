@@ -140,6 +140,58 @@ public sealed class RelationshipAnalyzerTests
     }
 
     [Fact]
+    public void AddDependencyRelationships_SameNameDifferentNamespaces_MethodTypes_ShouldAddBoth()
+    {
+        // Dedupe keyed on simple names dropped the second A.Order/B.Order edge silently.
+        const string code = """
+                            namespace A { public class Order { } }
+                            namespace B { public class Order { } }
+                            namespace Test
+                            {
+                                public class Report
+                                {
+                                    public A.Order GetFirst() => new();
+                                    public B.Order GetSecond() => new();
+                                }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Report")!;
+        var related =
+            new List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>();
+
+        RelationshipAnalyzer.AddDependencyRelationships(symbol, related);
+
+        related.Where(r => r.Kind == RelationshipKind.Dependency && r.Symbol.Name == "Order")
+            .Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void AddDependencyRelationships_SameNameDifferentNamespaces_GenericArguments_ShouldAddBoth()
+    {
+        const string code = """
+                            namespace A { public class Order { } }
+                            namespace B { public class Order { } }
+                            namespace Test
+                            {
+                                public class Mapping
+                                {
+                                    public System.Collections.Generic.Dictionary<A.Order, B.Order> Map { get; set; }
+                                }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Mapping")!;
+        var related =
+            new List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>();
+
+        RelationshipAnalyzer.AddDependencyRelationships(symbol, related);
+
+        related.Where(r => r.Symbol.Name == "Order" && r.Label == "Map")
+            .Should().HaveCount(2);
+    }
+
+    [Fact]
     public void AddDependencyRelationships_UserGenericProperty_ShouldKeepOuterAndArgumentTypes()
     {
         // Result<Order> must produce edges to BOTH the user-defined container Result<T> and the
