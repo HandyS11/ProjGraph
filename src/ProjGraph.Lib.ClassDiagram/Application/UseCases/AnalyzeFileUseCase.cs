@@ -35,7 +35,10 @@ public class AnalyzeFileUseCase(
             throw new FileNotFoundException("Source file not found", filePath);
         }
 
-        var startDir = fileSystem.GetDirectoryName(filePath) ?? Environment.CurrentDirectory;
+        // GetDirectoryName on a bare relative filename returns "" — resolve the full path first
+        // so the workspace walk always starts from a real directory.
+        var directoryName = fileSystem.GetDirectoryName(fileSystem.GetFullPath(filePath));
+        var startDir = string.IsNullOrEmpty(directoryName) ? Environment.CurrentDirectory : directoryName;
         var code = await fileSystem.ReadAllTextAsync(filePath);
 
         var syntaxTree = CSharpSyntaxTree.ParseText(code, path: filePath);

@@ -118,6 +118,35 @@ public sealed class AnalyzeFileUseCaseTests
         result.Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task ExecuteAsync_BareRelativeFileName_ShouldResolveStartDirectoryFromFullPath()
+    {
+        // GetDirectoryName("Widget.cs") is "" (not null), which used to flow into
+        // WorkspaceRootResolver as an empty start directory and throw ArgumentException.
+        const string filePath = "Widget.cs";
+        const string code = """
+                            namespace Test;
+                            public class Widget { }
+                            """;
+        _fileSystem.FileExists(filePath).Returns(true);
+        _fileSystem.ReadAllTextAsync(filePath).Returns(code);
+        _fileSystem.GetFullPath(filePath).Returns("/work/dir/Widget.cs");
+        _fileSystem.GetDirectoryName("/work/dir/Widget.cs").Returns("/work/dir");
+        _fileSystem.GetDirectoryName(filePath).Returns(string.Empty);
+        SetupCompilationFactory();
+        AnalysisContext? captured = null;
+        _typeProcessor.ProcessTypeQueueAsync(
+                Arg.Any<Queue<(INamedTypeSymbol Symbol, int Depth)>>(),
+                Arg.Do<AnalysisContext>(c => captured = c),
+                Arg.Any<AnalysisOptions>())
+            .Returns(Task.CompletedTask);
+
+        await _sut.ExecuteAsync(filePath);
+
+        captured.Should().NotBeNull();
+        captured!.StartDirectory.Should().Be("/work/dir");
+    }
+
     private void SetupFileSystem(string filePath, string code)
     {
         _fileSystem.FileExists(filePath).Returns(true);
