@@ -187,7 +187,8 @@ internal static class RelationshipAnalyzer
     /// <summary>
     /// Extracts concrete types from a potentially generic type.
     /// For example, List&lt;Address&gt; would return [Address], and Dictionary&lt;string, User&gt; would return [User].
-    /// This avoids creating nodes for generic container types.
+    /// This avoids creating nodes for BCL container types; a user-defined generic container is
+    /// kept alongside its arguments (Result&lt;Order&gt; returns [Result&lt;T&gt;, Order]).
     /// </summary>
     /// <param name="type">The type to extract from.</param>
     /// <returns>A list of concrete named type symbols.</returns>
@@ -198,6 +199,14 @@ internal static class RelationshipAnalyzer
         // If it's a generic type (like List<T>, Dictionary<K,V>), extract the type arguments
         if (type is { IsGenericType: true, TypeArguments.Length: > 0 })
         {
+            // A user-defined generic container is itself a participant in the relationship:
+            // Result<Order> keeps an edge to Result<T>, not only to Order. BCL containers
+            // stay reduced to their arguments — we don't want List<T> nodes in the diagram.
+            if (!TypeFilter.IsSystemType(type))
+            {
+                result.Add(type.OriginalDefinition);
+            }
+
             foreach (var typeArg in type.TypeArguments)
             {
                 if (typeArg is not INamedTypeSymbol { SpecialType: SpecialType.None } namedTypeArg)
