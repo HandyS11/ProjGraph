@@ -140,6 +140,32 @@ public sealed class RelationshipAnalyzerTests
     }
 
     [Fact]
+    public void AddDependencyRelationships_ArrayMethodReturnAndParameter_ShouldAddDependency()
+    {
+        // The array unwrap added for members must also apply to method signatures:
+        // Order[] GetAll() / Save(Order[] batch) are dependencies exactly like List<Order>.
+        const string code = """
+                            namespace Test;
+                            public class Order { }
+                            public class Repository
+                            {
+                                public Order[] GetAll() => [];
+                                public void Save(Order[] batch) { }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Repository")!;
+        var related =
+            new List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>();
+
+        RelationshipAnalyzer.AddDependencyRelationships(symbol, related);
+
+        related.Should().Contain(r =>
+            r.Kind == RelationshipKind.Dependency &&
+            r.Symbol.Name == "Order");
+    }
+
+    [Fact]
     public void AddDependencyRelationships_Enum_ShouldReturnEmpty()
     {
         const string code = """

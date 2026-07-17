@@ -82,7 +82,7 @@ internal static class RelationshipAnalyzer
 
         foreach (var type in methodReturnTypes.Concat(methodParamTypes))
         {
-            if (type is not INamedTypeSymbol { SpecialType: SpecialType.None } namedType)
+            if (UnwrapArrayElementType(type) is not INamedTypeSymbol { SpecialType: SpecialType.None } namedType)
             {
                 continue;
             }
@@ -117,13 +117,7 @@ internal static class RelationshipAnalyzer
         // unwrap to the innermost element type and treat it as a '*' association.
         if (type is IArrayTypeSymbol)
         {
-            var elementType = type;
-            while (elementType is IArrayTypeSymbol arrayType)
-            {
-                elementType = arrayType.ElementType;
-            }
-
-            if (elementType is not INamedTypeSymbol { SpecialType: SpecialType.None } arrayElement)
+            if (UnwrapArrayElementType(type) is not INamedTypeSymbol { SpecialType: SpecialType.None } arrayElement)
             {
                 return;
             }
@@ -156,6 +150,22 @@ internal static class RelationshipAnalyzer
                 .Select(extracted =>
                     ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(
                         extracted, RelationshipKind.Association, memberName, cardinality)));
+    }
+
+    /// <summary>
+    /// Unwraps an array type (including jagged arrays) to its innermost element type.
+    /// Non-array types are returned unchanged.
+    /// </summary>
+    /// <param name="type">The type to unwrap.</param>
+    /// <returns>The innermost element type, or the input type when it is not an array.</returns>
+    private static ITypeSymbol UnwrapArrayElementType(ITypeSymbol type)
+    {
+        while (type is IArrayTypeSymbol arrayType)
+        {
+            type = arrayType.ElementType;
+        }
+
+        return type;
     }
 
     /// <summary>
