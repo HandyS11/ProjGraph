@@ -74,9 +74,21 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
             IgnoreInaccessible = true
         };
 
+        var files = new List<string>();
+        try
+        {
+            // Enumeration itself can fail mid-iteration (directory deleted, symlink cycle).
+            // Keep the entries already yielded and degrade instead of aborting the analysis.
+            files.AddRange(fileSystem.EnumerateFiles(directory, FilePathGuard.CSharpFilesPattern,
+                enumerationOptions));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Partial results collected so far are kept.
+        }
+
         // Search files in the current directory
-        foreach (var file in fileSystem.EnumerateFiles(directory, FilePathGuard.CSharpFilesPattern,
-                     enumerationOptions))
+        foreach (var file in files)
         {
             // Simple string check first for performance
             string content;
@@ -112,9 +124,19 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
             }
         }
 
+        var subDirectories = new List<string>();
+        try
+        {
+            // Same degradation for the subdirectory walk.
+            subDirectories.AddRange(fileSystem.EnumerateDirectories(directory, "*", enumerationOptions));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Partial results collected so far are kept.
+        }
+
         // Recursively search subdirectories, skipping excluded directories
-        foreach (var subDir in fileSystem.EnumerateDirectories(directory, "*",
-                     enumerationOptions))
+        foreach (var subDir in subDirectories)
         {
             if (DirectoryFilters.ShouldSkipDirectory(subDir))
             {

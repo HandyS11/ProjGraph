@@ -1,4 +1,6 @@
+using NSubstitute;
 using ProjGraph.Lib.ClassDiagram.Infrastructure;
+using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Tests.Shared.Helpers;
 
@@ -24,5 +26,32 @@ public sealed class WorkspaceTypeDiscoveryTests
         var found = await sut.FindTypeDefinitionFileAsync("X", dir.DirectoryPath);
 
         found.Should().Be(Path.Combine(dir.DirectoryPath, "Api", "X.cs"));
+    }
+
+    [Fact]
+    public async Task FindTypeDefinitionFileAsync_EnumerationThrowsMidScan_ShouldKeepPartialResults()
+    {
+        // A directory deleted mid-scan (or a symlink cycle) surfaces IOException from the lazy
+        // enumeration itself, not from a file read. That must degrade to a partial scan, not
+        // abort the whole analysis. The start directory must really exist because the workspace
+        // root walk uses the physical file system.
+        using var dir = new TestDirectory();
+        var fileSystem = Substitute.For<IFileSystem>();
+        fileSystem.EnumerateFiles(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EnumerationOptions>())
+            .Returns(_ => OneFileThenThrow("/ws/A.cs"));
+        fileSystem.EnumerateDirectories(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EnumerationOptions>())
+            .Returns([]);
+        fileSystem.ReadAllTextAsync("/ws/A.cs").Returns("namespace W; public class Target { }");
+        var sut = new WorkspaceTypeDiscovery(fileSystem);
+
+        var found = await sut.FindTypeDefinitionFileAsync("Target", dir.DirectoryPath);
+
+        found.Should().Be("/ws/A.cs");
+    }
+
+    private static IEnumerable<string> OneFileThenThrow(string file)
+    {
+        yield return file;
+        throw new IOException("directory removed during enumeration");
     }
 }
