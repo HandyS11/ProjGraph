@@ -31,6 +31,21 @@ public class AnalyzeDirectoryUseCaseTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_TrailingDirectorySeparator_ShouldKeepDirectoryNameAsTitle()
+    {
+        // "projgraph class ./src/" — GetFullPath preserves the trailing separator, and
+        // Path.GetFileName of ".../src/" is "", silently dropping the diagram title.
+        const string input = "/proj/src/";
+        _fileSystemMock.DirectoryExists(input).Returns(true);
+        _fileSystemMock.GetFullPath(input).Returns("/proj/src/");
+        _discoverMock.Execute("/proj/src/").Returns([]);
+
+        var result = await _useCase.ExecuteAsync(input);
+
+        result.Title.Should().Be("src");
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ShouldThrowDirectoryNotFound_WhenDirectoryDoesNotExist()
     {
         // Arrange
