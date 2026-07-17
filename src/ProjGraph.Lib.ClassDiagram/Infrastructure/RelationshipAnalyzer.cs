@@ -127,15 +127,7 @@ internal static class RelationshipAnalyzer
         }
         else if (type is INamedTypeSymbol { SpecialType: SpecialType.None } namedType)
         {
-            // Detect if this is a collection type
-            var isCollection = namedType.IsGenericType &&
-                               (namedType.Name.Contains("List", StringComparison.Ordinal) ||
-                                namedType.Name.Contains("Collection", StringComparison.Ordinal) ||
-                                namedType.Name.Contains("IEnumerable", StringComparison.Ordinal) ||
-                                namedType.Name.Contains("Array", StringComparison.Ordinal) ||
-                                namedType.Name.Contains("Set", StringComparison.Ordinal));
-
-            cardinality = isCollection ? "*" : "1";
+            cardinality = IsCollectionType(namedType) ? "*" : "1";
             extractedTypes = ExtractTypesFromGeneric(namedType);
         }
         else
@@ -150,6 +142,30 @@ internal static class RelationshipAnalyzer
                 .Select(extracted =>
                     ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(
                         extracted, RelationshipKind.Association, memberName, cardinality)));
+    }
+
+    /// <summary>
+    /// Determines whether a member type represents a collection (rendered with '*' cardinality).
+    /// A resolved type is a collection iff it is, or implements, <see cref="System.Collections.IEnumerable"/>.
+    /// Unresolved (error) symbols carry no interface information, so the legacy name heuristic
+    /// is kept as a best-effort fallback for them.
+    /// </summary>
+    /// <param name="type">The member type to classify.</param>
+    /// <returns>True when the type should be rendered with '*' cardinality.</returns>
+    private static bool IsCollectionType(INamedTypeSymbol type)
+    {
+        if (type.TypeKind != TypeKind.Error)
+        {
+            return type.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T
+                   || type.AllInterfaces.Any(i => i.SpecialType == SpecialType.System_Collections_IEnumerable);
+        }
+
+        return type.IsGenericType &&
+               (type.Name.Contains("List", StringComparison.Ordinal) ||
+                type.Name.Contains("Collection", StringComparison.Ordinal) ||
+                type.Name.Contains("IEnumerable", StringComparison.Ordinal) ||
+                type.Name.Contains("Array", StringComparison.Ordinal) ||
+                type.Name.Contains("Set", StringComparison.Ordinal));
     }
 
     /// <summary>

@@ -140,6 +140,76 @@ public sealed class RelationshipAnalyzerTests
     }
 
     [Fact]
+    public void AddDependencyRelationships_NonCollectionGenericContainingSet_ShouldHaveSingleCardinality()
+    {
+        // "Settings" contains the substring "Set" — the old name heuristic wrongly classified
+        // it as a collection. Collection-ness must come from IEnumerable, not the type name.
+        const string code = """
+                            namespace Test;
+                            public class Theme { }
+                            public class Settings<T> { }
+                            public class App
+                            {
+                                public Settings<Theme> Config { get; set; }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "App")!;
+        var related =
+            new List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>();
+
+        RelationshipAnalyzer.AddDependencyRelationships(symbol, related);
+
+        related.Should().Contain(r => r.Symbol.Name == "Theme" && r.Cardinality == "1");
+    }
+
+    [Fact]
+    public void AddDependencyRelationships_CustomEnumerableGeneric_ShouldHaveStarCardinality()
+    {
+        // A user collection whose name matches no magic substring must still count as one.
+        const string code = """
+                            namespace Test;
+                            public class Item { }
+                            public class ItemBag<T> : System.Collections.Generic.List<T> { }
+                            public class Order
+                            {
+                                public ItemBag<Item> Items { get; set; }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Order")!;
+        var related =
+            new List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>();
+
+        RelationshipAnalyzer.AddDependencyRelationships(symbol, related);
+
+        related.Should().Contain(r => r.Symbol.Name == "Item" && r.Cardinality == "*");
+    }
+
+    [Fact]
+    public void AddDependencyRelationships_UnresolvedCollectionNamedType_ShouldKeepStarCardinality()
+    {
+        // Unresolved (error) symbols carry no interface info; the name heuristic remains the
+        // best-effort fallback so existing behavior for unresolved collections is preserved.
+        const string code = """
+                            namespace Test;
+                            public class Item { }
+                            public class Order
+                            {
+                                public MyCollection<Item> Items { get; set; }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Order")!;
+        var related =
+            new List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>();
+
+        RelationshipAnalyzer.AddDependencyRelationships(symbol, related);
+
+        related.Should().Contain(r => r.Symbol.Name == "Item" && r.Cardinality == "*");
+    }
+
+    [Fact]
     public void AddDependencyRelationships_ArrayMethodReturnAndParameter_ShouldAddDependency()
     {
         // The array unwrap added for members must also apply to method signatures:
