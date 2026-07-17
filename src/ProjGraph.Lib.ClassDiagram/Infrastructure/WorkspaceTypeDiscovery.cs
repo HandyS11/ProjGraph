@@ -74,18 +74,8 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
             IgnoreInaccessible = true
         };
 
-        var files = new List<string>();
-        try
-        {
-            // Enumeration itself can fail mid-iteration (directory deleted, symlink cycle).
-            // Keep the entries already yielded and degrade instead of aborting the analysis.
-            files.AddRange(fileSystem.EnumerateFiles(directory, FilePathGuard.CSharpFilesPattern,
-                enumerationOptions));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Partial results collected so far are kept.
-        }
+        var files = EnumerateSafely(
+            () => fileSystem.EnumerateFiles(directory, FilePathGuard.CSharpFilesPattern, enumerationOptions));
 
         // Search files in the current directory
         foreach (var file in files)
@@ -124,16 +114,8 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
             }
         }
 
-        var subDirectories = new List<string>();
-        try
-        {
-            // Same degradation for the subdirectory walk.
-            subDirectories.AddRange(fileSystem.EnumerateDirectories(directory, "*", enumerationOptions));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Partial results collected so far are kept.
-        }
+        var subDirectories = EnumerateSafely(
+            () => fileSystem.EnumerateDirectories(directory, "*", enumerationOptions));
 
         // Recursively search subdirectories, skipping excluded directories
         foreach (var subDir in subDirectories)
@@ -145,5 +127,27 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
 
             await CollectTypeMatchesAsync(subDir, typeName, matches);
         }
+    }
+
+    /// <summary>
+    /// Materializes a file-system enumeration defensively. Enumeration itself can fail
+    /// mid-iteration (directory deleted, symlink cycle); the entries already yielded are kept
+    /// so the scan degrades instead of aborting the analysis.
+    /// </summary>
+    /// <param name="enumerate">The enumeration to materialize.</param>
+    /// <returns>The entries yielded before any failure.</returns>
+    private static List<string> EnumerateSafely(Func<IEnumerable<string>> enumerate)
+    {
+        var results = new List<string>();
+        try
+        {
+            results.AddRange(enumerate());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Partial results collected so far are kept.
+        }
+
+        return results;
     }
 }

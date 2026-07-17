@@ -286,6 +286,30 @@ public sealed class RelationshipAnalyzerTests
     }
 
     [Fact]
+    public void AddDependencyRelationships_UserCollectionContainer_ShouldHaveSingleCardinalityOnContainerEdge()
+    {
+        // The member holds exactly ONE ItemBag instance — '*' describes how many elements the
+        // collection holds, so it belongs on the element edge (Item), not on the container edge.
+        const string code = """
+                            namespace Test;
+                            public class Item { }
+                            public class ItemBag<T> : System.Collections.Generic.List<T> { }
+                            public class Order
+                            {
+                                public ItemBag<Item> Items { get; set; }
+                            }
+                            """;
+        var (compilation, _) = RoslynTestHelper.CreateCompilationWithModel(code);
+        var symbol = RoslynTestHelper.GetTypeSymbol(compilation, "Order")!;
+        var related =
+            new List<(INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality)>();
+
+        RelationshipAnalyzer.AddDependencyRelationships(symbol, related);
+
+        related.Should().Contain(r => r.Symbol.Name == "ItemBag" && r.Cardinality == "1");
+    }
+
+    [Fact]
     public void AddDependencyRelationships_UnresolvedCollectionNamedType_ShouldKeepStarCardinality()
     {
         // Unresolved (error) symbols carry no interface info; the name heuristic remains the

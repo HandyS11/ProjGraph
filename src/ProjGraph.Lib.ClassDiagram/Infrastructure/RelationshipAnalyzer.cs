@@ -115,6 +115,7 @@ internal static class RelationshipAnalyzer
     {
         string cardinality;
         List<INamedTypeSymbol> extractedTypes;
+        INamedTypeSymbol? singleInstanceType = null;
 
         // An array (T[], including jagged arrays) is a collection, exactly like List<T>:
         // unwrap to the innermost element type and treat it as a '*' association.
@@ -132,6 +133,10 @@ internal static class RelationshipAnalyzer
         {
             cardinality = IsCollectionType(namedType) ? "*" : "1";
             extractedTypes = ExtractTypesFromGeneric(namedType);
+
+            // The member holds exactly one instance of its own (outer) type; '*' describes a
+            // collection's element count, so it applies to the extracted element types only.
+            singleInstanceType = namedType.OriginalDefinition;
         }
         else
         {
@@ -145,7 +150,10 @@ internal static class RelationshipAnalyzer
                     !TypeFilter.IsSystemType(extracted))
                 .Select(extracted =>
                     ((INamedTypeSymbol Symbol, RelationshipKind Kind, string? Label, string? Cardinality))(
-                        extracted, RelationshipKind.Association, memberName, cardinality)));
+                        extracted,
+                        RelationshipKind.Association,
+                        memberName,
+                        SymbolEqualityComparer.Default.Equals(extracted, singleInstanceType) ? "1" : cardinality)));
     }
 
     /// <summary>
