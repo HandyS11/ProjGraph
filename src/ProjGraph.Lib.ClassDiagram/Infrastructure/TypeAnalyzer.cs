@@ -17,6 +17,17 @@ internal static class TypeAnalyzer
                               SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
     /// <summary>
+    /// Gets the short display name of a type, including its generic type parameters
+    /// (e.g. <c>Result&lt;T&gt;</c>) — the same format used for in-source type nodes.
+    /// </summary>
+    /// <param name="symbol">The type symbol to format.</param>
+    /// <returns>The short display name.</returns>
+    public static string GetShortName(INamedTypeSymbol symbol)
+    {
+        return symbol.ToDisplayString(ShortNameFormat);
+    }
+
+    /// <summary>
     /// Analyzes a type symbol and extracts its definition including members (properties, fields, and methods).
     /// </summary>
     /// <param name="symbol">The <see cref="INamedTypeSymbol"/> representing the type to analyze.</param>

@@ -137,7 +137,7 @@ internal sealed class SymbolResolver(IWorkspaceTypeDiscovery workspaceTypeDiscov
         }
 
         context.Types.Add(new TypeDefinition(
-            relatedSymbol.Name,
+            TypeAnalyzer.GetShortName(relatedSymbol),
             relatedSymbol.ContainingNamespace.ToDisplayString(),
             fullName,
             TypeAnalyzer.MapKind(relatedSymbol),

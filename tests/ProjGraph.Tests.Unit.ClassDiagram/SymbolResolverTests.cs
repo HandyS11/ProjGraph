@@ -126,6 +126,27 @@ public sealed class SymbolResolverTests
     }
 
     [Fact]
+    public async Task ResolveRelatedSymbolAsync_UnresolvedGenericExternalType_ShouldKeepArityInNodeName()
+    {
+        // An external AbstractValidator<T> must not collapse to "AbstractValidator": in-source
+        // generics render with their type parameters, external nodes must match.
+        var compilation = RoslynTestHelper.CreateCompilation(
+            "namespace MyApp; public class Person { }",
+            "namespace MyApp; public class PersonValidator : AbstractValidator<Person> { }");
+        var derived = RoslynTestHelper.GetTypeSymbol(compilation, "PersonValidator")!;
+        var baseSymbol = derived.BaseType!; // error symbol: AbstractValidator<Person>
+        _discovery.FindTypeDefinitionFileAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult<string?>(null));
+        var sut = new SymbolResolver(_discovery, _fileSystem);
+        var context = CreateContext(compilation);
+
+        var resolved = await sut.ResolveRelatedSymbolAsync(baseSymbol, context);
+
+        resolved.Should().BeNull();
+        context.Types.Should().ContainSingle(t => t.Name.StartsWith("AbstractValidator<"));
+    }
+
+    [Fact]
     public async Task ProcessTypeQueue_StructAndEnum_ShouldNotResolveSystemBaseTypes()
     {
         // Structs implicitly derive from System.ValueType and enums from System.Enum. Neither
