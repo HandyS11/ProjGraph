@@ -578,11 +578,19 @@ public sealed class FluentWalkerCoverageTests
     {
         var orphan = new EfEntity
         {
-            Name = "Address", Key = "Order.ShipTo", IsOwned = true, OwnerEntity = null, NavigationName = "ShipTo"
+            Name = "Address",
+            Key = "Order.ShipTo",
+            IsOwned = true,
+            OwnerEntity = null,
+            NavigationName = "ShipTo"
         };
         var dangling = new EfEntity
         {
-            Name = "Address", Key = "Ghost.BillTo", IsOwned = true, OwnerEntity = "Ghost", NavigationName = "BillTo"
+            Name = "Address",
+            Key = "Ghost.BillTo",
+            IsOwned = true,
+            OwnerEntity = "Ghost",
+            NavigationName = "BillTo"
         };
         var entities = new Dictionary<string, EfEntity>
         {
