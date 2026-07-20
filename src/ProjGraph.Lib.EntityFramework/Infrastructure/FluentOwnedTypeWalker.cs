@@ -17,6 +17,15 @@ namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 internal static class FluentOwnedTypeWalker
 {
     /// <summary>
+    /// Identifies the owned navigation an <c>OwnsOne</c>/<c>OwnsMany</c> call configures.
+    /// </summary>
+    /// <param name="Key">The owned entity's dictionary key (<c>{Owner}.{Nav}</c>).</param>
+    /// <param name="Owner">The owning entity.</param>
+    /// <param name="Navigation">The owner's navigation property name for the owned type.</param>
+    /// <param name="IsCollection">Whether the owned type is a collection (<c>OwnsMany</c>).</param>
+    private sealed record OwnedTarget(string Key, EfEntity Owner, string Navigation, bool IsCollection);
+
+    /// <summary>
     /// Captures every owned type configured within <paramref name="scope"/>.
     /// </summary>
     /// <param name="scope">The configuring method (or nested builder scope) to walk.</param>
@@ -78,7 +87,7 @@ internal static class FluentOwnedTypeWalker
         }
 
         var key = $"{ownerKey}.{navigation}";
-        GetOrCreateOwned(key, owns, owner, navigation, isCollection, entities, model, compilation);
+        GetOrCreateOwned(new OwnedTarget(key, owner, navigation, isCollection), owns, entities, model, compilation);
 
         // The owned builder's own lambda configuration (e.g. OwnsOne(o => o.Address, a => a.Property(...))).
         // Calls chained onto the OwnsOne invocation instead (the form with no builder lambda) are resolved
@@ -101,29 +110,25 @@ internal static class FluentOwnedTypeWalker
     }
 
     /// <summary>
-    /// Creates the owned entity for <paramref name="key"/> on first sight, adding it to
+    /// Creates the owned entity for <paramref name="target"/> on first sight, adding it to
     /// <paramref name="entities"/> and <paramref name="model"/>. Repeated calls targeting the same
     /// navigation (as in the chained form spread across statements) are no-ops, so they merge into one
     /// entity rather than duplicating it.
     /// </summary>
-    /// <param name="key">The owned entity's dictionary key (<c>{Owner}.{Nav}</c>).</param>
+    /// <param name="target">The owned navigation being created.</param>
     /// <param name="owns">The <c>OwnsOne</c>/<c>OwnsMany</c> invocation.</param>
-    /// <param name="owner">The owning entity.</param>
-    /// <param name="navigation">The owner's navigation property name for the owned type.</param>
-    /// <param name="isCollection">Whether the owned type is a collection (<c>OwnsMany</c>).</param>
     /// <param name="entities">The known entities, augmented in place.</param>
     /// <param name="model">The model whose <see cref="EfModel.Entities"/> collection is augmented.</param>
     /// <param name="compilation">The compilation for owned-type symbol resolution.</param>
     private static void GetOrCreateOwned(
-        string key,
+        OwnedTarget target,
         InvocationExpressionSyntax owns,
-        EfEntity owner,
-        string navigation,
-        bool isCollection,
         Dictionary<string, EfEntity> entities,
         EfModel model,
         Compilation compilation)
     {
+        var (key, owner, navigation, isCollection) = target;
+
         if (entities.ContainsKey(key))
         {
             return;
@@ -270,6 +275,19 @@ internal static class FluentOwnedTypeWalker
             .FirstOrDefault();
 
         var navProperty = ownerSymbol?.GetMembers(navigation).OfType<IPropertySymbol>().FirstOrDefault();
+
+        // An OwnsMany collection can be an array (Address[], an IArrayTypeSymbol) rather than a generic
+        // List<T>/ICollection<T>. Its element type carries the members to seed, so unwrap it up front —
+        // matching the DbContext-path file discovery, which likewise unwraps T[] (see
+        // EfModelAnalyzer.OwnedClrTypeName). Without this the `is not INamedTypeSymbol` guard below would
+        // reject the array and the owned entity would seed with zero columns.
+        if (isCollection && navProperty?.Type is IArrayTypeSymbol arrayType)
+        {
+            return arrayType.ElementType as INamedTypeSymbol is { } arrayElement
+                   && arrayElement is not IErrorTypeSymbol
+                ? arrayElement
+                : null;
+        }
 
         // An IErrorTypeSymbol still satisfies `is INamedTypeSymbol` — Roslyn synthesizes one whenever the
         // navigation's CLR type could not be resolved (e.g. its file never made it into the compilation).

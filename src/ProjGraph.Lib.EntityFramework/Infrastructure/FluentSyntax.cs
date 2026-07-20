@@ -100,6 +100,28 @@ internal static class FluentSyntax
     /// <param name="ambientEntity">The owning entity to fall back to when no enclosing <c>Entity&lt;T&gt;()</c> is found.</param>
     public static string? ResolveOwningEntity(InvocationExpressionSyntax configInvocation, string? ambientEntity)
     {
+        return ResolveFromReceiverChain(configInvocation, ambientEntity, out var resolved)
+            ? resolved
+            : ResolveFromAncestors(configInvocation, ambientEntity);
+    }
+
+    /// <summary>
+    /// Walks the receiver chain of <paramref name="configInvocation"/> looking for the builder call that
+    /// determines the owning entity. Returns <see langword="true"/> when the chain settles the question —
+    /// with <paramref name="resolved"/> holding the answer, which is <see langword="null"/> for an
+    /// out-of-scope (join-entity) or unresolvable owned builder — and <see langword="false"/> when the
+    /// chain runs out without a verdict, leaving the ancestor search to decide.
+    /// </summary>
+    /// <param name="configInvocation">The configuration invocation whose receiver chain to walk.</param>
+    /// <param name="ambientEntity">The owning entity to fall back to when resolving a nested owned builder.</param>
+    /// <param name="resolved">The entity key the chain resolved to, when this returns <see langword="true"/>.</param>
+    private static bool ResolveFromReceiverChain(
+        InvocationExpressionSyntax configInvocation,
+        string? ambientEntity,
+        out string? resolved)
+    {
+        resolved = null;
+
         for (var receiver = ChainReceiver(configInvocation);
              receiver is not null;
              receiver = ChainReceiver(receiver))
@@ -116,24 +138,50 @@ internal static class FluentSyntax
             // configuration lands there — and never on the outer entity the receiver chain reaches.
             if (callName is EfAnalysisConstants.EfMethods.OwnsOne or EfAnalysisConstants.EfMethods.OwnsMany)
             {
-                var ownerKey = ResolveOwningEntity(receiver, ambientEntity);
-                var navigation = OwnedNavigationName(receiver);
-                return ownerKey is not null && navigation is not null ? $"{ownerKey}.{navigation}" : null;
+                resolved = ComposeOwnedKey(receiver, ambientEntity);
+                return true;
             }
 
             // A join-entity builder (UsingEntity) is out of scope: stop rather than leak onto the owner.
             if (callName == EfAnalysisConstants.EfMethods.UsingEntity)
             {
-                return null;
+                return true;
             }
 
             if (callName == EfAnalysisConstants.EfMethods.Entity)
             {
-                return EntityNameFromInvocation(receiver);
+                resolved = EntityNameFromInvocation(receiver);
+                return true;
             }
         }
 
-        InvocationExpressionSyntax? enclosingEntity = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Composes the <c>{Owner}.{Nav}</c> key an <c>OwnsOne</c>/<c>OwnsMany</c> builder resolves to, or
+    /// <see langword="null"/> when either half is unresolvable.
+    /// </summary>
+    /// <param name="owns">The <c>OwnsOne</c>/<c>OwnsMany</c> invocation.</param>
+    /// <param name="ambientEntity">The owning entity to fall back to when resolving the owner.</param>
+    private static string? ComposeOwnedKey(InvocationExpressionSyntax owns, string? ambientEntity)
+    {
+        var ownerKey = ResolveOwningEntity(owns, ambientEntity);
+        var navigation = OwnedNavigationName(owns);
+        return ownerKey is not null && navigation is not null ? $"{ownerKey}.{navigation}" : null;
+    }
+
+    /// <summary>
+    /// Finds the enclosing <c>Entity&lt;T&gt;(e =&gt; ...)</c> configuration lambda for
+    /// <paramref name="configInvocation"/>, falling back to <paramref name="ambientEntity"/> when the
+    /// search stops at a nested-builder fence or finds none.
+    /// </summary>
+    /// <param name="configInvocation">The configuration invocation whose ancestors to search.</param>
+    /// <param name="ambientEntity">The owning entity to fall back to when no enclosing <c>Entity&lt;T&gt;()</c> is found.</param>
+    private static string? ResolveFromAncestors(
+        InvocationExpressionSyntax configInvocation,
+        string? ambientEntity)
+    {
         foreach (var ancestor in configInvocation.Ancestors().OfType<InvocationExpressionSyntax>())
         {
             // Climbing past an owned-type / join-entity builder fence (e.g. the OwnsOne call whose
@@ -148,12 +196,11 @@ internal static class FluentSyntax
             if (ancestor.Expression is MemberAccessExpressionSyntax ma
                 && SimpleName(ma.Name) == EfAnalysisConstants.EfMethods.Entity)
             {
-                enclosingEntity = ancestor;
-                break;
+                return EntityNameFromInvocation(ancestor);
             }
         }
 
-        return enclosingEntity is null ? ambientEntity : EntityNameFromInvocation(enclosingEntity);
+        return ambientEntity;
     }
 
     /// <summary>Returns the invocation on the receiver side of a member-access invocation, or <see langword="null"/>.</summary>

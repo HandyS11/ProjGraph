@@ -8,13 +8,15 @@ namespace ProjGraph.Lib.EntityFramework.Infrastructure;
 /// </summary>
 internal static class SqlColumnTypeMapper
 {
+    private const string Decimal = "decimal";
+
     private static readonly IReadOnlyDictionary<string, string> SqlToClr =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["decimal"] = "decimal",
-            ["numeric"] = "decimal",
-            ["money"] = "decimal",
-            ["smallmoney"] = "decimal",
+            [Decimal] = Decimal,
+            ["numeric"] = Decimal,
+            ["money"] = Decimal,
+            ["smallmoney"] = Decimal,
             ["int"] = "int",
             ["integer"] = "int",
             ["bigint"] = "long",
