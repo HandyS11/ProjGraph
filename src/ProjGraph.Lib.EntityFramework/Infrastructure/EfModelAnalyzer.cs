@@ -22,6 +22,24 @@ public class EfModelAnalyzer(
     IEntityFileDiscovery entityFileDiscovery) : IEfModelAnalyzer
 {
     /// <summary>
+    /// The state threaded through owned-navigation resolution: the caches augmented in place as owned
+    /// types are resolved, plus the search scope used to locate an owned type's file.
+    /// </summary>
+    /// <param name="KeyToClrTypeName">Maps an owner key (a bare CLR type name, or a resolved <c>{Owner}.{Nav}</c> owned key) to its CLR type name; augmented in place.</param>
+    /// <param name="ClassDeclsByName">Cache of CLR type name to its type declaration, loaded lazily; augmented in place.</param>
+    /// <param name="EntityFiles">The entity files discovered so far.</param>
+    /// <param name="Discovered">The owned type files newly discovered; augmented in place.</param>
+    /// <param name="SearchDirectories">The directories to search for an owned type's file.</param>
+    /// <param name="ContextPath">The context file path, excluded from the search.</param>
+    private sealed record OwnedTypeResolutionContext(
+        Dictionary<string, string> KeyToClrTypeName,
+        Dictionary<string, TypeDeclarationSyntax> ClassDeclsByName,
+        Dictionary<string, string> EntityFiles,
+        Dictionary<string, string> Discovered,
+        IReadOnlyList<string> SearchDirectories,
+        string ContextPath);
+
+    /// <summary>
     /// Discovers all DbContext classes in the provided syntax tree.
     /// </summary>
     /// <param name="root">The root <see cref="SyntaxNode"/> to analyze.</param>
@@ -284,12 +302,12 @@ public class EfModelAnalyzer(
         }
 
         var discovered = new Dictionary<string, string>(StringComparer.Ordinal);
+        var resolutionContext = new OwnedTypeResolutionContext(
+            keyToClrTypeName, classDeclsByName, entityFiles, discovered, searchDirectories, contextPath);
 
         foreach (var (scope, ambientEntity) in scopes)
         {
-            await ResolveOwnedNavigationTypesAsync(
-                scope, ambientEntity, keyToClrTypeName, classDeclsByName, entityFiles, discovered,
-                searchDirectories, contextPath);
+            await ResolveOwnedNavigationTypesAsync(scope, ambientEntity, resolutionContext);
         }
 
         return discovered;
@@ -297,26 +315,18 @@ public class EfModelAnalyzer(
 
     /// <summary>
     /// Resolves every <c>OwnsOne</c>/<c>OwnsMany</c> navigation found in <paramref name="scope"/>, owner-
-    /// before-owned, updating <paramref name="keyToClrTypeName"/> and <paramref name="discovered"/> in place.
+    /// before-owned, updating the key-to-CLR-type and discovered-file caches on <paramref name="context"/> in place.
     /// </summary>
     /// <param name="scope">The configuring method (<c>OnModelCreating</c> or a config class's <c>Configure</c>).</param>
     /// <param name="ambientEntity">The owning entity to fall back to when the chain has no <c>Entity&lt;T&gt;()</c> call.</param>
-    /// <param name="keyToClrTypeName">Maps an owner key (a bare CLR type name, or a resolved <c>{Owner}.{Nav}</c> owned key) to its CLR type name; augmented in place.</param>
-    /// <param name="classDeclsByName">Cache of CLR type name to its type declaration, loaded lazily; augmented in place.</param>
-    /// <param name="entityFiles">The entity files discovered so far.</param>
-    /// <param name="discovered">The owned type files newly discovered; augmented in place.</param>
-    /// <param name="searchDirectories">The directories to search for an owned type's file.</param>
-    /// <param name="contextPath">The context file path, excluded from the search.</param>
+    /// <param name="context">The resolution state shared across every scope, augmented in place.</param>
     private async Task ResolveOwnedNavigationTypesAsync(
         SyntaxNode scope,
         string? ambientEntity,
-        Dictionary<string, string> keyToClrTypeName,
-        Dictionary<string, TypeDeclarationSyntax> classDeclsByName,
-        Dictionary<string, string> entityFiles,
-        Dictionary<string, string> discovered,
-        IReadOnlyList<string> searchDirectories,
-        string contextPath)
+        OwnedTypeResolutionContext context)
     {
+        var (keyToClrTypeName, classDeclsByName, entityFiles, discovered, searchDirectories, contextPath) = context;
+
         var ownsOneRoots = FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.OwnsOne)
             .Select(inv => (Invocation: inv, IsCollection: false));
         var ownsManyRoots = FluentSyntax.FindConfigRoots(scope, EfAnalysisConstants.EfMethods.OwnsMany)
