@@ -48,6 +48,28 @@ public class MermaidClassDiagramRendererTests
     }
 
     [Fact]
+    public void Render_SanitizeCollision_ShouldKeepDistinctNodeIds()
+    {
+        // Ns.Foo_Bar and Ns.Foo.Bar both sanitize to Ns_Foo_Bar; without collision handling
+        // the two types merge into a single Mermaid node and relationships cross-wire.
+        var model = new ClassModel(
+            "collision",
+            [
+                new TypeDefinition("Foo_Bar", "Ns", "Ns.Foo_Bar", TypeKind.Class, []),
+                new TypeDefinition("Bar", "Ns.Foo", "Ns.Foo.Bar", TypeKind.Class, [])
+            ],
+            [
+                new Relationship("Ns.Foo.Bar", "Ns.Foo_Bar", RelationshipKind.Association, "Target", "1")
+            ]);
+
+        var result = _renderer.Render(model);
+
+        result.Should().Contain("class Ns_Foo_Bar [\"Foo_Bar\"]");
+        result.Should().Contain("class Ns_Foo_Bar_2 [\"Bar\"]");
+        result.Should().Contain("Ns_Foo_Bar_2 --> \"1\" Ns_Foo_Bar : Target");
+    }
+
+    [Fact]
     public void Render_WithShowTitle_ShouldShowTitle()
     {
         var model = new ClassModel("MyTitle", [], []);

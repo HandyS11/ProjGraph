@@ -38,11 +38,15 @@ public class AnalyzeDirectoryUseCase(
         }
 
         var fullPath = fileSystem.GetFullPath(directoryPath);
+
+        // A trailing separator ("./src/") makes Path.GetFileName return "" — trim it so the
+        // diagram title is always the directory name.
+        var title = Path.GetFileName(Path.TrimEndingDirectorySeparator(fullPath));
         var csFiles = discoverCsFilesUseCase.Execute(fullPath);
 
         if (csFiles.Count == 0)
         {
-            return new ClassModel(Path.GetFileName(fullPath), [], []);
+            return new ClassModel(title, [], []);
         }
 
         var syntaxTrees = new List<SyntaxTree>();
@@ -92,6 +96,6 @@ public class AnalyzeDirectoryUseCase(
 
         await typeProcessor.ProcessTypeQueueAsync(typesToAnalyze, context, options);
 
-        return new ClassModel(Path.GetFileName(fullPath), context.Types, context.Relationships);
+        return new ClassModel(title, context.Types, context.Relationships);
     }
 }

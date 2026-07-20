@@ -15,9 +15,9 @@ namespace ProjGraph.Lib.ClassDiagram.Infrastructure;
 internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspaceTypeDiscovery
 {
     /// <summary>
-    /// Finds the file containing the definition of a specific type within a given directory or its subdirectories.
-    /// The method first attempts to search in common subdirectories for better performance, and if not found,
-    /// it searches the entire root directory. The search uses both a simple string match and Roslyn for verification.
+    /// Finds the file containing the definition of a specific type within the workspace root
+    /// derived from the given start directory. The search uses both a simple string match and
+    /// Roslyn for verification.
     /// </summary>
     /// <param name="typeName">The name of the type to search for (e.g., class, interface, struct, enum, or record).</param>
     /// <param name="startDirectory">The starting directory to begin the search.</param>
@@ -29,26 +29,9 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
     {
         var root = WorkspaceRootResolver.FindWorkspaceRoot(startDirectory) ?? startDirectory;
 
-        // Common file patterns to search first (optimistic)
-        foreach (var dirName in new[]
-                 {
-                     "Models", "Entities", "Services", "Interfaces", "Common", "Data", "Internal"
-                 })
-        {
-            var path = fileSystem.Combine(root, dirName);
-            if (!fileSystem.DirectoryExists(path))
-            {
-                continue;
-            }
-
-            var found = await SearchDirectoryForTypeAsync(path, typeName);
-            if (found != null)
-            {
-                return found;
-            }
-        }
-
-        // Search the whole root if not found in common dirs
+        // A single scan from the workspace root keeps resolution deterministic: a partial
+        // "common directory" pre-pass would return its first hit and override the path-sorted
+        // tie-break applied below. Lookups are memoized per type name by the caller.
         return await SearchDirectoryForTypeAsync(root, typeName);
     }
 
@@ -91,9 +74,11 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
             IgnoreInaccessible = true
         };
 
+        var files = EnumerateSafely(
+            () => fileSystem.EnumerateFiles(directory, FilePathGuard.CSharpFilesPattern, enumerationOptions));
+
         // Search files in the current directory
-        foreach (var file in fileSystem.EnumerateFiles(directory, FilePathGuard.CSharpFilesPattern,
-                     enumerationOptions))
+        foreach (var file in files)
         {
             // Simple string check first for performance
             string content;
@@ -129,9 +114,11 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
             }
         }
 
+        var subDirectories = EnumerateSafely(
+            () => fileSystem.EnumerateDirectories(directory, "*", enumerationOptions));
+
         // Recursively search subdirectories, skipping excluded directories
-        foreach (var subDir in fileSystem.EnumerateDirectories(directory, "*",
-                     enumerationOptions))
+        foreach (var subDir in subDirectories)
         {
             if (DirectoryFilters.ShouldSkipDirectory(subDir))
             {
@@ -140,5 +127,27 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
 
             await CollectTypeMatchesAsync(subDir, typeName, matches);
         }
+    }
+
+    /// <summary>
+    /// Materializes a file-system enumeration defensively. Enumeration itself can fail
+    /// mid-iteration (directory deleted, symlink cycle); the entries already yielded are kept
+    /// so the scan degrades instead of aborting the analysis.
+    /// </summary>
+    /// <param name="enumerate">The enumeration to materialize.</param>
+    /// <returns>The entries yielded before any failure.</returns>
+    private static List<string> EnumerateSafely(Func<IEnumerable<string>> enumerate)
+    {
+        var results = new List<string>();
+        try
+        {
+            results.AddRange(enumerate());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Partial results collected so far are kept.
+        }
+
+        return results;
     }
 }
