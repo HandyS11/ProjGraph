@@ -51,7 +51,7 @@ public sealed class McpTransportTests
             .FirstOrDefault();
 
         serverExe.Should().NotBeNull($"the MCP server apphost must be present under {binRoot}");
-        return serverExe!.FullName;
+        return serverExe.FullName;
     }
 
     private static string JoinText(CallToolResult result)

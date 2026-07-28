@@ -144,7 +144,7 @@ public sealed class AnalyzeFileUseCaseTests
         await _sut.ExecuteAsync(filePath);
 
         captured.Should().NotBeNull();
-        captured!.StartDirectory.Should().Be("/work/dir");
+        captured.StartDirectory.Should().Be("/work/dir");
     }
 
     private void SetupFileSystem(string filePath, string code)

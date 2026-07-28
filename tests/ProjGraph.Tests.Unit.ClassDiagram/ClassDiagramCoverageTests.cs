@@ -109,7 +109,7 @@ public sealed class ClassDiagramCoverageTests
         await _fileSystem.DidNotReceive().ReadAllTextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         // The reused tree does not actually declare Ghost, so the original symbol is handed back.
         resolved.Should().NotBeNull();
-        resolved!.Name.Should().Be("Ghost");
+        resolved.Name.Should().Be("Ghost");
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public sealed class ClassDiagramCoverageTests
         var resolved = await sut.ResolveRelatedSymbolAsync(ghost, context);
 
         resolved.Should().NotBeNull();
-        resolved!.Name.Should().Be("Ghost");
+        resolved.Name.Should().Be("Ghost");
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public sealed class ClassDiagramCoverageTests
         var resolved = await sut.ResolveRelatedSymbolAsync(ghost, context);
 
         resolved.Should().NotBeNull();
-        resolved!.Name.Should().Be("Ghost");
+        resolved.Name.Should().Be("Ghost");
         resolved.TypeKind.Should().Be(Microsoft.CodeAnalysis.TypeKind.Class);
     }
 
