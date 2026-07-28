@@ -83,7 +83,7 @@ public sealed class OwnedCrossFileTypeRegressionTests
         var owned = model.Entities.SingleOrDefault(e => e.Key == "Product.Price");
         owned.Should().NotBeNull(
             "OwnsOne(p => p.Price) must capture the owned entity even though Money.cs is a separate file");
-        owned!.Properties.Select(p => p.Name).Should().BeEquivalentTo(["Amount", "Currency"],
+        owned.Properties.Select(p => p.Name).Should().BeEquivalentTo(["Amount", "Currency"],
             "Money's columns can only come from CLR seeding — there is no Property() call for either — " +
             "so this fails unless Money.cs was pulled into the compilation and resolved");
 

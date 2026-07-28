@@ -248,7 +248,7 @@ public sealed class EfDiscoveryCoverageTests : IDisposable
 
         var owned = model.Entities.SingleOrDefault(e => e.Key == "Customer.Addresses");
         owned.Should().NotBeNull("OwnsMany over an array navigation must still capture the owned type");
-        owned!.IsCollection.Should().BeTrue();
+        owned.IsCollection.Should().BeTrue();
         owned.Properties.Select(p => p.Name).Should().Contain("Street").And.Contain("City");
     }
 

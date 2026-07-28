@@ -47,7 +47,7 @@ public sealed class SymbolResolverTests
         var resolved = await sut.ResolveRelatedSymbolAsync(baseSymbol, context);
 
         resolved.Should().NotBeNull();
-        resolved!.Name.Should().Be("Base");
+        resolved.Name.Should().Be("Base");
         await _discovery.DidNotReceive().FindTypeDefinitionFileAsync(Arg.Any<string>(), Arg.Any<string>());
     }
 

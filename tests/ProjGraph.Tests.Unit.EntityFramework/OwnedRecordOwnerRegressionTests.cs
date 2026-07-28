@@ -87,7 +87,7 @@ public sealed class OwnedRecordOwnerRegressionTests
         owned.Should().NotBeNull(
             "OwnsOne(p => p.Price) must capture the owned entity even though Product is record-declared " +
             "and Money.cs is a separate file");
-        owned!.Properties.Select(p => p.Name).Should().BeEquivalentTo(["Amount", "Currency"],
+        owned.Properties.Select(p => p.Name).Should().BeEquivalentTo(["Amount", "Currency"],
             "the pre-pass must find Price on the record-declared Product to discover Money.cs and pull it " +
             "into the compilation; without that, Money resolves to an error type and the entity is captured " +
             "with zero properties");
@@ -140,7 +140,7 @@ public sealed class OwnedRecordOwnerRegressionTests
         owned.Should().NotBeNull(
             "OwnsOne(p => p.Price) must capture the owned entity even though Price is declared as a " +
             "primary-constructor parameter rather than a property member");
-        owned!.Properties.Select(p => p.Name).Should().BeEquivalentTo(["Amount", "Currency"],
+        owned.Properties.Select(p => p.Name).Should().BeEquivalentTo(["Amount", "Currency"],
             "the pre-pass must find the Price parameter on the positional record to discover Money.cs; " +
             "without that, Money resolves to an error type and the owned entity renders as an empty box");
 
