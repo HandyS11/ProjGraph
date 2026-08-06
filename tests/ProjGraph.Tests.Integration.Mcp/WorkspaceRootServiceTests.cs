@@ -129,7 +129,9 @@ public sealed class WorkspaceRootServiceTests : IDisposable
 
         // The workspace switches to a different folder and the client announces it.
         Volatile.Write(ref currentRoots, [secondRoot.DirectoryPath]);
+#pragma warning disable MCP9005 // Roots is deprecated (SEP-2577); still served for down-level clients.
         await session.Client.SendNotificationAsync(NotificationMethods.RootsListChangedNotification);
+#pragma warning restore MCP9005
 
         await WaitForRootsInvalidationAsync(service);
         var resolved = await service.TryResolveAsync("Moved.slnx", session.Server, CancellationToken.None);

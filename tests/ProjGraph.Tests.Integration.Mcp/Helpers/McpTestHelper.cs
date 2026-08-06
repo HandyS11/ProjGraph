@@ -59,7 +59,6 @@ internal static class McpTestHelper
                 new MermaidErdRenderer()),
             fs,
             cache ?? new DiagramResourceCache(),
-            null!,
             new WorkspaceRootService(fs),
             console);
     }

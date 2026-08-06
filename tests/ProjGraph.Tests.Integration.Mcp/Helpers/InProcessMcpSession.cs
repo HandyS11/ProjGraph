@@ -82,10 +82,23 @@ internal sealed class InProcessMcpSession : IAsyncDisposable
     /// </summary>
     /// <param name="rootProvider">Supplies the workspace root directories for each request.</param>
     /// <returns>Client options that answer <c>roots/list</c> from <paramref name="rootProvider"/>.</returns>
-    public static McpClientOptions CreateClientOptionsWithRoots(Func<IReadOnlyList<string>> rootProvider)
+    /// <param name="pinDownLevel">
+    /// When <see langword="true"/> (the default), pins the client to the <c>2025-11-25</c>
+    /// handshake so client capabilities are established session-scoped on the root
+    /// <see cref="McpServer"/> — required by tests that drive that root instance directly. When
+    /// <see langword="false"/>, the client negotiates the latest revision, where capabilities
+    /// arrive per request in <c>_meta</c> and are visible only on the request-scoped server.
+    /// </param>
+    public static McpClientOptions CreateClientOptionsWithRoots(
+        Func<IReadOnlyList<string>> rootProvider,
+        bool pinDownLevel = true)
     {
+        // Roots is deprecated (SEP-2577) but still served by WorkspaceRootService for down-level
+        // clients, so this harness keeps exercising it.
+#pragma warning disable MCP9005
         return new McpClientOptions
         {
+            ProtocolVersion = pinDownLevel ? "2025-11-25" : null,
             ClientInfo = new Implementation
             {
                 Name = "ProjGraph.Tests",
@@ -109,6 +122,7 @@ internal sealed class InProcessMcpSession : IAsyncDisposable
                 })
             }
         };
+#pragma warning restore MCP9005
     }
 
     /// <summary>

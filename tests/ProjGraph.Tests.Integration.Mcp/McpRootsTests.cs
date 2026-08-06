@@ -1,6 +1,7 @@
 using ModelContextProtocol;
 using ProjGraph.Lib.Core.Infrastructure;
 using ProjGraph.Mcp;
+using ProjGraph.Tests.Integration.Mcp.Helpers;
 using ProjGraph.Tests.Shared.Helpers;
 using System.Reflection;
 
@@ -24,15 +25,16 @@ public sealed class McpRootsTests : IDisposable
     [Fact]
     public async Task TryResolve_RelativePath_NoRootsCapability_ShouldThrow()
     {
-        var service = new WorkspaceRootService(new PhysicalFileSystem());
+        await using var session = await InProcessMcpSession.StartAsync(
+            clientOptions: InProcessMcpSession.CreateClientOptionsWithoutRoots());
+        await using var service = new WorkspaceRootService(new PhysicalFileSystem());
 
-        // Using a McpServer with null ClientCapabilities fails, so pass null
-        // which exercises the Unsupported path when server capabilities are unavailable
-        var act = async () => await service.TryResolveAsync("MySolution.slnx", null!, CancellationToken.None);
+        var act = async () => await service.TryResolveAsync("MySolution.slnx", session.Server, CancellationToken.None);
 
-        // Without a server, we expect a NullReferenceException trying to access ClientCapabilities
-        // In production, this is handled by the MCP server providing capabilities
-        await act.Should().ThrowAsync<Exception>();
+        // McpException so the guidance reaches the client; the SDK strips the message from any
+        // other exception type.
+        await act.Should().ThrowAsync<McpException>()
+            .WithMessage("*does not support workspace roots*absolute path*");
     }
 
     [Fact]
@@ -150,10 +152,11 @@ public sealed class McpRootsTests : IDisposable
         const string fileName = "MySolution.slnx";
         var filePath = _temp.CreateFile(fileName, "");
 
-        var service = new WorkspaceRootService(new PhysicalFileSystem());
-        SetRoots(service, [_temp.DirectoryPath]);
+        await using var session = await InProcessMcpSession.StartAsync(
+            clientOptions: InProcessMcpSession.CreateClientOptionsWithRoots(() => [_temp.DirectoryPath]));
+        await using var service = new WorkspaceRootService(new PhysicalFileSystem());
 
-        var result = await service.TryResolveAsync(fileName, null!, CancellationToken.None);
+        var result = await service.TryResolveAsync(fileName, session.Server, CancellationToken.None);
 
         result.Should().Be(filePath);
     }
@@ -164,10 +167,11 @@ public sealed class McpRootsTests : IDisposable
         const string fileName = "Deep.slnx";
         var filePath = _temp.CreateFile(Path.Combine("src", "nested", fileName), "");
 
-        var service = new WorkspaceRootService(new PhysicalFileSystem());
-        SetRoots(service, [_temp.DirectoryPath]);
+        await using var session = await InProcessMcpSession.StartAsync(
+            clientOptions: InProcessMcpSession.CreateClientOptionsWithRoots(() => [_temp.DirectoryPath]));
+        await using var service = new WorkspaceRootService(new PhysicalFileSystem());
 
-        var result = await service.TryResolveAsync(fileName, null!, CancellationToken.None);
+        var result = await service.TryResolveAsync(fileName, session.Server, CancellationToken.None);
 
         result.Should().Be(filePath);
     }
@@ -175,10 +179,11 @@ public sealed class McpRootsTests : IDisposable
     [Fact]
     public async Task TryResolve_RelativePath_FileNotFound_ShouldThrowMcpException()
     {
-        var service = new WorkspaceRootService(new PhysicalFileSystem());
-        SetRoots(service, [_temp.DirectoryPath]);
+        await using var session = await InProcessMcpSession.StartAsync(
+            clientOptions: InProcessMcpSession.CreateClientOptionsWithRoots(() => [_temp.DirectoryPath]));
+        await using var service = new WorkspaceRootService(new PhysicalFileSystem());
 
-        var act = async () => await service.TryResolveAsync("missing.slnx", null!, CancellationToken.None);
+        var act = async () => await service.TryResolveAsync("missing.slnx", session.Server, CancellationToken.None);
 
         // McpException so the not-found guidance reaches the client instead of a stripped generic error.
         await act.Should().ThrowAsync<McpException>()
@@ -194,10 +199,12 @@ public sealed class McpRootsTests : IDisposable
         using var temp2 = new TestDirectory();
         temp2.CreateFile(fileName, "");
 
-        var service = new WorkspaceRootService(new PhysicalFileSystem());
-        SetRoots(service, [_temp.DirectoryPath, temp2.DirectoryPath]);
+        await using var session = await InProcessMcpSession.StartAsync(
+            clientOptions: InProcessMcpSession.CreateClientOptionsWithRoots(
+                () => [_temp.DirectoryPath, temp2.DirectoryPath]));
+        await using var service = new WorkspaceRootService(new PhysicalFileSystem());
 
-        var act = async () => await service.TryResolveAsync(fileName, null!, CancellationToken.None);
+        var act = async () => await service.TryResolveAsync(fileName, session.Server, CancellationToken.None);
 
         // McpException so the ambiguity guidance reaches the client instead of a stripped generic error.
         await act.Should().ThrowAsync<McpException>()
@@ -210,10 +217,11 @@ public sealed class McpRootsTests : IDisposable
         const string fileName = "Hidden.slnx";
         _temp.CreateFile(Path.Combine("bin", fileName), "");
 
-        var service = new WorkspaceRootService(new PhysicalFileSystem());
-        SetRoots(service, [_temp.DirectoryPath]);
+        await using var session = await InProcessMcpSession.StartAsync(
+            clientOptions: InProcessMcpSession.CreateClientOptionsWithRoots(() => [_temp.DirectoryPath]));
+        await using var service = new WorkspaceRootService(new PhysicalFileSystem());
 
-        var act = async () => await service.TryResolveAsync(fileName, null!, CancellationToken.None);
+        var act = async () => await service.TryResolveAsync(fileName, session.Server, CancellationToken.None);
 
         await act.Should().ThrowAsync<McpException>();
     }
@@ -224,10 +232,11 @@ public sealed class McpRootsTests : IDisposable
         const string fileName = "Artifact.slnx";
         _temp.CreateFile(Path.Combine("obj", fileName), "");
 
-        var service = new WorkspaceRootService(new PhysicalFileSystem());
-        SetRoots(service, [_temp.DirectoryPath]);
+        await using var session = await InProcessMcpSession.StartAsync(
+            clientOptions: InProcessMcpSession.CreateClientOptionsWithRoots(() => [_temp.DirectoryPath]));
+        await using var service = new WorkspaceRootService(new PhysicalFileSystem());
 
-        var act = async () => await service.TryResolveAsync(fileName, null!, CancellationToken.None);
+        var act = async () => await service.TryResolveAsync(fileName, session.Server, CancellationToken.None);
 
         await act.Should().ThrowAsync<McpException>();
     }
@@ -238,16 +247,6 @@ public sealed class McpRootsTests : IDisposable
         var service = new WorkspaceRootService(new PhysicalFileSystem());
         var act = async () => await service.DisposeAsync();
         await act.Should().NotThrowAsync();
-    }
-
-    private static void SetRoots(WorkspaceRootService service, IEnumerable<string> roots)
-    {
-        var type = typeof(WorkspaceRootService);
-        var rootPathsField = type.GetField("_rootPaths", BindingFlags.NonPublic | BindingFlags.Instance)!;
-        var statusField = type.GetField("_status", BindingFlags.NonPublic | BindingFlags.Instance)!;
-        rootPathsField.SetValue(service, roots.ToList());
-        // RootsStatusKind.Ready = 2 (private enum inside WorkspaceRootService)
-        statusField.SetValue(service, Enum.ToObject(statusField.FieldType, 2));
     }
 
     public void Dispose()

@@ -86,8 +86,10 @@ public class McpProjectStatsContractTests
         var method = typeof(ProjGraphTools).GetMethod("GetProjectStatsAsync");
         var parameters = method!.GetParameters();
 
-        // path, topN, progress, cancellationToken = 4 parameters
-        parameters.Should().HaveCount(4,
-            "GetProjectStats should have 'path', 'topN', 'progress', and 'cancellationToken' parameters");
+        // path, topN, progress, server, cancellationToken = 5 parameters. 'server' is bound by the
+        // SDK to the request-scoped McpServer and is excluded from the tool's JSON schema, so it
+        // does not widen the client-facing contract.
+        parameters.Should().HaveCount(5,
+            "GetProjectStats should have 'path', 'topN', 'progress', 'server', and 'cancellationToken' parameters");
     }
 }
