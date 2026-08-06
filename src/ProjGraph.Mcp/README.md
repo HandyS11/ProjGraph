@@ -75,7 +75,13 @@ Diagram resources are automatically created when tools generate output. Clients 
 ### Roots
 
 The server resolves relative file paths against workspace roots declared by the client. When a client declares roots via
-`roots/list`, passing `"MyApp.slnx"` instead of `"D:/Projects/MyApp/MyApp.slnx"` just works.
+`roots/list`, passing `"MyApp.slnx"` instead of `"D:/Projects/MyApp/MyApp.slnx"` just works. A client that declares no
+roots is asked to pass an absolute path instead.
+
+Roots is deprecated by specification version 2026-07-28 ([SEP-2577](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/seps/2577-deprecate-roots-sampling-and-logging.md))
+and stays supported for at least twelve months. Until it is retired the server keeps serving it on both that revision and
+down-level ones; on 2026-07-28 the roots are re-read per request, since that revision drops the session that
+`roots/list_changed` would otherwise invalidate.
 
 ### Progress Notifications
 

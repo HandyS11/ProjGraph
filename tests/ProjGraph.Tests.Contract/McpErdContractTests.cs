@@ -83,9 +83,10 @@ public class McpErdContractTests
         var method = type.GetMethod("GetErdAsync");
         var parameters = method!.GetParameters();
 
-        // Assert parameters exist (path, contextName, showTitle, ownedMode, progress, cancellationToken)
-        parameters.Should().HaveCount(6,
-            "GetErd should have 6 parameters: path, contextName, showTitle, ownedMode, progress, and cancellationToken");
+        // Assert parameters exist. 'server' is bound by the SDK to the request-scoped McpServer and
+        // is excluded from the tool's JSON schema, so it does not widen the client-facing contract.
+        parameters.Should().HaveCount(7,
+            "GetErd should have 7 parameters: path, contextName, showTitle, ownedMode, progress, server, and cancellationToken");
 
         var pathParam = parameters.Should().ContainSingle(p => p.Name == "path").Which;
         pathParam.ParameterType.Should().Be<string>();

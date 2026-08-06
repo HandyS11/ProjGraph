@@ -28,7 +28,6 @@ internal sealed class ProjGraphTools(
     DiagramRenderers renderers,
     IFileSystem fileSystem,
     DiagramResourceCache cache,
-    McpServer server,
     WorkspaceRootService rootService,
     CollectingOutputConsole outputConsole)
 {
@@ -48,6 +47,9 @@ internal sealed class ProjGraphTools(
         [Description("Whether to include the title in the diagram (default: true).")]
         bool showTitle = true,
         IProgress<ProgressNotificationValue>? progress = null,
+        // Request-scoped, never the singleton's root instance — see PreparePathAsync. Defaulted so
+        // tests can call the method directly with an absolute path, which never consults the server.
+        McpServer server = null!,
         CancellationToken cancellationToken = default)
     {
         if (options is { MaxDepth: < 0 })
@@ -56,7 +58,7 @@ internal sealed class ProjGraphTools(
             throw new McpException($"maxDepth must not be negative; got {options.MaxDepth}.");
         }
 
-        path = await PreparePathAsync(path, cancellationToken);
+        path = await PreparePathAsync(path, server, cancellationToken);
 
         if (!fileSystem.FileExists(path) && !fileSystem.DirectoryExists(path))
             throw new McpException($"Path not found: {path}");
@@ -133,9 +135,12 @@ internal sealed class ProjGraphTools(
         [Description("Whether to include NuGet package dependencies in the graph (default: false).")]
         bool includePackages = false,
         IProgress<ProgressNotificationValue>? progress = null,
+        // Request-scoped, never the singleton's root instance — see PreparePathAsync. Defaulted so
+        // tests can call the method directly with an absolute path, which never consults the server.
+        McpServer server = null!,
         CancellationToken cancellationToken = default)
     {
-        path = await PreparePathAsync(path, cancellationToken);
+        path = await PreparePathAsync(path, server, cancellationToken);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -187,6 +192,9 @@ internal sealed class ProjGraphTools(
         [Description("Number of top most-referenced projects to include. Defaults to 5.")]
         int topN = 5,
         IProgress<ProgressNotificationValue>? progress = null,
+        // Request-scoped, never the singleton's root instance — see PreparePathAsync. Defaulted so
+        // tests can call the method directly with an absolute path, which never consults the server.
+        McpServer server = null!,
         CancellationToken cancellationToken = default)
     {
         if (topN < 1)
@@ -194,7 +202,7 @@ internal sealed class ProjGraphTools(
             throw new McpException($"topN must be at least 1; got {topN}.");
         }
 
-        path = await PreparePathAsync(path, cancellationToken);
+        path = await PreparePathAsync(path, server, cancellationToken);
 
         progress?.Report(new ProgressNotificationValue
         {
@@ -248,6 +256,9 @@ internal sealed class ProjGraphTools(
         [Description("How EF Core owned types are shown: 'mirror' (default) inlines table-split owned types onto the owner as EF names them; 'classic' gives every owned type its own entity")]
         string ownedMode = "mirror",
         IProgress<ProgressNotificationValue>? progress = null,
+        // Request-scoped, never the singleton's root instance — see PreparePathAsync. Defaulted so
+        // tests can call the method directly with an absolute path, which never consults the server.
+        McpServer server = null!,
         CancellationToken cancellationToken = default)
     {
         if (!ErdOwnedModeParser.TryParse(ownedMode, out var mode))
@@ -260,7 +271,7 @@ internal sealed class ProjGraphTools(
             throw new McpException($"Invalid ownedMode '{ownedMode}'. Expected 'mirror' or 'classic'.");
         }
 
-        path = await PreparePathAsync(path, cancellationToken);
+        path = await PreparePathAsync(path, server, cancellationToken);
 
         RequireFileExists(path);
         RequireCsFile(path);
@@ -437,7 +448,21 @@ internal sealed class ProjGraphTools(
         }
     }
 
-    private async Task<string> PreparePathAsync(string path, CancellationToken cancellationToken)
+    /// <summary>
+    /// Validates the requested path and resolves it to an absolute one, using the client's
+    /// workspace roots when it is relative.
+    /// </summary>
+    /// <param name="path">The path supplied by the client.</param>
+    /// <param name="server">
+    /// The request-scoped <see cref="McpServer"/> bound to the tool-method parameter, never one
+    /// captured at construction time: from protocol revision 2026-07-28 the client declares its
+    /// capabilities per request in <c>_meta</c> rather than in an <c>initialize</c> handshake, so
+    /// <see cref="McpServer.ClientCapabilities"/> is populated only on the request-scoped instance.
+    /// </param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The resolved absolute path.</returns>
+    /// <exception cref="McpException">Thrown when the path is empty or cannot be resolved.</exception>
+    private async Task<string> PreparePathAsync(string path, McpServer server, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(path))
