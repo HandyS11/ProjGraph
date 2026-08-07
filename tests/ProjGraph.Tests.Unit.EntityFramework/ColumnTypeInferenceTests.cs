@@ -83,6 +83,96 @@ public class ColumnTypeInferenceTests
         property.MaxLength.Should().Be(200);
     }
 
+    [Fact]
+    public async Task HasMaxLength_OnUnresolvedIdNamedProperty_InfersStringNotGuid()
+    {
+        // A property whose name ends in "Id" and whose CLR type is unresolvable is guessed as a Guid.
+        // A max length is meaningless for a Guid column, so the constraint is proof the column is a
+        // string: eShopOnWeb configures `BuyerId` with HasMaxLength(256) and it is a string, but the
+        // ERD rendered the self-contradictory `Guid BuyerId "required, max:256"`.
+        using var temp = new TestDirectory();
+        const string content = """
+                      using Microsoft.EntityFrameworkCore;
+                      namespace Test;
+                      public class AppContext : DbContext
+                      {
+                          public DbSet<Order> Orders { get; set; } = null!;
+                          protected override void OnModelCreating(ModelBuilder builder)
+                          {
+                              builder.Entity<Order>().Property(o => o.BuyerId)
+                                  .IsRequired()
+                                  .HasMaxLength(256);
+                          }
+                      }
+                      """;
+        var filePath = temp.CreateFile("Context.cs", content);
+
+        var model = await _service.AnalyzeContextAsync(filePath, "AppContext");
+        var property = model.Entities.Single(e => e.Name == "Order").Properties.Single(p => p.Name == "BuyerId");
+
+        property.Type.Should().Be("string");
+        property.MaxLength.Should().Be(256);
+    }
+
+    [Fact]
+    public async Task HasMaxLength_AfterExplicitColumnType_KeepsColumnTypesClrType()
+    {
+        // HasColumnType is authoritative, so a max length chained after it must not undo the recovered
+        // CLR type the way it corrects a name-guessed one.
+        using var temp = new TestDirectory();
+        const string content = """
+                      using Microsoft.EntityFrameworkCore;
+                      namespace Test;
+                      public class AppContext : DbContext
+                      {
+                          public DbSet<Order> Orders { get; set; } = null!;
+                          protected override void OnModelCreating(ModelBuilder builder)
+                          {
+                              builder.Entity<Order>().Property(o => o.BuyerId)
+                                  .HasColumnType("uniqueidentifier")
+                                  .HasMaxLength(36);
+                          }
+                      }
+                      """;
+        var filePath = temp.CreateFile("Context.cs", content);
+
+        var model = await _service.AnalyzeContextAsync(filePath, "AppContext");
+        var property = model.Entities.Single(e => e.Name == "Order").Properties.Single(p => p.Name == "BuyerId");
+
+        property.Type.Should().Be("Guid");
+    }
+
+    [Fact]
+    public async Task HasMaxLength_OnResolvedGuidProperty_KeepsDeclaredType()
+    {
+        // The inference must not rewrite a type the CLR actually declares.
+        using var temp = new TestDirectory();
+        const string content = """
+                      using System;
+                      using Microsoft.EntityFrameworkCore;
+                      namespace Test;
+                      public class Order
+                      {
+                          public int Id { get; set; }
+                          public Guid BuyerId { get; set; }
+                      }
+                      public class AppContext : DbContext
+                      {
+                          public DbSet<Order> Orders { get; set; } = null!;
+                          protected override void OnModelCreating(ModelBuilder builder)
+                          {
+                              builder.Entity<Order>().Property(o => o.BuyerId).HasMaxLength(256);
+                          }
+                      }
+                      """;
+        var filePath = temp.CreateFile("Context.cs", content);
+
+        var model = await _service.AnalyzeContextAsync(filePath, "AppContext");
+        var property = model.Entities.Single(e => e.Name == "Order").Properties.Single(p => p.Name == "BuyerId");
+
+        property.Type.Should().Be("Guid");
+    }
+
     [Theory]
     [InlineData("decimal(18)")]
     [InlineData("numeric(18)")]

@@ -217,7 +217,10 @@ public class EfModelAnalyzer(
 
         // Slice 4: pull separate IEntityTypeConfiguration<T> files into the compilation so config classes
         // that live in their own files are visible to EntityConfigurationWalker.
-        var configFiles = await entityFileDiscovery.DiscoverConfigurationFilesAsync(searchDirectories, contextPath);
+        // Deliberately the narrow radius: config classes are collected by shape, not by name, so a wider
+        // one pulls in entities from unrelated solutions nested in the same repository.
+        var configFiles = await entityFileDiscovery.DiscoverConfigurationFilesAsync(
+            entityFileDiscovery.BuildLocalSearchDirectories(contextDirectory), contextPath);
         MergeFileDictionaries(entityFiles, configFiles);
 
         // An OwnsOne/OwnsMany navigation's CLR type is never named by a DbSet<T>, so nothing above finds

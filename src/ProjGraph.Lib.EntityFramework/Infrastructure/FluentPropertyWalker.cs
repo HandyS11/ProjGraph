@@ -232,15 +232,25 @@ internal static class FluentPropertyWalker
 
     private static EfProperty ApplyMaxLengthConfiguration(EfProperty property, string configArg)
     {
-        if (int.TryParse(configArg, out var maxLen))
+        if (!int.TryParse(configArg, out var maxLen))
         {
-            return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
-            {
-                MaxLength = maxLen
-            });
+            return property;
         }
 
-        return property;
+        // A maximum length only applies to string (and byte[]) columns, so it is proof that a guessed type
+        // is wrong: an unresolvable property whose name ends in "Id" is guessed as a Guid, which would
+        // otherwise render as the self-contradictory `Guid BuyerId "max:256"`. Only a guessed type is
+        // corrected — a CLR-declared or column-type-derived type stays exactly as declared.
+        var correctsGuessedType = property.IsTypeInferred &&
+                                  !property.Type.Equals(EfAnalysisConstants.DataTypes.StringTypeName,
+                                      StringComparison.OrdinalIgnoreCase);
+
+        return EfPropertyFactory.CopyWith(property, new EfPropertyOverrides
+        {
+            MaxLength = maxLen,
+            Type = correctsGuessedType ? EfAnalysisConstants.DataTypes.StringTypeName : null,
+            IsValueType = correctsGuessedType ? false : null
+        });
     }
 
     /// <summary>
@@ -256,14 +266,20 @@ internal static class FluentPropertyWalker
 
         // The SQL column type is authoritative. When the CLR type is only the guessed string fallback,
         // recover a more accurate value type (e.g. decimal, Guid, bool) from the column type.
+        // Applies to any guessed type, not just the string fallback: a property named `*Id` is guessed as a
+        // Guid, and the column type is the better evidence for it too.
         var inferredType = SqlColumnTypeMapper.ToClrType(configArg);
         if (inferredType is not null &&
-            updated.Type.Equals(EfAnalysisConstants.DataTypes.StringTypeName, StringComparison.OrdinalIgnoreCase))
+            (updated.IsTypeInferred ||
+             updated.Type.Equals(EfAnalysisConstants.DataTypes.StringTypeName, StringComparison.OrdinalIgnoreCase)))
         {
             updated = EfPropertyFactory.CopyWith(updated, new EfPropertyOverrides
             {
                 Type = inferredType,
-                IsValueType = EfPropertyFactory.IsValueTypeString(inferredType)
+                IsValueType = EfPropertyFactory.IsValueTypeString(inferredType),
+                // The column type is authoritative: the type is no longer a name-based guess, so a max
+                // length chained after it must not overwrite it the way it corrects a guessed type.
+                IsTypeInferred = false
             });
         }
 

@@ -62,9 +62,15 @@ graph TD
 var statsService = provider.GetRequiredService<IStatsService>();
 var stats = await statsService.ComputeStatsAsync("MySolution.slnx");
 
-Console.WriteLine($"Projects : {stats.ProjectCount}");
-Console.WriteLine($"Packages : {stats.PackageCount}");
-Console.WriteLine($"Dependencies: {stats.DependencyCount}");
+Console.WriteLine($"Solution : {stats.SolutionName}");
+Console.WriteLine($"Projects : {stats.TotalProjectCount}");
+Console.WriteLine($"Max depth: {stats.DepthStats.Max}");
+Console.WriteLine($"Cycles   : {stats.HasCycles}");
+
+foreach (var hotspot in stats.HotspotProjects)
+{
+    Console.WriteLine($"  {hotspot.Name} ← {hotspot.InDegree} projects");
+}
 ```
 
 ## Key Services

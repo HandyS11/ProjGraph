@@ -44,6 +44,13 @@ public interface IEntityFileDiscovery
     IReadOnlyList<string> BuildSearchDirectories(string contextDirectory);
 
     /// <summary>
+    /// Builds the narrow search list — the context directory and its immediate parent — for discovery that
+    /// collects by shape rather than by name and would over-collect over a wider radius.
+    /// </summary>
+    /// <param name="contextDirectory">The directory containing the context file.</param>
+    IReadOnlyList<string> BuildLocalSearchDirectories(string contextDirectory);
+
+    /// <summary>
     /// Extracts entity type names from a DbContext class declaration.
     /// </summary>
     /// <param name="contextClass">The class declaration syntax of the DbContext.</param>

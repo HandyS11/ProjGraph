@@ -24,6 +24,9 @@ internal sealed record EfPropertyOverrides
     /// <summary>Override for the IsExplicitlyRequired property.</summary>
     public bool? IsExplicitlyRequired { get; init; }
 
+    /// <summary>Override for the IsTypeInferred property.</summary>
+    public bool? IsTypeInferred { get; init; }
+
     /// <summary>Override for the MaxLength property.</summary>
     public int? MaxLength { get; init; }
 

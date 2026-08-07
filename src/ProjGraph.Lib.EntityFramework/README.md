@@ -38,14 +38,15 @@ services.AddProjGraphEntityFramework();
 ### Generate an ERD from a DbContext file
 
 ```csharp
+using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
-using ProjGraph.Lib.EntityFramework.Application.UseCases;
 
 var efAnalysisService = provider.GetRequiredService<IEfAnalysisService>();
 
 var model = await efAnalysisService.AnalyzeContextAsync("src/Data/AppDbContext.cs");
 
-var renderer = provider.GetRequiredService<MermaidErdRenderer>();
+var renderer = provider.GetRequiredService<IDiagramRenderer<EfModel>>();
 string diagram = renderer.Render(model);
 ```
 
@@ -70,6 +71,8 @@ erDiagram
 ### Generate an ERD from a ModelSnapshot
 
 ```csharp
+using ProjGraph.Lib.EntityFramework.Application.UseCases;
+
 var analyzeSnapshot = provider.GetRequiredService<AnalyzeSnapshotUseCase>();
 var model = await analyzeSnapshot.ExecuteAsync("src/Migrations/AppDbContextModelSnapshot.cs");
 ```

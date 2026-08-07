@@ -26,6 +26,7 @@ internal static class EfPropertyFactory
             IsRequired = overrides.IsRequired ?? source.IsRequired,
             IsValueType = overrides.IsValueType ?? source.IsValueType,
             IsExplicitlyRequired = overrides.IsExplicitlyRequired ?? source.IsExplicitlyRequired,
+            IsTypeInferred = overrides.IsTypeInferred ?? source.IsTypeInferred,
             MaxLength = overrides.MaxLength ?? source.MaxLength,
             Precision = overrides.Precision ?? source.Precision,
             Scale = overrides.Scale ?? source.Scale,
@@ -50,6 +51,7 @@ internal static class EfPropertyFactory
             IsRequired = source.IsRequired,
             IsValueType = source.IsValueType,
             IsExplicitlyRequired = source.IsExplicitlyRequired,
+            IsTypeInferred = source.IsTypeInferred,
             MaxLength = source.MaxLength,
             Precision = source.Precision,
             Scale = source.Scale,
@@ -70,7 +72,8 @@ internal static class EfPropertyFactory
         if (property is null)
         {
             var detectedType = type;
-            if (string.IsNullOrEmpty(detectedType))
+            var isTypeInferred = string.IsNullOrEmpty(detectedType);
+            if (isTypeInferred)
             {
                 detectedType =
                     propName.EndsWith(EfAnalysisConstants.Suffixes.IdSuffix, StringComparison.OrdinalIgnoreCase)
@@ -82,7 +85,8 @@ internal static class EfPropertyFactory
             {
                 Name = propName,
                 Type = detectedType,
-                IsValueType = IsValueTypeString(detectedType)
+                IsValueType = IsValueTypeString(detectedType),
+                IsTypeInferred = isTypeInferred
             };
             entity.Properties.Add(property);
         }

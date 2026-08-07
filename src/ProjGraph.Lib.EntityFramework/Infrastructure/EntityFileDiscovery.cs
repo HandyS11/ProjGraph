@@ -27,6 +27,13 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
     private const int MaxSearchDepth = 10;
 
     /// <summary>
+    /// Maximum number of directory levels walked upward when looking for the enclosing solution root.
+    /// Deep enough for the conventional <c>&lt;root&gt;/src/&lt;Project&gt;/&lt;Folder&gt;</c> layouts, bounded so a
+    /// context outside any solution never triggers a walk toward the filesystem root.
+    /// </summary>
+    private const int MaxWorkspaceWalkLevels = 6;
+
+    /// <summary>
     /// Discovers the file paths of entity files within the specified search directories.
     /// </summary>
     /// <param name="searchDirectories">A list of directories to search for entity files.</param>
@@ -126,9 +133,13 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
     /// A list of directories to search for entity files, including the context directory and its parent directory.
     /// </returns>
     /// <remarks>
-    /// This method starts with the context directory and then its parent directory.
-    /// Since the parent directory scan is recursive, it will naturally include the context directory
-    /// and all siblings through the recursive search.
+    /// The context directory comes first so that a type declared next to the DbContext always wins over a
+    /// same-named type elsewhere (matches are recorded with <c>TryAdd</c>, so the first hit sticks).
+    /// The enclosing solution root is added next: in a layered solution the entities live in a sibling
+    /// project (<c>src/Core</c>) while the context sits deeper in its own (<c>src/Infrastructure/Data</c>),
+    /// so a one-parent radius never reaches them. When no solution marker is found the search falls back
+    /// to the context directory plus its immediate parent, and never escapes into the shared system temp
+    /// directory, where it could pick up files from parallel test runs.
     /// </remarks>
     public IReadOnlyList<string> BuildSearchDirectories(
         string contextDirectory)
@@ -137,6 +148,55 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
         {
             contextDirectory
         };
+
+        var solutionRoot = WorkspaceRootResolver.FindEnclosingSolutionRoot(contextDirectory, MaxWorkspaceWalkLevels);
+        if (solutionRoot is not null)
+        {
+            // Walk outward one level at a time instead of jumping straight to the root: each ancestor's scan
+            // is recursive, so the nearest declaration of a type name is recorded first and a same-named type
+            // in an unrelated project further out can never displace it.
+            for (var current = Directory.GetParent(contextDirectory);
+                 current is not null;
+                 current = current.Parent)
+            {
+                searchDirectories.Add(current.FullName);
+
+                if (current.FullName.Equals(solutionRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+            }
+
+            return [.. searchDirectories.Distinct()];
+        }
+
+        return BuildLocalSearchDirectories(contextDirectory);
+    }
+
+    /// <summary>
+    /// Builds the narrow search list — the context directory and its immediate parent — used where a wider
+    /// radius would over-collect rather than fill gaps.
+    /// </summary>
+    /// <param name="contextDirectory">The directory containing the context file.</param>
+    /// <returns>The context directory, plus its parent when one exists outside the system temp directory.</returns>
+    /// <remarks>
+    /// Entity discovery is driven by names the context actually declares, so widening it can only fill in
+    /// missing types. Configuration-class discovery has no such guard: every
+    /// <c>IEntityTypeConfiguration&lt;T&gt;</c> in range contributes its entity to the model once the context
+    /// calls <c>ApplyConfigurationsFromAssembly</c>. Scanning a whole repository therefore pulls in entities
+    /// from unrelated solutions nested inside it — on ardalis/CleanArchitecture the six config classes of the
+    /// nested MinimalClean solution added Cart, CartItem, GuestUser, Order, OrderItem and Product to an ERD
+    /// of a context whose only DbSet is Contributor. Configuration classes live beside their DbContext by
+    /// convention (<c>Data/Config/</c>), so this narrower radius still finds the ones that belong.
+    /// </remarks>
+    public IReadOnlyList<string> BuildLocalSearchDirectories(
+        string contextDirectory)
+    {
+        var searchDirectories = new List<string>
+        {
+            contextDirectory
+        };
+
         var parentDir = Directory.GetParent(contextDirectory);
 
         if (parentDir is null)
@@ -183,6 +243,31 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
             // Reduce the type argument to its simple name so DbSet<Models.Blog> keys as "Blog".
             .Select(genericType => SimpleTypeName(genericType.TypeArgumentList.Arguments[0]))
         ];
+    }
+
+    /// <summary>
+    /// Determines whether a type declaration is an EF Core migration rather than an entity.
+    /// </summary>
+    /// <param name="typeDecl">The type declaration to classify.</param>
+    /// <returns><see langword="true"/> when the declaration is a migration; otherwise, <see langword="false"/>.</returns>
+    /// <remarks>
+    /// <c>dotnet ef migrations add PhoneNumber</c> emits <c>public partial class PhoneNumber : Migration</c>
+    /// beside the DbContext, so a migration named after the change it makes collides with the entity or value
+    /// object of that name — and sits nearer to the context than the real declaration does. Detection is by
+    /// shape (a <c>Migration</c> base type or the <c>[Migration]</c> attribute EF generates on the designer
+    /// half of the partial class) rather than by folder name, which is configurable and often renamed.
+    /// </remarks>
+    private static bool IsMigrationClass(TypeDeclarationSyntax typeDecl)
+    {
+        var derivesFromMigration = typeDecl.BaseList?.Types
+            .Any(baseType => baseType.Type is IdentifierNameSyntax { Identifier.Text: EfAnalysisConstants.CommonNames.Migration }) == true;
+
+        var hasMigrationAttribute = typeDecl.AttributeLists
+            .SelectMany(list => list.Attributes)
+            .Any(attribute => attribute.Name.ToString() is EfAnalysisConstants.CommonNames.Migration
+                or EfAnalysisConstants.CommonNames.MigrationAttribute);
+
+        return derivesFromMigration || hasMigrationAttribute;
     }
 
     /// <summary>Reduces a type-argument syntax to its simple identifier (last segment of a qualified name).</summary>
@@ -322,7 +407,8 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
 
         foreach (var typeDecl in root.DescendantNodes()
                      .OfType<TypeDeclarationSyntax>()
-                     .Where(typeDecl => entityTypeNames.Contains(typeDecl.Identifier.Text)))
+                     .Where(typeDecl => entityTypeNames.Contains(typeDecl.Identifier.Text)
+                                        && !IsMigrationClass(typeDecl)))
         {
             entityFiles.TryAdd(typeDecl.Identifier.Text, filePath);
         }
