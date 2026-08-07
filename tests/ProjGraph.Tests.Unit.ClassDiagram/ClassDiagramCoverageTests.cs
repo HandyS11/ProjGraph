@@ -59,11 +59,9 @@ public sealed class ClassDiagramCoverageTests
         result.Should().BeEquivalentTo("/root/Ok.cs");
     }
 
-    public static TheoryData<Exception> DirectoryReadFailures => new()
-    {
+    public static TheoryData<Exception> DirectoryReadFailures => new(
         new UnauthorizedAccessException("denied"),
-        new IOException("device not ready")
-    };
+        new IOException("device not ready"));
 
     [Fact]
     public void DiscoverCsFiles_UnreadableSubdirectory_ShouldNotStopSiblingDirectories()
