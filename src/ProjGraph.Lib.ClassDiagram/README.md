@@ -34,21 +34,21 @@ services.AddProjGraphCore();
 services.AddProjGraphClassDiagram();
 ```
 
-### Generate a class diagram from a project
+### Generate a class diagram from a directory
 
 ```csharp
+using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Application;
-using ProjGraph.Lib.ClassDiagram.Application.UseCases;
+using ProjGraph.Lib.Core.Abstractions;
 
 var analysisService = provider.GetRequiredService<IClassAnalysisService>();
 
-var result = await analysisService.AnalyzeAsync("src/MyProject/MyProject.csproj", new AnalysisOptions
-{
-    IncludePrivateMembers = false,
-    IncludeInternalTypes = false
-});
+var result = await analysisService.AnalyzeDirectoryAsync("src/MyProject", new AnalysisOptions(
+    MaxDepth: 1,
+    IncludeInheritance: true,
+    IncludeDependencies: true));
 
-var renderer = provider.GetRequiredService<MermaidClassDiagramRenderer>();
+var renderer = provider.GetRequiredService<IDiagramRenderer<ClassModel>>();
 string diagram = renderer.Render(result);
 ```
 
@@ -70,11 +70,13 @@ classDiagram
 ### Analyze a single file or directory
 
 ```csharp
+using ProjGraph.Lib.ClassDiagram.Application.UseCases;
+
 var analyzeFile = provider.GetRequiredService<AnalyzeFileUseCase>();
-var result = await analyzeFile.ExecuteAsync("src/Domain/Order.cs");
+var fileModel = await analyzeFile.ExecuteAsync("src/Domain/Order.cs");
 
 var analyzeDirectory = provider.GetRequiredService<AnalyzeDirectoryUseCase>();
-var result = await analyzeDirectory.ExecuteAsync("src/Domain/");
+var directoryModel = await analyzeDirectory.ExecuteAsync("src/Domain/");
 ```
 
 ## Key Services

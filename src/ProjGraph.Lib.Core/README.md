@@ -44,23 +44,24 @@ services.AddProjGraphCore();
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using ProjGraph.Lib.Core;
-using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
 
 var services = new ServiceCollection();
 services.AddProjGraphCore();
 var provider = services.BuildServiceProvider();
 
-var parser = provider.GetRequiredService<ISolutionParser>();
-IReadOnlyList<Project> projects = await parser.ParseAsync("MySolution.slnx");
+// Resolve the parser matching the solution format: ISlnxParser for .slnx, ISlnParser for .sln.
+var parser = provider.GetRequiredService<ISlnxParser>();
+IEnumerable<string> projectPaths = parser.GetProjectPaths("MySolution.slnx");
 ```
 
 ## Key Abstractions
 
 | Interface                  | Description                                                         |
 |----------------------------|---------------------------------------------------------------------|
-| `ISolutionParser`          | Parses `.sln` / `.slnx` into a list of `Project` models             |
-| `IProjectParser`           | Parses a single `.csproj` file                                      |
-| `IProjectDiscoveryService` | Discovers all projects under a directory                            |
+| `ISolutionParser`          | Extracts project file paths from a solution (`ISlnParser` / `ISlnxParser`) |
+| `IProjectParser`           | Parses a single `.csproj` into a `Project` plus its references      |
+| `IProjectDiscoveryService` | Discovers referenced projects recursively and resolves their paths  |
 | `ICompilationFactory`      | Creates Roslyn `Compilation` objects from project files             |
 | `IDiagramRenderer<T>`      | Generic renderer producing a string diagram from a model            |
 | `IFileSystem`              | Abstraction over `System.IO` for testability                        |

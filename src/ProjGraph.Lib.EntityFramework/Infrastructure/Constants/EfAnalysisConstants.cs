@@ -157,6 +157,8 @@ public static class EfAnalysisConstants
         public const string ModelSnapshot = "ModelSnapshot";
         public const string System = "System";
         public const string Nullable = "Nullable";
+        public const string Migration = "Migration";
+        public const string MigrationAttribute = "MigrationAttribute";
     }
 
     /// <summary>

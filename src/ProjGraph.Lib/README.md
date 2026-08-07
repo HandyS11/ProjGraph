@@ -46,7 +46,7 @@ using ProjGraph.Lib.Dependencies.Application;
 using ProjGraph.Lib.Dependencies.Rendering;
 
 var graphService = provider.GetRequiredService<IGraphService>();
-var graph = await graphService.GetGraphAsync("MySolution.slnx", includePackages: false);
+var graph = await graphService.BuildGraphAsync("MySolution.slnx", includePackages: false);
 
 var renderer = provider.GetRequiredService<MermaidGraphRenderer>();
 Console.WriteLine(renderer.Render(graph));
@@ -55,26 +55,28 @@ Console.WriteLine(renderer.Render(graph));
 ### Class diagram
 
 ```csharp
+using ProjGraph.Core.Models;
 using ProjGraph.Lib.ClassDiagram.Application;
-using ProjGraph.Lib.ClassDiagram.Rendering;
+using ProjGraph.Lib.Core.Abstractions;
 
 var classAnalysis = provider.GetRequiredService<IClassAnalysisService>();
-var result = await classAnalysis.AnalyzeAsync("src/MyProject/MyProject.csproj");
+var result = await classAnalysis.AnalyzeDirectoryAsync("src/MyProject");
 
-var renderer = provider.GetRequiredService<MermaidClassDiagramRenderer>();
+var renderer = provider.GetRequiredService<IDiagramRenderer<ClassModel>>();
 Console.WriteLine(renderer.Render(result));
 ```
 
 ### Entity Relationship Diagram
 
 ```csharp
+using ProjGraph.Core.Models;
+using ProjGraph.Lib.Core.Abstractions;
 using ProjGraph.Lib.EntityFramework.Application;
-using ProjGraph.Lib.EntityFramework.Rendering;
 
 var efAnalysis = provider.GetRequiredService<IEfAnalysisService>();
 var model = await efAnalysis.AnalyzeContextAsync("src/Data/AppDbContext.cs");
 
-var renderer = provider.GetRequiredService<MermaidErdRenderer>();
+var renderer = provider.GetRequiredService<IDiagramRenderer<EfModel>>();
 Console.WriteLine(renderer.Render(model));
 ```
 

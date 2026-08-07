@@ -62,6 +62,65 @@ public static class WorkspaceRootResolver
     }
 
     /// <summary>
+    /// Traverses up from the start directory looking for the enclosing *solution* root — a directory
+    /// holding a .sln/.slnx file or a .git directory. Unlike <see cref="FindWorkspaceRoot"/> this ignores
+    /// .csproj markers, which would stop the walk inside the starting project and never reach the sibling
+    /// projects of a layered solution. Never walks above the system temp directory, so an isolated tree
+    /// created under temp is bounded by its own marker rather than by the shared temp root.
+    /// </summary>
+    /// <param name="startDirectory">The directory path from which to begin searching upward.</param>
+    /// <param name="maxLevels">The maximum number of directory levels to traverse upward.</param>
+    /// <returns>The full path to the enclosing solution root if one is found; otherwise, null.</returns>
+    public static string? FindEnclosingSolutionRoot(string startDirectory, int maxLevels)
+    {
+        var current = new DirectoryInfo(startDirectory);
+        var tempPath = GetNormalizedTempPath();
+
+        for (var level = 0; current != null && level <= maxLevels; level++)
+        {
+            if (IsSolutionRoot(current))
+            {
+                return current.FullName;
+            }
+
+            // Stop *at* the temp root rather than anywhere beneath it: an isolated tree created under temp
+            // still gets to be bounded by its own marker, but the shared temp directory is never scanned.
+            if (IsSameDirectory(current, tempPath))
+            {
+                break;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Determines whether the specified directory is exactly the given path (ignoring trailing separators).
+    /// </summary>
+    /// <param name="directory">The directory to check.</param>
+    /// <param name="path">The normalized path to compare against.</param>
+    /// <returns>True if the directory is that same directory; otherwise, false.</returns>
+    private static bool IsSameDirectory(DirectoryInfo directory, string path)
+    {
+        return directory.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Equals(path, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Determines whether the specified directory holds a solution-level marker (.sln, .slnx or .git).
+    /// </summary>
+    /// <param name="directory">The directory to check.</param>
+    /// <returns>True if the directory contains a solution-level marker; otherwise, false.</returns>
+    private static bool IsSolutionRoot(DirectoryInfo directory)
+    {
+        return directory.GetFiles("*.sln").Length > 0 ||
+               directory.GetFiles("*.slnx").Length > 0 ||
+               directory.GetDirectories(DirectoryFilters.Git).Length > 0;
+    }
+
+    /// <summary>
     /// Determines whether the specified directory is a workspace root by checking for
     /// workspace marker files (.sln, .slnx, .csproj) or directories (.git).
     /// </summary>

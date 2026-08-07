@@ -137,6 +137,13 @@ public class EfProperty
     public bool IsExplicitlyRequired { get; init; }
 
     /// <summary>
+    /// Gets or initializes a value indicating whether <see cref="Type"/> was guessed from the property's
+    /// name rather than read from a CLR declaration or an explicit column type. Only a guessed type may be
+    /// corrected by later evidence, such as a maximum length that no value type could carry.
+    /// </summary>
+    public bool IsTypeInferred { get; init; }
+
+    /// <summary>
     /// Gets or initializes the maximum length of the property value, if applicable.
     /// </summary>
     public int? MaxLength { get; init; }
