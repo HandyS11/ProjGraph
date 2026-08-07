@@ -49,16 +49,13 @@ internal sealed class WorkspaceRootService(IFileSystem fileSystem) : IAsyncDispo
 
         // Resolved into a local: on the per-request revision the roots belong to this request only,
         // so an overlapping request must not be able to swap them out from under this one.
-        var roots = await ResolveRootsAsync(server, ct);
-
-        // Every failure below throws McpException: the SDK replaces the message of any other
+        //
+        // Every failure from here on throws McpException: the SDK replaces the message of any other
         // exception type with a generic "An error occurred invoking '…'", so the guidance
         // (most importantly "provide an absolute path") would never reach the client.
-        if (roots is null)
-        {
-            throw new McpException(
+        var roots = await ResolveRootsAsync(server, ct)
+            ?? throw new McpException(
                 "Client does not support workspace roots. Please provide an absolute path.");
-        }
 
         var matches = ResolveMatches(roots, path);
 
