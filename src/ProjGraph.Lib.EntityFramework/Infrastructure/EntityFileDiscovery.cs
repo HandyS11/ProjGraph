@@ -256,26 +256,29 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
     /// object of that name — and sits nearer to the context than the real declaration does. Detection is by
     /// shape (a <c>Migration</c> base type or the <c>[Migration]</c> attribute EF generates on the designer
     /// half of the partial class) rather than by folder name, which is configurable and often renamed.
+    /// Both are matched on the right-most identifier: migrations are generated code, so neither the base
+    /// type nor the attribute is guaranteed to be written unqualified.
     /// </remarks>
     private static bool IsMigrationClass(TypeDeclarationSyntax typeDecl)
     {
         var derivesFromMigration = typeDecl.BaseList?.Types
-            .Any(baseType => baseType.Type is IdentifierNameSyntax { Identifier.Text: EfAnalysisConstants.CommonNames.Migration }) == true;
+            .Any(baseType => SimpleTypeName(baseType.Type) is EfAnalysisConstants.CommonNames.Migration) == true;
 
         var hasMigrationAttribute = typeDecl.AttributeLists
             .SelectMany(list => list.Attributes)
-            .Any(attribute => attribute.Name.ToString() is EfAnalysisConstants.CommonNames.Migration
+            .Any(attribute => SimpleTypeName(attribute.Name) is EfAnalysisConstants.CommonNames.Migration
                 or EfAnalysisConstants.CommonNames.MigrationAttribute);
 
         return derivesFromMigration || hasMigrationAttribute;
     }
 
-    /// <summary>Reduces a type-argument syntax to its simple identifier (last segment of a qualified name).</summary>
-    /// <param name="type">The type-argument syntax from a <c>DbSet&lt;T&gt;</c> property.</param>
+    /// <summary>Reduces a type syntax to its simple identifier (the right-most segment of a qualified name).</summary>
+    /// <param name="type">The type syntax to reduce — a <c>DbSet&lt;T&gt;</c> type argument, a base type or an attribute name.</param>
     /// <returns>The simple type name.</returns>
     private static string SimpleTypeName(TypeSyntax type) => type switch
     {
-        QualifiedNameSyntax qualified => qualified.Right.Identifier.Text,
+        QualifiedNameSyntax qualified => SimpleTypeName(qualified.Right),
+        AliasQualifiedNameSyntax alias => SimpleTypeName(alias.Name),
         SimpleNameSyntax simple => simple.Identifier.Text,
         _ => type.ToString()
     };

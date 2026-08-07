@@ -150,7 +150,7 @@ public sealed class CrossProjectEntityDiscoveryTests
 
                 protected override void OnModelCreating(ModelBuilder modelBuilder)
                 {
-                    modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+                    modelBuilder.ApplyConfigurationsFromAssembly(typeof(ShopContext).Assembly);
                 }
             }
             """);
@@ -229,6 +229,16 @@ public sealed class CrossProjectEntityDiscoveryTests
             {
                 protected override void Up(MigrationBuilder migrationBuilder) { }
                 protected override void Down(MigrationBuilder migrationBuilder) { }
+            }
+            """);
+        // The designer half of the same partial class, written with fully qualified names: migrations are
+        // generated code, so neither the base type nor the attribute is guaranteed to be unqualified.
+        temp.CreateFile("src/Infrastructure/Data/Migrations/20231218143922_PhoneNumber.Designer.cs", """
+            namespace Test.Migrations;
+
+            [Microsoft.EntityFrameworkCore.Migrations.Migration("20231218143922_PhoneNumber")]
+            public partial class PhoneNumber : Microsoft.EntityFrameworkCore.Migrations.Migration
+            {
             }
             """);
         var contextPath = temp.CreateFile("src/Infrastructure/Data/AppDbContext.cs", """
