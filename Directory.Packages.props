@@ -5,7 +5,7 @@
   <ItemGroup>
     <PackageVersion Include="coverlet.collector" Version="10.0.1"/>
     <PackageVersion Include="FluentAssertions" Version="8.10.0"/>
-    <PackageVersion Include="Microsoft.Build" Version="18.8.2"/>
+    <PackageVersion Include="Microsoft.Build" Version="18.9.6"/>
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0"/>
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.302"/>
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.6.0"/>
@@ -16,11 +16,11 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10"/>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1"/>
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="18.7.23"/>
-    <PackageVersion Include="NSubstitute" Version="6.0.0"/>
+    <PackageVersion Include="NSubstitute" Version="6.2.0"/>
     <PackageVersion Include="ModelContextProtocol" Version="2.1.0"/>
-    <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0"/>
-    <PackageVersion Include="Roslynator.Formatting.Analyzers" Version="4.15.0"/>
-    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.31.0.145097"/>
+    <PackageVersion Include="Roslynator.Analyzers" Version="4.16.0"/>
+    <PackageVersion Include="Roslynator.Formatting.Analyzers" Version="4.16.0"/>
+    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.32.0.713"/>
     <PackageVersion Include="Spectre.Console" Version="0.57.2"/>
     <PackageVersion Include="Spectre.Console.Cli" Version="0.55.0"/>
     <PackageVersion Include="Spectre.Console.Testing" Version="0.57.2"/>
