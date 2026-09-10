@@ -9,13 +9,23 @@ const COPY_SHORTCUT = /Mac|iPhone|iPad/.test(navigator.userAgent)
   ? '⌘C'
   : 'Ctrl+C'
 
-/** Puts a node's text under the user's selection, ready for a manual copy. */
+/**
+ * Puts a node's text under the user's selection, ready for a manual copy.
+ * Returns whether the selection was actually made, so the caller can avoid
+ * telling the user to press a copy shortcut over an empty selection.
+ */
 function selectContents(node) {
+  /* getSelection() is null when the window has no associated document. */
+  const selection = window.getSelection()
+  if (!selection) {
+    return false
+  }
+
   const range = document.createRange()
   range.selectNodeContents(node)
-  const selection = window.getSelection()
   selection.removeAllRanges()
   selection.addRange(range)
+  return true
 }
 
 /** Copies the adjacent command, then reports the result on the button itself. */
@@ -47,9 +57,15 @@ function wireCopyButtons() {
         report('Copied', 'true', 1600)
       } catch {
         /* Clipboard access can be refused - over plain HTTP, or by permission.
-           Select the command first so the shortcut has something to act on. */
-        selectContents(code)
-        report(`Press ${COPY_SHORTCUT}`, 'false', 4000)
+           Select the command first so the shortcut has something to act on, and
+           fall back to asking for a manual selection when even that is
+           unavailable. Either way the button reports something. */
+        const selected = selectContents(code)
+        report(
+          selected ? `Press ${COPY_SHORTCUT}` : 'Select to copy',
+          'false',
+          4000
+        )
       }
     })
   }
