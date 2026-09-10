@@ -97,8 +97,11 @@ dotnet run --project src/ProjGraph.Mcp
 ### Analyze Project Dependencies
 
 ```bash
-# Tree format (default)
+# Mermaid format (default)
 projgraph visualize ./MySolution.sln
+
+# ASCII tree format
+projgraph visualize ./MySolution.sln --format tree
 
 # Mermaid format for documentation
 projgraph visualize ./MySolution.slnx --format mermaid --output docs/dependencies.mmd

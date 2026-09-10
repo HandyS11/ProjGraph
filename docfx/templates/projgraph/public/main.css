@@ -1,0 +1,1066 @@
+/*
+ * ProjGraph documentation theme.
+ *
+ * Layered on top of docfx's `default` + `modern` templates. Overrides stay on
+ * Bootstrap custom properties (`--bs-*`) and documented docfx selectors so a
+ * docfx upgrade shifts as little as possible underneath us.
+ *
+ * Colour is semantic here, not decorative:
+ *   cyan   - graph structure: nodes, edges, the active rail, executable lines
+ *   steel  - every other border, rule, and chrome element
+ * If something is not part of a graph and not something you can run, it is not
+ * cyan.
+ */
+
+@font-face {
+  font-family: 'ProjGraph Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/inter-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'ProjGraph Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/inter-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'ProjGraph Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/inter-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'ProjGraph Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'ProjGraph Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');
+}
+
+/* ---------------------------------------------------------------- tokens -- */
+
+:root {
+  --pg-mono: 'ProjGraph Mono', ui-monospace, 'SFMono-Regular', 'Cascadia Mono',
+    Consolas, monospace;
+  --pg-sans: 'ProjGraph Sans', system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+
+  --pg-radius: 10px;
+  --pg-rail: 3px;
+  --pg-measure: 72ch;
+}
+
+[data-bs-theme='dark'] {
+  --pg-void: #060b16;
+  --pg-surface: #0d1526;
+  --pg-surface-raised: #142138;
+  --pg-hairline: #1c2942;
+  --pg-hairline-strong: #2c4062;
+  --pg-ink: #dce7f5;
+  --pg-ink-dim: #93a8c4;
+  --pg-mute: #6b809e;
+
+  --pg-cyan: #22d3ee;
+  --pg-cyan-soft: #67e8f9;
+  --pg-cyan-wash: rgba(34, 211, 238, 0.12);
+
+  --pg-node: #38bdf8;
+  --pg-edge: #22d3ee;
+  --pg-key: #fbbf24;
+  --pg-warn: #fb7185;
+
+  --bs-body-bg: var(--pg-void);
+  --bs-body-color: var(--pg-ink);
+  --bs-body-bg-rgb: 6, 11, 22;
+  --bs-body-color-rgb: 220, 231, 245;
+  --bs-emphasis-color: #fff;
+  --bs-secondary-color: var(--pg-ink-dim);
+  --bs-border-color: var(--pg-hairline);
+  --bs-heading-color: #eef5ff;
+  --bs-code-color: var(--pg-cyan-soft);
+  --bs-link-color: #5fdcf2;
+  --bs-link-color-rgb: 95, 220, 242;
+  --bs-link-hover-color: #9bebfa;
+  --bs-link-hover-color-rgb: 155, 235, 250;
+}
+
+/* The light theme is designed, not derived: cool paper rather than an inverted
+   copy of the dark ramp, with the cyan darkened far enough to hold contrast on
+   white. */
+[data-bs-theme='light'] {
+  --pg-void: #f5f8fc;
+  --pg-surface: #fff;
+  --pg-surface-raised: #eaf1f8;
+  --pg-hairline: #d6e0ec;
+  --pg-hairline-strong: #b2c4d8;
+  --pg-ink: #10192b;
+  --pg-ink-dim: #465873;
+  --pg-mute: #6b7e97;
+
+  --pg-cyan: #0e7490;
+  --pg-cyan-soft: #0891b2;
+  --pg-cyan-wash: rgba(14, 116, 144, 0.09);
+
+  --pg-node: #0369a1;
+  --pg-edge: #0e7490;
+  --pg-key: #a16207;
+  --pg-warn: #be123c;
+
+  --bs-body-bg: var(--pg-void);
+  --bs-body-color: var(--pg-ink);
+  --bs-body-bg-rgb: 245, 248, 252;
+  --bs-body-color-rgb: 16, 25, 43;
+  --bs-secondary-color: var(--pg-ink-dim);
+  --bs-border-color: var(--pg-hairline);
+  --bs-heading-color: #07101f;
+  --bs-code-color: #0e7490;
+  --bs-link-color: #0e7490;
+  --bs-link-color-rgb: 14, 116, 144;
+  --bs-link-hover-color: #0b5566;
+  --bs-link-hover-color-rgb: 11, 85, 102;
+}
+
+body {
+  font-family: var(--pg-sans);
+  background-color: var(--pg-void);
+}
+
+/* ------------------------------------------------------------ typography -- */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.navbar-brand,
+.toc,
+.affix,
+#breadcrumb {
+  font-family: var(--pg-mono);
+}
+
+article h1 {
+  font-size: 2.05rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  margin-bottom: 1.1rem;
+}
+
+article h2 {
+  font-size: 1.38rem;
+  letter-spacing: -0.02em;
+  padding-top: 0.55rem;
+  margin-top: 2.6rem;
+  border-top: 1px solid var(--pg-hairline);
+}
+
+article h3 {
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+  margin-top: 1.9rem;
+}
+
+article p,
+article li {
+  max-width: var(--pg-measure);
+  line-height: 1.68;
+}
+
+article > p:first-of-type {
+  color: var(--pg-ink-dim);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+/* The generated API reference sets its own rhythm; the conceptual rules above
+   fight it, so they stop at the door. */
+body[data-yaml-mime='ManagedReference'] article h2 {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 2rem;
+}
+
+/* --------------------------------------------------------------- navbar -- */
+
+header .navbar {
+  /* Plain colour first: engines without color-mix() drop the line below. */
+  background-color: var(--pg-void);
+  background-color: color-mix(in srgb, var(--pg-void) 88%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+header {
+  border-bottom-color: var(--pg-hairline) !important;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--bs-heading-color);
+}
+
+.navbar-brand > img,
+#logo {
+  height: 1.6rem;
+  width: auto;
+  border-radius: 6px;
+  margin-right: 0.55rem;
+}
+
+.navbar-nav .nav-link {
+  font-family: var(--pg-mono);
+  font-size: 0.86rem;
+  color: var(--pg-ink-dim);
+}
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active {
+  color: var(--pg-cyan);
+}
+
+/* docfx renders the navbar icon links (GitHub, NuGet) from main.js `iconLinks`. */
+form.icons .btn {
+  color: var(--pg-ink-dim);
+}
+
+form.icons .btn:hover {
+  color: var(--pg-cyan);
+}
+
+#search input.form-control {
+  font-family: var(--pg-mono);
+  font-size: 0.84rem;
+  background-color: var(--pg-surface);
+  border-color: var(--pg-hairline);
+  color: var(--pg-ink);
+}
+
+#search input.form-control:focus {
+  border-color: var(--pg-cyan);
+  box-shadow: 0 0 0 3px var(--pg-cyan-wash);
+}
+
+/* --------------------------------------------------- table of contents -- */
+
+.toc .nav-link {
+  font-size: 0.85rem;
+  color: var(--pg-ink-dim);
+  border-left: var(--pg-rail) solid transparent;
+  border-radius: 0;
+  padding-left: 0.7rem;
+}
+
+.toc .nav-link:hover {
+  color: var(--pg-ink);
+  background-color: var(--pg-cyan-wash);
+}
+
+/* The active rail is a graph edge: you are here, and this is the path in. */
+.toc .nav-link.active {
+  color: var(--pg-cyan);
+  font-weight: 700;
+  background-color: var(--pg-cyan-wash);
+  border-left-color: var(--pg-cyan);
+}
+
+.affix h5 {
+  font-family: var(--pg-mono);
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--pg-ink-dim);
+}
+
+.affix ul > li > a {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--pg-mute);
+  border-left: var(--pg-rail) solid var(--pg-hairline);
+  padding-left: 0.65rem;
+}
+
+.affix ul > li > a:hover,
+.affix ul > li.active > a {
+  color: var(--pg-cyan);
+  border-left-color: var(--pg-cyan);
+  background: none;
+}
+
+/* ----------------------------------------------------------- code blocks -- */
+
+code,
+pre,
+kbd {
+  font-family: var(--pg-mono);
+  font-variant-ligatures: none;
+}
+
+:not(pre) > code {
+  background-color: var(--pg-cyan-wash);
+  border-radius: 4px;
+  padding: 0.12em 0.36em;
+  font-size: 0.87em;
+}
+
+article pre {
+  background-color: var(--pg-surface);
+  border: 1px solid var(--pg-hairline);
+  border-radius: var(--pg-radius);
+  font-size: 0.845rem;
+  line-height: 1.6;
+}
+
+/* highlight.js sets a background on `.hljs` itself, which outranks a plain type
+   selector and punches a grey box out of the navy. Match its specificity. */
+article pre > code,
+article pre > code.hljs {
+  background: none;
+  padding: 1rem 1.1rem;
+}
+
+/* A cyan rail marks blocks you can actually run, separating a command from a
+   C# snippet or a config file at a glance. */
+article pre:has(> code.lang-sh),
+article pre:has(> code.lang-bash),
+article pre:has(> code.lang-console),
+article pre:has(> code.lang-powershell) {
+  border-left: var(--pg-rail) solid var(--pg-cyan);
+  border-radius: 0 var(--pg-radius) var(--pg-radius) 0;
+}
+
+[data-bs-theme='dark'] .hljs-keyword,
+[data-bs-theme='dark'] .hljs-built_in,
+[data-bs-theme='dark'] .hljs-literal {
+  color: #7dd3fc;
+}
+
+[data-bs-theme='dark'] .hljs-string,
+[data-bs-theme='dark'] .hljs-attr {
+  color: #6ee7b7;
+}
+
+[data-bs-theme='dark'] .hljs-title,
+[data-bs-theme='dark'] .hljs-name {
+  color: #c4b5fd;
+}
+
+[data-bs-theme='dark'] .hljs-comment,
+[data-bs-theme='dark'] .hljs-meta {
+  color: var(--pg-mute);
+}
+
+[data-bs-theme='dark'] .hljs-number,
+[data-bs-theme='dark'] .hljs-type {
+  color: #fcd34d;
+}
+
+/* ---------------------------------------------------------------- tables -- */
+
+article table {
+  font-size: 0.9rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+article table > thead > tr > th {
+  font-family: var(--pg-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--pg-ink-dim);
+  border-bottom: 2px solid var(--pg-hairline-strong);
+}
+
+article table > tbody > tr:hover {
+  background-color: var(--pg-cyan-wash);
+}
+
+/* ------------------------------------------------------------ blockquote -- */
+
+article blockquote {
+  border-left: var(--pg-rail) solid var(--pg-hairline-strong);
+  background-color: var(--pg-surface);
+  padding: 0.85rem 1.1rem;
+  border-radius: 0 var(--pg-radius) var(--pg-radius) 0;
+  color: var(--pg-ink);
+}
+
+article blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* ------------------------------------------------- rendered diagrams -- */
+
+/* Sample pages are mostly Mermaid. Give each diagram room and a surface, so it
+   reads as output rather than as an illustration dropped into the prose. */
+article pre.mermaid {
+  background-color: var(--pg-surface);
+  border: 1px solid var(--pg-hairline);
+  border-radius: var(--pg-radius);
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- footer -- */
+
+footer {
+  border-top-color: var(--pg-hairline) !important;
+  background-color: var(--pg-surface);
+  font-family: var(--pg-mono);
+  font-size: 0.82rem;
+}
+
+.pg-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.4rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pg-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+}
+
+.pg-footer a {
+  color: var(--pg-ink-dim);
+  text-decoration: none;
+}
+
+.pg-footer a:hover {
+  color: var(--pg-cyan);
+  text-decoration: underline;
+}
+
+/* =========================================================== landing page = */
+
+body[data-layout='landing'] main.container-xxl {
+  max-width: 1180px;
+}
+
+body[data-layout='landing'] article {
+  padding-top: 0.5rem;
+}
+
+/* The landing page sets its own sectioning, so the conceptual h2 rule that
+   draws a rule above every heading would double up here. */
+body[data-layout='landing'] article h2 {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.pg-hero {
+  padding: 2.4rem 0 0.5rem;
+}
+
+.pg-hero h1 {
+  font-family: var(--pg-mono);
+  font-size: clamp(1.85rem, 4.2vw, 2.95rem);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.045em;
+  margin: 0 0 1rem;
+  max-width: 22ch;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* docfx's script injects <wbr> into headings at camelCase boundaries so long
+   API type names can wrap. That is right for the API reference and wrong here:
+   it splits "ProjGraph" across two lines on a narrow screen. Hiding the element
+   removes the break opportunity; the rule is scoped to the hero so generated
+   reference headings keep it. */
+.pg-hero h1 wbr {
+  display: none;
+}
+
+.pg-hero-lede {
+  color: var(--pg-ink-dim);
+  font-size: 1.06rem;
+  line-height: 1.6;
+  max-width: 60ch;
+  margin-bottom: 1.5rem;
+}
+
+.pg-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: center;
+  margin-bottom: 2.4rem;
+}
+
+.pg-btn {
+  font-family: var(--pg-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.6rem 1.15rem;
+  border-radius: var(--pg-radius);
+  text-decoration: none;
+  border: 1px solid var(--pg-hairline-strong);
+  color: var(--pg-ink);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.pg-btn:hover {
+  border-color: var(--pg-cyan);
+  background-color: var(--pg-cyan-wash);
+  color: var(--pg-ink);
+  text-decoration: none;
+}
+
+.pg-btn-primary {
+  background-color: var(--pg-cyan);
+  border-color: var(--pg-cyan);
+  color: #04212b;
+}
+
+.pg-btn-primary:hover {
+  background-color: var(--pg-cyan-soft);
+  border-color: var(--pg-cyan-soft);
+  color: #04212b;
+}
+
+[data-bs-theme='light'] .pg-btn-primary,
+[data-bs-theme='light'] .pg-btn-primary:hover {
+  color: #fff;
+}
+
+/* -- the transform: source on the left, the graph it describes on the right - */
+
+.pg-transform {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 0.9rem;
+}
+
+.pg-pane {
+  background-color: var(--pg-surface);
+  border: 1px solid var(--pg-hairline);
+  border-radius: var(--pg-radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pg-pane-out {
+  border-color: var(--pg-hairline-strong);
+  box-shadow: 0 0 0 1px var(--pg-cyan-wash);
+}
+
+.pg-pane-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.8rem;
+  background-color: var(--pg-surface-raised);
+  border-bottom: 1px solid var(--pg-hairline);
+  font-family: var(--pg-mono);
+  font-size: 0.76rem;
+  color: var(--pg-ink-dim);
+}
+
+.pg-pane-out .pg-pane-bar {
+  color: var(--pg-cyan);
+}
+
+.pg-pane-tag {
+  margin-left: auto;
+  color: var(--pg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-pane pre {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  background: none;
+  border: 0;
+  font-family: var(--pg-mono);
+  font-size: 0.735rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  flex: 1;
+  white-space: pre;
+  color: var(--pg-ink-dim);
+}
+
+.pg-pane pre b {
+  font-weight: 400;
+  color: var(--pg-ink);
+}
+
+.pg-cs-key {
+  color: #7dd3fc;
+}
+
+.pg-cs-type {
+  color: #fcd34d;
+}
+
+.pg-cs-comment {
+  color: var(--pg-mute);
+  font-style: italic;
+}
+
+[data-bs-theme='light'] .pg-cs-key {
+  color: #0369a1;
+}
+
+[data-bs-theme='light'] .pg-cs-type {
+  color: #a16207;
+}
+
+/* -- the drawn graph ------------------------------------------------------ */
+
+.pg-graph {
+  flex: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0.6rem 0.5rem;
+}
+
+.pg-graph .pg-g-box {
+  fill: var(--pg-surface-raised);
+  stroke: var(--pg-hairline-strong);
+  stroke-width: 1;
+}
+
+.pg-graph .pg-g-head {
+  fill: var(--pg-node);
+  font-family: var(--pg-mono);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.pg-graph .pg-g-field {
+  fill: var(--pg-ink-dim);
+  font-family: var(--pg-mono);
+  font-size: 6.6px;
+}
+
+.pg-graph .pg-g-pk {
+  fill: var(--pg-key);
+  font-family: var(--pg-mono);
+  font-size: 6.6px;
+}
+
+.pg-graph .pg-g-edge {
+  fill: none;
+  stroke: var(--pg-edge);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+}
+
+.pg-graph .pg-g-card {
+  fill: var(--pg-edge);
+  font-family: var(--pg-mono);
+  font-size: 6px;
+}
+
+.pg-graph .pg-g-node {
+  fill: var(--pg-edge);
+}
+
+/* The page's one piece of non-user-triggered motion: the graph draws its own
+   edges, once, on load. The markup ships in its final state, so nothing is
+   hidden when the animation cannot run. */
+@media (prefers-reduced-motion: no-preference) {
+  .pg-transform[data-draw='pending'] .pg-g-edge,
+  .pg-transform[data-draw='running'] .pg-g-edge {
+    stroke-dasharray: var(--pg-len, 200);
+  }
+
+  .pg-transform[data-draw='pending'] .pg-g-edge {
+    stroke-dashoffset: var(--pg-len, 200);
+  }
+
+  .pg-transform[data-draw='pending'] .pg-g-node,
+  .pg-transform[data-draw='pending'] .pg-g-card {
+    opacity: 0;
+  }
+
+  .pg-transform[data-draw='running'] .pg-g-edge {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.75s ease-out 0.15s;
+  }
+
+  .pg-transform[data-draw='running'] .pg-g-node,
+  .pg-transform[data-draw='running'] .pg-g-card {
+    opacity: 1;
+    transition: opacity 0.4s ease 0.8s;
+  }
+}
+
+.pg-transform-note {
+  font-size: 0.93rem;
+  line-height: 1.65;
+  color: var(--pg-ink-dim);
+  max-width: 72ch;
+  margin-bottom: 2.5rem;
+}
+
+.pg-transform-note b {
+  font-family: var(--pg-mono);
+  font-weight: 700;
+  color: var(--pg-cyan);
+}
+
+/* ---- install line ------------------------------------------------------- */
+
+.pg-install {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background-color: var(--pg-surface);
+  border: 1px solid var(--pg-hairline);
+  border-left: var(--pg-rail) solid var(--pg-cyan);
+  border-radius: var(--pg-radius);
+  padding: 0.7rem 0.9rem;
+  font-family: var(--pg-mono);
+  font-size: 0.87rem;
+  margin-bottom: 3rem;
+  max-width: 46rem;
+}
+
+.pg-install span.pg-prompt {
+  color: var(--pg-cyan);
+  user-select: none;
+}
+
+.pg-install code {
+  background: none;
+  padding: 0;
+  color: var(--pg-ink);
+  flex: 1;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.pg-copy {
+  flex: none;
+  font-family: var(--pg-mono);
+  font-size: 0.75rem;
+  padding: 0.28rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--pg-hairline-strong);
+  background: none;
+  color: var(--pg-ink-dim);
+  cursor: pointer;
+}
+
+.pg-copy:hover {
+  color: var(--pg-cyan);
+  border-color: var(--pg-cyan);
+}
+
+.pg-copy[data-copied='true'] {
+  color: var(--pg-cyan);
+  border-color: var(--pg-cyan);
+}
+
+/* ---- landing sections --------------------------------------------------- */
+
+.pg-section {
+  margin-bottom: 3.2rem;
+}
+
+.pg-section > h2 {
+  font-family: var(--pg-mono);
+  font-size: 1.26rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  border: 0;
+  padding: 0;
+  margin: 0 0 0.4rem;
+}
+
+.pg-section > p {
+  color: var(--pg-ink-dim);
+  max-width: 66ch;
+  margin-bottom: 1.5rem;
+}
+
+/* ---- what it draws: the command is the headline ------------------------- */
+
+.pg-caps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.4rem 2rem;
+}
+
+/* Four items: two even rows rather than three-and-an-orphan. */
+@media (min-width: 900px) {
+  .pg-caps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.pg-cap {
+  border-left: var(--pg-rail) solid var(--pg-hairline-strong);
+  padding-left: 1rem;
+}
+
+.pg-cap:hover {
+  border-left-color: var(--pg-cyan);
+}
+
+.pg-cap h3 {
+  font-family: var(--pg-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+  color: var(--pg-cyan);
+  overflow-wrap: anywhere;
+}
+
+.pg-cap p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--pg-ink-dim);
+  margin: 0;
+}
+
+/* ---- two ways to run it ------------------------------------------------- */
+
+.pg-runners {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.2rem;
+}
+
+.pg-runner {
+  border: 1px solid var(--pg-hairline);
+  border-radius: var(--pg-radius);
+  background-color: var(--pg-surface);
+  padding: 1.2rem 1.3rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.pg-runner h3 {
+  font-family: var(--pg-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--bs-heading-color);
+}
+
+.pg-runner p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--pg-ink-dim);
+  max-width: none;
+}
+
+.pg-runner pre {
+  background-color: var(--pg-void);
+  border: 1px solid var(--pg-hairline);
+  border-radius: 8px;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  padding: 0.75rem 0.85rem;
+  margin: 0 0 0.9rem;
+  overflow-x: auto;
+}
+
+.pg-runner-link {
+  font-family: var(--pg-mono);
+  font-size: 0.83rem;
+  margin-top: auto;
+  margin-bottom: 0;
+  padding-top: 0.6rem;
+}
+
+/* ---- showcase ----------------------------------------------------------- */
+
+.pg-shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.9rem;
+}
+
+.pg-shot {
+  display: block;
+  border: 1px solid var(--pg-hairline);
+  border-radius: var(--pg-radius);
+  background-color: var(--pg-surface);
+  padding: 1rem 1.05rem;
+  text-decoration: none;
+  color: var(--pg-ink);
+}
+
+.pg-shot:hover {
+  border-color: var(--pg-cyan);
+  background-color: var(--pg-cyan-wash);
+  color: var(--pg-ink);
+  text-decoration: none;
+}
+
+.pg-shot strong {
+  font-family: var(--pg-mono);
+  font-size: 0.88rem;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.pg-shot span {
+  font-size: 0.85rem;
+  color: var(--pg-ink-dim);
+}
+
+/* ---- next steps --------------------------------------------------------- */
+
+.pg-next {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.9rem;
+}
+
+/* Six items: two rows of three rather than four-and-two. */
+@media (min-width: 992px) {
+  .pg-next {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.pg-next a {
+  display: block;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--pg-hairline);
+  border-radius: var(--pg-radius);
+  background-color: var(--pg-surface);
+  text-decoration: none;
+  color: var(--pg-ink);
+}
+
+.pg-next a:hover {
+  border-color: var(--pg-cyan);
+  background-color: var(--pg-cyan-wash);
+  text-decoration: none;
+}
+
+.pg-next strong {
+  font-family: var(--pg-mono);
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 0.22rem;
+}
+
+.pg-next span {
+  font-size: 0.85rem;
+  color: var(--pg-ink-dim);
+}
+
+/* -------------------------------------------------------------- responsive */
+
+@media (max-width: 860px) {
+  .pg-transform {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-pane pre {
+    font-size: 0.7rem;
+  }
+}
+
+/* ------------------------------------------------------------------ focus -- */
+
+a:focus-visible,
+button:focus-visible,
+.pg-btn:focus-visible,
+.pg-copy:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--pg-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media print {
+  .pg-transform,
+  .pg-caps,
+  .pg-runners {
+    break-inside: avoid;
+  }
+}
+
+/* ------------------------------------------------------------- search -- */
+
+.search-results {
+  padding-top: 1.6rem;
+}
+
+.search-list {
+  font-family: var(--pg-mono);
+  font-size: 0.82rem;
+  color: var(--pg-ink-dim);
+  padding-bottom: 0.9rem;
+  margin-bottom: 1.4rem;
+  border-bottom: 1px solid var(--pg-hairline);
+}
+
+/* docfx anchors these on #search-results, so the selectors are matched to it. */
+#search-results > .sr-items .sr-item {
+  max-width: 78ch;
+  padding-left: 1rem;
+  border-left: var(--pg-rail) solid var(--pg-hairline);
+  margin-bottom: 1.7rem;
+}
+
+#search-results > .sr-items .sr-item:hover {
+  border-left-color: var(--pg-cyan);
+}
+
+#search-results > .sr-items .sr-item > .item-title {
+  font-family: var(--pg-mono);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.2rem;
+}
+
+#search-results > .sr-items .sr-item > .item-title a {
+  text-decoration: none;
+  color: var(--bs-heading-color);
+}
+
+#search-results > .sr-items .sr-item > .item-title a:hover {
+  color: var(--pg-cyan);
+}
+
+#search-results > .sr-items .sr-item > .item-href {
+  font-family: var(--pg-mono);
+  font-size: 0.75rem;
+  color: var(--pg-mute);
+}
+
+#search-results > .sr-items .sr-item > .item-brief {
+  font-size: 0.89rem;
+  line-height: 1.6;
+  color: var(--pg-ink-dim);
+}

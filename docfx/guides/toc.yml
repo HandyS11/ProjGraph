@@ -1,3 +1,12 @@
+- name: 🚀 Start here
+- name: Getting started
+  href: getting-started.md
+- name: Output formats
+  href: output-formats.md
+- name: Troubleshooting
+  href: troubleshooting.md
+
+- name: 📖 Reference
 - name: CLI Guide
   href: ../../src/ProjGraph.Cli/README.md
 - name: MCP Guide
