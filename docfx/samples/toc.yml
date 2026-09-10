@@ -1,0 +1,27 @@
+- name: 🗺️ Overview
+- name: All samples
+  href: ../../samples/README.md
+
+- name: 🗄️ Entity relationships
+- name: Simple DbContext
+  href: ../../samples/erd/simple-context/README.md
+- name: Complex e-commerce
+  href: ../../samples/erd/complex-ecommerce/README.md
+
+- name: 🏢 Class diagrams
+- name: Simple hierarchy
+  href: ../../samples/classdiagram/simple-hierarchy/README.md
+- name: Design patterns
+  href: ../../samples/classdiagram/design-patterns/README.md
+- name: Complex hierarchy
+  href: ../../samples/classdiagram/complex-hierarchy/README.md
+
+- name: 🌐 Dependency graphs
+- name: Simple dependencies
+  href: ../../samples/visualize/simple-dependencies/README.md
+- name: Modular architecture
+  href: ../../samples/visualize/modular-architecture/README.md
+
+- name: 📈 Metrics
+- name: Solution metrics
+  href: ../../samples/stats/README.md

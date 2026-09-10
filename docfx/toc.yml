@@ -1,5 +1,7 @@
 - name: Guides
   href: guides/
+- name: Showcase
+  href: samples/
 - name: Developers
   href: dev/
 - name: API Reference
