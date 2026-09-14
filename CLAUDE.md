@@ -67,6 +67,8 @@ Application/
 
 **MCP stdout safety** — The MCP server overrides `IOutputConsole` with `NullOutputConsole` to prevent ANSI markup from leaking onto the JSON-RPC stdio transport.
 
+**Tool packaging** — `ProjGraph.Cli` and `ProjGraph.Mcp` set `PublishAot=true` and `ToolPackageRuntimeIdentifiers`, so a plain `dotnet pack` builds only the pointer package. Each native package needs `dotnet pack -r <rid>` on a matching OS (Alpine for `linux-musl-*`), and the `any` fallback needs `dotnet pack -r any -p:PublishAot=false`. Because `PublishAot` is set, plain JIT builds also get AOT feature switches (e.g. `IsDynamicCodeSupported=false`) in their `runtimeconfig.json`. `.github/workflows/pack.yml` builds every package.
+
 **New feature checklist:**
 
 1. Add domain models to `ProjGraph.Core` if needed.

@@ -2,11 +2,23 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <!-- Allow the global tool to start on a newer major runtime than it was built against. -->
+    <!-- Lets the framework-dependent `any` package start on a newer major runtime than it was built against. -->
     <RollForward>LatestMajor</RollForward>
 
-    <!-- Native AOT is opt-in (-p:PublishAot=true). The analyzers run on every build so first-party
-         code stays AOT-clean under warnings-as-errors; third-party ILC warnings must not fail publish. -->
+    <!-- Native AOT tool packages. `dotnet pack` builds the pointer package, which lists one package per
+         RID below; `dotnet pack -r <rid>` on a matching OS builds each native package, and
+         `dotnet pack -r any -p:PublishAot=false` builds the framework-dependent fallback.
+         .github/workflows/pack.yml builds them all. Keep linux-musl-* listed with linux-*: without
+         them, musl systems resolve the glibc package, which can't start there. -->
+    <PublishAot>true</PublishAot>
+    <ToolPackageRuntimeIdentifiers>win-x64;linux-x64;linux-arm64;linux-musl-x64;linux-musl-arm64;osx-arm64;any</ToolPackageRuntimeIdentifiers>
+    <!-- Native debug symbols (.dbg, .dSYM, .pdb) would more than double the size of each native package. -->
+    <CopyOutputSymbolsToPublishDirectory Condition="'$(PublishAot)' == 'true'">false</CopyOutputSymbolsToPublishDirectory>
+    <!-- A pointer package holds no assemblies, so packing a symbols package for it fails (NU5017). -->
+    <IncludeSymbols>false</IncludeSymbols>
+
+    <!-- The analyzers run on every build so first-party code stays AOT-clean under warnings-as-errors;
+         third-party ILC warnings must not fail publish. -->
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <IlcTreatWarningsAsErrors>false</IlcTreatWarningsAsErrors>

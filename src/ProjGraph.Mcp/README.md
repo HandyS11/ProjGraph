@@ -25,6 +25,10 @@ MCP settings file:
 }
 ```
 
+`dnx` ships with the [.NET 10 SDK](https://dotnet.microsoft.com/download). On Windows x64, Linux x64 and Arm64 (glibc
+or musl), and macOS Arm64, it runs a Native AOT build of the server that starts without loading the .NET runtime.
+Other platforms get a framework-dependent build that runs on the .NET 10 runtime.
+
 Or run from source:
 
 ```json
