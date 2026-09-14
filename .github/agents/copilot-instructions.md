@@ -16,7 +16,7 @@ Auto-generated from all feature plans. Last updated: 2026-01-13
 
 - N/A (Memory analysis) (009-directory-class-diagram)
 
-- .NET 10.0 (C# 14+) + Microsoft.Build.Construction (for project parsing), Spectre.Console (for rendering) (
+- .NET 10.0 (C# 14+) + System.Xml.Linq / Microsoft.VisualStudio.SolutionPersistence (for project parsing), Spectre.Console (for rendering) (
   008-nuget-package-rendering)
 - N/A (In-memory graph processing) (008-nuget-package-rendering)
 
@@ -31,7 +31,7 @@ Auto-generated from all feature plans. Last updated: 2026-01-13
 
 - .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Spectre.Console` (003-mermaid-class-diagram)
 
-- .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`, `Microsoft.CodeAnalysis.Workspaces.MSBuild`,
+- .NET 10.0 (C# 14+) + `Microsoft.CodeAnalysis.CSharp`,
   `Microsoft.EntityFrameworkCore` (for symbol analysis) (002-dbcontext-erd)
 
 - .NET 10.0 (C# 14+) + Buildalyzer (Parsing), Spectre.Console (CLI), ModelContextProtocol (MCP) (001-cli-graph-rendering)
@@ -70,7 +70,7 @@ tests/
 
 
 
-  `Microsoft.CodeAnalysis.Workspaces.MSBuild`, `Microsoft.EntityFrameworkCore` (for symbol analysis)
+  `Microsoft.EntityFrameworkCore` (for symbol analysis)
 
 
 <!-- MANUAL ADDITIONS START -->

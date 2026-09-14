@@ -200,8 +200,13 @@ These tests must pass unchanged before and after 1.2/1.3.
 - **EF Core.** `TryAddEntityFrameworkCoreReference` keeps its lookup but skips the assembly
   when `Location` is empty. Otherwise a loaded EF Core assembly under AOT would pass `""` to
   `CreateFromFile` and throw. In the spike it found nothing to add, and output matched JIT.
-- **Build guard.** A build-time check fails with a clear error if any of the four files is
+- **Build guard.** A build-time check fails with a clear error if any embedded file is
   missing from the targeting pack.
+- **Binding parity.** The embedded set is the union of the reference assemblies that define a
+  public type the runtime set bound (23 files, about 2 MB), not just the four above. Residual
+  divergence: 19 implementation-only types with no reference contract no longer bind, and 118
+  types the runtime set couldn't bind (e.g. `ConcurrentDictionary<TKey,TValue>`) now bind, so
+  they are filtered as System types instead of appearing as diagram nodes.
 - **Test.** A new unit test asserts that the reference set contains all four resources and
   that a compilation using `List<T>`, `[Required]`, and `IEnumerable<T>` has no error-typed
   symbols.
