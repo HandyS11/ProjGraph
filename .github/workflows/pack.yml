@@ -21,6 +21,7 @@ on:
       - .github/actions/native-tool-smoke/**
       - .github/scripts/native-tool-smoke.sh
       - .github/scripts/verify-packages.sh
+      - .github/scripts/set-server-json-version.sh
       - src/ProjGraph.Cli/ProjGraph.Cli.csproj
       - src/ProjGraph.Mcp/ProjGraph.Mcp.csproj
       - tests/ProjGraph.Tests.Smoke.Aot/**
@@ -106,6 +107,9 @@ jobs:
         run: |
           dotnet restore ProjGraph.slnx
           dotnet build ProjGraph.slnx --no-restore --configuration Release -p:Version="$VERSION"
+
+      - name: Stamp the MCP server.json version
+        run: bash .github/scripts/set-server-json-version.sh "$VERSION"
 
       # With PublishAot set, packing the solution produces the RID-agnostic pointer packages for the
       # two tools; they move to their own folder because publish.yml pushes them last.

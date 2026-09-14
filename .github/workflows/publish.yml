@@ -157,10 +157,7 @@ jobs:
           prerelease: ${{ contains(needs.prepare.outputs.tag, '-') }}
 
       - name: Update server.json version
-        run: |
-          sed -i "s/\"version\": \"[^\"]\+\"/\"version\": \"$VERSION\"/g" src/ProjGraph.Mcp/.mcp/server.json
-          echo "Updated server.json:"
-          grep "\"version\"" src/ProjGraph.Mcp/.mcp/server.json
+        run: bash .github/scripts/set-server-json-version.sh "$VERSION"
 
       - name: Install mcp-publisher
         run: |

@@ -62,6 +62,7 @@ A new reusable workflow, `pack.yml`, runs the action for all six native RIDs and
     - split pack steps;
     - TRX upload on failure.
 12. **Plain JIT builds now carry AOT feature switches.** With `PublishAot` in the csproj, `dotnet build` writes `IsDynamicCodeSupported=false`, `JsonSerializer.IsReflectionEnabledByDefault=false`, and similar switches into `ProjGraph.Cli.runtimeconfig.json`/`ProjGraph.Mcp.runtimeconfig.json`. The smoke reference and `dotnet run` therefore run with them. The `any` packages (`-p:PublishAot=false`) don't, which is why deviation 8 tests them separately.
+13. **The MCP `server.json` version is stamped before packing.** `.github/scripts/set-server-json-version.sh` runs in the composite action, in `pack-portable`, and in `publish`, because every `ProjGraph.Mcp*` package embeds `.mcp/server.json`. With the spec's sed only in `publish`, all 8 MCP packages would ship the committed `0.4.0`.
 
 ## Verified facts this plan relies on
 
@@ -140,6 +141,7 @@ Checked on 2026-09-14 in throwaway copies of `develop` at `fe0f3fd` (linux-x64, 
 | `.github/actions/native-tool-smoke/action.yml` | Create | Runs the script on the runner, or in Alpine for `linux-musl-*` |
 | `.github/scripts/verify-packages.sh` | Create | Requires a folder to hold exactly the named package sets |
 | `.github/scripts/wait-for-nuget.sh` | Create | Polls NuGet.org's flat container until versions are listed |
+| `.github/scripts/set-server-json-version.sh` | Create | Stamps the version into `.mcp/server.json` before every pack |
 | `.github/workflows/ci.yml` | Modify | `aot-smoke` uses the composite action |
 | `.github/workflows/pack.yml` | Create | `pack-native` ×6 and `pack-portable`; reusable, also PR-triggered |
 | `.github/workflows/publish.yml` | Modify | `prepare` → `pack` → `publish` with ordered pushes |
