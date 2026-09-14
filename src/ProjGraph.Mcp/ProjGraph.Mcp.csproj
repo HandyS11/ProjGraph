@@ -15,6 +15,10 @@
     <!-- Set up the MCP server to be a single file executable -->
     <PublishSingleFile>true</PublishSingleFile>
 
+    <!-- Serialize only through source-generated metadata, as Native AOT does, so a type missing from
+         McpJsonContext fails on the JIT build too instead of silently falling back to reflection. -->
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+
     <!-- Set recommended package metadata -->
     <PackageId>ProjGraph.Mcp</PackageId>
     <Title>ProjGraph MCP Server</Title>
