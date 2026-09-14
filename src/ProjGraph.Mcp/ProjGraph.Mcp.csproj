@@ -15,6 +15,12 @@
     <!-- Set up the MCP server to be a single file executable -->
     <PublishSingleFile>true</PublishSingleFile>
 
+    <!-- Native AOT is opt-in (-p:PublishAot=true). The analyzers run on every build so first-party
+         code stays AOT-clean under warnings-as-errors; third-party ILC warnings must not fail publish. -->
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <IlcTreatWarningsAsErrors>false</IlcTreatWarningsAsErrors>
+
     <!-- Serialize only through source-generated metadata, as Native AOT does, so a type missing from
          McpJsonContext fails on the JIT build too instead of silently falling back to reflection. -->
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
