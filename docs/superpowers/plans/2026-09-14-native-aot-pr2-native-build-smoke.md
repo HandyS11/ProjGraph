@@ -36,6 +36,7 @@
 8. **Parameter name.** The spec's MCP case says `options.inheritance`; the real parameter is `options.includeInheritance`.
 9. **Shared MCP servers.** Disposing a stdio `McpClient` takes about 5 s in SDK 2.2.0 (the existing `McpTransportTests` pay this too; the servers themselves exit at once on stdin EOF). One native and one reference server are shared across the MCP test class. That brings the whole suite from 1 min 51 s to about 20 s, and it mirrors how clients hold one long session.
 10. **Legacy `.sln` fixture.** Besides the five `modular-architecture` projects, it contains a solution folder, a `NestedProjects` section, and one classic C# project-type GUID, so the SolutionPersistence filtering path runs natively.
+11. **Native outputs go to git-ignored `artifacts/native/*` (and `artifacts/aot-build`) instead of the spec's `out/*`.** `out/` isn't git-ignored, and committing the ~36.6 MB CLI and ~42.9 MB MCP binaries would bloat the repository.
 
 ## Verified facts this plan relies on
 
@@ -587,6 +588,20 @@ public sealed partial class CliParityTests : IDisposable
         await AssertParityAsync(expectSuccess: false, "stats", "ProjGraph.slnx", "--tpo", "3");
     }
 
+    [AotSmokeFact]
+    public async Task Help_Root_ShouldMatchReference()
+    {
+        // Help rendering is the most reflection-heavy Spectre path (descriptions and defaults on
+        // settings types).
+        await AssertParityAsync(expectSuccess: true, "--help");
+    }
+
+    [AotSmokeFact]
+    public async Task Help_Visualize_ShouldMatchReference()
+    {
+        await AssertParityAsync(expectSuccess: true, "visualize", "--help");
+    }
+
     private string CreateSolutionWithMalformedProject()
     {
         _temp.CreateFile("Good/Good.csproj",
@@ -596,24 +611,33 @@ public sealed partial class CliParityTests : IDisposable
             "<Solution><Project Path=\"Good/Good.csproj\" /><Project Path=\"Bad/Bad.csproj\" /></Solution>");
     }
 
-    private static async Task AssertParityAsync(bool expectSuccess, params string[] arguments)
+    /// <summary>
+    /// Runs both builds and requires they agree, pinning the reference outcome first.
+    /// </summary>
+    /// <param name="expectSuccess">Whether the reference build must exit with 0.</param>
+    /// <param name="arguments">The CLI arguments.</param>
+    /// <returns>The reference build's result, for callers that need to inspect it further.</returns>
+    private static async Task<ProcessResult> AssertParityAsync(bool expectSuccess, params string[] arguments)
     {
         var (native, reference) = await RunBothAsync(arguments);
 
         AssertReferenceOutcome(reference, expectSuccess);
         AssertSameResult(native, reference);
+        return reference;
     }
 
     /// <summary>
     /// Compares a diagram command twice: printed to the console, then written with <c>--output</c>.
     /// Both builds write to the same path one after the other, because the "Saved to" line on
     /// standard error names the path and Spectre wraps it at the console width, so two different
-    /// paths could not be compared exactly.
+    /// paths could not be compared exactly. Both runs must produce non-empty output, so a case where
+    /// both builds silently print or write nothing cannot pass as parity.
     /// </summary>
     /// <param name="arguments">The CLI arguments, without <c>--output</c>.</param>
     private async Task AssertDiagramParityAsync(params string[] arguments)
     {
-        await AssertParityAsync(expectSuccess: true, arguments);
+        var console = await AssertParityAsync(expectSuccess: true, arguments);
+        console.StandardOutput.Should().NotBeNullOrWhiteSpace("the console run must print a diagram");
 
         var outputPath = Path.Combine(_temp.DirectoryPath, "output", "diagram.mmd");
         string[] withOutput = [.. arguments, "--output", outputPath];
@@ -626,6 +650,7 @@ public sealed partial class CliParityTests : IDisposable
         var reference = await ProcessRunner.RunAsync(SmokeEnvironment.CliReference, withOutput);
         AssertReferenceOutcome(reference, expectSuccess: true);
         var referenceFile = await File.ReadAllBytesAsync(outputPath);
+        referenceFile.Should().NotBeEmpty("the --output run must write a non-empty diagram file");
 
         AssertSameResult(native, reference);
         nativeFile.Should().Equal(referenceFile, "the native build must write the same diagram bytes");
@@ -675,7 +700,10 @@ public sealed partial class CliParityTests : IDisposable
 
     /// <summary>
     /// Drops the wall-clock "Analysis time" row and collapses runs of spaces, because the timing
-    /// value's width can shift the table's padding.
+    /// value's width can shift the table's padding. ANSI colour escapes (Spectre's GitHub Actions
+    /// enricher sets <c>Capabilities.Ansi = true</c> when <c>GITHUB_ACTIONS=true</c>, and child
+    /// processes inherit that variable) are stripped only to decide which line to drop, so colour
+    /// output on the other rows is still compared exactly.
     /// </summary>
     /// <param name="output">The captured standard output of <c>stats</c>.</param>
     /// <returns>The output without timing, for comparison.</returns>
@@ -683,12 +711,16 @@ public sealed partial class CliParityTests : IDisposable
     {
         return string.Join('\n', output.ReplaceLineEndings("\n")
             .Split('\n')
-            .Where(line => !line.TrimStart().StartsWith("Analysis time", StringComparison.Ordinal))
+            .Where(line => !AnsiEscape().Replace(line, string.Empty).TrimStart()
+                .StartsWith("Analysis time", StringComparison.Ordinal))
             .Select(line => RunOfSpaces().Replace(line, " ")));
     }
 
     [GeneratedRegex(" {2,}")]
     private static partial Regex RunOfSpaces();
+
+    [GeneratedRegex(@"\x1B\[[0-9;?]*[A-Za-z]")]
+    private static partial Regex AnsiEscape();
 }
 ```
 
@@ -862,7 +894,7 @@ Expected: `Passed: 16`. The binary is about 36.6 MB.
 unset PROJGRAPH_SMOKE_CLI_NATIVE PROJGRAPH_SMOKE_CLI_REFERENCE PROJGRAPH_SMOKE_MCP_NATIVE PROJGRAPH_SMOKE_MCP_REFERENCE
 dotnet build ProjGraph.slnx -c Release
 dotnet test tests/ProjGraph.Tests.Integration.Cli -c Release --no-build
-git grep -n "PublishAot" -- '*.csproj' '*.props'
+git grep -n "<PublishAot" -- '*.csproj' '*.props' '*.targets'
 ```
 
 Expected: build 0 warnings, `Tests.Integration.Cli` all pass, and `git grep` prints nothing.
@@ -975,6 +1007,13 @@ namespace ProjGraph.Tests.Smoke.Aot;
 /// <param name="servers">The native and reference servers shared by this class.</param>
 public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpServerPair>
 {
+    /// <summary>
+    /// The time limit for one MCP request. The SDK's own timeout (2.2.0) only covers initialization,
+    /// so without this a deadlocked native or reference server would hang the test instead of
+    /// failing it.
+    /// </summary>
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromMinutes(2);
+
     [AotSmokeFact]
     public async Task Initialize_ShouldAdvertiseTheSameServer()
     {
@@ -988,13 +1027,15 @@ public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpSer
     [AotSmokeFact]
     public async Task ListTools_ShouldMatchReference()
     {
-        await AssertSameResultAsync(client => client.ListToolsAsync(new ListToolsRequestParams()));
+        await AssertSameResultAsync((client, cancellationToken) =>
+            client.ListToolsAsync(new ListToolsRequestParams(), cancellationToken));
     }
 
     [AotSmokeFact]
     public async Task ListPrompts_ShouldMatchReference()
     {
-        await AssertSameResultAsync(client => client.ListPromptsAsync(new ListPromptsRequestParams()));
+        await AssertSameResultAsync((client, cancellationToken) =>
+            client.ListPromptsAsync(new ListPromptsRequestParams(), cancellationToken));
     }
 
     [AotSmokeFact]
@@ -1003,14 +1044,16 @@ public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpSer
         // Prompt results serialize IEnumerable<ChatMessage> through McpJsonContext.
         var path = SmokeEnvironment.GetRootPath("samples/classdiagram/complex-hierarchy/Domain/Models/CEO.cs");
 
-        await AssertSameResultAsync(client => client.GetPromptAsync(
-            "class_structure_review", new Dictionary<string, object?> { ["path"] = path }));
+        await AssertSameResultAsync((client, cancellationToken) => client.GetPromptAsync(
+            "class_structure_review", new Dictionary<string, object?> { ["path"] = path },
+            cancellationToken: cancellationToken));
     }
 
     [AotSmokeFact]
     public async Task ReadWelcomeResource_ShouldMatchReference()
     {
-        await AssertSameResultAsync(client => client.ReadResourceAsync(new Uri("projgraph://welcome")));
+        await AssertSameResultAsync((client, cancellationToken) =>
+            client.ReadResourceAsync(new Uri("projgraph://welcome"), cancellationToken: cancellationToken));
     }
 
     [AotSmokeFact]
@@ -1068,19 +1111,21 @@ public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpSer
         });
     }
 
-    private async Task<T> AssertSameResultAsync<T>(Func<McpClient, ValueTask<T>> request)
+    private async Task<T> AssertSameResultAsync<T>(Func<McpClient, CancellationToken, ValueTask<T>> request)
     {
         var (native, reference) = await servers.GetClientsAsync();
+        using var timeout = new CancellationTokenSource(RequestTimeout);
 
-        var referenceResult = await request(reference);
-        AssertSameJson(await request(native), referenceResult);
+        var referenceResult = await request(reference, timeout.Token);
+        AssertSameJson(await request(native, timeout.Token), referenceResult);
         return referenceResult;
     }
 
     private async Task<CallToolResult> AssertSameToolResultAsync(
         string toolName, Dictionary<string, object?> arguments)
     {
-        var reference = await AssertSameResultAsync(client => client.CallToolAsync(toolName, arguments));
+        var reference = await AssertSameResultAsync((client, cancellationToken) =>
+            client.CallToolAsync(toolName, arguments, cancellationToken: cancellationToken));
 
         // Pins the reference outcome, so an error both builds return identically cannot pass as parity.
         reference.IsError.Should().NotBe(true, JoinText(reference));
@@ -1236,7 +1281,7 @@ Append to `.github/workflows/ci.yml`, under `jobs:` after the `build` job (same 
 
 - [ ] **Step 2: Run the job's commands locally from a clean clone**
 
-This proves the YAML's commands work from scratch, with no leftovers from earlier tasks. A clone only sees committed state, so commit the workflow first:
+This proves the YAML's commands work from scratch, with no leftovers from earlier tasks. A clone only sees committed state, so commit the workflow first. `GITHUB_ACTIONS=true` is exported alongside the four `PROJGRAPH_SMOKE_*` variables because Spectre.Console's GitHub enricher turns on ANSI output under that variable, and child processes inherit it; that behaviour must be exercised locally, not just on the runner:
 
 ```bash
 git add .github/workflows/ci.yml && git commit -m "ci: add the aot-smoke job"
@@ -1246,6 +1291,7 @@ dotnet restore ProjGraph.slnx
 dotnet build ProjGraph.slnx --no-restore --configuration Release
 dotnet publish src/ProjGraph.Cli --configuration Release --runtime linux-x64 -p:PublishAot=true --artifacts-path artifacts/aot-build --output artifacts/native/cli
 dotnet publish src/ProjGraph.Mcp --configuration Release --runtime linux-x64 -p:PublishAot=true --artifacts-path artifacts/aot-build --output artifacts/native/mcp
+GITHUB_ACTIONS=true \
 PROJGRAPH_SMOKE_REQUIRED=true \
 PROJGRAPH_SMOKE_CLI_NATIVE=artifacts/native/cli/ProjGraph.Cli \
 PROJGRAPH_SMOKE_CLI_REFERENCE=src/ProjGraph.Cli/bin/Release/net10.0/ProjGraph.Cli.dll \
@@ -1336,5 +1382,5 @@ This is a repository-settings change, so it belongs to the user (or run it only 
 ## Exit criteria (spec, PR 2)
 
 - `aot-smoke` is green on the PR and marked required on `develop`.
-- No csproj or props file sets `PublishAot` (`git grep -n PublishAot -- '*.csproj' '*.props'` is empty).
+- No csproj or props file sets `PublishAot` (`git grep -n "<PublishAot" -- '*.csproj' '*.props' '*.targets'` is empty).
 - The existing CI matrix is green, with `Tests.Smoke.Aot` skipped there.

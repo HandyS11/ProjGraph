@@ -71,8 +71,9 @@ dotnet test tests/ProjGraph.Tests.Unit.ClassDiagram --filter "ClassAnalysisDepth
 
 `Tests.Smoke.Aot` compares Native AOT builds of the CLI and MCP server with the JIT build of the
 same commit. It is skipped unless the `PROJGRAPH_SMOKE_*` variables are set, and the `aot-smoke`
-CI job runs it on every PR. To run it locally on Linux (requires `clang` or `gcc`; the `--artifacts-path`
-keeps the self-contained MCP publish from overwriting the JIT build):
+CI job runs it on every PR. Native AOT on Linux needs `clang` (or `gcc`) and `zlib1g-dev`, as the
+CI job installs. The commands below are for linux-x64; the `--artifacts-path` keeps the
+self-contained MCP publish from overwriting the JIT build:
 
 ```bash
 dotnet build ProjGraph.slnx -c Release

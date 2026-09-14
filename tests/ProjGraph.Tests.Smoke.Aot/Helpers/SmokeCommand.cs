@@ -20,7 +20,7 @@ internal sealed record SmokeCommand(string FileName, IReadOnlyList<string> Leadi
             return new SmokeCommand(path, []);
         }
 
-        // dotnet test exports the host that runs the tests, so the reference build runs on the same SDK.
+        // dotnet test exports the host that runs the tests, so the reference build runs on the same dotnet host.
         var host = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
         return new SmokeCommand(string.IsNullOrEmpty(host) ? "dotnet" : host, [path]);
     }
