@@ -85,7 +85,7 @@ Application/
 | `Tests.Integration.Cli` | CLI end-to-end tests |
 | `Tests.Integration.Mcp` | MCP tool integration tests |
 | `Tests.Contract` | MCP contract validation & DI wiring |
-| `Tests.Smoke.Aot` | Native AOT vs JIT parity for the CLI and MCP executables (skipped unless `PROJGRAPH_SMOKE_*` is set; runs in the `aot-smoke` CI job) |
+| `Tests.Smoke.Aot` | Native AOT vs JIT parity for the installed CLI and MCP tools (skipped unless `PROJGRAPH_SMOKE_*` is set; `.github/scripts/native-tool-smoke.sh` runs it in the `aot-smoke` CI job and for every RID in `pack.yml`) |
 | `Tests.Shared` | Shared helpers (`TestDirectory`, `TestPathHelper`) |
 
 ### Release
