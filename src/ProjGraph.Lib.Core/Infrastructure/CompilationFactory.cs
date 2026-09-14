@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using ProjGraph.Lib.Core.Abstractions;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace ProjGraph.Lib.Core.Infrastructure;
@@ -104,6 +105,9 @@ public sealed class CompilationFactory : ICompilationFactory
     /// the case under Native AOT, instead of passing an empty path to
     /// <see cref="MetadataReference.CreateFromFile(string, MetadataReferenceProperties, DocumentationProvider?)"/>.
     /// </remarks>
+    [UnconditionalSuppressMessage("SingleFile", "IL3000:Avoid accessing Assembly file path when publishing as a single file",
+        Justification = "Location is only used when it is non-empty; the Location.Length guard skips assemblies " +
+                        "without a file (single-file and Native AOT) instead of passing an empty path to CreateFromFile.")]
     private static void TryAddEntityFrameworkCoreReference(List<MetadataReference> references)
     {
         try
