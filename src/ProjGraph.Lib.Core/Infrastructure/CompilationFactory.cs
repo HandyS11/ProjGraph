@@ -11,8 +11,13 @@ namespace ProjGraph.Lib.Core.Infrastructure;
 public sealed class CompilationFactory : ICompilationFactory
 {
     /// <summary>
+    /// The manifest resource name prefix under which the reference assemblies are embedded.
+    /// </summary>
+    private const string ReferenceResourcePrefix = "refs/";
+
+    /// <summary>
     /// The BCL/EF metadata reference set, built once and reused across compilations: it is
-    /// immutable for the process lifetime and building it re-reads several assemblies from disk.
+    /// immutable for the process lifetime and building it copies several embedded assemblies.
     /// </summary>
     private static readonly Lazy<IReadOnlyList<MetadataReference>> CachedReferences =
         new(BuildMetadataReferences);
@@ -54,84 +59,51 @@ public sealed class CompilationFactory : ICompilationFactory
     /// </summary>
     /// <returns>A list of <see cref="MetadataReference"/> objects representing the necessary references.</returns>
     /// <remarks>
-    /// This method initializes a list of metadata references with essential assemblies such as `System.Object`,
-    /// `System.Collections.Generic.IEnumerable`, `System.Collections.Generic.ICollection`, and `System.Runtime`.
-    /// It also attempts to add additional references for `System.Collections`, `System.ComponentModel.Annotations`
-    /// or `System.ComponentModel.DataAnnotations`, and `Microsoft.EntityFrameworkCore`.
+    /// The BCL references come from the reference assemblies embedded in this library under the
+    /// <c>refs/</c> resource prefix (<c>System.Runtime</c>, <c>System.Collections</c>,
+    /// <c>System.ComponentModel.Annotations</c>, and <c>netstandard</c>), so the reference set is
+    /// the same whether the host runs on the JIT runtime or as a Native AOT executable, where
+    /// <see cref="Assembly.Location"/> is always empty. <c>Microsoft.EntityFrameworkCore</c> is
+    /// added when it is loaded from a file.
     /// </remarks>
     private static List<MetadataReference> BuildMetadataReferences()
     {
-        var references = new List<MetadataReference>
-        {
-            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(IEnumerable<>).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(ICollection<>).Assembly.Location),
-            MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location)
-        };
+        var assembly = typeof(CompilationFactory).Assembly;
+        var references = assembly.GetManifestResourceNames()
+            .Where(name => name.StartsWith(ReferenceResourcePrefix, StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .Select(name => CreateEmbeddedReference(assembly, name))
+            .ToList<MetadataReference>();
 
-        TryAddReference(references, "System.Collections");
-        TryAddDataAnnotationsReference(references);
         TryAddEntityFrameworkCoreReference(references);
 
         return references;
     }
 
     /// <summary>
-    /// Attempts to add a metadata reference for the specified assembly to the provided list of references.
+    /// Creates a metadata reference from an embedded reference assembly.
     /// </summary>
-    /// <param name="references">The list of metadata references to which the assembly reference will be added.</param>
-    /// <param name="assemblyName">The name of the assembly to load and add as a metadata reference.</param>
-    /// <remarks>
-    /// If the specified assembly cannot be loaded or an error occurs, the method fails silently as the reference is not critical.
-    /// </remarks>
-    private static void TryAddReference(List<MetadataReference> references, string assemblyName)
+    /// <param name="assembly">The assembly that embeds the resource.</param>
+    /// <param name="resourceName">The manifest resource name, which also becomes the reference's display name.</param>
+    /// <returns>The metadata reference.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the resource cannot be opened.</exception>
+    private static PortableExecutableReference CreateEmbeddedReference(Assembly assembly, string resourceName)
     {
-        try
-        {
-            references.Add(MetadataReference.CreateFromFile(Assembly.Load(assemblyName).Location));
-        }
-        catch (FileNotFoundException)
-        {
-            // Not critical if not found
-        }
-    }
-
-    /// <summary>
-    /// Attempts to add a metadata reference for the Data Annotations assembly to the provided list of references.
-    /// </summary>
-    /// <param name="references">The list of metadata references to which the Data Annotations reference will be added.</param>
-    /// <remarks>
-    /// This method first tries to load the "System.ComponentModel.Annotations" assembly.
-    /// If it fails, it attempts to load the "System.ComponentModel.DataAnnotations" assembly instead.
-    /// If both attempts fail, the method fails silently as the reference is not critical.
-    /// </remarks>
-    private static void TryAddDataAnnotationsReference(List<MetadataReference> references)
-    {
-        try
-        {
-            references.Add(
-                MetadataReference.CreateFromFile(
-                    Assembly.Load("System.ComponentModel.Annotations").Location));
-        }
-        catch (FileNotFoundException)
-        {
-            try
-            {
-                references.Add(
-                    MetadataReference.CreateFromFile(
-                        Assembly.Load("System.ComponentModel.DataAnnotations").Location));
-            }
-            catch (FileNotFoundException)
-            {
-                // Not critical if not found
-            }
-        }
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+                           ?? throw new InvalidOperationException(
+                               $"Embedded reference assembly '{resourceName}' could not be opened.");
+        return MetadataReference.CreateFromStream(stream, filePath: resourceName);
     }
 
     /// <summary>
     /// Attempts to add a metadata reference for the Microsoft.EntityFrameworkCore assembly to the provided list of references.
     /// </summary>
     /// <param name="references">The list of metadata references to which the Entity Framework Core reference will be added.</param>
+    /// <remarks>
+    /// The assembly is skipped when its <see cref="Assembly.Location"/> is empty, which is always
+    /// the case under Native AOT, instead of passing an empty path to
+    /// <see cref="MetadataReference.CreateFromFile(string, MetadataReferenceProperties, DocumentationProvider?)"/>.
+    /// </remarks>
     private static void TryAddEntityFrameworkCoreReference(List<MetadataReference> references)
     {
         try
@@ -139,7 +111,7 @@ public sealed class CompilationFactory : ICompilationFactory
             var efCoreAssembly = AppDomain.CurrentDomain.GetAssemblies()
                 .FirstOrDefault(a => a.GetName().Name == "Microsoft.EntityFrameworkCore");
 
-            if (efCoreAssembly != null)
+            if (efCoreAssembly is { Location.Length: > 0 })
             {
                 references.Add(MetadataReference.CreateFromFile(efCoreAssembly.Location));
             }

@@ -17,6 +17,24 @@
     <None Include="..\..\icon.png" Pack="true" PackagePath=""/>
   </ItemGroup>
 
+  <!-- Reference assemblies that CompilationFactory hands to Roslyn. They are embedded rather than
+       read from the runtime directory because Assembly.Location is empty under Native AOT. -->
+  <PropertyGroup>
+    <ReferenceAssemblyDirectory>$(NetCoreTargetingPackRoot)/Microsoft.NETCore.App.Ref/$(BundledNETCoreAppPackageVersion)/ref/$(TargetFramework)/</ReferenceAssemblyDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedReferenceAssembly Include="System.Runtime.dll;System.Collections.dll;System.ComponentModel.Annotations.dll;netstandard.dll"/>
+    <EmbeddedResource Include="@(EmbeddedReferenceAssembly->'$(ReferenceAssemblyDirectory)%(Identity)')"
+                      LogicalName="refs/%(Filename)%(Extension)"
+                      Visible="false"/>
+  </ItemGroup>
+
+  <Target Name="VerifyEmbeddedReferenceAssemblies" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(ReferenceAssemblyDirectory)%(EmbeddedReferenceAssembly.Identity)')"
+           Text="Reference assembly '%(EmbeddedReferenceAssembly.Identity)' was not found in '$(ReferenceAssemblyDirectory)'. Install the .NET $(BundledNETCoreAppPackageVersion) targeting pack (it ships with the SDK)."/>
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="..\ProjGraph.Core\ProjGraph.Core.csproj"/>
   </ItemGroup>
