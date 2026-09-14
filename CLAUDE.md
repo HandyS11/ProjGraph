@@ -46,7 +46,7 @@ Mcp ──┘       ├──► Lib.Dependencies ──► Lib.Core
 
 - **`ProjGraph.Core`** — Pure domain models (`SolutionGraph`, `ClassModel`, `EfModel`, `SolutionStats`) and exceptions. No dependencies.
 - **`ProjGraph.Lib.Core`** — Cross-cutting abstractions (`IFileSystem`, `IOutputConsole`, `ICompilationFactory`, `IDiagramRenderer<T>`), solution parsers (`.sln`/`.slnx`), and infrastructure utilities. Also hosts the `TarjanSccAlgorithm` (in `Domain/Algorithms/`) used for cycle detection.
-- **`ProjGraph.Lib.Dependencies`** — Builds dependency graphs from solution/project files by parsing them directly via `Microsoft.Build.Construction` (the in-house `SlnParser`/`SlnxParser`/`ProjectParser` in `Lib.Core`); computes stats using `TarjanSccAlgorithm` for cycle detection.
+- **`ProjGraph.Lib.Dependencies`** — Builds dependency graphs from solution/project files by parsing them directly with the in-house parsers in `Lib.Core` (`SlnParser` on `Microsoft.VisualStudio.SolutionPersistence`, `SlnxParser` and `ProjectParser` on `System.Xml.Linq`; nothing is evaluated); computes stats using `TarjanSccAlgorithm` for cycle detection.
 - **`ProjGraph.Lib.ClassDiagram`** — Roslyn-based C# class hierarchy analysis. Accepts a file or directory; optionally discovers related types across the workspace via `IWorkspaceTypeDiscovery`.
 - **`ProjGraph.Lib.EntityFramework`** — Roslyn semantic analysis of EF Core `DbContext` files and `ModelSnapshot` files; includes a multi-class Fluent API parser.
 - **`ProjGraph.Lib`** — Composition root only. Exposes `AddProjGraphLib()` which wires all sub-library services via DI.

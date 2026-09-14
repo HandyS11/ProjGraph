@@ -15,7 +15,7 @@ dotnet add package ProjGraph.Lib.Core
 
 `ProjGraph.Lib.Core` is the shared infrastructure layer for the ProjGraph library ecosystem. It provides:
 
-- **Solution & project parsers** for `.sln`, `.slnx`, and `.csproj` files via MSBuild
+- **Solution & project parsers** for `.sln` (via Microsoft.VisualStudio.SolutionPersistence), `.slnx`, and `.csproj` files (via System.Xml.Linq); project files are read, never evaluated
 - **Dependency injection** extension methods for service registration
 - **Abstractions** (`IProjectParser`, `ISolutionParser`, `IDiagramRenderer`, `IFileSystem`, …)
 - **Infrastructure** services (`CompilationFactory`, `ProjectDiscoveryService`, `PhysicalFileSystem`, …)
