@@ -1,0 +1,160 @@
+name: Pack
+
+# Builds every package a release ships: two Native AOT tool packages per runtime identifier, each
+# smoke-tested on a matching runner, plus the libraries, the framework-dependent fallback packages,
+# and the pointer packages. publish.yml calls it for a tag. It also runs on pull requests that
+# change packaging, so every native build is proven before a release depends on it.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to check out (the release tag).
+        required: true
+        type: string
+      version:
+        description: Package version.
+        required: true
+        type: string
+  pull_request:
+    paths:
+      - .github/workflows/pack.yml
+      - .github/actions/native-tool-smoke/**
+      - .github/scripts/native-tool-smoke.sh
+      - .github/scripts/verify-packages.sh
+      - src/ProjGraph.Cli/ProjGraph.Cli.csproj
+      - src/ProjGraph.Mcp/ProjGraph.Mcp.csproj
+      - tests/ProjGraph.Tests.Smoke.Aot/**
+      - Directory.Build.props
+      - Directory.Packages.props
+      - global.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pack-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Pull request runs have no version input; any version works as long as every command uses it.
+  VERSION: ${{ inputs.version || format('0.0.0-ci.{0}', github.run_number) }}
+
+jobs:
+  pack-native:
+    name: pack-native (${{ matrix.rid }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            runner: windows-latest
+          - rid: linux-x64
+            runner: ubuntu-latest
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+          - rid: linux-musl-x64
+            runner: ubuntu-latest
+          - rid: linux-musl-arm64
+            runner: ubuntu-24.04-arm
+          - rid: osx-arm64
+            runner: macos-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Pack and smoke test the native tools
+        uses: ./.github/actions/native-tool-smoke
+        with:
+          rid: ${{ matrix.rid }}
+          version: ${{ env.VERSION }}
+
+      - name: Verify the native packages
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+        run: bash .github/scripts/verify-packages.sh artifacts/packages "$VERSION" "$RID"
+
+      - name: Upload native packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages-${{ matrix.rid }}
+          path: artifacts/packages/*.nupkg
+          if-no-files-found: error
+          retention-days: 7
+
+  pack-portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: Directory.Packages.props
+
+      - name: Build
+        run: |
+          dotnet restore ProjGraph.slnx
+          dotnet build ProjGraph.slnx --no-restore --configuration Release -p:Version="$VERSION"
+
+      # With PublishAot set, packing the solution produces the RID-agnostic pointer packages for the
+      # two tools; they move to their own folder because publish.yml pushes them last.
+      - name: Pack libraries and pointer packages
+        run: |
+          dotnet pack ProjGraph.slnx --no-build --configuration Release -p:Version="$VERSION" --output artifacts/packages
+          mkdir -p artifacts/pointers
+          mv "artifacts/packages/ProjGraph.Cli.$VERSION.nupkg" "artifacts/packages/ProjGraph.Mcp.$VERSION.nupkg" artifacts/pointers/
+
+      - name: Pack framework-dependent fallback packages
+        run: |
+          dotnet pack src/ProjGraph.Cli --configuration Release --runtime any -p:PublishAot=false -p:Version="$VERSION" --output artifacts/packages
+          dotnet pack src/ProjGraph.Mcp --configuration Release --runtime any -p:PublishAot=false -p:Version="$VERSION" --output artifacts/packages
+
+      - name: Verify the portable packages
+        run: |
+          bash .github/scripts/verify-packages.sh artifacts/packages "$VERSION" libraries any
+          bash .github/scripts/verify-packages.sh artifacts/pointers "$VERSION" pointers
+
+      # The fallback packages are JIT builds, so the native-build guard is filtered out; every parity
+      # test still runs them against the JIT build of the same commit.
+      - name: Smoke test the fallback packages
+        env:
+          PROJGRAPH_SMOKE_REQUIRED: 'true'
+          PROJGRAPH_SMOKE_CLI_NATIVE: artifacts/fallback/cli/tools/net10.0/any/ProjGraph.Cli.dll
+          PROJGRAPH_SMOKE_CLI_REFERENCE: src/ProjGraph.Cli/bin/Release/net10.0/ProjGraph.Cli.dll
+          PROJGRAPH_SMOKE_MCP_NATIVE: artifacts/fallback/mcp/tools/net10.0/any/ProjGraph.Mcp.dll
+          PROJGRAPH_SMOKE_MCP_REFERENCE: src/ProjGraph.Mcp/bin/Release/net10.0/ProjGraph.Mcp.dll
+        run: |
+          unzip -q "artifacts/packages/ProjGraph.Cli.any.$VERSION.nupkg" -d artifacts/fallback/cli
+          unzip -q "artifacts/packages/ProjGraph.Mcp.any.$VERSION.nupkg" -d artifacts/fallback/mcp
+          dotnet test tests/ProjGraph.Tests.Smoke.Aot --no-build --configuration Release \
+            --filter "FullyQualifiedName!~ProjGraph.Tests.Smoke.Aot.NativeBuildGuardTests" \
+            --logger "console;verbosity=normal"
+
+      - name: Upload libraries and fallback packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages-portable
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload pointer packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: pointers
+          path: artifacts/pointers/*.nupkg
+          if-no-files-found: error
+          retention-days: 7
