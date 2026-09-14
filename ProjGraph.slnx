@@ -44,6 +44,7 @@
     <Project Path="tests/ProjGraph.Tests.Integration.Cli/ProjGraph.Tests.Integration.Cli.csproj"/>
     <Project Path="tests/ProjGraph.Tests.Integration.Mcp/ProjGraph.Tests.Integration.Mcp.csproj"/>
     <Project Path="tests/ProjGraph.Tests.Shared/ProjGraph.Tests.Shared.csproj"/>
+    <Project Path="tests/ProjGraph.Tests.Smoke.Aot/ProjGraph.Tests.Smoke.Aot.csproj"/>
     <Project Path="tests/ProjGraph.Tests.Unit.ClassDiagram/ProjGraph.Tests.Unit.ClassDiagram.csproj"/>
     <Project Path="tests/ProjGraph.Tests.Unit.Core/ProjGraph.Tests.Unit.Core.csproj"/>
     <Project Path="tests/ProjGraph.Tests.Unit.EntityFramework/ProjGraph.Tests.Unit.EntityFramework.csproj"/>

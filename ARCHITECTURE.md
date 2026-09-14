@@ -22,6 +22,7 @@ ProjGraph.slnx
 │   ├── ProjGraph.Tests.Unit.*          # Unit tests per library
 │   ├── ProjGraph.Tests.Integration.*   # Integration tests for CLI and MCP
 │   ├── ProjGraph.Tests.Contract        # MCP contract & DI wiring tests
+│   ├── ProjGraph.Tests.Smoke.Aot       # Native AOT vs JIT parity (CI aot-smoke job)
 │   └── ProjGraph.Tests.Shared          # Shared test helpers
 └── samples/                            # Sample projects used by integration tests
 ```
