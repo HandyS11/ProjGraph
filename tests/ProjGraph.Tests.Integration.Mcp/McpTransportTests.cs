@@ -1,6 +1,5 @@
-using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
-using ProjGraph.Tests.Shared.Helpers;
+using ProjGraph.Tests.Integration.Mcp.Helpers;
 
 namespace ProjGraph.Tests.Integration.Mcp;
 
@@ -13,47 +12,6 @@ namespace ProjGraph.Tests.Integration.Mcp;
 /// </summary>
 public sealed class McpTransportTests
 {
-    /// <summary>
-    /// Connects a client to the server apphost in ProjGraph.Mcp's own build output (guaranteed
-    /// up to date by the ProjectReference). ProjGraph.Mcp is a self-contained exe, so its build
-    /// lands in a RID subdirectory and must be launched via its apphost — the DLL that the
-    /// ProjectReference copies into the test output has no runtime next to it and cannot start.
-    /// The client deliberately advertises no capabilities — in particular no workspace roots.
-    /// </summary>
-    private static async Task<McpClient> ConnectAsync()
-    {
-        var transport = new StdioClientTransport(new StdioClientTransportOptions
-        {
-            Name = "ProjGraph e2e",
-            Command = LocateServerExecutable()
-        });
-
-        return await McpClient.CreateAsync(transport);
-    }
-
-    private static string LocateServerExecutable()
-    {
-        // .../tests/ProjGraph.Tests.Integration.Mcp/bin/{Configuration}/{tfm}/
-        var testOutput = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
-        var binRoot = TestPathHelper.GetRootPath(Path.Combine(
-            "src", "ProjGraph.Mcp", "bin", testOutput.Parent!.Name, testOutput.Name));
-        Directory.Exists(binRoot).Should().BeTrue(
-            $"the MCP server build output must exist at {binRoot}");
-        var exeName = OperatingSystem.IsWindows() ? "ProjGraph.Mcp.exe" : "ProjGraph.Mcp";
-
-        // The build RID matches the machine that built it, so probing the RID subdirectories
-        // is exact enough without reconstructing the RID by hand. Preferring the most recently
-        // written apphost keeps a dev machine with stale cross-RID leftovers deterministic.
-        var serverExe = Directory.GetDirectories(binRoot)
-            .Select(ridDir => new FileInfo(Path.Combine(ridDir, exeName)))
-            .Where(apphost => apphost.Exists)
-            .OrderByDescending(apphost => apphost.LastWriteTimeUtc)
-            .FirstOrDefault();
-
-        serverExe.Should().NotBeNull($"the MCP server apphost must be present under {binRoot}");
-        return serverExe.FullName;
-    }
-
     private static string JoinText(CallToolResult result)
     {
         return string.Join("\n", result.Content.OfType<TextContentBlock>().Select(block => block.Text));
@@ -62,7 +20,7 @@ public sealed class McpTransportTests
     [Fact]
     public async Task ListTools_OverRealStdioTransport_ExposesAllFourTools()
     {
-        await using var client = await ConnectAsync();
+        await using var client = await McpServerProcess.ConnectAsync();
 
         var tools = await client.ListToolsAsync();
 
@@ -73,7 +31,7 @@ public sealed class McpTransportTests
     [Fact]
     public async Task GetErd_RelativePathWithoutRootsCapability_SurfacesAbsolutePathGuidance()
     {
-        await using var client = await ConnectAsync();
+        await using var client = await McpServerProcess.ConnectAsync();
 
         var result = await client.CallToolAsync(
             "get_erd",
