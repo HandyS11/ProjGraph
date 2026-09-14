@@ -1,11 +1,10 @@
-using Microsoft.Build.Construction;
-using Microsoft.Build.Exceptions;
 using ProjGraph.Core.Exceptions;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib.Core.Abstractions;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace ProjGraph.Lib.Core.Parsers;
 
@@ -15,6 +14,12 @@ namespace ProjGraph.Lib.Core.Parsers;
 /// <param name="fileSystem">The file system abstraction for file operations.</param>
 public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
 {
+    /// <summary>The legacy MSBuild 2003 XML namespace, still used by non-SDK-style projects.</summary>
+    private const string MsBuildNamespace = "http://schemas.microsoft.com/developer/msbuild/2003";
+
+    /// <summary>The item operations of which an item outside a <c>Target</c> must define one.</summary>
+    private static readonly XName[] ItemOperations = ["Include", "Update", "Remove"];
+
     /// <summary>
     /// Parses the specified project file and extracts project details and its references.
     /// </summary>
@@ -37,14 +42,13 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
     public (Project Project, IEnumerable<string> ProjectReferences, IEnumerable<PackageReference> PackageReferences)
         Parse(string projectPath)
     {
-        ProjectRootElement root;
+        XDocument root;
         try
         {
-            root = ProjectRootElement.Open(projectPath)
-                   ?? throw new ParsingException($"Failed to parse project file: {projectPath}");
+            root = LoadXml(projectPath);
         }
-        catch (Exception ex) when (ex is InvalidProjectFileException or IOException or XmlException
-                                       or InvalidOperationException)
+        catch (Exception ex) when (ex is XmlException or IOException or UnauthorizedAccessException
+                                       or InvalidDataException)
         {
             throw new ParsingException($"Failed to parse project file: {projectPath}", ex);
         }
@@ -87,22 +91,21 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
         var id = GenerateDeterministicId(projectPath);
         var project = new Project(id, name, projectPath, relativePath, framework, type);
 
-        var projectReferences = root.Items
-            .Where(i => i.ItemType == "ProjectReference")
-            .Select(i => i.Include)
+        var projectReferences = GetItems(root, "ProjectReference")
+            .Select(GetInclude)
             .ToList();
 
-        var packageReferences = root.Items
-            .Where(i => i.ItemType == "PackageReference")
-            .Select(i =>
+        var packageReferences = GetItems(root, "PackageReference")
+            .Select(item =>
             {
-                var version = i.Metadata.FirstOrDefault(m => m.Name == "Version")?.Value;
+                var include = GetInclude(item);
+                var version = GetMetadataValue(item, "Version");
                 if (string.IsNullOrEmpty(version))
                 {
-                    version = ResolveCentralPackageVersion(projectPath, i.Include);
+                    version = ResolveCentralPackageVersion(projectPath, include);
                 }
 
-                return new PackageReference(i.Include, version ?? "unknown");
+                return new PackageReference(include, version ?? "unknown");
             })
             .ToList();
 
@@ -110,18 +113,94 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
     }
 
     /// <summary>
-    /// Reads a single MSBuild property value from an element using a case-insensitive name match
-    /// (MSBuild property names are case-insensitive). A null-or-whitespace value is treated as
-    /// undefined and returns <see langword="null"/>.
+    /// Reads and parses an MSBuild XML file through the file-system abstraction, rejecting the
+    /// structural errors MSBuild itself rejects: a root element other than <c>Project</c>, a
+    /// namespace other than none or the MSBuild 2003 namespace, and an item outside a
+    /// <c>Target</c> without a non-empty <c>Include</c>, <c>Update</c>, or <c>Remove</c>.
     /// </summary>
-    /// <param name="element">The project or props root element to read from.</param>
+    /// <param name="path">The project or props file path.</param>
+    /// <returns>The parsed document.</returns>
+    /// <exception cref="XmlException">Thrown when the file is not well-formed XML.</exception>
+    /// <exception cref="InvalidDataException">Thrown when the XML is not a valid MSBuild project.</exception>
+    private XDocument LoadXml(string path)
+    {
+        var document = XDocument.Parse(fileSystem.ReadAllText(path));
+        var root = document.Root!;
+        if (root.Name.LocalName != "Project" ||
+            root.Name.NamespaceName is not ("" or MsBuildNamespace))
+        {
+            throw new InvalidDataException($"'{path}' is not an MSBuild project: unexpected root element {root.Name}.");
+        }
+
+        var invalidItem = document.Descendants()
+            .Where(e => e.Parent?.Name.LocalName == "ItemGroup" && !e.Ancestors().Any(a => a.Name.LocalName == "Target"))
+            .FirstOrDefault(e =>
+            {
+                var operations = ItemOperations.Select(e.Attribute).OfType<XAttribute>().ToList();
+                return operations.Count == 0 || operations.Exists(a => a.Value.Length == 0);
+            });
+        if (invalidItem is not null)
+        {
+            throw new InvalidDataException(
+                $"'{path}' is not a valid MSBuild project: <{invalidItem.Name.LocalName}> needs a non-empty Include, Update, or Remove.");
+        }
+
+        return document;
+    }
+
+    /// <summary>
+    /// Reads a single MSBuild property value using a case-insensitive name match (MSBuild property
+    /// names are case-insensitive). A property is any element whose parent is a
+    /// <c>PropertyGroup</c>, wherever that group sits (including inside <c>Target</c> and
+    /// <c>Choose</c>), and the first one in document order wins. A null-or-whitespace value is
+    /// treated as undefined and returns <see langword="null"/>.
+    /// </summary>
+    /// <param name="document">The project or props document to read from.</param>
     /// <param name="name">The property name.</param>
     /// <returns>The property value, or <see langword="null"/> when unset or whitespace.</returns>
-    private static string? GetPropertyValue(ProjectRootElement element, string name)
+    private static string? GetPropertyValue(XDocument document, string name)
     {
-        var value = element.Properties
-            .FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))?.Value;
+        var value = document.Descendants()
+            .FirstOrDefault(e => e.Parent?.Name.LocalName == "PropertyGroup" &&
+                                 string.Equals(e.Name.LocalName, name, StringComparison.OrdinalIgnoreCase))
+            ?.Value;
         return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    /// <summary>
+    /// Returns the items of the given type: elements whose parent is an <c>ItemGroup</c> and whose
+    /// name matches <paramref name="itemType"/> exactly (item types are matched case-sensitively).
+    /// </summary>
+    /// <param name="document">The project or props document to read from.</param>
+    /// <param name="itemType">The item type, e.g. <c>PackageReference</c>.</param>
+    /// <returns>The matching item elements in document order.</returns>
+    private static IEnumerable<XElement> GetItems(XDocument document, string itemType)
+    {
+        return document.Descendants()
+            .Where(e => e.Parent?.Name.LocalName == "ItemGroup" && e.Name.LocalName == itemType);
+    }
+
+    /// <summary>
+    /// Returns the item's <c>Include</c> attribute, or an empty string for <c>Update</c>/<c>Remove</c> items.
+    /// </summary>
+    /// <param name="item">The item element.</param>
+    /// <returns>The include value.</returns>
+    private static string GetInclude(XElement item)
+    {
+        return item.Attribute("Include")?.Value ?? "";
+    }
+
+    /// <summary>
+    /// Reads item metadata expressed either as an attribute or as a child element. Metadata names
+    /// are matched case-sensitively.
+    /// </summary>
+    /// <param name="item">The item element.</param>
+    /// <param name="name">The metadata name, e.g. <c>Version</c>.</param>
+    /// <returns>The metadata value, or <see langword="null"/> when absent.</returns>
+    private static string? GetMetadataValue(XElement item, string name)
+    {
+        return item.Attribute(name)?.Value
+               ?? item.Elements().FirstOrDefault(e => e.Name.LocalName == name)?.Value;
     }
 
     /// <summary>
@@ -167,20 +246,15 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
             return;
         }
 
-        ProjectRootElement? propsRoot;
+        XDocument propsRoot;
         try
         {
-            propsRoot = ProjectRootElement.Open(propsFile);
+            propsRoot = LoadXml(propsFile);
         }
-        catch (Exception ex) when (ex is InvalidProjectFileException or IOException
-                                       or InvalidOperationException or XmlException)
+        catch (Exception ex) when (ex is XmlException or IOException or UnauthorizedAccessException
+                                       or InvalidDataException)
         {
             // If we can't read the props file, continue searching up.
-            return;
-        }
-
-        if (propsRoot is null)
-        {
             return;
         }
 
@@ -218,21 +292,18 @@ public sealed class ProjectParser(IFileSystem fileSystem) : IProjectParser
             {
                 try
                 {
-                    var propsRoot = ProjectRootElement.Open(propsFile);
-                    var version = propsRoot?.Items
-                        .FirstOrDefault(i =>
-                            i.ItemType == "PackageVersion" &&
-                            i.Include.Equals(packageName, StringComparison.OrdinalIgnoreCase))
-                        ?.Metadata.FirstOrDefault(m => m.Name == "Version")
-                        ?.Value;
+                    var propsRoot = LoadXml(propsFile);
+                    var packageVersion = GetItems(propsRoot, "PackageVersion")
+                        .FirstOrDefault(i => GetInclude(i).Equals(packageName, StringComparison.OrdinalIgnoreCase));
+                    var version = packageVersion is null ? null : GetMetadataValue(packageVersion, "Version");
 
                     if (!string.IsNullOrEmpty(version))
                     {
                         return version;
                     }
                 }
-                catch (Exception ex) when (ex is InvalidProjectFileException or IOException
-                                               or InvalidOperationException or XmlException)
+                catch (Exception ex) when (ex is XmlException or IOException or UnauthorizedAccessException
+                                               or InvalidDataException)
                 {
                     // If we can't read the props file, continue searching up
                 }
