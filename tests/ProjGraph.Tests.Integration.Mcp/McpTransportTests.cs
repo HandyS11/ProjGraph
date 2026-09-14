@@ -1,5 +1,7 @@
 using ModelContextProtocol.Protocol;
 using ProjGraph.Tests.Integration.Mcp.Helpers;
+using ProjGraph.Tests.Shared.Helpers;
+using System.Text.Json.Nodes;
 
 namespace ProjGraph.Tests.Integration.Mcp;
 
@@ -42,5 +44,27 @@ public sealed class McpTransportTests
         // The audit's High scenario: WorkspaceRootService's guidance must survive the SDK
         // boundary instead of being stripped to "An error occurred invoking 'get_erd'".
         JoinText(result).Should().Contain("absolute path");
+    }
+
+    [Fact]
+    public async Task GetProjectStats_SolutionWithMalformedProject_ReturnsStatsWithWarnings()
+    {
+        using var temp = new TestDirectory();
+        temp.CreateFile(Path.Combine("Good", "Good.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>");
+        temp.CreateFile(Path.Combine("Bad", "Bad.csproj"), "<Project><PropertyGroup></Project>");
+        var slnxPath = temp.CreateFile("sol.slnx",
+            "<Solution><Project Path=\"Good/Good.csproj\" /><Project Path=\"Bad/Bad.csproj\" /></Solution>");
+        await using var client = await McpServerProcess.ConnectAsync();
+
+        var result = await client.CallToolAsync(
+            "get_project_stats",
+            new Dictionary<string, object?> { ["path"] = slnxPath });
+
+        // The real server runs with reflection-based JSON disabled, which the in-process
+        // McpWarningsTests cannot observe: attaching the warnings must not depend on it.
+        result.IsError.Should().NotBeTrue(JoinText(result));
+        var warnings = JsonNode.Parse(JoinText(result))?["warnings"]?.AsArray();
+        warnings.Should().NotBeNullOrEmpty();
     }
 }

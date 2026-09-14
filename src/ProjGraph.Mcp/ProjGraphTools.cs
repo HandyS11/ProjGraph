@@ -373,7 +373,9 @@ internal sealed class ProjGraphTools(
             var array = new JsonArray();
             foreach (var warning in warnings)
             {
-                array.Add(warning);
+                // The non-generic JsonNode overload: Add<T>(T) resolves T's metadata through
+                // reflection, which the server disables (JsonSerializerIsReflectionEnabledByDefault).
+                array.Add((JsonNode?)JsonValue.Create(warning));
             }
 
             node["warnings"] = array;
