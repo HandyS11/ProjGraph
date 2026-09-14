@@ -1,0 +1,197 @@
+{
+  "tools": [
+    {
+      "name": "get_class_diagram",
+      "description": "Generates a Mermaid class diagram for the types defined in a specific C# file or directory, with options to discover inheritance and related types in the workspace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Absolute path to the .cs file or directory to analyze.",
+            "type": "string"
+          },
+          "options": {
+            "description": "Analysis and discovery options.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "maxDepth": {
+                "description": "How many levels of relationships to follow (default: 1).",
+                "type": "integer",
+                "default": 1
+              },
+              "includeInheritance": {
+                "description": "Whether to search the workspace for base classes and interfaces.",
+                "type": "boolean",
+                "default": false
+              },
+              "includeDependencies": {
+                "description": "Whether to search for and include other classes used as properties or fields.",
+                "type": "boolean",
+                "default": false
+              },
+              "includeProperties": {
+                "description": "Whether to display properties and fields in the class diagram (default: true).",
+                "type": "boolean",
+                "default": true
+              },
+              "includeFunctions": {
+                "description": "Whether to display functions/methods in the class diagram (default: true).",
+                "type": "boolean",
+                "default": true
+              }
+            },
+            "default": null
+          },
+          "showTitle": {
+            "description": "Whether to include the title in the diagram (default: true).",
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "get_erd",
+      "description": "Generates a Mermaid Entity Relationship Diagram (ERD) from an Entity Framework Core DbContext or ModelSnapshot file, including entities, properties, relationships, constraints, and inherited properties from base classes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Absolute path to a .cs file containing a DbContext or ModelSnapshot.",
+            "type": "string"
+          },
+          "contextName": {
+            "description": "Specific DbContext or ModelSnapshot class name to use if multiple are present.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "showTitle": {
+            "description": "Whether to include the title in the diagram (default: true).",
+            "type": "boolean",
+            "default": true
+          },
+          "ownedMode": {
+            "description": "How EF Core owned types are shown: \u0027mirror\u0027 (default) inlines table-split owned types onto the owner as EF names them; \u0027classic\u0027 gives every owned type its own entity",
+            "type": "string",
+            "default": "mirror"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "get_project_graph",
+      "description": "Analyzes a .NET solution or project file and returns the dependency graph as a Mermaid diagram.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Absolute path to the project or solution file.",
+            "type": "string"
+          },
+          "showTitle": {
+            "description": "Whether to include the title in the diagram (default: true).",
+            "type": "boolean",
+            "default": true
+          },
+          "includePackages": {
+            "description": "Whether to include NuGet package dependencies in the graph (default: false).",
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "get_project_stats",
+      "description": "Analyses a .NET solution or project file and returns key architectural metrics: project count, type breakdown, dependency depth statistics, most-referenced (hotspot) projects, and cycle detection.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Absolute path to a .NET solution (.sln/.slnx) or project (.csproj) file.",
+            "type": "string"
+          },
+          "topN": {
+            "description": "Number of top most-referenced projects to include. Defaults to 5.",
+            "type": "integer",
+            "default": 5
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  ],
+  "prompts": [
+    {
+      "name": "architecture_review",
+      "description": "Guides an LLM through a comprehensive architecture review of a .NET solution, including dependency visualization and project metrics.",
+      "arguments": [
+        {
+          "name": "path",
+          "description": "Absolute (or root-relative) path to the solution file (.sln, .slnx) or project file (.csproj)",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "class_structure_review",
+      "description": "Guides an LLM through reviewing C# class hierarchies, inheritance patterns, and overall design structure.",
+      "arguments": [
+        {
+          "name": "path",
+          "description": "Absolute path to a .cs file or directory to analyze",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "database_schema_review",
+      "description": "Guides an LLM through reviewing an Entity Framework Core database schema for design quality, relationships, and potential issues.",
+      "arguments": [
+        {
+          "name": "path",
+          "description": "Absolute path to a .cs file containing a DbContext or ModelSnapshot",
+          "required": true
+        },
+        {
+          "name": "contextName",
+          "description": "Specific DbContext or ModelSnapshot class name to use if multiple exist in the file",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "dependency_analysis",
+      "description": "Guides an LLM to analyze dependency depth, identify hotspot projects, and detect potential circular dependencies in a .NET solution.",
+      "arguments": [
+        {
+          "name": "path",
+          "description": "Absolute path to the solution or project file",
+          "required": true
+        },
+        {
+          "name": "topN",
+          "description": "Number of top hotspot projects to highlight",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

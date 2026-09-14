@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ProjGraph.Core.Models;
 using ProjGraph.Lib;
@@ -10,6 +11,7 @@ using ProjGraph.Lib.Dependencies.Application;
 using ProjGraph.Lib.Dependencies.Rendering;
 using ProjGraph.Lib.EntityFramework.Application;
 using System.Reflection;
+using System.Text.Json;
 
 namespace ProjGraph.Mcp;
 
@@ -27,6 +29,11 @@ internal static class Program
         builder.Logging.AddConsole(options =>
             options.LogToStandardErrorThreshold = LogLevel.Trace);
 
+        // Tool and prompt registration uses the SDK's default options with the server's own
+        // source-generated metadata consulted first, so it needs no reflection-based serializer.
+        var jsonOptions = new JsonSerializerOptions(McpJsonUtilities.DefaultOptions);
+        jsonOptions.TypeInfoResolverChain.Insert(0, McpJsonContext.Default);
+
         builder.Services.AddMcpServer(options =>
                 options.ServerInfo = new Implementation
                 {
@@ -34,8 +41,8 @@ internal static class Program
                     Version = version
                 })
             .WithStdioServerTransport()
-            .WithTools<ProjGraphTools>()
-            .WithPrompts<ProjGraphPrompts>()
+            .WithTools<ProjGraphTools>(jsonOptions)
+            .WithPrompts<ProjGraphPrompts>(jsonOptions)
             .WithResources<ProjGraphResources>();
 
         // Register Library services

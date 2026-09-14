@@ -11,6 +11,11 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
+  <!-- Native AOT: turns on the trim, AOT, and single-file analyzers for this library -->
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
   <!-- Include README and icon in package -->
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/"/>

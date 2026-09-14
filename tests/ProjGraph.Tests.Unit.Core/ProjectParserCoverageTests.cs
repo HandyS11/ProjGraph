@@ -23,8 +23,7 @@ public sealed class ProjectParserCoverageTests : IDisposable
     }
 
     /// <summary>
-    /// Writes a project file inside a uniquely named subdirectory so that MSBuild's global
-    /// <c>ProjectRootElement</c> cache never serves a sibling test's file for the same path.
+    /// Writes a file inside this test's own temporary directory.
     /// </summary>
     /// <param name="relativePath">The path of the project file, relative to the test directory.</param>
     /// <param name="content">The project file XML.</param>

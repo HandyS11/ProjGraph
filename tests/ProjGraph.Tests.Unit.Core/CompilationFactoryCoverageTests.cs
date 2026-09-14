@@ -111,4 +111,80 @@ public sealed class CompilationFactoryCoverageTests
         service.BaseType!.TypeKind.Should().Be(TypeKind.Error);
         service.BaseType.Name.Should().Be("Ghost");
     }
+
+    [Fact]
+    public void CreateCompilation_ShouldReferenceTheEmbeddedReferenceAssemblies()
+    {
+        // The BCL references are embedded in Lib.Core rather than read from Assembly.Location, which
+        // is empty under Native AOT. JIT runs must use the same set so the unit tests exercise it.
+        var compilation = _sut.CreateCompilation([]);
+        var displays = compilation.References.Select(r => r.Display ?? "").ToList();
+
+        displays.Should().Contain([
+            "refs/netstandard.dll",
+            "refs/System.Collections.dll",
+            "refs/System.ComponentModel.Annotations.dll",
+            "refs/System.Runtime.dll"
+        ]);
+        displays.Should().OnlyContain(d =>
+            d.StartsWith("refs/", StringComparison.Ordinal) ||
+            d.Contains("Microsoft.EntityFrameworkCore", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("System.Threading.SemaphoreSlim")]
+    [InlineData("System.Threading.Interlocked")]
+    [InlineData("System.Threading.Monitor")]
+    [InlineData("System.Threading.ReaderWriterLockSlim")]
+    [InlineData("System.Threading.ThreadLocal`1")]
+    [InlineData("System.Threading.AsyncLocal`1")]
+    [InlineData("System.Threading.ManualResetEventSlim")]
+    [InlineData("System.Threading.Mutex")]
+    [InlineData("System.Threading.Thread")]
+    [InlineData("System.Threading.SynchronizationContext")]
+    [InlineData("System.Collections.Concurrent.ConcurrentQueue`1")]
+    [InlineData("System.Text.UTF8Encoding")]
+    [InlineData("System.Numerics.Vector3")]
+    [InlineData("System.Numerics.Matrix4x4")]
+    [InlineData("System.Diagnostics.Tracing.EventSource")]
+    [InlineData("System.Runtime.InteropServices.Marshal")]
+    [InlineData("System.MemoryExtensions")]
+    public void CreateCompilation_BclTypesTheRuntimeReferenceSetBound_ShouldStillBind(string metadataName)
+    {
+        // The runtime reference set used to include System.Private.CoreLib, which binds every public
+        // CoreLib type. The embedded reference assemblies must cover the same surface: an unbound
+        // BCL type is no longer recognized as a System type and leaks into class diagrams as a node.
+        var compilation = _sut.CreateCompilation([]);
+
+        var type = compilation.GetTypeByMetadataName(metadataName);
+
+        type.Should().NotBeNull();
+        type.TypeKind.Should().NotBe(TypeKind.Error);
+    }
+
+    [Fact]
+    public void CreateCompilation_CollectionsAndDataAnnotations_ShouldBindWithoutErrorTypes()
+    {
+        var tree = CSharpSyntaxTree.ParseText(
+            """
+            using System.Collections.Generic;
+            using System.ComponentModel.DataAnnotations;
+            namespace Test;
+            public class Order
+            {
+                [Required]
+                public string Name { get; set; } = "";
+                public List<string> Lines { get; set; } = [];
+                public IEnumerable<int> Quantities { get; set; } = [];
+            }
+            """);
+
+        var compilation = _sut.CreateCompilation([tree]);
+        var order = compilation.GetTypeByMetadataName("Test.Order")!;
+
+        compilation.GetDiagnostics().Should().NotContain(d => d.Severity == DiagnosticSeverity.Error);
+        order.GetMembers().OfType<IPropertySymbol>().Should().OnlyContain(p => p.Type.TypeKind != TypeKind.Error);
+        order.GetMembers("Name").Single().GetAttributes().Should().ContainSingle()
+            .Which.AttributeClass!.TypeKind.Should().NotBe(TypeKind.Error);
+    }
 }

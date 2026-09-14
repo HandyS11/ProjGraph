@@ -24,6 +24,34 @@ public class SlnParserTests
     }
 
     [Fact]
+    public void GetProjectPaths_SamePathListedTwice_ShouldThrowParsingException()
+    {
+        // Documented divergence from Microsoft.Build: its SolutionFile returned both entries and
+        // BuildGraphUseCase deduplicated them downstream, so the graph still rendered. The
+        // SolutionPersistence serializer rejects a solution that lists one project path twice.
+        using var temp = new TestDirectory();
+        temp.CreateFile("src/Dup/Dup.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>");
+
+        const string csharpProjectTypeGuid = "{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}";
+        var firstGuid = Guid.NewGuid().ToString("B").ToUpperInvariant();
+        var secondGuid = Guid.NewGuid().ToString("B").ToUpperInvariant();
+        var slnPath = temp.CreateFile("DupPath.sln", $"""
+
+                                                     Microsoft Visual Studio Solution File, Format Version 12.00
+                                                     Project("{csharpProjectTypeGuid}") = "Dup", "src\Dup\Dup.csproj", "{firstGuid}"
+                                                     EndProject
+                                                     Project("{csharpProjectTypeGuid}") = "DupAgain", "src\Dup\Dup.csproj", "{secondGuid}"
+                                                     EndProject
+                                                     Global
+                                                     EndGlobal
+                                                     """);
+
+        var act = () => _parser.GetProjectPaths(slnPath).ToList();
+
+        act.Should().Throw<ParsingException>();
+    }
+
+    [Fact]
     public void GetProjectPaths_ShouldExtractPathsFromSln()
     {
         // Arrange

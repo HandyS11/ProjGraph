@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Parsers\Fixtures\**" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ProjGraph.Tests.Shared\ProjGraph.Tests.Shared.csproj"/>
   </ItemGroup>
 

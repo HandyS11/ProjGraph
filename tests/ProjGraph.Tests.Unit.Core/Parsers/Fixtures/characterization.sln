@@ -1,0 +1,60 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CsSdk", "src\CsSdk\CsSdk.csproj", "{00000001-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CsClassic", "src\CsClassic\CsClassic.csproj", "{00000002-0000-0000-0000-000000000000}"
+EndProject
+Project("{fae04ec0-301f-11d3-bf4b-00c04f79efbc}") = "CsLowerGuid", "src\CsLowerGuid\CsLowerGuid.csproj", "{00000003-0000-0000-0000-000000000000}"
+EndProject
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "VbClassic", "src\VbClassic\VbClassic.vbproj", "{00000004-0000-0000-0000-000000000000}"
+EndProject
+Project("{778DAE3C-4631-46EA-AA77-85C1314464D9}") = "VbSdk", "src\VbSdk\VbSdk.vbproj", "{00000005-0000-0000-0000-000000000000}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsClassic", "src\FsClassic\FsClassic.fsproj", "{00000006-0000-0000-0000-000000000000}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FsSdk", "src\FsSdk\FsSdk.fsproj", "{00000007-0000-0000-0000-000000000000}"
+EndProject
+Project("{13B669BE-BB05-4DDF-9536-439F39A36129}") = "Cps", "src\Cps\Cps.msbuildproj", "{00000008-0000-0000-0000-000000000000}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Cpp", "src\Cpp\Cpp.vcxproj", "{00000009-0000-0000-0000-000000000000}"
+EndProject
+Project("{C8D11400-126E-41CD-887F-60BD40844F9E}") = "Database", "src\Database\Database.dbproj", "{0000000A-0000-0000-0000-000000000000}"
+EndProject
+Project("{E6FDF86B-F3D1-11D4-8576-0002A516ECE8}") = "JSharp", "src\JSharp\JSharp.vjsproj", "{0000000B-0000-0000-0000-000000000000}"
+EndProject
+Project("{BBD0F5D1-1CC4-42FD-BA4C-A96779C64378}") = "Synergy", "src\Synergy\Synergy.synproj", "{0000000C-0000-0000-0000-000000000000}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Outside", "..\Outside\Outside.csproj", "{0000000D-0000-0000-0000-000000000000}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nested", "src\Nested\Nested.csproj", "{0000000E-0000-0000-0000-000000000000}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0000000F-0000-0000-0000-000000000000}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inner Folder", "Inner Folder", "{00000010-0000-0000-0000-000000000000}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Shared", "src\Shared\Shared.shproj", "{00000011-0000-0000-0000-000000000000}"
+EndProject
+Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "Website", "http://localhost:8080/", "{00000012-0000-0000-0000-000000000000}"
+EndProject
+Project("{2CFEAB61-6A3B-4EB8-B523-560B4BEEF521}") = "WebDeployment", "src\WebDeployment\WebDeployment.wdproj", "{00000013-0000-0000-0000-000000000000}"
+EndProject
+Project("{11111111-2222-3333-4444-555555555555}") = "UnknownType", "src\UnknownType\UnknownType.csproj", "{00000014-0000-0000-0000-000000000000}"
+EndProject
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "Docker", "docker-compose.dcproj", "{00000015-0000-0000-0000-000000000000}"
+EndProject
+Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "SqlProj", "src\SqlProj\SqlProj.sqlproj", "{00000016-0000-0000-0000-000000000000}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "JavaScript", "src\JavaScript\JavaScript.esproj", "{00000017-0000-0000-0000-000000000000}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{00000010-0000-0000-0000-000000000000} = {0000000F-0000-0000-0000-000000000000}
+		{0000000E-0000-0000-0000-000000000000} = {00000010-0000-0000-0000-000000000000}
+	EndGlobalSection
+EndGlobal

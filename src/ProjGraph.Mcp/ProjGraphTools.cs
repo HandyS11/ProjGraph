@@ -31,11 +31,6 @@ internal sealed class ProjGraphTools(
     WorkspaceRootService rootService,
     CollectingOutputConsole outputConsole)
 {
-    private static readonly JsonSerializerOptions JsonSerializerOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
     [McpServerTool(Name = "get_class_diagram")]
     [Description(
         "Generates a Mermaid class diagram for the types defined in a specific C# file or directory, with options to discover inheritance and related types in the workspace.")]
@@ -367,10 +362,10 @@ internal sealed class ProjGraphTools(
     /// <returns>The stats JSON, with a <c>warnings</c> array when any were collected.</returns>
     private static string SerializeStatsWithWarnings(SolutionStats stats, IReadOnlyList<string> warnings)
     {
-        var node = JsonSerializer.SerializeToNode(stats, JsonSerializerOptions)?.AsObject();
+        var node = JsonSerializer.SerializeToNode(stats, McpJsonContext.Default.SolutionStats)?.AsObject();
         if (node is null)
         {
-            return JsonSerializer.Serialize(stats, JsonSerializerOptions);
+            return JsonSerializer.Serialize(stats, McpJsonContext.Default.SolutionStats);
         }
 
         if (warnings.Count > 0)
@@ -378,13 +373,15 @@ internal sealed class ProjGraphTools(
             var array = new JsonArray();
             foreach (var warning in warnings)
             {
-                array.Add(warning);
+                // The non-generic JsonNode overload: Add<T>(T) resolves T's metadata through
+                // reflection, which the server disables (JsonSerializerIsReflectionEnabledByDefault).
+                array.Add((JsonNode?)JsonValue.Create(warning));
             }
 
             node["warnings"] = array;
         }
 
-        return node.ToJsonString(JsonSerializerOptions);
+        return node.ToJsonString(McpJsonContext.Default.Options);
     }
 
     /// <summary>
