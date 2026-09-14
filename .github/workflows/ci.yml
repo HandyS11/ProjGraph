@@ -64,37 +64,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
+      # The same pack → install → smoke path that pack.yml runs for every release platform.
+      - name: Pack and smoke test the native tools
+        uses: ./.github/actions/native-tool-smoke
         with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: Directory.Packages.props
-
-      - name: Install Native AOT prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang zlib1g-dev
-
-      - name: Restore dependencies
-        run: dotnet restore ProjGraph.slnx
-
-      - name: Build
-        run: dotnet build ProjGraph.slnx --no-restore --configuration Release
-
-      # --artifacts-path keeps the native publish out of src/*/bin and obj. ProjGraph.Mcp is
-      # self-contained, so an in-place publish would overwrite the JIT reference build's apphost
-      # and runtimeconfig.json in bin/Release/net10.0/linux-x64.
-      - name: Publish native executables
-        run: |
-          dotnet publish src/ProjGraph.Cli --configuration Release --runtime linux-x64 -p:PublishAot=true --artifacts-path artifacts/aot-build --output artifacts/native/cli
-          dotnet publish src/ProjGraph.Mcp --configuration Release --runtime linux-x64 -p:PublishAot=true --artifacts-path artifacts/aot-build --output artifacts/native/mcp
-
-      - name: Smoke test native executables
-        env:
-          PROJGRAPH_SMOKE_REQUIRED: 'true'
-          PROJGRAPH_SMOKE_CLI_NATIVE: artifacts/native/cli/ProjGraph.Cli
-          PROJGRAPH_SMOKE_CLI_REFERENCE: src/ProjGraph.Cli/bin/Release/net10.0/ProjGraph.Cli.dll
-          PROJGRAPH_SMOKE_MCP_NATIVE: artifacts/native/mcp/ProjGraph.Mcp
-          PROJGRAPH_SMOKE_MCP_REFERENCE: src/ProjGraph.Mcp/bin/Release/net10.0/ProjGraph.Mcp.dll
-        run: dotnet test tests/ProjGraph.Tests.Smoke.Aot --no-build --configuration Release --logger "console;verbosity=normal"
+          rid: linux-x64
+          version: 0.0.0-ci.${{ github.run_number }}

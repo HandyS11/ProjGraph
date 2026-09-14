@@ -1,0 +1,67 @@
+name: Native tool smoke test
+description: >-
+  Runs .github/scripts/native-tool-smoke.sh for one runtime identifier: builds the solution, packs the
+  Native AOT ProjGraph.Cli and ProjGraph.Mcp tool packages, installs both tools from them, and runs
+  tests/ProjGraph.Tests.Smoke.Aot against the JIT build of the same commit. linux-musl-* RIDs run
+  inside an Alpine .NET SDK container. Expects the repository to be checked out.
+
+inputs:
+  rid:
+    description: Runtime identifier to pack. The runner must match its OS and architecture (Linux for linux-musl-*).
+    required: true
+  version:
+    description: Package version, passed as -p:Version to every build and pack.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup .NET
+      if: ${{ !startsWith(inputs.rid, 'linux-musl-') }}
+      uses: actions/setup-dotnet@v6
+      with:
+        global-json-file: global.json
+        cache: true
+        cache-dependency-path: Directory.Packages.props
+
+    - name: Install Native AOT prerequisites
+      if: ${{ runner.os == 'Linux' && !startsWith(inputs.rid, 'linux-musl-') }}
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends clang zlib1g-dev
+
+    - name: Pack and smoke test
+      if: ${{ !startsWith(inputs.rid, 'linux-musl-') }}
+      shell: bash
+      env:
+        RID: ${{ inputs.rid }}
+        VERSION: ${{ inputs.version }}
+      run: bash .github/scripts/native-tool-smoke.sh "$RID" "$VERSION"
+
+    # musl binaries must be linked on a musl system. The container runs as root, so the files it
+    # writes are handed back to the runner user even when the script fails.
+    - name: Pack and smoke test in Alpine
+      if: ${{ startsWith(inputs.rid, 'linux-musl-') }}
+      shell: bash
+      env:
+        RID: ${{ inputs.rid }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        docker run --rm --volume "$PWD:/src" --workdir /src \
+          --env RID --env VERSION --env GITHUB_ACTIONS --env DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+          mcr.microsoft.com/dotnet/sdk:10.0-alpine \
+          sh -c 'apk add --no-cache bash clang build-base zlib-dev &&
+                 status=0 &&
+                 { bash .github/scripts/native-tool-smoke.sh "$RID" "$VERSION" || status=$?; } &&
+                 chown -R "$(stat -c %u:%g /src)" /src &&
+                 exit "$status"'
+
+    - name: Upload smoke test results
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: smoke-results-${{ inputs.rid }}
+        path: artifacts/smoke-results
+        if-no-files-found: ignore
+        retention-days: 14
