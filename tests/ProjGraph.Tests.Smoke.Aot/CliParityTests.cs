@@ -165,6 +165,20 @@ public sealed partial class CliParityTests : IDisposable
         await AssertParityAsync(expectSuccess: false, "stats", "ProjGraph.slnx", "--tpo", "3");
     }
 
+    [AotSmokeFact]
+    public async Task Help_Root_ShouldMatchReference()
+    {
+        // Help rendering is the most reflection-heavy Spectre path (descriptions and defaults on
+        // settings types).
+        await AssertParityAsync(expectSuccess: true, "--help");
+    }
+
+    [AotSmokeFact]
+    public async Task Help_Visualize_ShouldMatchReference()
+    {
+        await AssertParityAsync(expectSuccess: true, "visualize", "--help");
+    }
+
     private string CreateSolutionWithMalformedProject()
     {
         _temp.CreateFile("Good/Good.csproj",
@@ -174,24 +188,33 @@ public sealed partial class CliParityTests : IDisposable
             "<Solution><Project Path=\"Good/Good.csproj\" /><Project Path=\"Bad/Bad.csproj\" /></Solution>");
     }
 
-    private static async Task AssertParityAsync(bool expectSuccess, params string[] arguments)
+    /// <summary>
+    /// Runs both builds and requires they agree, pinning the reference outcome first.
+    /// </summary>
+    /// <param name="expectSuccess">Whether the reference build must exit with 0.</param>
+    /// <param name="arguments">The CLI arguments.</param>
+    /// <returns>The reference build's result, for callers that need to inspect it further.</returns>
+    private static async Task<ProcessResult> AssertParityAsync(bool expectSuccess, params string[] arguments)
     {
         var (native, reference) = await RunBothAsync(arguments);
 
         AssertReferenceOutcome(reference, expectSuccess);
         AssertSameResult(native, reference);
+        return reference;
     }
 
     /// <summary>
     /// Compares a diagram command twice: printed to the console, then written with <c>--output</c>.
     /// Both builds write to the same path one after the other, because the "Saved to" line on
     /// standard error names the path and Spectre wraps it at the console width, so two different
-    /// paths could not be compared exactly.
+    /// paths could not be compared exactly. Both runs must produce non-empty output, so a case where
+    /// both builds silently print or write nothing cannot pass as parity.
     /// </summary>
     /// <param name="arguments">The CLI arguments, without <c>--output</c>.</param>
     private async Task AssertDiagramParityAsync(params string[] arguments)
     {
-        await AssertParityAsync(expectSuccess: true, arguments);
+        var console = await AssertParityAsync(expectSuccess: true, arguments);
+        console.StandardOutput.Should().NotBeNullOrWhiteSpace("the console run must print a diagram");
 
         var outputPath = Path.Combine(_temp.DirectoryPath, "output", "diagram.mmd");
         string[] withOutput = [.. arguments, "--output", outputPath];
@@ -204,6 +227,7 @@ public sealed partial class CliParityTests : IDisposable
         var reference = await ProcessRunner.RunAsync(SmokeEnvironment.CliReference, withOutput);
         AssertReferenceOutcome(reference, expectSuccess: true);
         var referenceFile = await File.ReadAllBytesAsync(outputPath);
+        referenceFile.Should().NotBeEmpty("the --output run must write a non-empty diagram file");
 
         AssertSameResult(native, reference);
         nativeFile.Should().Equal(referenceFile, "the native build must write the same diagram bytes");
@@ -253,7 +277,10 @@ public sealed partial class CliParityTests : IDisposable
 
     /// <summary>
     /// Drops the wall-clock "Analysis time" row and collapses runs of spaces, because the timing
-    /// value's width can shift the table's padding.
+    /// value's width can shift the table's padding. ANSI colour escapes (Spectre's GitHub Actions
+    /// enricher sets <c>Capabilities.Ansi = true</c> when <c>GITHUB_ACTIONS=true</c>, and child
+    /// processes inherit that variable) are stripped only to decide which line to drop, so colour
+    /// output on the other rows is still compared exactly.
     /// </summary>
     /// <param name="output">The captured standard output of <c>stats</c>.</param>
     /// <returns>The output without timing, for comparison.</returns>
@@ -261,10 +288,14 @@ public sealed partial class CliParityTests : IDisposable
     {
         return string.Join('\n', output.ReplaceLineEndings("\n")
             .Split('\n')
-            .Where(line => !line.TrimStart().StartsWith("Analysis time", StringComparison.Ordinal))
+            .Where(line => !AnsiEscape().Replace(line, string.Empty).TrimStart()
+                .StartsWith("Analysis time", StringComparison.Ordinal))
             .Select(line => RunOfSpaces().Replace(line, " ")));
     }
 
     [GeneratedRegex(" {2,}")]
     private static partial Regex RunOfSpaces();
+
+    [GeneratedRegex(@"\x1B\[[0-9;?]*[A-Za-z]")]
+    private static partial Regex AnsiEscape();
 }

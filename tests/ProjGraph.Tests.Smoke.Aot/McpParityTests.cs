@@ -15,6 +15,13 @@ namespace ProjGraph.Tests.Smoke.Aot;
 /// <param name="servers">The native and reference servers shared by this class.</param>
 public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpServerPair>
 {
+    /// <summary>
+    /// The time limit for one MCP request. The SDK's own timeout (2.2.0) only covers initialization,
+    /// so without this a deadlocked native or reference server would hang the test instead of
+    /// failing it.
+    /// </summary>
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromMinutes(2);
+
     [AotSmokeFact]
     public async Task Initialize_ShouldAdvertiseTheSameServer()
     {
@@ -28,13 +35,15 @@ public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpSer
     [AotSmokeFact]
     public async Task ListTools_ShouldMatchReference()
     {
-        await AssertSameResultAsync(client => client.ListToolsAsync(new ListToolsRequestParams()));
+        await AssertSameResultAsync((client, cancellationToken) =>
+            client.ListToolsAsync(new ListToolsRequestParams(), cancellationToken));
     }
 
     [AotSmokeFact]
     public async Task ListPrompts_ShouldMatchReference()
     {
-        await AssertSameResultAsync(client => client.ListPromptsAsync(new ListPromptsRequestParams()));
+        await AssertSameResultAsync((client, cancellationToken) =>
+            client.ListPromptsAsync(new ListPromptsRequestParams(), cancellationToken));
     }
 
     [AotSmokeFact]
@@ -43,14 +52,16 @@ public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpSer
         // Prompt results serialize IEnumerable<ChatMessage> through McpJsonContext.
         var path = SmokeEnvironment.GetRootPath("samples/classdiagram/complex-hierarchy/Domain/Models/CEO.cs");
 
-        await AssertSameResultAsync(client => client.GetPromptAsync(
-            "class_structure_review", new Dictionary<string, object?> { ["path"] = path }));
+        await AssertSameResultAsync((client, cancellationToken) => client.GetPromptAsync(
+            "class_structure_review", new Dictionary<string, object?> { ["path"] = path },
+            cancellationToken: cancellationToken));
     }
 
     [AotSmokeFact]
     public async Task ReadWelcomeResource_ShouldMatchReference()
     {
-        await AssertSameResultAsync(client => client.ReadResourceAsync(new Uri("projgraph://welcome")));
+        await AssertSameResultAsync((client, cancellationToken) =>
+            client.ReadResourceAsync(new Uri("projgraph://welcome"), cancellationToken: cancellationToken));
     }
 
     [AotSmokeFact]
@@ -108,19 +119,21 @@ public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpSer
         });
     }
 
-    private async Task<T> AssertSameResultAsync<T>(Func<McpClient, ValueTask<T>> request)
+    private async Task<T> AssertSameResultAsync<T>(Func<McpClient, CancellationToken, ValueTask<T>> request)
     {
         var (native, reference) = await servers.GetClientsAsync();
+        using var timeout = new CancellationTokenSource(RequestTimeout);
 
-        var referenceResult = await request(reference);
-        AssertSameJson(await request(native), referenceResult);
+        var referenceResult = await request(reference, timeout.Token);
+        AssertSameJson(await request(native, timeout.Token), referenceResult);
         return referenceResult;
     }
 
     private async Task<CallToolResult> AssertSameToolResultAsync(
         string toolName, Dictionary<string, object?> arguments)
     {
-        var reference = await AssertSameResultAsync(client => client.CallToolAsync(toolName, arguments));
+        var reference = await AssertSameResultAsync((client, cancellationToken) =>
+            client.CallToolAsync(toolName, arguments, cancellationToken: cancellationToken));
 
         // Pins the reference outcome, so an error both builds return identically cannot pass as parity.
         reference.IsError.Should().NotBe(true, JoinText(reference));
