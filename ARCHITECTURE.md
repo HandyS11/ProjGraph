@@ -115,16 +115,36 @@ Releases are triggered by pushing a `v*` Git tag and are fully automated via `.g
 ```sh
 Tag push (v*)
     │
-    ├── Update version in Directory.Build.props & server.json
-    ├── dotnet build + test
-    ├── dotnet pack → ./artifacts/*.nupkg
-    ├── dotnet nuget push → NuGet.org          (requires NUGET_API_KEY secret)
-    ├── dotnet nuget push → GitHub Packages    (uses GITHUB_TOKEN)
-    ├── mcp-publisher publish              (GitHub OIDC auth, no token required)
-    │       └── Submits src/ProjGraph.Mcp/.mcp/server.json to the Official MCP Registry
-    │           Retried up to 3× via nick-fields/retry@v3
-    └── Create GitHub Release with release notes
+    ├── prepare: dotnet build -p:Version=<tag version> + dotnet test
+    ├── pack (.github/workflows/pack.yml)
+    │     ├── pack-native ×6, each on a matching runner (linux-musl-* inside Alpine):
+    │     │     win-x64 · linux-x64 · linux-arm64 · linux-musl-x64 · linux-musl-arm64 · osx-arm64
+    │     │     dotnet pack -r <rid> → dotnet tool install from the packages → Tests.Smoke.Aot
+    │     └── pack-portable: libraries, pointer packages, framework-dependent `any` packages → Tests.Smoke.Aot
+    └── publish
+          ├── dotnet nuget push libraries + native + any → NuGet.org, GitHub Packages
+          ├── wait until NuGet.org lists all 14 tool packages (30 min timeout)
+          ├── dotnet nuget push pointer packages → NuGet.org, GitHub Packages
+          ├── Create GitHub Release with every package attached
+          └── mcp-publisher publish (GitHub OIDC auth, no token required)
+                └── Submits src/ProjGraph.Mcp/.mcp/server.json to the Official MCP Registry
 ```
+
+`pack.yml` also runs on pull requests that change the tool projects, the smoke suite, the packaging
+scripts, `Directory.*.props`, or `global.json`.
+
+### Tool Packages
+
+`ProjGraph.Cli` and `ProjGraph.Mcp` are pointer packages that list one package per runtime identifier.
+`dotnet tool install` and `dnx` pick the Native AOT package on win-x64, linux-x64, linux-arm64,
+linux-musl-x64, linux-musl-arm64, and osx-arm64, and the framework-dependent `.any` package elsewhere.
+Installing a pointer package fails until every package it lists is on the feed, which is why `publish`
+pushes it last.
+
+If a native package misbehaves after a release, remove its RID from `ToolPackageRuntimeIdentifiers` in
+both tool projects and ship a patch; that platform then falls back to `any`. Remove a `linux-<arch>`
+RID together with its `linux-musl-<arch>` RID, and never a musl RID alone. The RID graph treats musl
+as compatible with glibc, so musl systems would install the glibc package, which can't start there.
 
 ### MCP Registry Ownership Verification
 
