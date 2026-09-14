@@ -26,6 +26,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+    <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence"/>
     <PackageReference Include="Spectre.Console"/>
   </ItemGroup>
 
