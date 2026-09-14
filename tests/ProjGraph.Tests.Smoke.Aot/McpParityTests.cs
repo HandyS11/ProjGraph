@@ -122,11 +122,25 @@ public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpSer
     private async Task<T> AssertSameResultAsync<T>(Func<McpClient, CancellationToken, ValueTask<T>> request)
     {
         var (native, reference) = await servers.GetClientsAsync();
-        using var timeout = new CancellationTokenSource(RequestTimeout);
 
-        var referenceResult = await request(reference, timeout.Token);
-        AssertSameJson(await request(native, timeout.Token), referenceResult);
+        var referenceResult = await SendWithTimeoutAsync(reference, request);
+        AssertSameJson(await SendWithTimeoutAsync(native, request), referenceResult);
         return referenceResult;
+    }
+
+    /// <summary>
+    /// Sends one request with its own <see cref="RequestTimeout"/>, so a slow reference call never
+    /// shortens the native call's budget.
+    /// </summary>
+    /// <typeparam name="T">The protocol result type.</typeparam>
+    /// <param name="client">The server to send the request to.</param>
+    /// <param name="request">The request to send.</param>
+    /// <returns>The server's result.</returns>
+    private static async Task<T> SendWithTimeoutAsync<T>(
+        McpClient client, Func<McpClient, CancellationToken, ValueTask<T>> request)
+    {
+        using var timeout = new CancellationTokenSource(RequestTimeout);
+        return await request(client, timeout.Token);
     }
 
     private async Task<CallToolResult> AssertSameToolResultAsync(
