@@ -5,6 +5,12 @@
     <!-- Allow the global tool to start on a newer major runtime than it was built against. -->
     <RollForward>LatestMajor</RollForward>
 
+    <!-- Native AOT is opt-in (-p:PublishAot=true). The analyzers run on every build so first-party
+         code stays AOT-clean under warnings-as-errors; third-party ILC warnings must not fail publish. -->
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <IlcTreatWarningsAsErrors>false</IlcTreatWarningsAsErrors>
+
     <!-- Package configuration -->
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
@@ -36,6 +42,13 @@
 
   <ItemGroup>
     <PackageReference Include="Spectre.Console.Cli"/>
+  </ItemGroup>
+
+  <!-- Spectre.Console.Cli discovers commands and settings through reflection. Rooting both assemblies
+       keeps that metadata in a trimmed or Native AOT build; the AOT smoke suite guards it. -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="ProjGraph.Cli"/>
+    <TrimmerRootAssembly Include="Spectre.Console.Cli"/>
   </ItemGroup>
 
 </Project>

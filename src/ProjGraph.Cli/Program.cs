@@ -3,11 +3,16 @@ using ProjGraph.Cli.Commands;
 using ProjGraph.Cli.Infrastructure;
 using ProjGraph.Lib;
 using Spectre.Console.Cli;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ProjGraph.Cli;
 
 internal static class Program
 {
+    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode",
+        Justification = "Spectre.Console.Cli reflects over the command and settings types. ProjGraph.Cli and " +
+                        "Spectre.Console.Cli are trimmer root assemblies, so that metadata is kept, and " +
+                        "tests/ProjGraph.Tests.Smoke.Aot runs every command natively.")]
     public static int Main(string[] args)
     {
         const string packageDiagramCommandName = "visualize";

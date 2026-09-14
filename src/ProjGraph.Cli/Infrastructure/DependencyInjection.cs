@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ProjGraph.Cli.Infrastructure;
 
@@ -24,6 +25,10 @@ internal sealed class TypeRegistrar(IServiceCollection builder) : ITypeRegistrar
     /// </summary>
     /// <param name="service">The type of the service to register.</param>
     /// <param name="implementation">The type of the implementation to register.</param>
+    [UnconditionalSuppressMessage("Trimming", "IL2067:DynamicallyAccessedMembers",
+        Justification = "Spectre.Console.Cli registers the command and settings types it discovers. They live in " +
+                        "ProjGraph.Cli and Spectre.Console.Cli, which are trimmer root assemblies, so their " +
+                        "public constructors are kept; tests/ProjGraph.Tests.Smoke.Aot covers every command.")]
     public void Register(Type service, Type implementation)
     {
         builder.AddSingleton(service, implementation);
