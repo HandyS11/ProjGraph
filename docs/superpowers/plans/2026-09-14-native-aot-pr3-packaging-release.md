@@ -1774,7 +1774,7 @@ Expected: no output, exit 0. The old file's `SC2086` infos are gone.
 With `publish.yml` open, confirm:
 - (a) No step before `Wait for the tool packages on NuGet.org` touches `artifacts/pointers` except the download and verify steps.
 - (b) The wait's ID list has 14 entries and matches `verify-packages.sh`'s `any` and six RID sets.
-- (c) The verify step's sets (`libraries any` + 6 RIDs = 16 files, `pointers` = 2) add up to the 22 packages in Global Constraints.
+- (c) The verify step's sets (`libraries any` + 6 RIDs = 20 files, `pointers` = 2) add up to the 22 packages in Global Constraints.
 
 Every list must use the same RID spellings. A mismatch here would only surface on a release tag.
 
@@ -1925,7 +1925,7 @@ These publish public packages or change settings, so they belong to the user. Pu
 1. **NuGet.org API key scope.** Confirm that the key behind `NUGET_API_KEY` can push the 14 new package IDs, i.e. its glob covers `ProjGraph.*` (spec risk table). If it lists explicit package IDs, the release fails at the first native push.
 2. **Make `aot-smoke` required** on `develop`. This is still pending from PR 2; the ruleset has no required status checks yet.
 3. **RC dry run** (spec Testing table). Push a pre-release tag such as `v1.2.0-rc.1` on the merge commit and watch `publish.yml`. The `publish` log must show:
-   - `… holds the 16 expected packages.` and `… holds the 2 expected packages.`;
+   - `… holds the 20 expected packages.` and `… holds the 2 expected packages.`;
    - the package pushes;
    - `is listed on NuGet.org.` for all 14 IDs;
    - only then the pointer pushes, the GitHub Release, and the MCP Registry publish.
