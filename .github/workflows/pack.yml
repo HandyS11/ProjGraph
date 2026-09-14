@@ -135,6 +135,7 @@ jobs:
           PROJGRAPH_SMOKE_MCP_NATIVE: artifacts/fallback/mcp/tools/net10.0/any/ProjGraph.Mcp.dll
           PROJGRAPH_SMOKE_MCP_REFERENCE: src/ProjGraph.Mcp/bin/Release/net10.0/ProjGraph.Mcp.dll
         run: |
+          mkdir -p artifacts/fallback
           unzip -q "artifacts/packages/ProjGraph.Cli.any.$VERSION.nupkg" -d artifacts/fallback/cli
           unzip -q "artifacts/packages/ProjGraph.Mcp.any.$VERSION.nupkg" -d artifacts/fallback/mcp
           dotnet test tests/ProjGraph.Tests.Smoke.Aot --no-build --configuration Release \

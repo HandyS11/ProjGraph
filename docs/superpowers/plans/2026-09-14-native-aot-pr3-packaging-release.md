@@ -1406,6 +1406,7 @@ jobs:
           PROJGRAPH_SMOKE_MCP_NATIVE: artifacts/fallback/mcp/tools/net10.0/any/ProjGraph.Mcp.dll
           PROJGRAPH_SMOKE_MCP_REFERENCE: src/ProjGraph.Mcp/bin/Release/net10.0/ProjGraph.Mcp.dll
         run: |
+          mkdir -p artifacts/fallback
           unzip -q "artifacts/packages/ProjGraph.Cli.any.$VERSION.nupkg" -d artifacts/fallback/cli
           unzip -q "artifacts/packages/ProjGraph.Mcp.any.$VERSION.nupkg" -d artifacts/fallback/mcp
           dotnet test tests/ProjGraph.Tests.Smoke.Aot --no-build --configuration Release \
@@ -1454,6 +1455,7 @@ dotnet pack src/ProjGraph.Cli --configuration Release --runtime any -p:PublishAo
 dotnet pack src/ProjGraph.Mcp --configuration Release --runtime any -p:PublishAot=false -p:Version="$VERSION" --output artifacts/packages
 bash .github/scripts/verify-packages.sh artifacts/packages "$VERSION" libraries any
 bash .github/scripts/verify-packages.sh artifacts/pointers "$VERSION" pointers
+mkdir -p artifacts/fallback
 unzip -q "artifacts/packages/ProjGraph.Cli.any.$VERSION.nupkg" -d artifacts/fallback/cli
 unzip -q "artifacts/packages/ProjGraph.Mcp.any.$VERSION.nupkg" -d artifacts/fallback/mcp
 GITHUB_ACTIONS=true \
