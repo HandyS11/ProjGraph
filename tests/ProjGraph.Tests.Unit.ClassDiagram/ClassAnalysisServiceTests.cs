@@ -185,6 +185,48 @@ public sealed class ClassAnalysisServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AnalyzeFileAsync_BclTypesOutsideTheCoreContracts_AreFilteredAsSystemTypes()
+    {
+        // TypeFilter filters bound types by their System namespace but unbound ones only by a short
+        // well-known-name list, so a BCL type the reference set cannot bind (threading, concurrent
+        // collections, numerics, tracing) would leak into the diagram as a node, and a
+        // ConcurrentQueue<Job> field would lose its "*" cardinality to Job.
+        const string code = """
+                            using System.Collections.Concurrent;
+                            using System.Diagnostics.Tracing;
+                            using System.Numerics;
+                            using System.Text;
+                            using System.Threading;
+
+                            namespace Scenario;
+
+                            public class Job
+                            {
+                                public int Id { get; set; }
+                            }
+
+                            public class Worker : EventSource
+                            {
+                                private readonly SemaphoreSlim _gate = new(1);
+                                private readonly ConcurrentQueue<Job> _queue = new();
+
+                                public ThreadLocal<Job> Current { get; } = new();
+                                public Vector3 Position { get; set; }
+                                public UTF8Encoding Encoding { get; } = new();
+                            }
+                            """;
+        await File.WriteAllTextAsync(_tempFile, code);
+
+        var result = await _service.AnalyzeFileAsync(_tempFile,
+            new AnalysisOptions(IncludeInheritance: true, IncludeDependencies: true));
+
+        result.Types.Select(t => t.Name).Should().BeEquivalentTo("Job", "Worker");
+        result.Relationships.Should().OnlyContain(r => r.From == "Scenario.Worker" && r.To == "Scenario.Job");
+        result.Relationships.Should().ContainSingle(r => r.Label == "_queue")
+            .Which.Cardinality.Should().Be("*");
+    }
+
+    [Fact]
     public async Task AnalyzeFileAsync_WithWorkspaceDiscovery_FindsRelatedType()
     {
         var root = Path.Combine(_temp.DirectoryPath, "workspace");

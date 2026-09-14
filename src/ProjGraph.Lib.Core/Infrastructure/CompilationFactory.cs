@@ -61,10 +61,11 @@ public sealed class CompilationFactory : ICompilationFactory
     /// <returns>A list of <see cref="MetadataReference"/> objects representing the necessary references.</returns>
     /// <remarks>
     /// The BCL references come from the reference assemblies embedded in this library under the
-    /// <c>refs/</c> resource prefix (<c>System.Runtime</c>, <c>System.Collections</c>,
-    /// <c>System.ComponentModel.Annotations</c>, and <c>netstandard</c>), so the reference set is
-    /// the same whether the host runs on the JIT runtime or as a Native AOT executable, where
-    /// <see cref="Assembly.Location"/> is always empty. <c>Microsoft.EntityFrameworkCore</c> is
+    /// <c>refs/</c> resource prefix: <c>netstandard</c> plus every targeting-pack reference assembly
+    /// that defines a public type the runtime's <c>System.Private.CoreLib</c>, <c>System.Runtime</c>,
+    /// <c>System.Collections</c>, and <c>System.ComponentModel.Annotations</c> expose. The reference
+    /// set is therefore the same whether the host runs on the JIT runtime or as a Native AOT
+    /// executable, where <see cref="Assembly.Location"/> is always empty. <c>Microsoft.EntityFrameworkCore</c> is
     /// added when it is loaded from a file.
     /// </remarks>
     private static List<MetadataReference> BuildMetadataReferences()

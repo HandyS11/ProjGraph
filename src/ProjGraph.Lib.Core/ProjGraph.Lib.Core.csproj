@@ -23,13 +23,38 @@
   </ItemGroup>
 
   <!-- Reference assemblies that CompilationFactory hands to Roslyn. They are embedded rather than
-       read from the runtime directory because Assembly.Location is empty under Native AOT. -->
+       read from the runtime directory because Assembly.Location is empty under Native AOT. The set
+       is every reference assembly that defines a public type the former runtime set
+       (System.Private.CoreLib, System.Runtime, System.Collections, System.ComponentModel.Annotations)
+       bound, so BCL types keep binding and keep being filtered out of class diagrams. -->
   <PropertyGroup>
     <ReferenceAssemblyDirectory>$(NetCoreTargetingPackRoot)/Microsoft.NETCore.App.Ref/$(BundledNETCoreAppPackageVersion)/ref/$(TargetFramework)/</ReferenceAssemblyDirectory>
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedReferenceAssembly Include="System.Runtime.dll;System.Collections.dll;System.ComponentModel.Annotations.dll;netstandard.dll"/>
+    <EmbeddedReferenceAssembly Include="Microsoft.Win32.Primitives.dll"/>
+    <EmbeddedReferenceAssembly Include="netstandard.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Collections.Concurrent.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Collections.dll"/>
+    <EmbeddedReferenceAssembly Include="System.ComponentModel.Annotations.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Diagnostics.Contracts.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Diagnostics.StackTrace.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Diagnostics.Tracing.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Memory.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Numerics.Vectors.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Reflection.Emit.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Reflection.Emit.ILGeneration.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Reflection.Emit.Lightweight.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Reflection.Primitives.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Runtime.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Runtime.InteropServices.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Runtime.Intrinsics.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Runtime.Loader.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Text.Encoding.Extensions.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Threading.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Threading.Overlapped.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Threading.Thread.dll"/>
+    <EmbeddedReferenceAssembly Include="System.Threading.ThreadPool.dll"/>
     <EmbeddedResource Include="@(EmbeddedReferenceAssembly->'$(ReferenceAssemblyDirectory)%(Identity)')"
                       LogicalName="refs/%(Filename)%(Extension)"
                       Visible="false"/>
