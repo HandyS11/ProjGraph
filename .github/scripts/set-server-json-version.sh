@@ -19,9 +19,10 @@ file=src/ProjGraph.Mcp/.mcp/server.json
 sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$version\"/g" "$file" && rm "$file.bak"
 
 echo "Set server.json version to $version:"
-grep '"version"' "$file"
+# grep exits 1 when nothing matches; `|| true` on both lets the error below report the zero count.
+grep '"version"' "$file" || true
 
-count=$(grep -c "\"version\": \"$version\"" "$file")
+count=$(grep -c "\"version\": \"$version\"" "$file" || true)
 if [ "$count" -ne 2 ]; then
   echo "::error::Expected 2 occurrences of \"version\": \"$version\" in $file, found $count." >&2
   exit 1

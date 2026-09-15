@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
   # Allow re-running a release on demand (e.g. after a transient NuGet/MCP Registry failure).
+  # For a transient publish failure, prefer "Re-run failed jobs" on the original run: it reuses that
+  # run's packages. A new dispatch rebuilds every package and replaces the GitHub Release assets.
+  # Dispatch from the tag ref, so the workflow files match the scripts checked out from the tag.
   # The tag must already exist: every job below derives the version from it. Pushes skip packages
   # that are already on a feed, and the NuGet.org wait passes at once for packages already listed.
   workflow_dispatch:
@@ -15,22 +18,23 @@ on:
         type: string
 
 permissions:
-  contents: write
-  packages: write
-  id-token: write # Required for MCP Registry OIDC authentication
+  contents: read
 
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
     outputs:
       tag: ${{ steps.get_version.outputs.tag }}
       version: ${{ steps.get_version.outputs.version }}
 
     steps:
-      - name: Validate tag input
-        if: github.event_name == 'workflow_dispatch'
+      # Runs for pushed tags too, so a malformed tag fails before anything is built or used in a command.
+      - name: Validate tag
         env:
-          TAG: ${{ github.event.inputs.tag }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::'$TAG' is not a valid release tag (expected e.g. v1.0.3 or v1.0.0-rc.1)."
@@ -73,6 +77,8 @@ jobs:
 
   pack:
     needs: prepare
+    permissions:
+      contents: read
     uses: ./.github/workflows/pack.yml
     with:
       ref: ${{ needs.prepare.outputs.tag }}
@@ -81,6 +87,13 @@ jobs:
   publish:
     needs: [prepare, pack]
     runs-on: ubuntu-latest
+    # Worst case: the 30-minute NuGet.org wait, the 5-minute validation sleep, and 5 × 15-minute
+    # MCP Registry attempts.
+    timeout-minutes: 150
+    permissions:
+      contents: write
+      packages: write
+      id-token: write # Required for MCP Registry OIDC authentication
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
 
@@ -106,14 +119,22 @@ jobs:
         run: |
           bash .github/scripts/verify-packages.sh artifacts/packages "$VERSION" libraries any win-x64 linux-x64 linux-arm64 linux-musl-x64 linux-musl-arm64 osx-arm64
           bash .github/scripts/verify-packages.sh artifacts/pointers "$VERSION" pointers
+          pointer_ids=$(bash .github/scripts/pointer-package-ids.sh artifacts/pointers)
+          for id in $pointer_ids; do
+            if [ ! -e "artifacts/packages/$id.$VERSION.nupkg" ]; then
+              echo "::error::A pointer package lists $id, but artifacts/packages has no $id.$VERSION.nupkg."
+              exit 1
+            fi
+          done
+          echo "Every package the pointers list is present."
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
-      # A pointer package names its RID-specific packages, and installing it fails until they exist, so
-      # every other package goes first.
+      # A pointer package names its RID-specific packages, and installing it fails on a machine whose
+      # RID package isn't on the feed yet, so every other package goes first.
       - name: Publish packages to NuGet.org
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
@@ -125,13 +146,13 @@ jobs:
           OWNER: ${{ github.repository_owner }}
         run: dotnet nuget push "artifacts/packages/*.nupkg" --source "https://nuget.pkg.github.com/$OWNER/index.json" --api-key "$GITHUB_TOKEN" --skip-duplicate
 
+      # Waits for exactly the packages the pointer packages list.
       - name: Wait for the tool packages on NuGet.org
         run: |
-          bash .github/scripts/wait-for-nuget.sh "$VERSION" \
-            ProjGraph.Cli.any ProjGraph.Cli.win-x64 ProjGraph.Cli.linux-x64 ProjGraph.Cli.linux-arm64 \
-            ProjGraph.Cli.linux-musl-x64 ProjGraph.Cli.linux-musl-arm64 ProjGraph.Cli.osx-arm64 \
-            ProjGraph.Mcp.any ProjGraph.Mcp.win-x64 ProjGraph.Mcp.linux-x64 ProjGraph.Mcp.linux-arm64 \
-            ProjGraph.Mcp.linux-musl-x64 ProjGraph.Mcp.linux-musl-arm64 ProjGraph.Mcp.osx-arm64
+          pointer_ids=$(bash .github/scripts/pointer-package-ids.sh artifacts/pointers)
+          ids=()
+          while IFS= read -r id; do ids+=("$id"); done <<< "$pointer_ids"
+          bash .github/scripts/wait-for-nuget.sh "$VERSION" "${ids[@]}"
 
       - name: Publish pointer packages to NuGet.org
         env:

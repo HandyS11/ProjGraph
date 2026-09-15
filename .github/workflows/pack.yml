@@ -22,9 +22,10 @@ on:
       - .github/scripts/native-tool-smoke.sh
       - .github/scripts/verify-packages.sh
       - .github/scripts/set-server-json-version.sh
-      - src/ProjGraph.Cli/ProjGraph.Cli.csproj
-      - src/ProjGraph.Mcp/ProjGraph.Mcp.csproj
+      - src/**/*.csproj
+      - src/ProjGraph.Mcp/.mcp/server.json
       - tests/ProjGraph.Tests.Smoke.Aot/**
+      - ProjGraph.slnx
       - Directory.Build.props
       - Directory.Packages.props
       - global.json
@@ -32,8 +33,10 @@ on:
 permissions:
   contents: read
 
+# Inside workflow_call, github.ref is the caller's ref, which for a dispatched release is the branch it
+# ran from, so the group uses the release tag to keep runs for different tags apart.
 concurrency:
-  group: pack-${{ github.event_name }}-${{ github.ref }}
+  group: pack-${{ github.event_name }}-${{ inputs.ref || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -144,7 +147,17 @@ jobs:
           unzip -q "artifacts/packages/ProjGraph.Mcp.any.$VERSION.nupkg" -d artifacts/fallback/mcp
           dotnet test tests/ProjGraph.Tests.Smoke.Aot --no-build --configuration Release \
             --filter "FullyQualifiedName!~ProjGraph.Tests.Smoke.Aot.NativeBuildGuardTests" \
-            --logger "console;verbosity=normal"
+            --logger "console;verbosity=normal" --logger "trx;LogFileName=fallback-smoke.trx" \
+            --results-directory artifacts/smoke-results
+
+      - name: Upload fallback smoke test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-results-portable
+          path: artifacts/smoke-results
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload libraries and fallback packages
         uses: actions/upload-artifact@v7

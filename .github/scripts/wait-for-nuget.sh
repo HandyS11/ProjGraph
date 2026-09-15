@@ -21,7 +21,7 @@ while :; do
   waiting=()
   for id in "${pending[@]}"; do
     lower_id=$(printf '%s' "$id" | tr '[:upper:]' '[:lower:]')
-    if curl --silent --fail "https://api.nuget.org/v3-flatcontainer/$lower_id/index.json" |
+    if curl --silent --fail --max-time 30 "https://api.nuget.org/v3-flatcontainer/$lower_id/index.json" |
       jq --exit-status --arg version "$version" '.versions | index($version) != null' > /dev/null; then
       echo "$id $version is listed on NuGet.org."
     else
