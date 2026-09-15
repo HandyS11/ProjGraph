@@ -63,11 +63,10 @@ public sealed class SlnParser(IFileSystem fileSystem) : ISlnParser
         }
 
         var solutionDirectory = fileSystem.GetDirectoryName(fullPath) ?? "";
-        return solution.SolutionProjects
+        return [.. solution.SolutionProjects
             .Where(p => MsBuildProjectTypes.Contains(p.TypeId))
             .Select(p => fileSystem.GetFullPath(fileSystem.Combine(solutionDirectory,
-                p.FilePath.Replace('\\', Path.DirectorySeparatorChar))))
-            .ToList();
+                p.FilePath.Replace('\\', Path.DirectorySeparatorChar))))];
     }
 
     /// <summary>
