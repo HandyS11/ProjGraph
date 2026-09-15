@@ -179,6 +179,14 @@ public sealed partial class CliParityTests : IDisposable
         await AssertParityAsync(expectSuccess: true, "visualize", "--help");
     }
 
+    [AotSmokeFact]
+    public async Task Version_ShouldMatchReference()
+    {
+        // The version is read from an assembly attribute, which the native build must keep.
+        var reference = await AssertParityAsync(expectSuccess: true, "--version");
+        reference.StandardOutput.Should().NotBeNullOrWhiteSpace("the version must be printed");
+    }
+
     private string CreateSolutionWithMalformedProject()
     {
         _temp.CreateFile("Good/Good.csproj",

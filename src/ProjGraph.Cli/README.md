@@ -10,6 +10,9 @@ class hierarchies, and computing key solution metrics.
 
 ```bash
 dotnet tool install -g ProjGraph.Cli
+
+# Check the installed version
+projgraph --version
 ```
 
 Installing needs the [.NET 10 SDK](https://dotnet.microsoft.com/download) or later. On Windows x64, Linux x64 and
