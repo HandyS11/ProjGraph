@@ -177,17 +177,23 @@ jobs:
           # Treat a tag with a pre-release suffix (e.g. v1.0.0-rc.1) as a pre-release.
           prerelease: ${{ contains(needs.prepare.outputs.tag, '-') }}
 
+      # The MCP Registry ranks versions by semver, so a pre-release above the current stable version
+      # (e.g. 1.2.0-beta.1 over 1.1.0) would become its "latest". Only stable tags go to the Registry.
       - name: Update server.json version
+        if: ${{ !contains(needs.prepare.outputs.tag, '-') }}
         run: bash .github/scripts/set-server-json-version.sh "$VERSION"
 
       - name: Install mcp-publisher
+        if: ${{ !contains(needs.prepare.outputs.tag, '-') }}
         run: |
           curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar -xzf -
 
       - name: Wait for NuGet.org validation
+        if: ${{ !contains(needs.prepare.outputs.tag, '-') }}
         run: sleep 300
 
       - name: Publish to MCP Registry
+        if: ${{ !contains(needs.prepare.outputs.tag, '-') }}
         uses: nick-fields/retry@v4
         with:
           timeout_minutes: 15
