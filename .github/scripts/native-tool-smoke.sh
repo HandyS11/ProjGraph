@@ -28,8 +28,11 @@ dotnet pack src/ProjGraph.Mcp --no-build --configuration Release -p:Version="$ve
 dotnet pack src/ProjGraph.Cli --configuration Release --runtime "$rid" -p:Version="$version" --output artifacts/packages
 dotnet pack src/ProjGraph.Mcp --configuration Release --runtime "$rid" -p:Version="$version" --output artifacts/packages
 
-# Only the local packages are sources, so nothing resolves from NuGet.org, and a fresh package folder
-# keeps a cached copy of the same version from being installed instead.
+# The tools resolve from the local packages: no ProjGraph package with this version is on NuGet.org
+# before a release pushes it, and a fresh package folder keeps a cached copy of the same version from
+# being installed instead. NuGet.org is listed for the SDK itself: on macOS arm64, `dotnet tool install`
+# downloads microsoft.netcore.app.host.osx-x64 for any RID-specific package (its tools/any folder reads
+# as a pre-net6 framework), even though a native tool gets a symlink rather than an apphost shim.
 cat > artifacts/smoke-nuget.config <<'XML'
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
@@ -37,6 +40,7 @@ cat > artifacts/smoke-nuget.config <<'XML'
     <clear />
     <add key="packages" value="packages" />
     <add key="pointers" value="pointers" />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
   </packageSources>
 </configuration>
 XML
@@ -46,19 +50,42 @@ for tool in Cli Mcp; do
     --configfile artifacts/smoke-nuget.config --tool-path "artifacts/tools/$tool"
 done
 
-exe=''
+# Prints the one file named $2 inside the package store of the tool path $1, and fails otherwise.
+store_executable() {
+  found=''
+  for candidate in "$1"/.store/*/*/*/*/tools/*/*/"$2"; do
+    if [ -f "$candidate" ]; then
+      if [ -n "$found" ]; then
+        echo "::error::More than one $2 in $1/.store." >&2
+        exit 1
+      fi
+      found=$candidate
+    fi
+  done
+  if [ -z "$found" ]; then
+    echo "::error::No $2 in $1/.store." >&2
+    exit 1
+  fi
+  printf '%s\n' "$found"
+}
+
+cli_native=artifacts/tools/Cli/projgraph
+mcp_native=artifacts/tools/Mcp/ProjGraph.Mcp
 mcp_reference=src/ProjGraph.Mcp/bin/Release/net10.0/ProjGraph.Mcp.dll
 if [ "${RUNNER_OS:-}" = 'Windows' ]; then
-  exe='.exe'
+  # On Windows the tool path holds .cmd launchers, not links, so the smoke suite runs the executables
+  # the packages installed into the tool store.
+  cli_native=$(store_executable artifacts/tools/Cli ProjGraph.Cli.exe)
+  mcp_native=$(store_executable artifacts/tools/Mcp ProjGraph.Mcp.exe)
   # The MCP SDK starts stdio servers through `cmd.exe /c` on Windows, which is fragile with a quoted
   # dotnet host path. The JIT apphost runs the same build without one.
   mcp_reference=src/ProjGraph.Mcp/bin/Release/net10.0/ProjGraph.Mcp.exe
 fi
 
 PROJGRAPH_SMOKE_REQUIRED=true \
-PROJGRAPH_SMOKE_CLI_NATIVE="artifacts/tools/Cli/projgraph$exe" \
+PROJGRAPH_SMOKE_CLI_NATIVE="$cli_native" \
 PROJGRAPH_SMOKE_CLI_REFERENCE=src/ProjGraph.Cli/bin/Release/net10.0/ProjGraph.Cli.dll \
-PROJGRAPH_SMOKE_MCP_NATIVE="artifacts/tools/Mcp/ProjGraph.Mcp$exe" \
+PROJGRAPH_SMOKE_MCP_NATIVE="$mcp_native" \
 PROJGRAPH_SMOKE_MCP_REFERENCE="$mcp_reference" \
 dotnet test tests/ProjGraph.Tests.Smoke.Aot --no-build --configuration Release \
   --logger "console;verbosity=normal" --logger "trx;LogFileName=smoke.trx" \
