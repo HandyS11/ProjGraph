@@ -2,6 +2,7 @@ using ProjGraph.Cli;
 using Spectre.Console.Cli;
 using Spectre.Console.Testing;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 
 namespace ProjGraph.Tests.Integration.Cli;
@@ -38,6 +39,17 @@ public sealed partial class VersionOptionTests
         // value to the CLI assembly and not to the test host's entry assembly.
         var assemblyVersion = typeof(Program).Assembly.GetName().Version!;
         printed.Should().StartWith(assemblyVersion.ToString(3));
+    }
+
+    [Fact]
+    public void GetPackageVersion_WithoutInformationalVersionAttribute_FallsBackToTheAssemblyVersion()
+    {
+        // Configure runs for every command, so a build without the attribute must not break them all.
+        var assembly = AssemblyBuilder.DefineDynamicAssembly(
+            new AssemblyName("NoInformationalVersion") { Version = new Version(2, 3, 4, 5) },
+            AssemblyBuilderAccess.Run);
+
+        Program.GetPackageVersion(assembly).Should().Be("2.3.4");
     }
 
     [GeneratedRegex(@"^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$")]

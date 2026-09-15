@@ -39,7 +39,7 @@ internal static class Program
         const string classDiagramCommandName = "classdiagram";
 
         config.SetApplicationName("projgraph");
-        config.SetApplicationVersion(GetPackageVersion());
+        config.SetApplicationVersion(GetPackageVersion(typeof(Program).Assembly));
 
         // Spectre's default parser silently ignores unrecognized long options: a typo like
         // `--owned-mod classic` (missing 'e') exits 0 and renders with defaults, giving the user
@@ -73,15 +73,20 @@ internal static class Program
     }
 
     /// <summary>
-    /// Gets the version the package was built with. Spectre's <c>UseAssemblyInformationalVersion</c>
-    /// reads the entry assembly, which is the test host under tests, and keeps the <c>+commit</c> build
-    /// metadata the SDK appends, so the CLI assembly's attribute is read and trimmed here instead.
+    /// Gets the package version an assembly was built with. Spectre's
+    /// <c>UseAssemblyInformationalVersion</c> reads the entry assembly, which is the test host under tests,
+    /// and keeps the <c>+commit</c> build metadata the SDK appends, so <see cref="Configure"/> passes the
+    /// CLI assembly here and the metadata is trimmed.
     /// </summary>
+    /// <param name="assembly">The assembly to read the version from.</param>
     /// <returns>The package version, e.g. <c>1.2.0</c> or <c>1.2.0-beta.1</c>.</returns>
-    private static string GetPackageVersion()
+    internal static string GetPackageVersion(Assembly assembly)
     {
-        var version = typeof(Program).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
+        // The SDK always generates the attribute, but Configure runs for every command, so a build
+        // without it falls back to the assembly version instead of failing them all.
+        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                      ?? assembly.GetName().Version?.ToString(3)
+                      ?? "0.0.0";
         var metadataStart = version.IndexOf('+', StringComparison.Ordinal);
         return metadataStart < 0 ? version : version[..metadataStart];
     }
