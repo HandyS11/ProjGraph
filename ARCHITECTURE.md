@@ -104,7 +104,8 @@ Class analysis uses Roslyn to:
 - **Target Framework**: .NET 10.0
 - **Central Package Management**: `Directory.Packages.props`
 - **Code Quality**: `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true`
-- **CI**: GitHub Actions on `ubuntu-latest` and `windows-latest`
+- **CI**: GitHub Actions. `ci.yml` builds and tests on `ubuntu-latest`, `windows-latest`, and `macos-latest`, plus
+  the `aot-smoke` job; `pack.yml` adds `ubuntu-24.04-arm` runners and Alpine containers for the native packages
 
 ## Release & Distribution
 
@@ -119,32 +120,47 @@ Tag push (v*)
     ├── pack (.github/workflows/pack.yml)
     │     ├── pack-native ×6, each on a matching runner (linux-musl-* inside Alpine):
     │     │     win-x64 · linux-x64 · linux-arm64 · linux-musl-x64 · linux-musl-arm64 · osx-arm64
-    │     │     dotnet pack -r <rid> → dotnet tool install from the packages → Tests.Smoke.Aot
-    │     └── pack-portable: libraries, pointer packages, framework-dependent `any` packages → Tests.Smoke.Aot
+    │     │     stamp the server.json version → dotnet pack -r <rid>
+    │     │     → dotnet tool install from the packages → Tests.Smoke.Aot
+    │     └── pack-portable: stamp the server.json version → libraries, pointer packages,
+    │           framework-dependent `any` packages → Tests.Smoke.Aot
     └── publish
           ├── dotnet nuget push libraries + native + any → NuGet.org, GitHub Packages
           ├── wait until NuGet.org lists all 14 tool packages (30 min timeout)
           ├── dotnet nuget push pointer packages → NuGet.org, GitHub Packages
           ├── Create GitHub Release with every package attached
+          ├── stamp the server.json version (.github/scripts/set-server-json-version.sh)
+          ├── wait 300 s for NuGet.org package validation
           └── mcp-publisher publish (GitHub OIDC auth, no token required)
                 └── Submits src/ProjGraph.Mcp/.mcp/server.json to the Official MCP Registry
 ```
 
-`pack.yml` also runs on pull requests that change the tool projects, the smoke suite, the packaging
-scripts, `Directory.*.props`, or `global.json`.
+`pack.yml` also runs on pull requests that change a project file under `src/`, the MCP `server.json`,
+`ProjGraph.slnx`, the smoke suite, the packaging scripts, `Directory.*.props`, or `global.json`.
 
 ### Tool Packages
 
 `ProjGraph.Cli` and `ProjGraph.Mcp` are pointer packages that list one package per runtime identifier.
 `dotnet tool install` and `dnx` pick the Native AOT package on win-x64, linux-x64, linux-arm64,
 linux-musl-x64, linux-musl-arm64, and osx-arm64, and the framework-dependent `.any` package elsewhere.
-Installing a pointer package fails until every package it lists is on the feed, which is why `publish`
-pushes it last.
+Installing a pointer package fails when the package for the installing machine's RID isn't on the feed
+(it doesn't fall back to `any`), which is why `publish` pushes it last.
 
-If a native package misbehaves after a release, remove its RID from `ToolPackageRuntimeIdentifiers` in
-both tool projects and ship a patch; that platform then falls back to `any`. Remove a `linux-<arch>`
-RID together with its `linux-musl-<arch>` RID, and never a musl RID alone. The RID graph treats musl
-as compatible with glibc, so musl systems would install the glibc package, which can't start there.
+The RID list lives in four places, and they must match:
+
+- `ToolPackageRuntimeIdentifiers` in both tool projects (`src/ProjGraph.Cli/ProjGraph.Cli.csproj` and
+  `src/ProjGraph.Mcp/ProjGraph.Mcp.csproj`);
+- the `pack-native` matrix in `.github/workflows/pack.yml`;
+- the RID sets in `.github/scripts/verify-packages.sh`;
+- the verify line in `.github/workflows/publish.yml`.
+
+`publish` derives the NuGet.org wait list from the pointer packages (`.github/scripts/pointer-package-ids.sh`),
+and it fails before pushing anything if a pointer lists a package that wasn't built.
+
+If a native package misbehaves after a release, remove its RID from all four places and ship a patch;
+that platform then installs the `any` package. Remove a `linux-<arch>` RID together with its
+`linux-musl-<arch>` RID, and never a musl RID alone. The RID graph treats musl as compatible with
+glibc, so musl systems would install the glibc package, which can't start there.
 
 ### MCP Registry Ownership Verification
 

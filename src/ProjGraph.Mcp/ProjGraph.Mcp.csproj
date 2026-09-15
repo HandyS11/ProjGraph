@@ -12,7 +12,9 @@
          RID below; `dotnet pack -r <rid>` on a matching OS builds each native package, and
          `dotnet pack -r any -p:PublishAot=false` builds the framework-dependent fallback.
          .github/workflows/pack.yml builds them all. Keep linux-musl-* listed with linux-*: without
-         them, musl systems resolve the glibc package, which can't start there. -->
+         them, musl systems resolve the glibc package, which can't start there. When changing the RID list,
+         also update pack.yml's matrix, verify-packages.sh, and publish.yml's verify line (see
+         ARCHITECTURE.md "Tool Packages"). -->
     <PublishAot>true</PublishAot>
     <ToolPackageRuntimeIdentifiers>win-x64;linux-x64;linux-arm64;linux-musl-x64;linux-musl-arm64;osx-arm64;any</ToolPackageRuntimeIdentifiers>
     <!-- Native debug symbols (.dbg, .dSYM, .pdb) would more than double the size of each native package. -->

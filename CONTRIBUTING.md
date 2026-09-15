@@ -76,6 +76,10 @@ packs the native tool packages, installs them with `dotnet tool install`, and te
 tools. The `aot-smoke` job does this for linux-x64 on every PR, and `pack.yml` does it for every
 release platform. Native AOT on Linux needs `clang` (or `gcc`) and `zlib1g-dev`.
 
+Before a local native pack or publish, delete `src/ProjGraph.Cli/bin/Release/net10.0/<rid>` and
+`src/ProjGraph.Mcp/bin/Release/net10.0/<rid>`: a pack reuses that folder's `publish/` output and ships
+whatever is left there.
+
 To run the same check locally on Linux:
 
 ```bash

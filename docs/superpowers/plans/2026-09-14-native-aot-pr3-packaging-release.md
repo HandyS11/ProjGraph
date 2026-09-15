@@ -63,6 +63,7 @@ A new reusable workflow, `pack.yml`, runs the action for all six native RIDs and
     - TRX upload on failure.
 12. **Plain JIT builds now carry AOT feature switches.** With `PublishAot` in the csproj, `dotnet build` writes `IsDynamicCodeSupported=false`, `JsonSerializer.IsReflectionEnabledByDefault=false`, and similar switches into `ProjGraph.Cli.runtimeconfig.json`/`ProjGraph.Mcp.runtimeconfig.json`. The smoke reference and `dotnet run` therefore run with them. The `any` packages (`-p:PublishAot=false`) don't, which is why deviation 8 tests them separately.
 13. **The MCP `server.json` version is stamped before packing.** `.github/scripts/set-server-json-version.sh` runs in the composite action, in `pack-portable`, and in `publish`, because every `ProjGraph.Mcp*` package embeds `.mcp/server.json`. With the spec's sed only in `publish`, all 8 MCP packages would ship the committed `0.4.0`.
+14. **The NuGet.org wait list comes from the pointer packages.** `.github/scripts/pointer-package-ids.sh` reads each pointer's `tools/any/any/DotnetToolSettings.xml`. `publish` fails before any push if a listed package wasn't built, and it waits for exactly the listed IDs instead of a hand-written list. A RID added only to `ToolPackageRuntimeIdentifiers` therefore stops the release instead of shipping a pointer whose package for that RID doesn't exist.
 
 ## Verified facts this plan relies on
 
@@ -142,6 +143,7 @@ Checked on 2026-09-14 in throwaway copies of `develop` at `fe0f3fd` (linux-x64, 
 | `.github/scripts/verify-packages.sh` | Create | Requires a folder to hold exactly the named package sets |
 | `.github/scripts/wait-for-nuget.sh` | Create | Polls NuGet.org's flat container until versions are listed |
 | `.github/scripts/set-server-json-version.sh` | Create | Stamps the version into `.mcp/server.json` before every pack |
+| `.github/scripts/pointer-package-ids.sh` | Create | Prints the package IDs the pointer packages list, for `publish`'s verify step and NuGet.org wait |
 | `.github/workflows/ci.yml` | Modify | `aot-smoke` uses the composite action |
 | `.github/workflows/pack.yml` | Create | `pack-native` ×6 and `pack-portable`; reusable, also PR-triggered |
 | `.github/workflows/publish.yml` | Modify | `prepare` → `pack` → `publish` with ordered pushes |
@@ -977,6 +979,12 @@ runs:
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends clang zlib1g-dev
 
+    - name: Stamp the MCP server.json version
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: bash .github/scripts/set-server-json-version.sh "$VERSION"
+
     - name: Pack and smoke test
       if: ${{ !startsWith(inputs.rid, 'linux-musl-') }}
       shell: bash
@@ -1294,9 +1302,11 @@ on:
       - .github/actions/native-tool-smoke/**
       - .github/scripts/native-tool-smoke.sh
       - .github/scripts/verify-packages.sh
-      - src/ProjGraph.Cli/ProjGraph.Cli.csproj
-      - src/ProjGraph.Mcp/ProjGraph.Mcp.csproj
+      - .github/scripts/set-server-json-version.sh
+      - src/**/*.csproj
+      - src/ProjGraph.Mcp/.mcp/server.json
       - tests/ProjGraph.Tests.Smoke.Aot/**
+      - ProjGraph.slnx
       - Directory.Build.props
       - Directory.Packages.props
       - global.json
@@ -1304,8 +1314,10 @@ on:
 permissions:
   contents: read
 
+# Inside workflow_call, github.ref is the caller's ref, which for a dispatched release is the branch it
+# ran from, so the group uses the release tag to keep runs for different tags apart.
 concurrency:
-  group: pack-${{ github.event_name }}-${{ github.ref }}
+  group: pack-${{ github.event_name }}-${{ inputs.ref || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -1380,6 +1392,9 @@ jobs:
           dotnet restore ProjGraph.slnx
           dotnet build ProjGraph.slnx --no-restore --configuration Release -p:Version="$VERSION"
 
+      - name: Stamp the MCP server.json version
+        run: bash .github/scripts/set-server-json-version.sh "$VERSION"
+
       # With PublishAot set, packing the solution produces the RID-agnostic pointer packages for the
       # two tools; they move to their own folder because publish.yml pushes them last.
       - name: Pack libraries and pointer packages
@@ -1413,7 +1428,17 @@ jobs:
           unzip -q "artifacts/packages/ProjGraph.Mcp.any.$VERSION.nupkg" -d artifacts/fallback/mcp
           dotnet test tests/ProjGraph.Tests.Smoke.Aot --no-build --configuration Release \
             --filter "FullyQualifiedName!~ProjGraph.Tests.Smoke.Aot.NativeBuildGuardTests" \
-            --logger "console;verbosity=normal"
+            --logger "console;verbosity=normal" --logger "trx;LogFileName=fallback-smoke.trx" \
+            --results-directory artifacts/smoke-results
+
+      - name: Upload fallback smoke test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-results-portable
+          path: artifacts/smoke-results
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload libraries and fallback packages
         uses: actions/upload-artifact@v7
@@ -1450,6 +1475,7 @@ cd /tmp/pg-pr3-portable
 export VERSION=0.0.0-local.4
 dotnet restore ProjGraph.slnx
 dotnet build ProjGraph.slnx --no-restore --configuration Release -p:Version="$VERSION"
+bash .github/scripts/set-server-json-version.sh "$VERSION"
 dotnet pack ProjGraph.slnx --no-build --configuration Release -p:Version="$VERSION" --output artifacts/packages
 mkdir -p artifacts/pointers
 mv "artifacts/packages/ProjGraph.Cli.$VERSION.nupkg" "artifacts/packages/ProjGraph.Mcp.$VERSION.nupkg" artifacts/pointers/
@@ -1467,7 +1493,9 @@ PROJGRAPH_SMOKE_CLI_REFERENCE=src/ProjGraph.Cli/bin/Release/net10.0/ProjGraph.Cl
 PROJGRAPH_SMOKE_MCP_NATIVE=artifacts/fallback/mcp/tools/net10.0/any/ProjGraph.Mcp.dll \
 PROJGRAPH_SMOKE_MCP_REFERENCE=src/ProjGraph.Mcp/bin/Release/net10.0/ProjGraph.Mcp.dll \
 dotnet test tests/ProjGraph.Tests.Smoke.Aot --no-build --configuration Release \
-  --filter "FullyQualifiedName!~ProjGraph.Tests.Smoke.Aot.NativeBuildGuardTests"
+  --filter "FullyQualifiedName!~ProjGraph.Tests.Smoke.Aot.NativeBuildGuardTests" \
+  --logger "console;verbosity=normal" --logger "trx;LogFileName=fallback-smoke.trx" \
+  --results-directory artifacts/smoke-results
 unset VERSION
 cd - && rm -rf /tmp/pg-pr3-portable
 ```
@@ -1491,6 +1519,7 @@ git commit -m "ci: fix the pack workflow"
 
 **Files:**
 - Create: `.github/scripts/wait-for-nuget.sh`
+- Create: `.github/scripts/pointer-package-ids.sh` (final-review fix, deviation 14)
 - Modify: `.github/workflows/publish.yml`
 - Modify: `ARCHITECTURE.md`, `CLAUDE.md`
 
@@ -1526,7 +1555,7 @@ while :; do
   waiting=()
   for id in "${pending[@]}"; do
     lower_id=$(printf '%s' "$id" | tr '[:upper:]' '[:lower:]')
-    if curl --silent --fail "https://api.nuget.org/v3-flatcontainer/$lower_id/index.json" |
+    if curl --silent --fail --max-time 30 "https://api.nuget.org/v3-flatcontainer/$lower_id/index.json" |
       jq --exit-status --arg version "$version" '.versions | index($version) != null' > /dev/null; then
       echo "$id $version is listed on NuGet.org."
     else
@@ -1585,6 +1614,9 @@ on:
     tags:
       - 'v*'
   # Allow re-running a release on demand (e.g. after a transient NuGet/MCP Registry failure).
+  # For a transient publish failure, prefer "Re-run failed jobs" on the original run: it reuses that
+  # run's packages. A new dispatch rebuilds every package and replaces the GitHub Release assets.
+  # Dispatch from the tag ref, so the workflow files match the scripts checked out from the tag.
   # The tag must already exist: every job below derives the version from it. Pushes skip packages
   # that are already on a feed, and the NuGet.org wait passes at once for packages already listed.
   workflow_dispatch:
@@ -1595,22 +1627,23 @@ on:
         type: string
 
 permissions:
-  contents: write
-  packages: write
-  id-token: write # Required for MCP Registry OIDC authentication
+  contents: read
 
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
     outputs:
       tag: ${{ steps.get_version.outputs.tag }}
       version: ${{ steps.get_version.outputs.version }}
 
     steps:
-      - name: Validate tag input
-        if: github.event_name == 'workflow_dispatch'
+      # Runs for pushed tags too, so a malformed tag fails before anything is built or used in a command.
+      - name: Validate tag
         env:
-          TAG: ${{ github.event.inputs.tag }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::'$TAG' is not a valid release tag (expected e.g. v1.0.3 or v1.0.0-rc.1)."
@@ -1653,6 +1686,8 @@ jobs:
 
   pack:
     needs: prepare
+    permissions:
+      contents: read
     uses: ./.github/workflows/pack.yml
     with:
       ref: ${{ needs.prepare.outputs.tag }}
@@ -1661,6 +1696,13 @@ jobs:
   publish:
     needs: [prepare, pack]
     runs-on: ubuntu-latest
+    # Worst case: the 30-minute NuGet.org wait, the 5-minute validation sleep, and 5 × 15-minute
+    # MCP Registry attempts.
+    timeout-minutes: 150
+    permissions:
+      contents: write
+      packages: write
+      id-token: write # Required for MCP Registry OIDC authentication
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
 
@@ -1686,14 +1728,22 @@ jobs:
         run: |
           bash .github/scripts/verify-packages.sh artifacts/packages "$VERSION" libraries any win-x64 linux-x64 linux-arm64 linux-musl-x64 linux-musl-arm64 osx-arm64
           bash .github/scripts/verify-packages.sh artifacts/pointers "$VERSION" pointers
+          pointer_ids=$(bash .github/scripts/pointer-package-ids.sh artifacts/pointers)
+          for id in $pointer_ids; do
+            if [ ! -e "artifacts/packages/$id.$VERSION.nupkg" ]; then
+              echo "::error::A pointer package lists $id, but artifacts/packages has no $id.$VERSION.nupkg."
+              exit 1
+            fi
+          done
+          echo "Every package the pointers list is present."
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
-      # A pointer package names its RID-specific packages, and installing it fails until they exist, so
-      # every other package goes first.
+      # A pointer package names its RID-specific packages, and installing it fails on a machine whose
+      # RID package isn't on the feed yet, so every other package goes first.
       - name: Publish packages to NuGet.org
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
@@ -1705,13 +1755,13 @@ jobs:
           OWNER: ${{ github.repository_owner }}
         run: dotnet nuget push "artifacts/packages/*.nupkg" --source "https://nuget.pkg.github.com/$OWNER/index.json" --api-key "$GITHUB_TOKEN" --skip-duplicate
 
+      # Waits for exactly the packages the pointer packages list.
       - name: Wait for the tool packages on NuGet.org
         run: |
-          bash .github/scripts/wait-for-nuget.sh "$VERSION" \
-            ProjGraph.Cli.any ProjGraph.Cli.win-x64 ProjGraph.Cli.linux-x64 ProjGraph.Cli.linux-arm64 \
-            ProjGraph.Cli.linux-musl-x64 ProjGraph.Cli.linux-musl-arm64 ProjGraph.Cli.osx-arm64 \
-            ProjGraph.Mcp.any ProjGraph.Mcp.win-x64 ProjGraph.Mcp.linux-x64 ProjGraph.Mcp.linux-arm64 \
-            ProjGraph.Mcp.linux-musl-x64 ProjGraph.Mcp.linux-musl-arm64 ProjGraph.Mcp.osx-arm64
+          pointer_ids=$(bash .github/scripts/pointer-package-ids.sh artifacts/pointers)
+          ids=()
+          while IFS= read -r id; do ids+=("$id"); done <<< "$pointer_ids"
+          bash .github/scripts/wait-for-nuget.sh "$VERSION" "${ids[@]}"
 
       - name: Publish pointer packages to NuGet.org
         env:
@@ -1737,10 +1787,7 @@ jobs:
           prerelease: ${{ contains(needs.prepare.outputs.tag, '-') }}
 
       - name: Update server.json version
-        run: |
-          sed -i "s/\"version\": \"[^\"]\+\"/\"version\": \"$VERSION\"/g" src/ProjGraph.Mcp/.mcp/server.json
-          echo "Updated server.json:"
-          grep "\"version\"" src/ProjGraph.Mcp/.mcp/server.json
+        run: bash .github/scripts/set-server-json-version.sh "$VERSION"
 
       - name: Install mcp-publisher
         run: |
@@ -1762,8 +1809,9 @@ jobs:
 
 What changed compared with the old file, so a reviewer can check it quickly:
 - The `Update Directory.Build.props version` step is gone. Every build and pack gets `-p:Version` instead, because jobs don't share a workspace.
-- `server.json` is still edited with `sed`, now only in `publish` (spec 3.2), and `identifier` stays `ProjGraph.Mcp`, which is now the pointer package.
-- The wait lists all 14 tool sub-packages, and pointer pushes come after it.
+- The `server.json` version is stamped by `.github/scripts/set-server-json-version.sh` before packing (in the composite action and in `pack-portable`) and again in `publish` (deviation 13). `identifier` stays `ProjGraph.Mcp`, which is now the pointer package.
+- The verify step also fails if a pointer package lists a package that wasn't built, and the wait covers exactly the IDs the pointer packages list (14 today, from `pointer-package-ids.sh`, deviation 14). Pointer pushes come after it.
+- The workflow's top-level permissions are read-only; only `publish` gets `contents`/`packages`/`id-token: write`. The tag format is validated for pushed tags too.
 
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/repo -w /repo rhysd/actionlint:latest -color=false .github/workflows/publish.yml .github/workflows/pack.yml .github/workflows/ci.yml
@@ -1775,7 +1823,7 @@ Expected: no output, exit 0. The old file's `SC2086` infos are gone.
 
 With `publish.yml` open, confirm:
 - (a) No step before `Wait for the tool packages on NuGet.org` touches `artifacts/pointers` except the download and verify steps.
-- (b) The wait's ID list has 14 entries and matches `verify-packages.sh`'s `any` and six RID sets.
+- (b) The wait's ID list comes from `pointer-package-ids.sh artifacts/pointers`, which prints 14 IDs matching `verify-packages.sh`'s `any` and six RID sets.
 - (c) The verify step's sets (`libraries any` + 6 RIDs = 20 files, `pointers` = 2) add up to the 22 packages in Global Constraints.
 
 Every list must use the same RID spellings. A mismatch here would only surface on a release tag.
@@ -1784,7 +1832,7 @@ Every list must use the same RID spellings. A mismatch here would only surface o
 grep -o 'linux-musl-arm64' .github/workflows/pack.yml .github/workflows/publish.yml .github/scripts/verify-packages.sh src/ProjGraph.Cli/ProjGraph.Cli.csproj src/ProjGraph.Mcp/ProjGraph.Mcp.csproj | sort | uniq -c
 ```
 
-Expected: `pack.yml` has 1, `publish.yml` 3 (verify line + 2 wait IDs), `verify-packages.sh` 2 (comment + case), and each csproj 1.
+Expected: `pack.yml` has 1, `publish.yml` 1 (verify line; the wait IDs come from the pointer packages), `verify-packages.sh` 2 (comment + case), and each csproj 1.
 
 - [ ] **Step 5: Update the release docs**
 
@@ -1860,7 +1908,7 @@ dotnet build ProjGraph.slnx -c Release
 dotnet format ProjGraph.slnx --no-restore --verify-no-changes
 dotnet test ProjGraph.slnx -c Release --no-build
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/repo -w /repo rhysd/actionlint:latest -color=false .github/workflows/ci.yml .github/workflows/pack.yml .github/workflows/publish.yml
-docker run --rm --user "$(id -u):$(id -g)" --entrypoint shellcheck -v "$PWD":/s -w /s rhysd/actionlint:latest .github/scripts/native-tool-smoke.sh .github/scripts/verify-packages.sh .github/scripts/wait-for-nuget.sh
+docker run --rm --user "$(id -u):$(id -g)" --entrypoint shellcheck -v "$PWD":/s -w /s rhysd/actionlint:latest .github/scripts/*.sh
 git ls-files -s .github/scripts
 grep -rnE '\b(dtk|rtk) ' .github CONTRIBUTING.md CLAUDE.md ARCHITECTURE.md
 git status --short
@@ -1869,7 +1917,7 @@ git status --short
 Expected:
 - 0 warnings, format clean, and every suite green with `Tests.Smoke.Aot` `Skipped: 30`.
 - Both linters silent.
-- All three scripts show mode `100755`.
+- All five scripts show mode `100755`: `native-tool-smoke.sh`, `verify-packages.sh`, `wait-for-nuget.sh`, `set-server-json-version.sh`, and `pointer-package-ids.sh`.
 - The `grep` prints nothing.
 - A clean working tree.
 
@@ -1884,7 +1932,7 @@ gh pr create --base develop --title "feat: Native AOT tool packages and release 
 
 The description must include:
 - A summary: the two tool projects as RID-specific AOT packages with an `any` fallback, the shared smoke script/action, `pack.yml`, and the new `publish.yml` order.
-- The 12 "Deviations from the spec" above. Deviation 1 goes first and cites the Alpine reproduction.
+- The 14 "Deviations from the spec" above. Deviation 1 goes first and cites the Alpine reproduction.
 - The package sizes, and that the release now ships 22 packages.
 - The PR 2 follow-ups that are included (guard tests, stderr capture, `CreateApp`, split steps, TRX upload), and the one that's obsolete (chmod on extracted binaries).
 - The maintainer checklist from Step 5 below.
