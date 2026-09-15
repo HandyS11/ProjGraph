@@ -12,6 +12,10 @@ class hierarchies, and computing key solution metrics.
 dotnet tool install -g ProjGraph.Cli
 ```
 
+Installing needs the [.NET 10 SDK](https://dotnet.microsoft.com/download) or later. On Windows x64, Linux x64 and
+Arm64 (glibc or musl), and macOS Arm64, the tool is a Native AOT executable that starts without loading the .NET
+runtime. Other platforms get a framework-dependent build that runs on the .NET 10 runtime.
+
 ## Commands
 
 ### `visualize` - Project Dependencies

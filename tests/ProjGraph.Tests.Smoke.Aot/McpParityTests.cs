@@ -5,6 +5,7 @@ using ProjGraph.Tests.Shared.Helpers;
 using ProjGraph.Tests.Smoke.Aot.Helpers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Xunit.Abstractions;
 
 namespace ProjGraph.Tests.Smoke.Aot;
 
@@ -13,7 +14,9 @@ namespace ProjGraph.Tests.Smoke.Aot;
 /// same requests, and requires identical protocol results.
 /// </summary>
 /// <param name="servers">The native and reference servers shared by this class.</param>
-public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpServerPair>
+/// <param name="output">Receives both servers' standard error, which xUnit reports with a failing test.</param>
+public sealed class McpParityTests(McpServerPair servers, ITestOutputHelper output)
+    : IClassFixture<McpServerPair>, IDisposable
 {
     /// <summary>
     /// The time limit for one MCP request. The SDK's own timeout (2.2.0) only covers initialization,
@@ -21,6 +24,11 @@ public sealed class McpParityTests(McpServerPair servers) : IClassFixture<McpSer
     /// failing it.
     /// </summary>
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromMinutes(2);
+
+    public void Dispose()
+    {
+        output.WriteLine(servers.DescribeStandardError());
+    }
 
     [AotSmokeFact]
     public async Task Initialize_ShouldAdvertiseTheSameServer()

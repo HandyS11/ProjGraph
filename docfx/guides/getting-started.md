@@ -18,6 +18,11 @@ Check what you have:
 dotnet --version
 ```
 
+On Windows x64, Linux x64 and Arm64 (glibc or musl), and macOS Arm64, both the
+CLI and the MCP server install as Native AOT executables that start without
+loading the .NET runtime. Other platforms get a framework-dependent build that
+runs on the runtime the SDK includes.
+
 ProjGraph reads source files directly. You do not need to build the project you
 are analysing, run a database, or apply migrations first.
 

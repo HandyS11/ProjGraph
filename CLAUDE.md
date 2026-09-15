@@ -67,6 +67,8 @@ Application/
 
 **MCP stdout safety** — The MCP server overrides `IOutputConsole` with `NullOutputConsole` to prevent ANSI markup from leaking onto the JSON-RPC stdio transport.
 
+**Tool packaging** — `ProjGraph.Cli` and `ProjGraph.Mcp` set `PublishAot=true` and `ToolPackageRuntimeIdentifiers`, so a plain `dotnet pack` builds only the pointer package. Each native package needs `dotnet pack -r <rid>` on a matching OS (Alpine for `linux-musl-*`), and the `any` fallback needs `dotnet pack -r any -p:PublishAot=false`. Because `PublishAot` is set, plain JIT builds also get AOT feature switches (e.g. `IsDynamicCodeSupported=false`) in their `runtimeconfig.json`. `.github/workflows/pack.yml` builds every package.
+
 **New feature checklist:**
 
 1. Add domain models to `ProjGraph.Core` if needed.
@@ -83,9 +85,9 @@ Application/
 | `Tests.Integration.Cli` | CLI end-to-end tests |
 | `Tests.Integration.Mcp` | MCP tool integration tests |
 | `Tests.Contract` | MCP contract validation & DI wiring |
-| `Tests.Smoke.Aot` | Native AOT vs JIT parity for the CLI and MCP executables (skipped unless `PROJGRAPH_SMOKE_*` is set; runs in the `aot-smoke` CI job) |
+| `Tests.Smoke.Aot` | Native AOT vs JIT parity for the installed CLI and MCP tools (skipped unless `PROJGRAPH_SMOKE_*` is set; `.github/scripts/native-tool-smoke.sh` runs it in the `aot-smoke` CI job and for every RID in `pack.yml`) |
 | `Tests.Shared` | Shared helpers (`TestDirectory`, `TestPathHelper`) |
 
 ### Release
 
-Releases are triggered by pushing a `v*` tag. The publish workflow builds, packs, pushes to NuGet.org and GitHub Packages, submits to the MCP Registry via `mcp-publisher`, and creates a GitHub Release. The MCP Registry ownership comment (`<!-- mcp-name: io.github.HandyS11/projgraph -->`) must remain at the end of `src/ProjGraph.Mcp/README.md`.
+Releases are triggered by pushing a `v*` tag. `publish.yml` builds and tests with `-p:Version` from the tag, then calls `pack.yml`. That workflow packs and smoke-tests the Native AOT tool packages on a matching runner for each RID (Alpine for `linux-musl-*`) and packs the libraries, the `any` fallbacks, and the two pointer packages. `publish` then pushes everything except the pointer packages to NuGet.org and GitHub Packages, waits until NuGet.org lists all 14 tool packages, pushes the pointer packages, creates a GitHub Release, and submits to the MCP Registry via `mcp-publisher`. See `ARCHITECTURE.md` ("Tool Packages") before changing `ToolPackageRuntimeIdentifiers`. The MCP Registry ownership comment (`<!-- mcp-name: io.github.HandyS11/projgraph -->`) must remain at the end of `src/ProjGraph.Mcp/README.md`.

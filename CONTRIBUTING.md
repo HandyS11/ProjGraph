@@ -58,31 +58,45 @@ dotnet test tests/ProjGraph.Tests.Unit.ClassDiagram --filter "ClassAnalysisDepth
 
 ### Test Organisation
 
-| Project                 | Purpose                                                                                                                              |
-|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| `Tests.Unit.*`          | Unit tests per library                                                                                                               |
-| `Tests.Integration.Cli` | CLI end-to-end tests                                                                                                                 |
-| `Tests.Integration.Mcp` | MCP tool integration tests                                                                                                           |
-| `Tests.Contract`        | MCP contract validation & DI wiring                                                                                                  |
-| `Tests.Smoke.Aot`       | Native AOT vs JIT parity for the CLI and MCP executables (skipped unless `PROJGRAPH_SMOKE_*` is set; runs in the `aot-smoke` CI job) |
-| `Tests.Shared`          | Shared helpers (`TestDirectory`, `TestPathHelper`)                                                                                   |
+| Project                 | Purpose                                                                                                                                                |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Tests.Unit.*`          | Unit tests per library                                                                                                                                 |
+| `Tests.Integration.Cli` | CLI end-to-end tests                                                                                                                                   |
+| `Tests.Integration.Mcp` | MCP tool integration tests                                                                                                                             |
+| `Tests.Contract`        | MCP contract validation & DI wiring                                                                                                                    |
+| `Tests.Smoke.Aot`       | Native AOT vs JIT parity for the CLI and MCP tools (skipped unless `PROJGRAPH_SMOKE_*` is set; CI runs it through `.github/actions/native-tool-smoke`) |
+| `Tests.Shared`          | Shared helpers (`TestDirectory`, `TestPathHelper`)                                                                                                     |
 
 ### Native AOT smoke tests
 
 `Tests.Smoke.Aot` compares Native AOT builds of the CLI and MCP server with the JIT build of the
-same commit. It is skipped unless the `PROJGRAPH_SMOKE_*` variables are set, and the `aot-smoke`
-CI job runs it on every PR. Native AOT on Linux needs `clang` (or `gcc`) and `zlib1g-dev`, as the
-CI job installs. The commands below are for linux-x64; the `--artifacts-path` keeps the
-self-contained MCP publish from overwriting the JIT build:
+same commit. It is skipped unless the `PROJGRAPH_SMOKE_*` variables are set. CI runs
+`.github/scripts/native-tool-smoke.sh` through the `.github/actions/native-tool-smoke` action: it
+packs the native tool packages, installs them with `dotnet tool install`, and tests the installed
+tools. The `aot-smoke` job does this for linux-x64 on every PR, and `pack.yml` does it for every
+release platform. Native AOT on Linux needs `clang` (or `gcc`) and `zlib1g-dev`.
+
+Before a local native pack or publish, delete `src/ProjGraph.Cli/bin/Release/net10.0/<rid>` and
+`src/ProjGraph.Mcp/bin/Release/net10.0/<rid>`: a pack reuses that folder's `publish/` output and ships
+whatever is left there.
+
+To run the same check locally on Linux:
+
+```bash
+bash .github/scripts/native-tool-smoke.sh linux-x64 0.0.0-local.1
+```
+
+For a quicker loop, test published binaries instead (run one publish at a time; each takes several GB
+of memory):
 
 ```bash
 dotnet build ProjGraph.slnx -c Release
-dotnet publish src/ProjGraph.Cli -c Release -r linux-x64 -p:PublishAot=true --artifacts-path artifacts/aot-build -o artifacts/native/cli
-dotnet publish src/ProjGraph.Mcp -c Release -r linux-x64 -p:PublishAot=true --artifacts-path artifacts/aot-build -o artifacts/native/mcp
+dotnet publish src/ProjGraph.Cli -c Release -r linux-x64 -o artifacts/native/cli
+dotnet publish src/ProjGraph.Mcp -c Release -r linux-x64 -o artifacts/native/mcp
 PROJGRAPH_SMOKE_CLI_NATIVE=artifacts/native/cli/ProjGraph.Cli \
 PROJGRAPH_SMOKE_CLI_REFERENCE=src/ProjGraph.Cli/bin/Release/net10.0/ProjGraph.Cli.dll \
 PROJGRAPH_SMOKE_MCP_NATIVE=artifacts/native/mcp/ProjGraph.Mcp \
-PROJGRAPH_SMOKE_MCP_REFERENCE=src/ProjGraph.Mcp/bin/Release/net10.0/linux-x64/ProjGraph.Mcp.dll \
+PROJGRAPH_SMOKE_MCP_REFERENCE=src/ProjGraph.Mcp/bin/Release/net10.0/ProjGraph.Mcp.dll \
 dotnet test tests/ProjGraph.Tests.Smoke.Aot -c Release --no-build
 ```
 

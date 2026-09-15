@@ -1,4 +1,5 @@
 using ModelContextProtocol.Client;
+using System.Collections.Concurrent;
 
 namespace ProjGraph.Tests.Smoke.Aot.Helpers;
 
@@ -9,6 +10,8 @@ namespace ProjGraph.Tests.Smoke.Aot.Helpers;
 /// </summary>
 public sealed class McpServerPair : IAsyncLifetime
 {
+    private readonly ConcurrentQueue<string> _nativeStandardError = new();
+    private readonly ConcurrentQueue<string> _referenceStandardError = new();
     private McpClient? _native;
     private McpClient? _reference;
 
@@ -18,9 +21,20 @@ public sealed class McpServerPair : IAsyncLifetime
     /// <returns>The native and the reference client.</returns>
     public async Task<(McpClient Native, McpClient Reference)> GetClientsAsync()
     {
-        _native ??= await ConnectAsync(SmokeEnvironment.McpNative);
-        _reference ??= await ConnectAsync(SmokeEnvironment.McpReference);
+        _native ??= await ConnectAsync(SmokeEnvironment.McpNative, _nativeStandardError);
+        _reference ??= await ConnectAsync(SmokeEnvironment.McpReference, _referenceStandardError);
         return (_native, _reference);
+    }
+
+    /// <summary>
+    /// Describes everything both servers have written to standard error so far. The servers log
+    /// warnings and unhandled exceptions there, which the protocol results alone never show.
+    /// </summary>
+    /// <returns>The native and the reference server's standard error, labelled.</returns>
+    public string DescribeStandardError()
+    {
+        return $"Native server stderr:\n{string.Join('\n', _nativeStandardError)}\n" +
+               $"Reference server stderr:\n{string.Join('\n', _referenceStandardError)}";
     }
 
     /// <inheritdoc />
@@ -43,14 +57,15 @@ public sealed class McpServerPair : IAsyncLifetime
         }
     }
 
-    private static async Task<McpClient> ConnectAsync(SmokeCommand command)
+    private static async Task<McpClient> ConnectAsync(SmokeCommand command, ConcurrentQueue<string> standardError)
     {
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
             Name = "ProjGraph AOT smoke",
             Command = command.FileName,
             Arguments = [.. command.LeadingArguments],
-            WorkingDirectory = SmokeEnvironment.RepositoryRoot
+            WorkingDirectory = SmokeEnvironment.RepositoryRoot,
+            StandardErrorLines = standardError.Enqueue
         });
 
         return await McpClient.CreateAsync(transport);

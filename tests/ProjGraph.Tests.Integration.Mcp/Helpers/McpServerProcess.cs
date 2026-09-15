@@ -11,9 +11,9 @@ internal static class McpServerProcess
 {
     /// <summary>
     /// Connects a client to the server apphost in ProjGraph.Mcp's own build output (guaranteed
-    /// up to date by the ProjectReference). ProjGraph.Mcp is a self-contained exe, so its build
-    /// lands in a RID subdirectory and must be launched via its apphost — the DLL that the
-    /// ProjectReference copies into the test output has no runtime next to it and cannot start.
+    /// up to date by the ProjectReference). ProjGraph.Mcp builds framework-dependent, so the apphost
+    /// sits directly in <c>bin/{Configuration}/{tfm}/</c>; RID subdirectories hold
+    /// <c>dotnet pack -r</c> or <c>dotnet publish -r</c> output and are ignored.
     /// The client deliberately advertises no capabilities — in particular no workspace roots.
     /// </summary>
     /// <returns>A connected client; disposing it stops the server process.</returns>
@@ -34,20 +34,10 @@ internal static class McpServerProcess
         var testOutput = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
         var binRoot = TestPathHelper.GetRootPath(Path.Combine(
             "src", "ProjGraph.Mcp", "bin", testOutput.Parent!.Name, testOutput.Name));
-        Directory.Exists(binRoot).Should().BeTrue(
-            $"the MCP server build output must exist at {binRoot}");
         var exeName = OperatingSystem.IsWindows() ? "ProjGraph.Mcp.exe" : "ProjGraph.Mcp";
+        var serverExe = new FileInfo(Path.Combine(binRoot, exeName));
 
-        // The build RID matches the machine that built it, so probing the RID subdirectories
-        // is exact enough without reconstructing the RID by hand. Preferring the most recently
-        // written apphost keeps a dev machine with stale cross-RID leftovers deterministic.
-        var serverExe = Directory.GetDirectories(binRoot)
-            .Select(ridDir => new FileInfo(Path.Combine(ridDir, exeName)))
-            .Where(apphost => apphost.Exists)
-            .OrderByDescending(apphost => apphost.LastWriteTimeUtc)
-            .FirstOrDefault();
-
-        serverExe.Should().NotBeNull($"the MCP server apphost must be present under {binRoot}");
+        serverExe.Exists.Should().BeTrue($"the MCP server apphost must be present at {serverExe.FullName}");
         return serverExe.FullName;
     }
 }

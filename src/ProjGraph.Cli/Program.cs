@@ -9,10 +9,6 @@ namespace ProjGraph.Cli;
 
 internal static class Program
 {
-    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode",
-        Justification = "Spectre.Console.Cli reflects over the command and settings types. ProjGraph.Cli and " +
-                        "Spectre.Console.Cli are trimmer root assemblies, so that metadata is kept, and " +
-                        "tests/ProjGraph.Tests.Smoke.Aot runs every command natively.")]
     public static int Main(string[] args)
     {
         const string packageDiagramCommandName = "visualize";
@@ -27,8 +23,7 @@ internal static class Program
         // Register CLI-specific services
         services.AddSingleton<DiagramOutputWriter>();
 
-        var registrar = new TypeRegistrar(services);
-        var app = new CommandApp(registrar);
+        var app = CreateApp(new TypeRegistrar(services));
 
         app.Configure(config =>
         {
@@ -66,5 +61,14 @@ internal static class Program
         });
 
         return app.Run(args);
+    }
+
+    [UnconditionalSuppressMessage("AOT", "IL3050:RequiresDynamicCode",
+        Justification = "Spectre.Console.Cli reflects over the command and settings types. ProjGraph.Cli and " +
+                        "Spectre.Console.Cli are trimmer root assemblies, so that metadata is kept, and " +
+                        "tests/ProjGraph.Tests.Smoke.Aot runs every command natively.")]
+    private static CommandApp CreateApp(TypeRegistrar registrar)
+    {
+        return new CommandApp(registrar);
     }
 }
