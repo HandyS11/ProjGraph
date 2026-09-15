@@ -128,12 +128,16 @@ Tag push (v*)
           ├── dotnet nuget push libraries + native + any → NuGet.org, GitHub Packages
           ├── wait until NuGet.org lists all 14 tool packages (30 min timeout)
           ├── dotnet nuget push pointer packages → NuGet.org, GitHub Packages
-          ├── Create GitHub Release with every package attached
-          ├── stamp the server.json version (.github/scripts/set-server-json-version.sh)
-          ├── wait 300 s for NuGet.org package validation
-          └── mcp-publisher publish (GitHub OIDC auth, no token required)
-                └── Submits src/ProjGraph.Mcp/.mcp/server.json to the Official MCP Registry
+          ├── Create GitHub Release with every package attached (a pre-release for tags like v1.2.0-beta.1)
+          └── stable tags only (no `-` suffix):
+                ├── stamp the server.json version (.github/scripts/set-server-json-version.sh)
+                ├── wait 300 s for NuGet.org package validation
+                └── mcp-publisher publish (GitHub OIDC auth, no token required)
+                      └── Submits src/ProjGraph.Mcp/.mcp/server.json to the Official MCP Registry
 ```
+
+Pre-release tags skip the MCP Registry: it ranks versions by semver, so `1.2.0-beta.1` would become its
+"latest" over `1.1.0`.
 
 `pack.yml` also runs on pull requests that change a project file under `src/`, the MCP `server.json`,
 `ProjGraph.slnx`, the smoke suite, the packaging scripts, `Directory.*.props`, or `global.json`.
