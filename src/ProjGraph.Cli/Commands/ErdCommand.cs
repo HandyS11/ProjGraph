@@ -143,7 +143,7 @@ internal sealed class ErdCommand(
     /// <returns>
     /// An integer representing the exit code of the command. Returns 0 if successful, 1 otherwise.
     /// </returns>
-    protected override async Task<int> ExecuteAsync(
+    public override async Task<int> ExecuteAsync(
         CommandContext context,
         Settings settings,
         CancellationToken cancellationToken)
