@@ -3,7 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="coverlet.collector" Version="10.0.1"/>
+    <PackageVersion Include="coverlet.collector" Version="10.1.0"/>
     <PackageVersion Include="FluentAssertions" Version="8.11.0"/>
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0"/>
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.401"/>
@@ -19,9 +19,9 @@
     <PackageVersion Include="ModelContextProtocol" Version="2.2.0"/>
     <PackageVersion Include="Roslynator.Analyzers" Version="5.0.0"/>
     <PackageVersion Include="Roslynator.Formatting.Analyzers" Version="5.0.0"/>
-    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.34.0.3385"/>
+    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.35.0.4138"/>
     <PackageVersion Include="Spectre.Console" Version="0.57.2"/>
-    <PackageVersion Include="Spectre.Console.Cli" Version="0.55.0"/>
+    <PackageVersion Include="Spectre.Console.Cli" Version="0.56.1"/>
     <PackageVersion Include="Spectre.Console.Testing" Version="0.57.2"/>
     <PackageVersion Include="xunit" Version="2.9.3"/>
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0"/>
