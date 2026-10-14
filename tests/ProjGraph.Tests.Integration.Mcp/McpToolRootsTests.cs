@@ -49,8 +49,8 @@ public sealed class McpToolRootsTests : IDisposable
 
         await using var session = await InProcessMcpSession.StartAsync(
             CreateServerOptionsWithTools(),
-            // Not pinned: the client negotiates the latest revision (2026-07-28), which drops the
-            // initialize handshake. This is the case that silently regressed on the v2 upgrade.
+            // Pinned to the latest revision (2026-07-28), which drops the initialize handshake.
+            // This is the case that silently regressed on the v2 upgrade.
             InProcessMcpSession.CreateClientOptionsWithRoots(() => [_temp.DirectoryPath], pinDownLevel: false));
 
         var result = await session.Client.CallToolAsync(

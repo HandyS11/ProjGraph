@@ -86,8 +86,11 @@ internal sealed class InProcessMcpSession : IAsyncDisposable
     /// When <see langword="true"/> (the default), pins the client to the <c>2025-11-25</c>
     /// handshake so client capabilities are established session-scoped on the root
     /// <see cref="McpServer"/> — required by tests that drive that root instance directly. When
-    /// <see langword="false"/>, the client negotiates the latest revision, where capabilities
-    /// arrive per request in <c>_meta</c> and are visible only on the request-scoped server.
+    /// <see langword="false"/>, pins the client to <c>2026-07-28</c>, where capabilities arrive
+    /// per request in <c>_meta</c> and are visible only on the request-scoped server. Pinning
+    /// matters: left unset, the client falls back to the <c>initialize</c> handshake whenever its
+    /// <c>server/discover</c> probe outlasts <see cref="McpClientOptions.DiscoverProbeTimeout"/>
+    /// (5 seconds), which a loaded CI runner can hit, silently testing the wrong revision.
     /// </param>
     public static McpClientOptions CreateClientOptionsWithRoots(
         Func<IReadOnlyList<string>> rootProvider,
@@ -98,7 +101,10 @@ internal sealed class InProcessMcpSession : IAsyncDisposable
 #pragma warning disable MCP9005
         return new McpClientOptions
         {
-            ProtocolVersion = pinDownLevel ? "2025-11-25" : null,
+            ProtocolVersion = pinDownLevel ? "2025-11-25" : "2026-07-28",
+            // The probe is only issued on 2026-07-28; leave it bounded by InitializationTimeout
+            // alone so a slow runner does not fail the connection.
+            DiscoverProbeTimeout = Timeout.InfiniteTimeSpan,
             ClientInfo = new Implementation
             {
                 Name = "ProjGraph.Tests",
