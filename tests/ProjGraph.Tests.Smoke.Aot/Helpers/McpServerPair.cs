@@ -57,7 +57,7 @@ public sealed class McpServerPair : IAsyncLifetime
         }
     }
 
-    private static async Task<McpClient> ConnectAsync(SmokeCommand command, ConcurrentQueue<string> standardError)
+    private static Task<McpClient> ConnectAsync(SmokeCommand command, ConcurrentQueue<string> standardError)
     {
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
@@ -68,6 +68,6 @@ public sealed class McpServerPair : IAsyncLifetime
             StandardErrorLines = standardError.Enqueue
         });
 
-        return await McpClient.CreateAsync(transport);
+        return McpClient.CreateAsync(transport);
     }
 }

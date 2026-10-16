@@ -397,6 +397,7 @@ dotnet_diagnostic.CA1707.severity = none # Identifiers should not contain unders
 dotnet_diagnostic.CA1716.severity = none # Identifiers should not match keywords
 dotnet_diagnostic.CA1806.severity = none # Ignore method results (not working properly on all cases)
 dotnet_diagnostic.CA2007.severity = none # Consider calling ConfigureAwait on the awaited task
+dotnet_diagnostic.VSTHRD202.severity = warning # Remove unnecessary async state machine (flagged by SonarQube)
 
 dotnet_diagnostic.CS1574.severity = none # XML comment has cref attribute that could not be resolved (boring with {} generics)
 dotnet_diagnostic.CS1591.severity = none # Missing XML comment for publicly visible type or member

@@ -125,10 +125,10 @@ public class SpectreOutputConsole : IOutputConsole
     }
 
     /// <inheritdoc />
-    public async Task<string> PromptSelectionAsync(string title, IEnumerable<string> choices,
+    public Task<string> PromptSelectionAsync(string title, IEnumerable<string> choices,
         CancellationToken cancellationToken = default)
     {
-        return await AnsiConsole.PromptAsync(
+        return AnsiConsole.PromptAsync(
             new SelectionPrompt<string>()
                 .Title(title)
                 .AddChoices(choices),
@@ -136,12 +136,12 @@ public class SpectreOutputConsole : IOutputConsole
     }
 
     /// <inheritdoc />
-    public async Task RunWithStatusAsync(string statusMessage, Func<Task> action,
+    public Task RunWithStatusAsync(string statusMessage, Func<Task> action,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        await AnsiConsole.Status()
+        return AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .StartAsync(statusMessage, async ctx =>
             {

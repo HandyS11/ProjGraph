@@ -302,13 +302,13 @@ internal sealed class EntityFileDiscovery(IFileSystem fileSystem) : IEntityFileD
     /// Any access errors encountered during directory traversal are ignored.
     /// Directories like bin, obj, .git, and node_modules are skipped during traversal for performance.
     /// </remarks>
-    private async Task SearchDirectoryForEntitiesAsync(
+    private Task SearchDirectoryForEntitiesAsync(
         string searchDir,
         HashSet<string> entityTypeNames,
         string normalizedContextPath,
         Dictionary<string, string> entityFiles)
     {
-        await SearchDirectoryRecursiveAsync(searchDir, entityTypeNames, normalizedContextPath, entityFiles);
+        return SearchDirectoryRecursiveAsync(searchDir, entityTypeNames, normalizedContextPath, entityFiles);
     }
 
     /// <summary>

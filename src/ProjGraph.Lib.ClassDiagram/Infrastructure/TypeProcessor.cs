@@ -18,12 +18,12 @@ public sealed class TypeProcessor(ISymbolResolver symbolResolver) : ITypeProcess
     /// <param name="context">The <see cref="AnalysisContext"/> containing the current state of the analysis.</param>
     /// <param name="options">The <see cref="AnalysisOptions"/> controlling the analysis behavior.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    public async Task ProcessTypeQueueAsync(
+    public Task ProcessTypeQueueAsync(
         Queue<(INamedTypeSymbol Symbol, int Depth)> typesToAnalyze,
         AnalysisContext context,
         AnalysisOptions options)
     {
-        await ProcessTypeQueueInternalAsync(typesToAnalyze, context, options);
+        return ProcessTypeQueueInternalAsync(typesToAnalyze, context, options);
     }
 
     /// <summary>

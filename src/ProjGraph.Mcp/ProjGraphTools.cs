@@ -459,7 +459,7 @@ internal sealed class ProjGraphTools(
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The resolved absolute path.</returns>
     /// <exception cref="McpException">Thrown when the path is empty or cannot be resolved.</exception>
-    private async Task<string> PreparePathAsync(string path, McpServer server, CancellationToken cancellationToken)
+    private Task<string> PreparePathAsync(string path, McpServer server, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(path))
@@ -469,7 +469,7 @@ internal sealed class ProjGraphTools(
             throw new McpException("path must not be empty.");
         }
 
-        return await rootService.TryResolveAsync(path, server, cancellationToken);
+        return rootService.TryResolveAsync(path, server, cancellationToken);
     }
 
     private static void RequireCsFile(string path)
