@@ -17,7 +17,7 @@ internal static class McpServerProcess
     /// The client deliberately advertises no capabilities — in particular no workspace roots.
     /// </summary>
     /// <returns>A connected client; disposing it stops the server process.</returns>
-    public static async Task<McpClient> ConnectAsync()
+    public static Task<McpClient> ConnectAsync()
     {
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
@@ -25,7 +25,7 @@ internal static class McpServerProcess
             Command = LocateServerExecutable()
         });
 
-        return await McpClient.CreateAsync(transport);
+        return McpClient.CreateAsync(transport);
     }
 
     private static string LocateServerExecutable()

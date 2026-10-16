@@ -16,10 +16,10 @@ public class AnalyzeSnapshotUseCase(IEfModelAnalyzer modelAnalyzer)
     /// <param name="snapshotName">The optional name of the ModelSnapshot class to analyze.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the analyzed Entity Framework model.</returns>
     /// <exception cref="ArgumentException">Thrown when the provided file path is not a .cs file.</exception>
-    public async Task<EfModel> ExecuteAsync(string path, string? snapshotName = null)
+    public Task<EfModel> ExecuteAsync(string path, string? snapshotName = null)
     {
         FilePathGuard.RequireCsFile(path);
 
-        return await modelAnalyzer.AnalyzeSnapshotAsync(path, snapshotName);
+        return modelAnalyzer.AnalyzeSnapshotAsync(path, snapshotName);
     }
 }

@@ -18,26 +18,26 @@ public class EfAnalysisService(
     DiscoverSnapshotsUseCase discoverSnapshotsUseCase) : IEfAnalysisService
 {
     /// <inheritdoc />
-    public async Task<List<string>> DiscoverContextsAsync(string path)
+    public Task<List<string>> DiscoverContextsAsync(string path)
     {
-        return await discoverContextsUseCase.ExecuteAsync(path);
+        return discoverContextsUseCase.ExecuteAsync(path);
     }
 
     /// <inheritdoc />
-    public async Task<EfModel> AnalyzeContextAsync(string path, string? contextName = null)
+    public Task<EfModel> AnalyzeContextAsync(string path, string? contextName = null)
     {
-        return await analyzeContextUseCase.ExecuteAsync(path, contextName);
+        return analyzeContextUseCase.ExecuteAsync(path, contextName);
     }
 
     /// <inheritdoc />
-    public async Task<List<string>> DiscoverSnapshotsAsync(string path)
+    public Task<List<string>> DiscoverSnapshotsAsync(string path)
     {
-        return await discoverSnapshotsUseCase.ExecuteAsync(path);
+        return discoverSnapshotsUseCase.ExecuteAsync(path);
     }
 
     /// <inheritdoc />
-    public async Task<EfModel> AnalyzeSnapshotAsync(string path, string? snapshotName = null)
+    public Task<EfModel> AnalyzeSnapshotAsync(string path, string? snapshotName = null)
     {
-        return await analyzeSnapshotUseCase.ExecuteAsync(path, snapshotName);
+        return analyzeSnapshotUseCase.ExecuteAsync(path, snapshotName);
     }
 }

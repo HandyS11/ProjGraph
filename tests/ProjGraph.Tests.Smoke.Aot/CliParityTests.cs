@@ -20,74 +20,74 @@ public sealed partial class CliParityTests : IDisposable
     }
 
     [AotSmokeFact]
-    public async Task Visualize_Mermaid_ShouldMatchReference()
+    public Task Visualize_Mermaid_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync("visualize", ModularSolution, "--format", "mermaid");
+        return AssertDiagramParityAsync("visualize", ModularSolution, "--format", "mermaid");
     }
 
     [AotSmokeFact]
-    public async Task Visualize_Tree_ShouldMatchReference()
+    public Task Visualize_Tree_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync("visualize", ModularSolution, "--format", "tree");
+        return AssertDiagramParityAsync("visualize", ModularSolution, "--format", "tree");
     }
 
     [AotSmokeFact]
-    public async Task Visualize_Flat_ShouldMatchReference()
+    public Task Visualize_Flat_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync("visualize", ModularSolution, "--format", "flat");
+        return AssertDiagramParityAsync("visualize", ModularSolution, "--format", "flat");
     }
 
     [AotSmokeFact]
-    public async Task Visualize_LegacySln_ShouldMatchReference()
+    public Task Visualize_LegacySln_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync(
+        return AssertDiagramParityAsync(
             "visualize", "tests/ProjGraph.Tests.Smoke.Aot/Fixtures/legacy.sln", "--format", "mermaid");
     }
 
     [AotSmokeFact]
-    public async Task Erd_ComplexEcommerce_ShouldMatchReference()
+    public Task Erd_ComplexEcommerce_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync("erd", "samples/erd/complex-ecommerce/Data/MyDbContext.cs");
+        return AssertDiagramParityAsync("erd", "samples/erd/complex-ecommerce/Data/MyDbContext.cs");
     }
 
     [AotSmokeFact]
-    public async Task Erd_SimpleContext_ShouldMatchReference()
+    public Task Erd_SimpleContext_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync("erd", "samples/erd/simple-context/EntityFramework/MyDbContext.cs");
+        return AssertDiagramParityAsync("erd", "samples/erd/simple-context/EntityFramework/MyDbContext.cs");
     }
 
     [AotSmokeFact]
-    public async Task ClassDiagram_DesignPatterns_ShouldMatchReference()
+    public Task ClassDiagram_DesignPatterns_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync(
+        return AssertDiagramParityAsync(
             "classdiagram", "samples/classdiagram/design-patterns/Domain/Order.cs",
             "--inheritance", "--dependencies", "--depth", "2", "--properties", "true", "--functions", "true");
     }
 
     [AotSmokeFact]
-    public async Task ClassDiagram_ComplexHierarchy_ShouldMatchReference()
+    public Task ClassDiagram_ComplexHierarchy_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync(
+        return AssertDiagramParityAsync(
             "classdiagram", "samples/classdiagram/complex-hierarchy/Domain/Models/CEO.cs",
             "--inheritance", "--dependencies", "--depth", "5", "--properties", "true", "--functions", "true");
     }
 
     [AotSmokeFact]
-    public async Task ClassDiagram_SimpleHierarchy_ShouldMatchReference()
+    public Task ClassDiagram_SimpleHierarchy_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync(
+        return AssertDiagramParityAsync(
             "classdiagram", "samples/classdiagram/simple-hierarchy/Models/Admin.cs",
             "--inheritance", "--dependencies", "--depth", "2", "--properties", "true", "--functions", "true");
     }
 
     [AotSmokeFact]
-    public async Task ClassDiagram_SourceDirectory_ShouldMatchReference()
+    public Task ClassDiagram_SourceDirectory_ShouldMatchReference()
     {
-        await AssertDiagramParityAsync("classdiagram", "src", "--inheritance", "--dependencies");
+        return AssertDiagramParityAsync("classdiagram", "src", "--inheritance", "--dependencies");
     }
 
     [AotSmokeFact]
-    public async Task ClassDiagram_ConcurrencyAndAnnotationTypes_ShouldMatchReference()
+    public Task ClassDiagram_ConcurrencyAndAnnotationTypes_ShouldMatchReference()
     {
         // BCL types that bind only through the embedded reference assemblies (spec §1.5).
         _temp.CreateFile("Types/Types.csproj",
@@ -116,15 +116,15 @@ public sealed partial class CliParityTests : IDisposable
             public record StockItem(string Sku, decimal Price);
             """);
 
-        await AssertDiagramParityAsync("classdiagram", file, "--inheritance", "--dependencies");
+        return AssertDiagramParityAsync("classdiagram", file, "--inheritance", "--dependencies");
     }
 
     [AotSmokeFact]
-    public async Task Visualize_SolutionWithMalformedProject_ShouldMatchReference()
+    public Task Visualize_SolutionWithMalformedProject_ShouldMatchReference()
     {
         var solution = CreateSolutionWithMalformedProject();
 
-        await AssertDiagramParityAsync("visualize", solution, "--format", "mermaid");
+        return AssertDiagramParityAsync("visualize", solution, "--format", "mermaid");
     }
 
     [AotSmokeFact]
@@ -145,17 +145,17 @@ public sealed partial class CliParityTests : IDisposable
     }
 
     [AotSmokeFact]
-    public async Task Stats_Repository_ShouldMatchReferenceApartFromTiming()
+    public Task Stats_Repository_ShouldMatchReferenceApartFromTiming()
     {
-        await AssertStatsParityAsync("stats", "ProjGraph.slnx");
+        return AssertStatsParityAsync("stats", "ProjGraph.slnx");
     }
 
     [AotSmokeFact]
-    public async Task Stats_SolutionWithMalformedProject_ShouldMatchReferenceApartFromTiming()
+    public Task Stats_SolutionWithMalformedProject_ShouldMatchReferenceApartFromTiming()
     {
         var solution = CreateSolutionWithMalformedProject();
 
-        await AssertStatsParityAsync("stats", solution);
+        return AssertStatsParityAsync("stats", solution);
     }
 
     [AotSmokeFact]

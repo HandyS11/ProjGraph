@@ -17,7 +17,7 @@ namespace ProjGraph.Mcp;
 
 internal static class Program
 {
-    public static async Task Main(string[] args)
+    public static Task Main(string[] args)
     {
         var version = typeof(Program).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
@@ -70,6 +70,6 @@ internal static class Program
         builder.Services.AddSingleton<ProjGraphTools>();
 
         var host = builder.Build();
-        await host.RunAsync();
+        return host.RunAsync();
     }
 }

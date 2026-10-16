@@ -15,18 +15,18 @@ public class ClassAnalysisService(
     : IClassAnalysisService
 {
     /// <inheritdoc />
-    public async Task<ClassModel> AnalyzeFileAsync(
+    public Task<ClassModel> AnalyzeFileAsync(
         string filePath,
         AnalysisOptions? options = null)
     {
-        return await analyzeFileUseCase.ExecuteAsync(filePath, options);
+        return analyzeFileUseCase.ExecuteAsync(filePath, options);
     }
 
     /// <inheritdoc />
-    public async Task<ClassModel> AnalyzeDirectoryAsync(
+    public Task<ClassModel> AnalyzeDirectoryAsync(
         string directoryPath,
         AnalysisOptions? options = null)
     {
-        return await analyzeDirectoryUseCase.ExecuteAsync(directoryPath, options);
+        return analyzeDirectoryUseCase.ExecuteAsync(directoryPath, options);
     }
 }

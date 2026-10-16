@@ -25,14 +25,14 @@ internal sealed class WorkspaceTypeDiscovery(IFileSystem fileSystem) : IWorkspac
     /// A task that represents the asynchronous operation. The task result contains the full path of the file
     /// containing the type definition if found; otherwise, null.
     /// </returns>
-    public async Task<string?> FindTypeDefinitionFileAsync(string typeName, string startDirectory)
+    public Task<string?> FindTypeDefinitionFileAsync(string typeName, string startDirectory)
     {
         var root = WorkspaceRootResolver.FindWorkspaceRoot(startDirectory) ?? startDirectory;
 
         // A single scan from the workspace root keeps resolution deterministic: a partial
         // "common directory" pre-pass would return its first hit and override the path-sorted
         // tie-break applied below. Lookups are memoized per type name by the caller.
-        return await SearchDirectoryForTypeAsync(root, typeName);
+        return SearchDirectoryForTypeAsync(root, typeName);
     }
 
     /// <summary>

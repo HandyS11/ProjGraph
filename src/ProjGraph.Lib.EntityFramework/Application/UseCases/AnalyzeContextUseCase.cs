@@ -16,9 +16,9 @@ public class AnalyzeContextUseCase(IEfModelAnalyzer modelAnalyzer)
     /// <param name="contextName">The optional name of the DbContext class to analyze.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the analyzed Entity Framework model.</returns>
     /// <exception cref="ArgumentException">Thrown when the provided file path is not a .cs file.</exception>
-    public async Task<EfModel> ExecuteAsync(string path, string? contextName = null)
+    public Task<EfModel> ExecuteAsync(string path, string? contextName = null)
     {
         FilePathGuard.RequireCsFile(path);
-        return await modelAnalyzer.AnalyzeContextAsync(path, contextName);
+        return modelAnalyzer.AnalyzeContextAsync(path, contextName);
     }
 }
