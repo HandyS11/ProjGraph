@@ -35,6 +35,7 @@ public sealed class McpParityTests(McpServerPair servers, ITestOutputHelper outp
     {
         var (native, reference) = await servers.GetClientsAsync();
 
+        reference.ServerInfo.Should().NotBeNull();
         reference.ServerInfo.Name.Should().Be("ProjGraph");
         AssertSameJson(native.ServerInfo, reference.ServerInfo);
         AssertSameJson(native.ServerCapabilities, reference.ServerCapabilities);
