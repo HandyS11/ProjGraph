@@ -68,6 +68,14 @@ public sealed class McpServerPair : IAsyncLifetime
             StandardErrorLines = standardError.Enqueue
         });
 
-        return McpClient.CreateAsync(transport);
+        return McpClient.CreateAsync(transport, new McpClientOptions
+        {
+            // Pin the revision and let the server/discover probe wait out a cold start. Left at the
+            // defaults, a probe that outlasts DiscoverProbeTimeout (5 seconds) makes the client send
+            // initialize while the probe is still queued; the server handles both concurrently and
+            // either rejects initialize or negotiates 2025-11-25, so the two servers could disagree.
+            ProtocolVersion = "2026-07-28",
+            DiscoverProbeTimeout = Timeout.InfiniteTimeSpan
+        });
     }
 }
