@@ -25,7 +25,15 @@ internal static class McpServerProcess
             Command = LocateServerExecutable()
         });
 
-        return McpClient.CreateAsync(transport);
+        return McpClient.CreateAsync(transport, new McpClientOptions
+        {
+            // Pin the revision and let the server/discover probe wait out a cold start. Left at the
+            // defaults, a probe that outlasts DiscoverProbeTimeout (5 seconds, reachable on a loaded
+            // CI runner) makes the client send initialize while the probe is still queued; the server
+            // handles both concurrently and either rejects initialize or negotiates 2025-11-25.
+            ProtocolVersion = "2026-07-28",
+            DiscoverProbeTimeout = Timeout.InfiniteTimeSpan
+        });
     }
 
     private static string LocateServerExecutable()
