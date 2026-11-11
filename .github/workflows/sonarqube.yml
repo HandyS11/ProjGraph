@@ -20,39 +20,29 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Set up JDK 17
-        uses: actions/setup-java@v6
-        with:
-          java-version: 17
-          distribution: 'zulu'
-      - name: Cache SonarQube packages
-        uses: actions/cache@v6
-        with:
-          path: ${{ runner.temp }}\cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      - name: Cache SonarQube scanner
-        id: cache-sonar-scanner
-        uses: actions/cache@v6
-        with:
-          path: ${{ runner.temp }}\scanner
-          key: ${{ runner.os }}-sonar-scanner
-          restore-keys: ${{ runner.os }}-sonar-scanner
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
-      - name: Install SonarQube scanner
-        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-        shell: powershell
-        run: |
-          New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
-          dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+      # No setup-java: the scanner provisions the JRE its server requires (Java 21 today) and
+      # ignores a runner JDK unless told otherwise, so a JDK step would only be downloaded and unused.
+      # That JRE, the scanner engine and the analyzer plugins all land in the scanner's user cache.
+      # The key follows the scanner version pinned in .config/dotnet-tools.json (bumped by
+      # Dependabot), so every scanner update starts a fresh cache. There are no restore-keys on
+      # purpose: a prefix match would carry stale plugin versions forward forever.
+      - name: Cache SonarQube JRE and plugins
+        uses: actions/cache@v6
+        with:
+          path: ~\.sonar\cache
+          key: ${{ runner.os }}-sonar-${{ hashFiles('.config/dotnet-tools.json') }}
+
+      - name: Restore SonarQube scanner
+        run: dotnet tool restore
       - name: Build and analyze
         shell: powershell
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.exclusions="samples/**/*" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.coverage.exclusions="samples/**/*,tests/ProjGraph.Tests.Shared/**/*,src/ProjGraph.Cli/Program.cs,src/ProjGraph.Mcp/Program.cs"
+          dotnet sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.exclusions="samples/**/*" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.coverage.exclusions="samples/**/*,tests/ProjGraph.Tests.Shared/**/*,src/ProjGraph.Cli/Program.cs,src/ProjGraph.Mcp/Program.cs"
           dotnet build ProjGraph.slnx
           dotnet test ProjGraph.slnx --no-build --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
