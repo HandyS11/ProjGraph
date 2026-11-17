@@ -27,10 +27,6 @@
        is every reference assembly that defines a public type the former runtime set
        (System.Private.CoreLib, System.Runtime, System.Collections, System.ComponentModel.Annotations)
        bound, so BCL types keep binding and keep being filtered out of class diagrams. -->
-  <PropertyGroup>
-    <ReferenceAssemblyDirectory>$(NetCoreTargetingPackRoot)/Microsoft.NETCore.App.Ref/$(BundledNETCoreAppPackageVersion)/ref/$(TargetFramework)/</ReferenceAssemblyDirectory>
-  </PropertyGroup>
-
   <ItemGroup>
     <EmbeddedReferenceAssembly Include="Microsoft.Win32.Primitives.dll"/>
     <EmbeddedReferenceAssembly Include="netstandard.dll"/>
@@ -55,14 +51,23 @@
     <EmbeddedReferenceAssembly Include="System.Threading.Overlapped.dll"/>
     <EmbeddedReferenceAssembly Include="System.Threading.Thread.dll"/>
     <EmbeddedReferenceAssembly Include="System.Threading.ThreadPool.dll"/>
-    <EmbeddedResource Include="@(EmbeddedReferenceAssembly->'$(ReferenceAssemblyDirectory)%(Identity)')"
-                      LogicalName="refs/%(Filename)%(Extension)"
-                      Visible="false"/>
   </ItemGroup>
 
-  <Target Name="VerifyEmbeddedReferenceAssemblies" BeforeTargets="PrepareForBuild">
+  <!-- The files come from the directory the SDK resolved the Microsoft.NETCore.App reference assemblies
+       from, so they are the ones this project compiles against. That is the SDK's bundled targeting
+       pack only when the SDK and the target framework share a major version; a newer SDK restores the
+       targeting pack from NuGet instead. -->
+  <Target Name="EmbedReferenceAssemblies" AfterTargets="ResolveTargetingPackAssets">
+    <PropertyGroup>
+      <ReferenceAssemblyDirectory>@(Reference->WithMetadataValue('FrameworkReferenceName', 'Microsoft.NETCore.App')->'%(RootDir)%(Directory)'->Distinct())</ReferenceAssemblyDirectory>
+    </PropertyGroup>
     <Error Condition="!Exists('$(ReferenceAssemblyDirectory)%(EmbeddedReferenceAssembly.Identity)')"
-           Text="Reference assembly '%(EmbeddedReferenceAssembly.Identity)' was not found in '$(ReferenceAssemblyDirectory)'. Install the .NET $(BundledNETCoreAppPackageVersion) targeting pack (it ships with the SDK)."/>
+           Text="Reference assembly '%(EmbeddedReferenceAssembly.Identity)' was not found in '$(ReferenceAssemblyDirectory)', where the SDK resolved the Microsoft.NETCore.App reference assemblies."/>
+    <ItemGroup>
+      <EmbeddedResource Include="@(EmbeddedReferenceAssembly->'$(ReferenceAssemblyDirectory)%(Identity)')"
+                        LogicalName="refs/%(Filename)%(Extension)"
+                        Visible="false"/>
+    </ItemGroup>
   </Target>
 
   <ItemGroup>
